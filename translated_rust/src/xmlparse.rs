@@ -3652,20 +3652,18 @@ macro_rules! process_entity {
 
 macro_rules! do_prolog {
     ($parser:expr, $enc:expr, $s:expr, $end:expr, $tok:expr, $next:expr, $next_ptr:expr, $have_more:expr, $allow_closing_doctype:expr, $account:expr $(,)?) => {
-        unsafe {
-            doProlog(
-                $parser,
-                $enc,
-                $s,
-                $end,
-                $tok,
-                $next,
-                $next_ptr,
-                $have_more,
-                $allow_closing_doctype,
-                $account,
-            )
-        }
+        doProlog(
+            $parser,
+            $enc,
+            $s,
+            $end,
+            $tok,
+            $next,
+            $next_ptr,
+            $have_more,
+            $allow_closing_doctype,
+            $account,
+        )
     };
 }
 
@@ -5732,7 +5730,7 @@ extern "C" fn externalEntityContentProcessor(
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let parser_state = expect_parser_ref(parser);
-    let mut result: crate::expat_h::XML_Error = unsafe_expr!(doContent(
+    let mut result: crate::expat_h::XML_Error = doContent(
         parser,
         1 as ::core::ffi::c_int,
         parser_state.m_encoding,
@@ -5742,7 +5740,7 @@ extern "C" fn externalEntityContentProcessor(
         (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         XML_ACCOUNT_ENTITY_EXPANSION,
-    ));
+    );
     if result as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -5753,7 +5751,7 @@ extern "C" fn externalEntityContentProcessor(
     return result;
 }
 
-unsafe extern "C" fn doContent(
+extern "C" fn doContent(
     mut parser: crate::expat_h::XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -5763,549 +5761,450 @@ unsafe extern "C" fn doContent(
     mut haveMore: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    let mut eventEndPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    if enc == (*parser).m_encoding {
-        eventPP = &raw mut (*parser).m_eventPtr;
-        eventEndPP = &raw mut (*parser).m_eventEndPtr;
-    } else {
-        eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-        eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
-    }
-    *eventPP = s;
-    loop {
-        let mut next: *const ::core::ffi::c_char = s;
-        let mut tok: ::core::ffi::c_int = (*enc).scanners[1 as ::core::ffi::c_int as usize]
-            .expect("non-null function pointer")(
-            enc, s, end, &raw mut next
-        );
-        let mut accountAfter: *const ::core::ffi::c_char = if tok
-            == crate::src::xmltok::XML_TOK_TRAILING_RSQB
-            || tok == crate::src::xmltok::XML_TOK_TRAILING_CR
-        {
-            if haveMore as ::core::ffi::c_int != 0 {
-                s
-            } else {
-                end
-            }
+    helper_unsafe!({
+        let dtd: *mut DTD = (*parser).m_dtd;
+        let mut eventPP: *mut *const ::core::ffi::c_char =
+            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+        let mut eventEndPP: *mut *const ::core::ffi::c_char =
+            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+        if enc == (*parser).m_encoding {
+            eventPP = &raw mut (*parser).m_eventPtr;
+            eventEndPP = &raw mut (*parser).m_eventEndPtr;
         } else {
-            next
-        };
-        if accountingDiffTolerated(
-            parser,
-            tok,
-            s,
-            accountAfter,
-            3337 as ::core::ffi::c_int,
-            account,
-        ) == 0
-        {
-            accountingOnAbort(parser);
-            return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+            eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
+            eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
         }
-        *eventEndPP = next;
-        let mut c2rust_current_block_281: u64;
-        match tok {
-            crate::src::xmltok::XML_TOK_TRAILING_CR => {
-                if haveMore != 0 {
-                    *nextPtr = s;
-                    return crate::expat_h::XML_ERROR_NONE;
+        *eventPP = s;
+        loop {
+            let mut next: *const ::core::ffi::c_char = s;
+            let mut tok: ::core::ffi::c_int =
+                (*enc).scanners[1 as ::core::ffi::c_int as usize]
+                    .expect("non-null function pointer")(enc, s, end, &raw mut next);
+            let mut accountAfter: *const ::core::ffi::c_char = if tok
+                == crate::src::xmltok::XML_TOK_TRAILING_RSQB
+                || tok == crate::src::xmltok::XML_TOK_TRAILING_CR
+            {
+                if haveMore as ::core::ffi::c_int != 0 {
+                    s
+                } else {
+                    end
                 }
-                *eventEndPP = end;
-                if (*parser).m_characterDataHandler.is_some() {
-                    let mut c: crate::expat_external_h::XML_Char =
-                        0xa as crate::expat_external_h::XML_Char;
-                    (*parser)
-                        .m_characterDataHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        &raw mut c,
-                        1 as ::core::ffi::c_int,
-                    );
-                } else if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, end);
-                }
-                if startTagLevel == 0 as ::core::ffi::c_int {
-                    return crate::expat_h::XML_ERROR_NO_ELEMENTS;
-                }
-                if (*parser).m_tagLevel != startTagLevel {
-                    return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
-                }
-                *nextPtr = end;
-                return crate::expat_h::XML_ERROR_NONE;
+            } else {
+                next
+            };
+            if accountingDiffTolerated(
+                parser,
+                tok,
+                s,
+                accountAfter,
+                3337 as ::core::ffi::c_int,
+                account,
+            ) == 0
+            {
+                accountingOnAbort(parser);
+                return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
-            crate::src::xmltok::XML_TOK_NONE => {
-                if haveMore != 0 {
-                    *nextPtr = s;
-                    return crate::expat_h::XML_ERROR_NONE;
-                }
-                if startTagLevel > 0 as ::core::ffi::c_int {
-                    if (*parser).m_tagLevel != startTagLevel {
-                        return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
+            *eventEndPP = next;
+            let mut c2rust_current_block_281: u64;
+            match tok {
+                crate::src::xmltok::XML_TOK_TRAILING_CR => {
+                    if haveMore != 0 {
+                        *nextPtr = s;
+                        return crate::expat_h::XML_ERROR_NONE;
                     }
-                    *nextPtr = s;
-                    return crate::expat_h::XML_ERROR_NONE;
-                }
-                return crate::expat_h::XML_ERROR_NO_ELEMENTS;
-            }
-            crate::src::xmltok::XML_TOK_INVALID => {
-                *eventPP = next;
-                return crate::expat_h::XML_ERROR_INVALID_TOKEN;
-            }
-            crate::src::xmltok::XML_TOK_PARTIAL => {
-                if haveMore != 0 {
-                    *nextPtr = s;
-                    return crate::expat_h::XML_ERROR_NONE;
-                }
-                return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
-            }
-            crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-                if haveMore != 0 {
-                    *nextPtr = s;
-                    return crate::expat_h::XML_ERROR_NONE;
-                }
-                return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
-            }
-            crate::src::xmltok::XML_TOK_ENTITY_REF => {
-                let mut name: *const crate::expat_external_h::XML_Char =
-                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-                let mut ch: crate::expat_external_h::XML_Char = (*enc)
-                    .predefinedEntityName
-                    .expect("non-null function pointer")(
-                    enc,
-                    s.offset((*enc).minBytesPerChar as isize),
-                    next.offset(-((*enc).minBytesPerChar as isize)),
-                )
-                    as crate::expat_external_h::XML_Char;
-                if ch != 0 {
-                    accountingDiffTolerated(
-                        parser,
-                        tok,
-                        &raw mut ch as *mut ::core::ffi::c_char,
-                        (&raw mut ch as *mut ::core::ffi::c_char).offset(::core::mem::size_of::<
-                            crate::expat_external_h::XML_Char,
-                        >()
-                            as usize
-                            as isize),
-                        3403 as ::core::ffi::c_int,
-                        XML_ACCOUNT_ENTITY_EXPANSION,
-                    );
+                    *eventEndPP = end;
                     if (*parser).m_characterDataHandler.is_some() {
+                        let mut c: crate::expat_external_h::XML_Char =
+                            0xa as crate::expat_external_h::XML_Char;
                         (*parser)
                             .m_characterDataHandler
                             .expect("non-null function pointer")(
                             (*parser).m_handlerArg,
-                            &raw mut ch,
+                            &raw mut c,
                             1 as ::core::ffi::c_int,
                         );
                     } else if (*parser).m_defaultHandler.is_some() {
-                        reportDefault(parser, enc, s, next);
+                        reportDefault(parser, enc, s, end);
                     }
-                } else {
-                    name = poolStoreString(
-                        &mut (*dtd).pool,
+                    if startTagLevel == 0 as ::core::ffi::c_int {
+                        return crate::expat_h::XML_ERROR_NO_ELEMENTS;
+                    }
+                    if (*parser).m_tagLevel != startTagLevel {
+                        return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
+                    }
+                    *nextPtr = end;
+                    return crate::expat_h::XML_ERROR_NONE;
+                }
+                crate::src::xmltok::XML_TOK_NONE => {
+                    if haveMore != 0 {
+                        *nextPtr = s;
+                        return crate::expat_h::XML_ERROR_NONE;
+                    }
+                    if startTagLevel > 0 as ::core::ffi::c_int {
+                        if (*parser).m_tagLevel != startTagLevel {
+                            return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
+                        }
+                        *nextPtr = s;
+                        return crate::expat_h::XML_ERROR_NONE;
+                    }
+                    return crate::expat_h::XML_ERROR_NO_ELEMENTS;
+                }
+                crate::src::xmltok::XML_TOK_INVALID => {
+                    *eventPP = next;
+                    return crate::expat_h::XML_ERROR_INVALID_TOKEN;
+                }
+                crate::src::xmltok::XML_TOK_PARTIAL => {
+                    if haveMore != 0 {
+                        *nextPtr = s;
+                        return crate::expat_h::XML_ERROR_NONE;
+                    }
+                    return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
+                }
+                crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
+                    if haveMore != 0 {
+                        *nextPtr = s;
+                        return crate::expat_h::XML_ERROR_NONE;
+                    }
+                    return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
+                }
+                crate::src::xmltok::XML_TOK_ENTITY_REF => {
+                    let mut name: *const crate::expat_external_h::XML_Char =
+                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
+                    let mut ch: crate::expat_external_h::XML_Char = (*enc)
+                        .predefinedEntityName
+                        .expect("non-null function pointer")(
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
-                    );
-                    if name.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    entity = lookup(
-                        parser,
-                        &mut (*dtd).generalEntities,
-                        name as KEY,
-                        0 as crate::__stddef_size_t_h::size_t,
-                    ) as *mut ENTITY;
-                    (*dtd).pool.ptr = (*dtd).pool.start;
-                    if (*dtd).hasParamEntityRefs == 0
-                        || (*dtd).standalone as ::core::ffi::c_int != 0
-                    {
-                        if entity.is_null() {
-                            return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
-                        } else if (*entity).is_internal == 0 {
-                            return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
-                        }
-                        c2rust_current_block_281 = 3546145585875536353;
-                    } else if entity.is_null() {
-                        if (*parser).m_skippedEntityHandler.is_some() {
+                    )
+                        as crate::expat_external_h::XML_Char;
+                    if ch != 0 {
+                        accountingDiffTolerated(
+                            parser,
+                            tok,
+                            &raw mut ch as *mut ::core::ffi::c_char,
+                            (&raw mut ch as *mut ::core::ffi::c_char).offset(
+                                ::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize
+                                    as isize,
+                            ),
+                            3403 as ::core::ffi::c_int,
+                            XML_ACCOUNT_ENTITY_EXPANSION,
+                        );
+                        if (*parser).m_characterDataHandler.is_some() {
                             (*parser)
-                                .m_skippedEntityHandler
+                                .m_characterDataHandler
                                 .expect("non-null function pointer")(
                                 (*parser).m_handlerArg,
-                                name,
-                                0 as ::core::ffi::c_int,
+                                &raw mut ch,
+                                1 as ::core::ffi::c_int,
                             );
                         } else if (*parser).m_defaultHandler.is_some() {
                             reportDefault(parser, enc, s, next);
                         }
-                        c2rust_current_block_281 = 1957216233951053322;
                     } else {
-                        c2rust_current_block_281 = 3546145585875536353;
-                    }
-                    match c2rust_current_block_281 {
-                        1957216233951053322 => {}
-                        _ => {
-                            if (*entity).open != 0 {
-                                return crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
+                        name = poolStoreString(
+                            &mut (*dtd).pool,
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        );
+                        if name.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        entity = lookup(
+                            parser,
+                            &mut (*dtd).generalEntities,
+                            name as KEY,
+                            0 as crate::__stddef_size_t_h::size_t,
+                        ) as *mut ENTITY;
+                        (*dtd).pool.ptr = (*dtd).pool.start;
+                        if (*dtd).hasParamEntityRefs == 0
+                            || (*dtd).standalone as ::core::ffi::c_int != 0
+                        {
+                            if entity.is_null() {
+                                return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
+                            } else if (*entity).is_internal == 0 {
+                                return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                             }
-                            if !(*entity).notation.is_null() {
-                                return crate::expat_h::XML_ERROR_BINARY_ENTITY_REF;
-                            }
-                            if !(*entity).textPtr.is_null() {
-                                let mut result: crate::expat_h::XML_Error =
-                                    crate::expat_h::XML_ERROR_NONE;
-                                if (*parser).m_defaultExpandInternalEntities == 0 {
-                                    if (*parser).m_skippedEntityHandler.is_some() {
-                                        (*parser)
-                                            .m_skippedEntityHandler
-                                            .expect("non-null function pointer")(
-                                            (*parser).m_handlerArg,
-                                            (*entity).name,
-                                            0 as ::core::ffi::c_int,
-                                        );
-                                    } else if (*parser).m_defaultHandler.is_some() {
-                                        reportDefault(parser, enc, s, next);
-                                    }
-                                } else {
-                                    result = processEntity(
-                                        parser,
-                                        entity,
-                                        crate::expat_h::XML_FALSE,
-                                        ENTITY_INTERNAL,
-                                    );
-                                    if result as ::core::ffi::c_uint
-                                        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
-                                            as ::core::ffi::c_uint
-                                    {
-                                        return result;
-                                    }
-                                }
-                            } else if (*parser).m_externalEntityRefHandler.is_some() {
-                                let mut context: *const crate::expat_external_h::XML_Char =
-                                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                                (*entity).open = crate::expat_h::XML_TRUE;
-                                context = getContext(parser);
-                                (*entity).open = crate::expat_h::XML_FALSE;
-                                if context.is_null() {
-                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                }
-                                if (*parser)
-                                    .m_externalEntityRefHandler
+                            c2rust_current_block_281 = 3546145585875536353;
+                        } else if entity.is_null() {
+                            if (*parser).m_skippedEntityHandler.is_some() {
+                                (*parser)
+                                    .m_skippedEntityHandler
                                     .expect("non-null function pointer")(
-                                    (*parser).m_externalEntityRefHandlerArg,
-                                    context,
-                                    (*entity).base,
-                                    (*entity).systemId,
-                                    (*entity).publicId,
-                                ) == 0
-                                {
-                                    return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
-                                }
-                                (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
+                                    (*parser).m_handlerArg,
+                                    name,
+                                    0 as ::core::ffi::c_int,
+                                );
                             } else if (*parser).m_defaultHandler.is_some() {
                                 reportDefault(parser, enc, s, next);
                             }
+                            c2rust_current_block_281 = 1957216233951053322;
+                        } else {
+                            c2rust_current_block_281 = 3546145585875536353;
                         }
-                    }
-                }
-            }
-            crate::src::xmltok::XML_TOK_START_TAG_NO_ATTS
-            | crate::src::xmltok::XML_TOK_START_TAG_WITH_ATTS => {
-                let mut tag: *mut TAG = ::core::ptr::null_mut::<TAG>();
-                let mut result_0: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                let mut toPtr: *mut crate::expat_external_h::XML_Char =
-                    ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                if !(*parser).m_freeTagList.is_null() {
-                    tag = (*parser).m_freeTagList;
-                    (*parser).m_freeTagList = (*(*parser).m_freeTagList).parent as *mut TAG;
-                } else {
-                    tag = expat_malloc(
-                        parser,
-                        ::core::mem::size_of::<TAG>() as crate::__stddef_size_t_h::size_t,
-                        3477 as ::core::ffi::c_int,
-                    ) as *mut TAG;
-                    if tag.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*tag).buf.raw = expat_malloc(
-                        parser,
-                        32 as crate::__stddef_size_t_h::size_t,
-                        3480 as ::core::ffi::c_int,
-                    ) as *mut ::core::ffi::c_char;
-                    if (*tag).buf.raw.is_null() {
-                        expat_free(
-                            parser,
-                            tag as *mut ::core::ffi::c_void,
-                            3482 as ::core::ffi::c_int,
-                        );
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*tag).bufEnd = (*tag).buf.raw.offset(INIT_TAG_BUF_SIZE as isize);
-                }
-                (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
-                (*tag).parent = (*parser).m_tagStack as *mut tag;
-                (*parser).m_tagStack = tag;
-                (*tag).name.localPart = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                (*tag).name.prefix = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                (*tag).rawName = s.offset((*enc).minBytesPerChar as isize);
-                (*tag).rawNameLength =
-                    (*enc).nameLength.expect("non-null function pointer")(enc, (*tag).rawName);
-                (*parser).m_tagLevel += 1;
-                let mut rawNameEnd: *const ::core::ffi::c_char =
-                    (*tag).rawName.offset((*tag).rawNameLength as isize);
-                let mut fromPtr: *const ::core::ffi::c_char = (*tag).rawName;
-                toPtr = (*tag).buf.str;
-                loop {
-                    let mut convLen: ::core::ffi::c_int = 0;
-                    let convert_res: crate::src::xmltok::XML_Convert_Result =
-                        (*enc).utf8Convert.expect("non-null function pointer")(
-                            enc,
-                            &raw mut fromPtr,
-                            rawNameEnd,
-                            &raw mut toPtr as *mut *mut ::core::ffi::c_char,
-                            ((*tag).bufEnd as *mut ICHAR)
-                                .offset(-(1 as ::core::ffi::c_int as isize)),
-                        ) as crate::src::xmltok::XML_Convert_Result;
-                    convLen = toPtr.offset_from((*tag).buf.str) as ::core::ffi::c_long
-                        as ::core::ffi::c_int;
-                    if fromPtr >= rawNameEnd
-                        || convert_res as ::core::ffi::c_uint
-                            == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
-                                as ::core::ffi::c_int
-                                as ::core::ffi::c_uint
-                    {
-                        (*tag).name.strLen = convLen;
-                        break;
-                    } else {
-                        if (crate::stdlib::SIZE_MAX as crate::__stddef_size_t_h::size_t)
-                            .wrapping_div(2 as crate::__stddef_size_t_h::size_t)
-                            < (*tag).bufEnd.offset_from((*tag).buf.raw) as ::core::ffi::c_long
-                                as crate::__stddef_size_t_h::size_t
-                        {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        let bufSize: crate::__stddef_size_t_h::size_t =
-                            ((*tag).bufEnd.offset_from((*tag).buf.raw) as ::core::ffi::c_long
-                                as crate::__stddef_size_t_h::size_t)
-                                .wrapping_mul(2 as crate::__stddef_size_t_h::size_t);
-                        let mut temp: *mut ::core::ffi::c_char = expat_realloc(
-                            parser,
-                            (*tag).buf.raw as *mut ::core::ffi::c_void,
-                            bufSize,
-                            3514 as ::core::ffi::c_int,
-                        )
-                            as *mut ::core::ffi::c_char;
-                        if temp.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        (*tag).buf.raw = temp;
-                        (*tag).bufEnd = temp.offset(bufSize as isize);
-                        toPtr = (temp as *mut crate::expat_external_h::XML_Char)
-                            .offset(convLen as isize);
-                    }
-                }
-                (*tag).name.str = (*tag).buf.str;
-                *toPtr = '\0' as i32 as crate::expat_external_h::XML_Char;
-                result_0 = storeAtts(
-                    parser,
-                    enc,
-                    s,
-                    &raw mut (*tag).name,
-                    &raw mut (*tag).bindings,
-                    account,
-                );
-                if result_0 as u64 != 0 {
-                    return result_0;
-                }
-                if (*parser).m_startElementHandler.is_some() {
-                    (*parser)
-                        .m_startElementHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*tag).name.str,
-                        (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
-                    );
-                } else if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, next);
-                }
-                poolClear(&mut (*parser).m_tempPool);
-            }
-            crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS
-            | crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
-                let mut rawName: *const ::core::ffi::c_char =
-                    s.offset((*enc).minBytesPerChar as isize);
-                let mut result_1: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                let mut bindings: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
-                let mut noElmHandlers: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
-                let mut name_0: TAG_NAME = TAG_NAME {
-                    str: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                    localPart: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                    prefix: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                    strLen: 0,
-                    uriLen: 0,
-                    prefixLen: 0,
-                };
-                name_0.str = poolStoreString(
-                    &mut (*parser).m_tempPool,
-                    enc,
-                    rawName,
-                    rawName.offset((*enc).nameLength.expect("non-null function pointer")(
-                        enc, rawName,
-                    ) as isize),
-                );
-                if name_0.str.is_null() {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                result_1 = storeAtts(
-                    parser,
-                    enc,
-                    s,
-                    &raw mut name_0,
-                    &raw mut bindings,
-                    XML_ACCOUNT_NONE,
-                );
-                if result_1 as ::core::ffi::c_uint
-                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    freeBindings(parser, bindings);
-                    return result_1;
-                }
-                (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                if (*parser).m_startElementHandler.is_some() {
-                    (*parser)
-                        .m_startElementHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        name_0.str,
-                        (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
-                    );
-                    noElmHandlers = crate::expat_h::XML_FALSE;
-                }
-                if (*parser).m_endElementHandler.is_some() {
-                    if (*parser).m_startElementHandler.is_some() {
-                        *eventPP = *eventEndPP;
-                    }
-                    (*parser)
-                        .m_endElementHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg, name_0.str
-                    );
-                    noElmHandlers = crate::expat_h::XML_FALSE;
-                }
-                if noElmHandlers as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler.is_some()
-                {
-                    reportDefault(parser, enc, s, next);
-                }
-                poolClear(&mut (*parser).m_tempPool);
-                freeBindings(parser, bindings);
-                if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
-                    && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                        != crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                        == crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        || (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                            == crate::expat_h::XML_PARSING as ::core::ffi::c_int
-                                as ::core::ffi::c_uint
-                            && (*parser).m_reenter as ::core::ffi::c_int != 0
-                    {
-                        (*parser).m_processor = Some(epilogProcessor);
-                    } else {
-                        return epilogProcessor(parser, next, end, nextPtr);
-                    }
-                }
-            }
-            crate::src::xmltok::XML_TOK_END_TAG => {
-                if (*parser).m_tagLevel == startTagLevel {
-                    return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
-                } else {
-                    let mut len: ::core::ffi::c_int = 0;
-                    let mut rawName_0: *const ::core::ffi::c_char =
-                        ::core::ptr::null::<::core::ffi::c_char>();
-                    let mut tag_0: *mut TAG = (*parser).m_tagStack;
-                    rawName_0 =
-                        s.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
-                    len = (*enc).nameLength.expect("non-null function pointer")(enc, rawName_0);
-                    if len != (*tag_0).rawNameLength
-                        || crate::stdlib::memcmp(
-                            (*tag_0).rawName as *const ::core::ffi::c_void,
-                            rawName_0 as *const ::core::ffi::c_void,
-                            len as crate::__stddef_size_t_h::size_t,
-                        ) != 0 as ::core::ffi::c_int
-                    {
-                        *eventPP = rawName_0;
-                        return crate::expat_h::XML_ERROR_TAG_MISMATCH;
-                    }
-                    (*parser).m_tagStack = (*tag_0).parent as *mut TAG;
-                    (*tag_0).parent = (*parser).m_freeTagList as *mut tag;
-                    (*parser).m_freeTagList = tag_0;
-                    (*parser).m_tagLevel -= 1;
-                    if (*parser).m_endElementHandler.is_some() {
-                        let mut localPart: *const crate::expat_external_h::XML_Char =
-                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                        let mut prefix: *const crate::expat_external_h::XML_Char =
-                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                        let mut uri: *mut crate::expat_external_h::XML_Char =
-                            ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                        localPart = (*tag_0).name.localPart;
-                        if (*parser).m_ns as ::core::ffi::c_int != 0 && !localPart.is_null() {
-                            uri = ((*tag_0).name.str as *mut crate::expat_external_h::XML_Char)
-                                .offset((*tag_0).name.uriLen as isize);
-                            while *localPart != 0 {
-                                let c2rust_fresh22 = localPart;
-                                localPart = localPart.offset(1);
-                                let c2rust_fresh23 = uri;
-                                uri = uri.offset(1);
-                                *c2rust_fresh23 = *c2rust_fresh22;
-                            }
-                            prefix = (*tag_0).name.prefix;
-                            if (*parser).m_ns_triplets as ::core::ffi::c_int != 0
-                                && !prefix.is_null()
-                            {
-                                let c2rust_fresh24 = uri;
-                                uri = uri.offset(1);
-                                *c2rust_fresh24 = (*parser).m_namespaceSeparator;
-                                while *prefix != 0 {
-                                    let c2rust_fresh25 = prefix;
-                                    prefix = prefix.offset(1);
-                                    let c2rust_fresh26 = uri;
-                                    uri = uri.offset(1);
-                                    *c2rust_fresh26 = *c2rust_fresh25;
+                        match c2rust_current_block_281 {
+                            1957216233951053322 => {}
+                            _ => {
+                                if (*entity).open != 0 {
+                                    return crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
+                                }
+                                if !(*entity).notation.is_null() {
+                                    return crate::expat_h::XML_ERROR_BINARY_ENTITY_REF;
+                                }
+                                if !(*entity).textPtr.is_null() {
+                                    let mut result: crate::expat_h::XML_Error =
+                                        crate::expat_h::XML_ERROR_NONE;
+                                    if (*parser).m_defaultExpandInternalEntities == 0 {
+                                        if (*parser).m_skippedEntityHandler.is_some() {
+                                            (*parser)
+                                                .m_skippedEntityHandler
+                                                .expect("non-null function pointer")(
+                                                (*parser).m_handlerArg,
+                                                (*entity).name,
+                                                0 as ::core::ffi::c_int,
+                                            );
+                                        } else if (*parser).m_defaultHandler.is_some() {
+                                            reportDefault(parser, enc, s, next);
+                                        }
+                                    } else {
+                                        result = processEntity(
+                                            parser,
+                                            entity,
+                                            crate::expat_h::XML_FALSE,
+                                            ENTITY_INTERNAL,
+                                        );
+                                        if result as ::core::ffi::c_uint
+                                            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                                                as ::core::ffi::c_uint
+                                        {
+                                            return result;
+                                        }
+                                    }
+                                } else if (*parser).m_externalEntityRefHandler.is_some() {
+                                    let mut context: *const crate::expat_external_h::XML_Char =
+                                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                                    (*entity).open = crate::expat_h::XML_TRUE;
+                                    context = getContext(parser);
+                                    (*entity).open = crate::expat_h::XML_FALSE;
+                                    if context.is_null() {
+                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                    }
+                                    if (*parser)
+                                        .m_externalEntityRefHandler
+                                        .expect("non-null function pointer")(
+                                        (*parser).m_externalEntityRefHandlerArg,
+                                        context,
+                                        (*entity).base,
+                                        (*entity).systemId,
+                                        (*entity).publicId,
+                                    ) == 0
+                                    {
+                                        return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+                                    }
+                                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
+                                } else if (*parser).m_defaultHandler.is_some() {
+                                    reportDefault(parser, enc, s, next);
                                 }
                             }
-                            *uri = '\0' as i32 as crate::expat_external_h::XML_Char;
+                        }
+                    }
+                }
+                crate::src::xmltok::XML_TOK_START_TAG_NO_ATTS
+                | crate::src::xmltok::XML_TOK_START_TAG_WITH_ATTS => {
+                    let mut tag: *mut TAG = ::core::ptr::null_mut::<TAG>();
+                    let mut result_0: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
+                    let mut toPtr: *mut crate::expat_external_h::XML_Char =
+                        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+                    if !(*parser).m_freeTagList.is_null() {
+                        tag = (*parser).m_freeTagList;
+                        (*parser).m_freeTagList = (*(*parser).m_freeTagList).parent as *mut TAG;
+                    } else {
+                        tag = expat_malloc(
+                            parser,
+                            ::core::mem::size_of::<TAG>() as crate::__stddef_size_t_h::size_t,
+                            3477 as ::core::ffi::c_int,
+                        ) as *mut TAG;
+                        if tag.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*tag).buf.raw = expat_malloc(
+                            parser,
+                            32 as crate::__stddef_size_t_h::size_t,
+                            3480 as ::core::ffi::c_int,
+                        ) as *mut ::core::ffi::c_char;
+                        if (*tag).buf.raw.is_null() {
+                            expat_free(
+                                parser,
+                                tag as *mut ::core::ffi::c_void,
+                                3482 as ::core::ffi::c_int,
+                            );
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*tag).bufEnd = (*tag).buf.raw.offset(INIT_TAG_BUF_SIZE as isize);
+                    }
+                    (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
+                    (*tag).parent = (*parser).m_tagStack as *mut tag;
+                    (*parser).m_tagStack = tag;
+                    (*tag).name.localPart =
+                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    (*tag).name.prefix = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    (*tag).rawName = s.offset((*enc).minBytesPerChar as isize);
+                    (*tag).rawNameLength =
+                        (*enc).nameLength.expect("non-null function pointer")(enc, (*tag).rawName);
+                    (*parser).m_tagLevel += 1;
+                    let mut rawNameEnd: *const ::core::ffi::c_char =
+                        (*tag).rawName.offset((*tag).rawNameLength as isize);
+                    let mut fromPtr: *const ::core::ffi::c_char = (*tag).rawName;
+                    toPtr = (*tag).buf.str;
+                    loop {
+                        let mut convLen: ::core::ffi::c_int = 0;
+                        let convert_res: crate::src::xmltok::XML_Convert_Result =
+                            (*enc).utf8Convert.expect("non-null function pointer")(
+                                enc,
+                                &raw mut fromPtr,
+                                rawNameEnd,
+                                &raw mut toPtr as *mut *mut ::core::ffi::c_char,
+                                ((*tag).bufEnd as *mut ICHAR)
+                                    .offset(-(1 as ::core::ffi::c_int as isize)),
+                            ) as crate::src::xmltok::XML_Convert_Result;
+                        convLen = toPtr.offset_from((*tag).buf.str) as ::core::ffi::c_long
+                            as ::core::ffi::c_int;
+                        if fromPtr >= rawNameEnd
+                            || convert_res as ::core::ffi::c_uint
+                                == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
+                                    as ::core::ffi::c_int
+                                    as ::core::ffi::c_uint
+                        {
+                            (*tag).name.strLen = convLen;
+                            break;
+                        } else {
+                            if (crate::stdlib::SIZE_MAX as crate::__stddef_size_t_h::size_t)
+                                .wrapping_div(2 as crate::__stddef_size_t_h::size_t)
+                                < (*tag).bufEnd.offset_from((*tag).buf.raw) as ::core::ffi::c_long
+                                    as crate::__stddef_size_t_h::size_t
+                            {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
+                            let bufSize: crate::__stddef_size_t_h::size_t =
+                                ((*tag).bufEnd.offset_from((*tag).buf.raw) as ::core::ffi::c_long
+                                    as crate::__stddef_size_t_h::size_t)
+                                    .wrapping_mul(2 as crate::__stddef_size_t_h::size_t);
+                            let mut temp: *mut ::core::ffi::c_char = expat_realloc(
+                                parser,
+                                (*tag).buf.raw as *mut ::core::ffi::c_void,
+                                bufSize,
+                                3514 as ::core::ffi::c_int,
+                            )
+                                as *mut ::core::ffi::c_char;
+                            if temp.is_null() {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
+                            (*tag).buf.raw = temp;
+                            (*tag).bufEnd = temp.offset(bufSize as isize);
+                            toPtr = (temp as *mut crate::expat_external_h::XML_Char)
+                                .offset(convLen as isize);
+                        }
+                    }
+                    (*tag).name.str = (*tag).buf.str;
+                    *toPtr = '\0' as i32 as crate::expat_external_h::XML_Char;
+                    result_0 = storeAtts(
+                        parser,
+                        enc,
+                        s,
+                        &raw mut (*tag).name,
+                        &raw mut (*tag).bindings,
+                        account,
+                    );
+                    if result_0 as u64 != 0 {
+                        return result_0;
+                    }
+                    if (*parser).m_startElementHandler.is_some() {
+                        (*parser)
+                            .m_startElementHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg,
+                            (*tag).name.str,
+                            (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
+                        );
+                    } else if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, next);
+                    }
+                    poolClear(&mut (*parser).m_tempPool);
+                }
+                crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS
+                | crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
+                    let mut rawName: *const ::core::ffi::c_char =
+                        s.offset((*enc).minBytesPerChar as isize);
+                    let mut result_1: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
+                    let mut bindings: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
+                    let mut noElmHandlers: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
+                    let mut name_0: TAG_NAME = TAG_NAME {
+                        str: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                        localPart: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                        prefix: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                        strLen: 0,
+                        uriLen: 0,
+                        prefixLen: 0,
+                    };
+                    name_0.str = poolStoreString(
+                        &mut (*parser).m_tempPool,
+                        enc,
+                        rawName,
+                        rawName.offset((*enc).nameLength.expect("non-null function pointer")(
+                            enc, rawName,
+                        ) as isize),
+                    );
+                    if name_0.str.is_null() {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                    result_1 = storeAtts(
+                        parser,
+                        enc,
+                        s,
+                        &raw mut name_0,
+                        &raw mut bindings,
+                        XML_ACCOUNT_NONE,
+                    );
+                    if result_1 as ::core::ffi::c_uint
+                        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                            as ::core::ffi::c_uint
+                    {
+                        freeBindings(parser, bindings);
+                        return result_1;
+                    }
+                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                    if (*parser).m_startElementHandler.is_some() {
+                        (*parser)
+                            .m_startElementHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg,
+                            name_0.str,
+                            (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
+                        );
+                        noElmHandlers = crate::expat_h::XML_FALSE;
+                    }
+                    if (*parser).m_endElementHandler.is_some() {
+                        if (*parser).m_startElementHandler.is_some() {
+                            *eventPP = *eventEndPP;
                         }
                         (*parser)
                             .m_endElementHandler
                             .expect("non-null function pointer")(
                             (*parser).m_handlerArg,
-                            (*tag_0).name.str,
+                            name_0.str,
                         );
-                    } else if (*parser).m_defaultHandler.is_some() {
+                        noElmHandlers = crate::expat_h::XML_FALSE;
+                    }
+                    if noElmHandlers as ::core::ffi::c_int != 0
+                        && (*parser).m_defaultHandler.is_some()
+                    {
                         reportDefault(parser, enc, s, next);
                     }
-                    while !(*tag_0).bindings.is_null() {
-                        let mut b: *mut BINDING = (*tag_0).bindings;
-                        if (*parser).m_endNamespaceDeclHandler.is_some() {
-                            (*parser)
-                                .m_endNamespaceDeclHandler
-                                .expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
-                                (*(*b).prefix).name,
-                            );
-                        }
-                        (*tag_0).bindings = (*(*tag_0).bindings).nextTagBinding as *mut BINDING;
-                        (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
-                        (*parser).m_freeBindingList = b;
-                        (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
-                    }
+                    poolClear(&mut (*parser).m_tempPool);
+                    freeBindings(parser, bindings);
                     if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
                         && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
                             != crate::expat_h::XML_FINISHED as ::core::ffi::c_int
@@ -6325,211 +6224,317 @@ unsafe extern "C" fn doContent(
                         }
                     }
                 }
-            }
-            crate::src::xmltok::XML_TOK_CHAR_REF => {
-                let mut n: ::core::ffi::c_int =
-                    (*enc).charRefNumber.expect("non-null function pointer")(enc, s);
-                if n < 0 as ::core::ffi::c_int {
-                    return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
+                crate::src::xmltok::XML_TOK_END_TAG => {
+                    if (*parser).m_tagLevel == startTagLevel {
+                        return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
+                    } else {
+                        let mut len: ::core::ffi::c_int = 0;
+                        let mut rawName_0: *const ::core::ffi::c_char =
+                            ::core::ptr::null::<::core::ffi::c_char>();
+                        let mut tag_0: *mut TAG = (*parser).m_tagStack;
+                        rawName_0 =
+                            s.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
+                        len = (*enc).nameLength.expect("non-null function pointer")(enc, rawName_0);
+                        if len != (*tag_0).rawNameLength
+                            || crate::stdlib::memcmp(
+                                (*tag_0).rawName as *const ::core::ffi::c_void,
+                                rawName_0 as *const ::core::ffi::c_void,
+                                len as crate::__stddef_size_t_h::size_t,
+                            ) != 0 as ::core::ffi::c_int
+                        {
+                            *eventPP = rawName_0;
+                            return crate::expat_h::XML_ERROR_TAG_MISMATCH;
+                        }
+                        (*parser).m_tagStack = (*tag_0).parent as *mut TAG;
+                        (*tag_0).parent = (*parser).m_freeTagList as *mut tag;
+                        (*parser).m_freeTagList = tag_0;
+                        (*parser).m_tagLevel -= 1;
+                        if (*parser).m_endElementHandler.is_some() {
+                            let mut localPart: *const crate::expat_external_h::XML_Char =
+                                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                            let mut prefix: *const crate::expat_external_h::XML_Char =
+                                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                            let mut uri: *mut crate::expat_external_h::XML_Char =
+                                ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+                            localPart = (*tag_0).name.localPart;
+                            if (*parser).m_ns as ::core::ffi::c_int != 0 && !localPart.is_null() {
+                                uri = ((*tag_0).name.str as *mut crate::expat_external_h::XML_Char)
+                                    .offset((*tag_0).name.uriLen as isize);
+                                while *localPart != 0 {
+                                    let c2rust_fresh22 = localPart;
+                                    localPart = localPart.offset(1);
+                                    let c2rust_fresh23 = uri;
+                                    uri = uri.offset(1);
+                                    *c2rust_fresh23 = *c2rust_fresh22;
+                                }
+                                prefix = (*tag_0).name.prefix;
+                                if (*parser).m_ns_triplets as ::core::ffi::c_int != 0
+                                    && !prefix.is_null()
+                                {
+                                    let c2rust_fresh24 = uri;
+                                    uri = uri.offset(1);
+                                    *c2rust_fresh24 = (*parser).m_namespaceSeparator;
+                                    while *prefix != 0 {
+                                        let c2rust_fresh25 = prefix;
+                                        prefix = prefix.offset(1);
+                                        let c2rust_fresh26 = uri;
+                                        uri = uri.offset(1);
+                                        *c2rust_fresh26 = *c2rust_fresh25;
+                                    }
+                                }
+                                *uri = '\0' as i32 as crate::expat_external_h::XML_Char;
+                            }
+                            (*parser)
+                                .m_endElementHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_handlerArg,
+                                (*tag_0).name.str,
+                            );
+                        } else if (*parser).m_defaultHandler.is_some() {
+                            reportDefault(parser, enc, s, next);
+                        }
+                        while !(*tag_0).bindings.is_null() {
+                            let mut b: *mut BINDING = (*tag_0).bindings;
+                            if (*parser).m_endNamespaceDeclHandler.is_some() {
+                                (*parser)
+                                    .m_endNamespaceDeclHandler
+                                    .expect("non-null function pointer")(
+                                    (*parser).m_handlerArg,
+                                    (*(*b).prefix).name,
+                                );
+                            }
+                            (*tag_0).bindings = (*(*tag_0).bindings).nextTagBinding as *mut BINDING;
+                            (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
+                            (*parser).m_freeBindingList = b;
+                            (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+                        }
+                        if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
+                            && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                                != crate::expat_h::XML_FINISHED as ::core::ffi::c_int
+                                    as ::core::ffi::c_uint
+                        {
+                            if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                                == crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int
+                                    as ::core::ffi::c_uint
+                                || (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                                    == crate::expat_h::XML_PARSING as ::core::ffi::c_int
+                                        as ::core::ffi::c_uint
+                                    && (*parser).m_reenter as ::core::ffi::c_int != 0
+                            {
+                                (*parser).m_processor = Some(epilogProcessor);
+                            } else {
+                                return epilogProcessor(parser, next, end, nextPtr);
+                            }
+                        }
+                    }
                 }
-                if (*parser).m_characterDataHandler.is_some() {
-                    let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
-                    (*parser)
-                        .m_characterDataHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        &raw mut buf as *mut crate::expat_external_h::XML_Char,
-                        crate::src::xmltok::XmlUtf8Encode(n, &mut buf),
-                    );
-                } else if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, next);
-                }
-            }
-            crate::src::xmltok::XML_TOK_XML_DECL => {
-                return crate::expat_h::XML_ERROR_MISPLACED_XML_PI
-            }
-            crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                if (*parser).m_characterDataHandler.is_some() {
-                    let mut c_0: crate::expat_external_h::XML_Char =
-                        0xa as crate::expat_external_h::XML_Char;
-                    (*parser)
-                        .m_characterDataHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        &raw mut c_0,
-                        1 as ::core::ffi::c_int,
-                    );
-                } else if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, next);
-                }
-            }
-            crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN => {
-                let mut result_2: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                if (*parser).m_startCdataSectionHandler.is_some() {
-                    (*parser)
-                        .m_startCdataSectionHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg
-                    );
-                } else if false && (*parser).m_characterDataHandler.is_some() {
-                    (*parser)
-                        .m_characterDataHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*parser).m_dataBuf,
-                        0 as ::core::ffi::c_int,
-                    );
-                } else if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, next);
-                }
-                result_2 =
-                    doCdataSection(parser, enc, &raw mut next, end, nextPtr, haveMore, account);
-                if result_2 as ::core::ffi::c_uint
-                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return result_2;
-                } else if next.is_null() {
-                    (*parser).m_processor = Some(cdataSectionProcessor);
-                    return result_2;
-                }
-            }
-            crate::src::xmltok::XML_TOK_TRAILING_RSQB => {
-                if haveMore != 0 {
-                    *nextPtr = s;
-                    return crate::expat_h::XML_ERROR_NONE;
-                }
-                if (*parser).m_characterDataHandler.is_some() {
-                    if (*enc).isUtf8 == 0 {
-                        let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
-                        (*enc).utf8Convert.expect("non-null function pointer")(
-                            enc,
-                            &raw mut s,
-                            end,
-                            &raw mut dataPtr,
-                            (*parser).m_dataBufEnd as *mut ICHAR,
+                crate::src::xmltok::XML_TOK_CHAR_REF => {
+                    let mut n: ::core::ffi::c_int =
+                        (*enc).charRefNumber.expect("non-null function pointer")(enc, s);
+                    if n < 0 as ::core::ffi::c_int {
+                        return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
+                    }
+                    if (*parser).m_characterDataHandler.is_some() {
+                        let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
+                        (*parser)
+                            .m_characterDataHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg,
+                            &raw mut buf as *mut crate::expat_external_h::XML_Char,
+                            crate::src::xmltok::XmlUtf8Encode(n, &mut buf),
                         );
+                    } else if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, next);
+                    }
+                }
+                crate::src::xmltok::XML_TOK_XML_DECL => {
+                    return crate::expat_h::XML_ERROR_MISPLACED_XML_PI
+                }
+                crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
+                    if (*parser).m_characterDataHandler.is_some() {
+                        let mut c_0: crate::expat_external_h::XML_Char =
+                            0xa as crate::expat_external_h::XML_Char;
+                        (*parser)
+                            .m_characterDataHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg,
+                            &raw mut c_0,
+                            1 as ::core::ffi::c_int,
+                        );
+                    } else if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, next);
+                    }
+                }
+                crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN => {
+                    let mut result_2: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
+                    if (*parser).m_startCdataSectionHandler.is_some() {
+                        (*parser)
+                            .m_startCdataSectionHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg
+                        );
+                    } else if false && (*parser).m_characterDataHandler.is_some() {
                         (*parser)
                             .m_characterDataHandler
                             .expect("non-null function pointer")(
                             (*parser).m_handlerArg,
                             (*parser).m_dataBuf,
-                            dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR)
-                                as ::core::ffi::c_long
-                                as ::core::ffi::c_int,
+                            0 as ::core::ffi::c_int,
                         );
-                    } else {
-                        (*parser)
-                            .m_characterDataHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            s as *const crate::expat_external_h::XML_Char,
-                            (end as *const crate::expat_external_h::XML_Char)
-                                .offset_from(s as *const crate::expat_external_h::XML_Char)
-                                as ::core::ffi::c_long
-                                as ::core::ffi::c_int,
-                        );
+                    } else if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, next);
                     }
-                } else if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, end);
+                    result_2 =
+                        doCdataSection(parser, enc, &raw mut next, end, nextPtr, haveMore, account);
+                    if result_2 as ::core::ffi::c_uint
+                        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                            as ::core::ffi::c_uint
+                    {
+                        return result_2;
+                    } else if next.is_null() {
+                        (*parser).m_processor = Some(cdataSectionProcessor);
+                        return result_2;
+                    }
                 }
-                if startTagLevel == 0 as ::core::ffi::c_int {
-                    *eventPP = end;
-                    return crate::expat_h::XML_ERROR_NO_ELEMENTS;
-                }
-                if (*parser).m_tagLevel != startTagLevel {
-                    *eventPP = end;
-                    return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
-                }
-                *nextPtr = end;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                let mut charDataHandler: crate::expat_h::XML_CharacterDataHandler =
-                    (*parser).m_characterDataHandler;
-                if charDataHandler.is_some() {
-                    if (*enc).isUtf8 == 0 {
-                        loop {
-                            let mut dataPtr_0: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
-                            let convert_res_0: crate::src::xmltok::XML_Convert_Result =
-                                (*enc).utf8Convert.expect("non-null function pointer")(
-                                    enc,
-                                    &raw mut s,
-                                    next,
-                                    &raw mut dataPtr_0,
-                                    (*parser).m_dataBufEnd as *mut ICHAR,
-                                )
-                                    as crate::src::xmltok::XML_Convert_Result;
-                            *eventEndPP = s;
-                            charDataHandler.expect("non-null function pointer")(
+                crate::src::xmltok::XML_TOK_TRAILING_RSQB => {
+                    if haveMore != 0 {
+                        *nextPtr = s;
+                        return crate::expat_h::XML_ERROR_NONE;
+                    }
+                    if (*parser).m_characterDataHandler.is_some() {
+                        if (*enc).isUtf8 == 0 {
+                            let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
+                            (*enc).utf8Convert.expect("non-null function pointer")(
+                                enc,
+                                &raw mut s,
+                                end,
+                                &raw mut dataPtr,
+                                (*parser).m_dataBufEnd as *mut ICHAR,
+                            );
+                            (*parser)
+                                .m_characterDataHandler
+                                .expect("non-null function pointer")(
                                 (*parser).m_handlerArg,
                                 (*parser).m_dataBuf,
-                                dataPtr_0.offset_from((*parser).m_dataBuf as *mut ICHAR)
+                                dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR)
                                     as ::core::ffi::c_long
                                     as ::core::ffi::c_int,
                             );
-                            if convert_res_0 as ::core::ffi::c_uint
-                                == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
-                                    as ::core::ffi::c_uint
-                                || convert_res_0 as ::core::ffi::c_uint
-                                    == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
+                        } else {
+                            (*parser)
+                                .m_characterDataHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_handlerArg,
+                                s as *const crate::expat_external_h::XML_Char,
+                                (end as *const crate::expat_external_h::XML_Char)
+                                    .offset_from(s as *const crate::expat_external_h::XML_Char)
+                                    as ::core::ffi::c_long
+                                    as ::core::ffi::c_int,
+                            );
+                        }
+                    } else if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, end);
+                    }
+                    if startTagLevel == 0 as ::core::ffi::c_int {
+                        *eventPP = end;
+                        return crate::expat_h::XML_ERROR_NO_ELEMENTS;
+                    }
+                    if (*parser).m_tagLevel != startTagLevel {
+                        *eventPP = end;
+                        return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
+                    }
+                    *nextPtr = end;
+                    return crate::expat_h::XML_ERROR_NONE;
+                }
+                crate::src::xmltok::XML_TOK_DATA_CHARS => {
+                    let mut charDataHandler: crate::expat_h::XML_CharacterDataHandler =
+                        (*parser).m_characterDataHandler;
+                    if charDataHandler.is_some() {
+                        if (*enc).isUtf8 == 0 {
+                            loop {
+                                let mut dataPtr_0: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
+                                let convert_res_0: crate::src::xmltok::XML_Convert_Result =
+                                    (*enc).utf8Convert.expect("non-null function pointer")(
+                                        enc,
+                                        &raw mut s,
+                                        next,
+                                        &raw mut dataPtr_0,
+                                        (*parser).m_dataBufEnd as *mut ICHAR,
+                                    )
+                                        as crate::src::xmltok::XML_Convert_Result;
+                                *eventEndPP = s;
+                                charDataHandler.expect("non-null function pointer")(
+                                    (*parser).m_handlerArg,
+                                    (*parser).m_dataBuf,
+                                    dataPtr_0.offset_from((*parser).m_dataBuf as *mut ICHAR)
+                                        as ::core::ffi::c_long
+                                        as ::core::ffi::c_int,
+                                );
+                                if convert_res_0 as ::core::ffi::c_uint
+                                    == crate::src::xmltok::XML_CONVERT_COMPLETED
                                         as ::core::ffi::c_int
                                         as ::core::ffi::c_uint
-                            {
-                                break;
+                                    || convert_res_0 as ::core::ffi::c_uint
+                                        == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
+                                            as ::core::ffi::c_int
+                                            as ::core::ffi::c_uint
+                                {
+                                    break;
+                                }
+                                *eventPP = s;
                             }
-                            *eventPP = s;
+                        } else {
+                            charDataHandler.expect("non-null function pointer")(
+                                (*parser).m_handlerArg,
+                                s as *const crate::expat_external_h::XML_Char,
+                                (next as *const crate::expat_external_h::XML_Char)
+                                    .offset_from(s as *const crate::expat_external_h::XML_Char)
+                                    as ::core::ffi::c_long
+                                    as ::core::ffi::c_int,
+                            );
                         }
-                    } else {
-                        charDataHandler.expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            s as *const crate::expat_external_h::XML_Char,
-                            (next as *const crate::expat_external_h::XML_Char)
-                                .offset_from(s as *const crate::expat_external_h::XML_Char)
-                                as ::core::ffi::c_long
-                                as ::core::ffi::c_int,
-                        );
+                    } else if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, next);
                     }
-                } else if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, next);
+                }
+                crate::src::xmltok::XML_TOK_PI => {
+                    if reportProcessingInstruction(parser, enc, s, next) == 0 {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                }
+                crate::src::xmltok::XML_TOK_COMMENT => {
+                    if reportComment(parser, enc, s, next) == 0 {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                }
+                _ => {
+                    if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, next);
+                    }
                 }
             }
-            crate::src::xmltok::XML_TOK_PI => {
-                if reportProcessingInstruction(parser, enc, s, next) == 0 {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-            }
-            crate::src::xmltok::XML_TOK_COMMENT => {
-                if reportComment(parser, enc, s, next) == 0 {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-            }
-            _ => {
-                if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, next);
-                }
-            }
-        }
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-            3 => {
-                *eventPP = next;
-                *nextPtr = next;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            2 => {
-                *eventPP = next;
-                return crate::expat_h::XML_ERROR_ABORTED;
-            }
-            1 => {
-                if (*parser).m_reenter != 0 {
+            match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+                3 => {
+                    *eventPP = next;
                     *nextPtr = next;
                     return crate::expat_h::XML_ERROR_NONE;
                 }
+                2 => {
+                    *eventPP = next;
+                    return crate::expat_h::XML_ERROR_ABORTED;
+                }
+                1 => {
+                    if (*parser).m_reenter != 0 {
+                        *nextPtr = next;
+                        return crate::expat_h::XML_ERROR_NONE;
+                    }
+                }
+                _ => {}
             }
-            _ => {}
+            s = next;
+            *eventPP = s;
         }
-        s = next;
-        *eventPP = s;
-    }
+    })
 }
 
 extern "C" fn freeBindings(mut parser: crate::expat_h::XML_Parser, mut bindings: *mut BINDING) {
@@ -8278,7 +8283,7 @@ extern "C" fn prologProcessor(
     );
 }
 
-unsafe extern "C" fn doProlog(
+extern "C" fn doProlog(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut s: *const ::core::ffi::c_char,
@@ -8290,768 +8295,265 @@ unsafe extern "C" fn doProlog(
     mut allowClosingDoctype: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    let mut c2rust_current_block: u64;
-    static mut externalSubsetName: [crate::expat_external_h::XML_Char; 2] = [
-        crate::ascii_h::ASCII_HASH as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut atypeCDATA: [crate::expat_external_h::XML_Char; 6] = [
-        crate::ascii_h::ASCII_C as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut atypeID: [crate::expat_external_h::XML_Char; 3] = [
-        crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut atypeIDREF: [crate::expat_external_h::XML_Char; 6] = [
-        crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_R as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_F as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut atypeIDREFS: [crate::expat_external_h::XML_Char; 7] = [
-        crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_R as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_F as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut atypeENTITY: [crate::expat_external_h::XML_Char; 7] = [
-        crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_Y as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut atypeENTITIES: [crate::expat_external_h::XML_Char; 9] = [
-        crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut atypeNMTOKEN: [crate::expat_external_h::XML_Char; 8] = [
-        crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_K as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut atypeNMTOKENS: [crate::expat_external_h::XML_Char; 9] = [
-        crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_K as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut notationPrefix: [crate::expat_external_h::XML_Char; 10] = [
-        crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut enumValueSep: [crate::expat_external_h::XML_Char; 2] = [
-        crate::ascii_h::ASCII_PIPE as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut enumValueStart: [crate::expat_external_h::XML_Char; 2] = [
-        crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    let mut eventEndPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    let mut quant: crate::expat_h::XML_Content_Quant = crate::expat_h::XML_CQUANT_NONE;
-    if enc == (*parser).m_encoding {
-        eventPP = &raw mut (*parser).m_eventPtr;
-        eventEndPP = &raw mut (*parser).m_eventEndPtr;
-    } else {
-        eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-        eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
-    }
-    loop {
-        let mut role: ::core::ffi::c_int = 0;
-        let mut handleDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
-        *eventPP = s;
-        *eventEndPP = next;
-        if tok <= 0 as ::core::ffi::c_int {
-            if haveMore as ::core::ffi::c_int != 0 && tok != crate::src::xmltok::XML_TOK_INVALID {
-                *nextPtr = s;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            match tok {
-                crate::src::xmltok::XML_TOK_INVALID => {
-                    *eventPP = next;
-                    return crate::expat_h::XML_ERROR_INVALID_TOKEN;
-                }
-                crate::src::xmltok::XML_TOK_PARTIAL => {
-                    return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN
-                }
-                crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-                    return crate::expat_h::XML_ERROR_PARTIAL_CHAR
-                }
-                -15 => {
-                    tok = -tok;
-                }
-                crate::src::xmltok::XML_TOK_NONE => {
-                    if enc != (*parser).m_encoding
-                        && (*(*parser).m_openInternalEntities).betweenDecl == 0
-                    {
-                        *nextPtr = s;
-                        return crate::expat_h::XML_ERROR_NONE;
-                    }
-                    if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
-                        || enc != (*parser).m_encoding
-                    {
-                        if (*parser)
-                            .m_prologState
-                            .handler
-                            .expect("non-null function pointer")(
-                            &raw mut (*parser).m_prologState,
-                            -4 as ::core::ffi::c_int,
-                            end,
-                            end,
-                            enc,
-                        ) == crate::src::xmlrole::XML_ROLE_ERROR as ::core::ffi::c_int
-                        {
-                            return crate::expat_h::XML_ERROR_INCOMPLETE_PE;
-                        }
-                        *nextPtr = s;
-                        return crate::expat_h::XML_ERROR_NONE;
-                    }
-                    return crate::expat_h::XML_ERROR_NO_ELEMENTS;
-                }
-                _ => {
-                    tok = -tok;
-                    next = end;
-                }
-            }
+    helper_unsafe!({
+        let mut c2rust_current_block: u64;
+        static mut externalSubsetName: [crate::expat_external_h::XML_Char; 2] = [
+            crate::ascii_h::ASCII_HASH as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut atypeCDATA: [crate::expat_external_h::XML_Char; 6] = [
+            crate::ascii_h::ASCII_C as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut atypeID: [crate::expat_external_h::XML_Char; 3] = [
+            crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut atypeIDREF: [crate::expat_external_h::XML_Char; 6] = [
+            crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_R as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_F as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut atypeIDREFS: [crate::expat_external_h::XML_Char; 7] = [
+            crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_R as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_F as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut atypeENTITY: [crate::expat_external_h::XML_Char; 7] = [
+            crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_Y as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut atypeENTITIES: [crate::expat_external_h::XML_Char; 9] = [
+            crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut atypeNMTOKEN: [crate::expat_external_h::XML_Char; 8] = [
+            crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_K as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut atypeNMTOKENS: [crate::expat_external_h::XML_Char; 9] = [
+            crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_K as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut notationPrefix: [crate::expat_external_h::XML_Char; 10] = [
+            crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
+            crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut enumValueSep: [crate::expat_external_h::XML_Char; 2] = [
+            crate::ascii_h::ASCII_PIPE as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        static mut enumValueStart: [crate::expat_external_h::XML_Char; 2] = [
+            crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
+            '\0' as i32 as crate::expat_external_h::XML_Char,
+        ];
+        let dtd: *mut DTD = (*parser).m_dtd;
+        let mut eventPP: *mut *const ::core::ffi::c_char =
+            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+        let mut eventEndPP: *mut *const ::core::ffi::c_char =
+            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+        let mut quant: crate::expat_h::XML_Content_Quant = crate::expat_h::XML_CQUANT_NONE;
+        if enc == (*parser).m_encoding {
+            eventPP = &raw mut (*parser).m_eventPtr;
+            eventEndPP = &raw mut (*parser).m_eventEndPtr;
+        } else {
+            eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
+            eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
         }
-        role = (*parser)
-            .m_prologState
-            .handler
-            .expect("non-null function pointer")(
-            &raw mut (*parser).m_prologState,
-            tok,
-            s,
-            next,
-            enc,
-        );
-        match role {
-            2 | 1 | 57 => {}
-            _ => {
-                if accountingDiffTolerated(
-                    parser,
-                    tok,
-                    s,
-                    next,
-                    5301 as ::core::ffi::c_int,
-                    account,
-                ) == 0
+        loop {
+            let mut role: ::core::ffi::c_int = 0;
+            let mut handleDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
+            *eventPP = s;
+            *eventEndPP = next;
+            if tok <= 0 as ::core::ffi::c_int {
+                if haveMore as ::core::ffi::c_int != 0 && tok != crate::src::xmltok::XML_TOK_INVALID
                 {
-                    accountingOnAbort(parser);
-                    return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+                    *nextPtr = s;
+                    return crate::expat_h::XML_ERROR_NONE;
                 }
-            }
-        }
-        match role {
-            1 => {
-                let mut result: crate::expat_h::XML_Error =
-                    processXmlDecl(parser, 0 as ::core::ffi::c_int, s, next);
-                if result as ::core::ffi::c_uint
-                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return result;
-                }
-                enc = (*parser).m_encoding;
-                handleDefault = crate::expat_h::XML_FALSE;
-                c2rust_current_block = 8258632986558375165;
-            }
-            4 => {
-                if (*parser).m_startDoctypeDeclHandler.is_some() {
-                    (*parser).m_doctypeName =
-                        poolStoreString(&mut (*parser).m_tempPool, enc, s, next);
-                    if (*parser).m_doctypeName.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                match tok {
+                    crate::src::xmltok::XML_TOK_INVALID => {
+                        *eventPP = next;
+                        return crate::expat_h::XML_ERROR_INVALID_TOKEN;
                     }
-                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                    (*parser).m_doctypePubid =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                (*parser).m_doctypeSysid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                c2rust_current_block = 8258632986558375165;
-            }
-            7 => {
-                if (*parser).m_startDoctypeDeclHandler.is_some() {
-                    (*parser)
-                        .m_startDoctypeDeclHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*parser).m_doctypeName,
-                        (*parser).m_doctypeSysid,
-                        (*parser).m_doctypePubid,
-                        1 as ::core::ffi::c_int,
-                    );
-                    (*parser).m_doctypeName =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    poolClear(&mut (*parser).m_tempPool);
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            57 => {
-                let mut result_0: crate::expat_h::XML_Error =
-                    processXmlDecl(parser, 1 as ::core::ffi::c_int, s, next);
-                if result_0 as ::core::ffi::c_uint
-                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return result_0;
-                }
-                enc = (*parser).m_encoding;
-                handleDefault = crate::expat_h::XML_FALSE;
-                c2rust_current_block = 8258632986558375165;
-            }
-            6 => {
-                (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
-                (*parser).m_declEntity = lookup(
-                    parser,
-                    &mut (*dtd).paramEntities,
-                    &raw const externalSubsetName as KEY,
-                    ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
-                ) as *mut ENTITY;
-                if (*parser).m_declEntity.is_null() {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                if (*parser).m_startDoctypeDeclHandler.is_some() {
-                    let mut pubId: *mut crate::expat_external_h::XML_Char =
-                        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                    if (*enc).isPublicId.expect("non-null function pointer")(enc, s, next, eventPP)
-                        == 0
-                    {
-                        return crate::expat_h::XML_ERROR_PUBLICID;
+                    crate::src::xmltok::XML_TOK_PARTIAL => {
+                        return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN
                     }
-                    pubId = poolStoreString(
-                        &mut (*parser).m_tempPool,
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    );
-                    if pubId.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
+                        return crate::expat_h::XML_ERROR_PARTIAL_CHAR
                     }
-                    let pub_id_len = ::core::ffi::CStr::from_ptr(pubId).to_bytes_with_nul().len();
-                    normalizePublicId(::core::slice::from_raw_parts_mut(pubId, pub_id_len));
-                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                    (*parser).m_doctypePubid = pubId;
-                    handleDefault = crate::expat_h::XML_FALSE;
-                    c2rust_current_block = 14769507584970373587;
-                } else {
-                    c2rust_current_block = 3681359897139369850;
-                }
-            }
-            14 => {
-                c2rust_current_block = 3681359897139369850;
-            }
-            8 => {
-                if allowClosingDoctype as ::core::ffi::c_int
-                    != crate::expat_h::XML_TRUE as ::core::ffi::c_int
-                {
-                    return crate::expat_h::XML_ERROR_INVALID_TOKEN;
-                }
-                if !(*parser).m_doctypeName.is_null() {
-                    (*parser)
-                        .m_startDoctypeDeclHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*parser).m_doctypeName,
-                        (*parser).m_doctypeSysid,
-                        (*parser).m_doctypePubid,
-                        0 as ::core::ffi::c_int,
-                    );
-                    poolClear(&mut (*parser).m_tempPool);
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                if !(*parser).m_doctypeSysid.is_null()
-                    || (*parser).m_useForeignDTD as ::core::ffi::c_int != 0
-                {
-                    let mut hadParamEntityRefs: crate::expat_h::XML_Bool =
-                        (*dtd).hasParamEntityRefs;
-                    (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                    if (*parser).m_paramEntityParsing as ::core::ffi::c_uint != 0
-                        && (*parser).m_externalEntityRefHandler.is_some()
-                    {
-                        let mut entity: *mut ENTITY = lookup(
-                            parser,
-                            &mut (*dtd).paramEntities,
-                            &raw const externalSubsetName as KEY,
-                            ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
-                        ) as *mut ENTITY;
-                        if entity.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        if (*parser).m_useForeignDTD != 0 {
-                            (*entity).base = (*parser).m_curBase;
-                        }
-                        (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
-                        if (*parser)
-                            .m_externalEntityRefHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_externalEntityRefHandlerArg,
-                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                            (*entity).base,
-                            (*entity).systemId,
-                            (*entity).publicId,
-                        ) == 0
+                    -15 => {
+                        tok = -tok;
+                    }
+                    crate::src::xmltok::XML_TOK_NONE => {
+                        if enc != (*parser).m_encoding
+                            && (*(*parser).m_openInternalEntities).betweenDecl == 0
                         {
-                            return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+                            *nextPtr = s;
+                            return crate::expat_h::XML_ERROR_NONE;
                         }
-                        if (*dtd).paramEntityRead != 0 {
-                            if (*dtd).standalone == 0
-                                && (*parser).m_notStandaloneHandler.is_some()
-                                && (*parser)
-                                    .m_notStandaloneHandler
-                                    .expect("non-null function pointer")(
-                                    (*parser).m_handlerArg
-                                ) == 0
-                            {
-                                return crate::expat_h::XML_ERROR_NOT_STANDALONE;
-                            }
-                        } else if (*parser).m_doctypeSysid.is_null() {
-                            (*dtd).hasParamEntityRefs = hadParamEntityRefs;
-                        }
-                    }
-                    (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
-                }
-                if (*parser).m_endDoctypeDeclHandler.is_some() {
-                    (*parser)
-                        .m_endDoctypeDeclHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg
-                    );
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            2 => {
-                if (*parser).m_useForeignDTD != 0 {
-                    let mut hadParamEntityRefs_0: crate::expat_h::XML_Bool =
-                        (*dtd).hasParamEntityRefs;
-                    (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                    if (*parser).m_paramEntityParsing as ::core::ffi::c_uint != 0
-                        && (*parser).m_externalEntityRefHandler.is_some()
-                    {
-                        let mut entity_0: *mut ENTITY = lookup(
-                            parser,
-                            &mut (*dtd).paramEntities,
-                            &raw const externalSubsetName as KEY,
-                            ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
-                        ) as *mut ENTITY;
-                        if entity_0.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        (*entity_0).base = (*parser).m_curBase;
-                        (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
-                        if (*parser)
-                            .m_externalEntityRefHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_externalEntityRefHandlerArg,
-                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                            (*entity_0).base,
-                            (*entity_0).systemId,
-                            (*entity_0).publicId,
-                        ) == 0
+                        if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
+                            || enc != (*parser).m_encoding
                         {
-                            return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
-                        }
-                        if (*dtd).paramEntityRead != 0 {
-                            if (*dtd).standalone == 0
-                                && (*parser).m_notStandaloneHandler.is_some()
-                                && (*parser)
-                                    .m_notStandaloneHandler
-                                    .expect("non-null function pointer")(
-                                    (*parser).m_handlerArg
-                                ) == 0
-                            {
-                                return crate::expat_h::XML_ERROR_NOT_STANDALONE;
-                            }
-                        } else {
-                            (*dtd).hasParamEntityRefs = hadParamEntityRefs_0;
-                        }
-                    }
-                }
-                (*parser).m_processor = Some(contentProcessor);
-                return contentProcessor(parser, s, end, nextPtr);
-            }
-            34 => {
-                (*parser).m_declElementType = getElementType(parser, enc, s, next);
-                if (*parser).m_declElementType.is_null() {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                c2rust_current_block = 11852364650731333344;
-            }
-            22 => {
-                (*parser).m_declAttributeId = getAttributeId(parser, enc, s, next);
-                if (*parser).m_declAttributeId.is_null() {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                (*parser).m_declAttributeIsCdata = crate::expat_h::XML_FALSE;
-                (*parser).m_declAttributeType =
-                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                (*parser).m_declAttributeIsId = crate::expat_h::XML_FALSE;
-                c2rust_current_block = 11852364650731333344;
-            }
-            23 => {
-                (*parser).m_declAttributeIsCdata = crate::expat_h::XML_TRUE;
-                (*parser).m_declAttributeType =
-                    &raw const atypeCDATA as *const crate::expat_external_h::XML_Char;
-                c2rust_current_block = 11852364650731333344;
-            }
-            24 => {
-                (*parser).m_declAttributeIsId = crate::expat_h::XML_TRUE;
-                (*parser).m_declAttributeType =
-                    &raw const atypeID as *const crate::expat_external_h::XML_Char;
-                c2rust_current_block = 11852364650731333344;
-            }
-            25 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeIDREF as *const crate::expat_external_h::XML_Char;
-                c2rust_current_block = 11852364650731333344;
-            }
-            26 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeIDREFS as *const crate::expat_external_h::XML_Char;
-                c2rust_current_block = 11852364650731333344;
-            }
-            27 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeENTITY as *const crate::expat_external_h::XML_Char;
-                c2rust_current_block = 11852364650731333344;
-            }
-            28 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeENTITIES as *const crate::expat_external_h::XML_Char;
-                c2rust_current_block = 11852364650731333344;
-            }
-            29 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeNMTOKEN as *const crate::expat_external_h::XML_Char;
-                c2rust_current_block = 11852364650731333344;
-            }
-            30 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeNMTOKENS as *const crate::expat_external_h::XML_Char;
-                c2rust_current_block = 11852364650731333344;
-            }
-            31 | 32 => {
-                if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                    && (*parser).m_attlistDeclHandler.is_some()
-                {
-                    let mut prefix: *const crate::expat_external_h::XML_Char =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    if !(*parser).m_declAttributeType.is_null() {
-                        prefix =
-                            &raw const enumValueSep as *const crate::expat_external_h::XML_Char;
-                    } else {
-                        prefix = if role
-                            == crate::src::xmlrole::XML_ROLE_ATTRIBUTE_NOTATION_VALUE
-                                as ::core::ffi::c_int
-                        {
-                            &raw const notationPrefix as *const crate::expat_external_h::XML_Char
-                        } else {
-                            &raw const enumValueStart as *const crate::expat_external_h::XML_Char
-                        };
-                    }
-                    if poolAppendString(&mut (*parser).m_tempPool, prefix).is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    if poolAppend(&mut (*parser).m_tempPool, enc, s, next).is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*parser).m_declAttributeType = (*parser).m_tempPool.start;
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            35 | 36 => {
-                if (*dtd).keepProcessing != 0 {
-                    if defineAttribute(
-                        (*parser).m_declElementType,
-                        (*parser).m_declAttributeId,
-                        (*parser).m_declAttributeIsCdata,
-                        (*parser).m_declAttributeIsId,
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                        parser,
-                    ) == 0
-                    {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    if (*parser).m_attlistDeclHandler.is_some()
-                        && !(*parser).m_declAttributeType.is_null()
-                    {
-                        if *(*parser).m_declAttributeType as ::core::ffi::c_int
-                            == 0x28 as ::core::ffi::c_int
-                            || *(*parser).m_declAttributeType as ::core::ffi::c_int
-                                == 0x4e as ::core::ffi::c_int
-                                && *(*parser)
-                                    .m_declAttributeType
-                                    .offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0x4f as ::core::ffi::c_int
-                        {
-                            if (if (*parser).m_tempPool.ptr
-                                == (*parser).m_tempPool.end
-                                    as *mut crate::expat_external_h::XML_Char
-                                && poolGrow(&mut (*parser).m_tempPool) == 0
-                            {
-                                0 as ::core::ffi::c_int
-                            } else {
-                                let c2rust_fresh1 = (*parser).m_tempPool.ptr;
-                                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                                *c2rust_fresh1 = 0x29 as crate::expat_external_h::XML_Char;
-                                1 as ::core::ffi::c_int
-                            }) == 0
-                                || (if (*parser).m_tempPool.ptr
-                                    == (*parser).m_tempPool.end
-                                        as *mut crate::expat_external_h::XML_Char
-                                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                                {
-                                    0 as ::core::ffi::c_int
-                                } else {
-                                    let c2rust_fresh2 = (*parser).m_tempPool.ptr;
-                                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                                    *c2rust_fresh2 =
-                                        '\0' as i32 as crate::expat_external_h::XML_Char;
-                                    1 as ::core::ffi::c_int
-                                }) == 0
-                            {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                            }
-                            (*parser).m_declAttributeType = (*parser).m_tempPool.start;
-                            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                        }
-                        *eventEndPP = s;
-                        (*parser)
-                            .m_attlistDeclHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            (*(*parser).m_declElementType).name,
-                            (*(*parser).m_declAttributeId).name,
-                            (*parser).m_declAttributeType,
-                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                            (role
-                                == crate::src::xmlrole::XML_ROLE_REQUIRED_ATTRIBUTE_VALUE
-                                    as ::core::ffi::c_int)
-                                as ::core::ffi::c_int,
-                        );
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                }
-                poolClear(&mut (*parser).m_tempPool);
-                c2rust_current_block = 8258632986558375165;
-            }
-            37 | 38 => {
-                if (*dtd).keepProcessing != 0 {
-                    let mut attVal: *const crate::expat_external_h::XML_Char =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    let mut result_1: crate::expat_h::XML_Error = storeAttributeValue(
-                        parser,
-                        enc,
-                        (*parser).m_declAttributeIsCdata,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                        &raw mut (*dtd).pool,
-                        XML_ACCOUNT_NONE,
-                    );
-                    if result_1 as u64 != 0 {
-                        return result_1;
-                    }
-                    attVal = (*dtd).pool.start;
-                    (*dtd).pool.start = (*dtd).pool.ptr;
-                    if defineAttribute(
-                        (*parser).m_declElementType,
-                        (*parser).m_declAttributeId,
-                        (*parser).m_declAttributeIsCdata,
-                        crate::expat_h::XML_FALSE,
-                        attVal,
-                        parser,
-                    ) == 0
-                    {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    if (*parser).m_attlistDeclHandler.is_some()
-                        && !(*parser).m_declAttributeType.is_null()
-                    {
-                        if *(*parser).m_declAttributeType as ::core::ffi::c_int
-                            == 0x28 as ::core::ffi::c_int
-                            || *(*parser).m_declAttributeType as ::core::ffi::c_int
-                                == 0x4e as ::core::ffi::c_int
-                                && *(*parser)
-                                    .m_declAttributeType
-                                    .offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0x4f as ::core::ffi::c_int
-                        {
-                            if (if (*parser).m_tempPool.ptr
-                                == (*parser).m_tempPool.end
-                                    as *mut crate::expat_external_h::XML_Char
-                                && poolGrow(&mut (*parser).m_tempPool) == 0
-                            {
-                                0 as ::core::ffi::c_int
-                            } else {
-                                let c2rust_fresh3 = (*parser).m_tempPool.ptr;
-                                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                                *c2rust_fresh3 = 0x29 as crate::expat_external_h::XML_Char;
-                                1 as ::core::ffi::c_int
-                            }) == 0
-                                || (if (*parser).m_tempPool.ptr
-                                    == (*parser).m_tempPool.end
-                                        as *mut crate::expat_external_h::XML_Char
-                                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                                {
-                                    0 as ::core::ffi::c_int
-                                } else {
-                                    let c2rust_fresh4 = (*parser).m_tempPool.ptr;
-                                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                                    *c2rust_fresh4 =
-                                        '\0' as i32 as crate::expat_external_h::XML_Char;
-                                    1 as ::core::ffi::c_int
-                                }) == 0
-                            {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                            }
-                            (*parser).m_declAttributeType = (*parser).m_tempPool.start;
-                            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                        }
-                        *eventEndPP = s;
-                        (*parser)
-                            .m_attlistDeclHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            (*(*parser).m_declElementType).name,
-                            (*(*parser).m_declAttributeId).name,
-                            (*parser).m_declAttributeType,
-                            attVal,
-                            (role
-                                == crate::src::xmlrole::XML_ROLE_FIXED_ATTRIBUTE_VALUE
-                                    as ::core::ffi::c_int)
-                                as ::core::ffi::c_int,
-                        );
-                        poolClear(&mut (*parser).m_tempPool);
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            12 => {
-                if (*dtd).keepProcessing != 0 {
-                    let mut result_2: crate::expat_h::XML_Error = callStoreEntityValue(
-                        parser,
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                        XML_ACCOUNT_NONE,
-                    );
-                    if !(*parser).m_declEntity.is_null() {
-                        (*(*parser).m_declEntity).textPtr = (*dtd).entityValuePool.start;
-                        (*(*parser).m_declEntity).textLen = (*dtd)
-                            .entityValuePool
-                            .ptr
-                            .offset_from((*dtd).entityValuePool.start)
-                            as ::core::ffi::c_long
-                            as ::core::ffi::c_int;
-                        (*dtd).entityValuePool.start = (*dtd).entityValuePool.ptr;
-                        if (*parser).m_entityDeclHandler.is_some() {
-                            *eventEndPP = s;
-                            (*parser)
-                                .m_entityDeclHandler
+                            if (*parser)
+                                .m_prologState
+                                .handler
                                 .expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
-                                (*(*parser).m_declEntity).name,
-                                (*(*parser).m_declEntity).is_param as ::core::ffi::c_int,
-                                (*(*parser).m_declEntity).textPtr,
-                                (*(*parser).m_declEntity).textLen,
-                                (*parser).m_curBase,
-                                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                            );
-                            handleDefault = crate::expat_h::XML_FALSE;
+                                &raw mut (*parser).m_prologState,
+                                -4 as ::core::ffi::c_int,
+                                end,
+                                end,
+                                enc,
+                            ) == crate::src::xmlrole::XML_ROLE_ERROR as ::core::ffi::c_int
+                            {
+                                return crate::expat_h::XML_ERROR_INCOMPLETE_PE;
+                            }
+                            *nextPtr = s;
+                            return crate::expat_h::XML_ERROR_NONE;
                         }
-                    } else {
-                        (*dtd).entityValuePool.ptr = (*dtd).entityValuePool.start;
+                        return crate::expat_h::XML_ERROR_NO_ELEMENTS;
                     }
-                    if result_2 as ::core::ffi::c_uint
+                    _ => {
+                        tok = -tok;
+                        next = end;
+                    }
+                }
+            }
+            role = (*parser)
+                .m_prologState
+                .handler
+                .expect("non-null function pointer")(
+                &raw mut (*parser).m_prologState,
+                tok,
+                s,
+                next,
+                enc,
+            );
+            match role {
+                2 | 1 | 57 => {}
+                _ => {
+                    if accountingDiffTolerated(
+                        parser,
+                        tok,
+                        s,
+                        next,
+                        5301 as ::core::ffi::c_int,
+                        account,
+                    ) == 0
+                    {
+                        accountingOnAbort(parser);
+                        return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+                    }
+                }
+            }
+            match role {
+                1 => {
+                    let mut result: crate::expat_h::XML_Error =
+                        processXmlDecl(parser, 0 as ::core::ffi::c_int, s, next);
+                    if result as ::core::ffi::c_uint
                         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                             as ::core::ffi::c_uint
                     {
-                        return result_2;
+                        return result;
                     }
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            5 => {
-                (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
-                (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                if (*parser).m_startDoctypeDeclHandler.is_some() {
-                    (*parser).m_doctypeSysid = poolStoreString(
-                        &mut (*parser).m_tempPool,
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    );
-                    if (*parser).m_doctypeSysid.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                    enc = (*parser).m_encoding;
                     handleDefault = crate::expat_h::XML_FALSE;
-                } else {
+                    c2rust_current_block = 8258632986558375165;
+                }
+                4 => {
+                    if (*parser).m_startDoctypeDeclHandler.is_some() {
+                        (*parser).m_doctypeName =
+                            poolStoreString(&mut (*parser).m_tempPool, enc, s, next);
+                        if (*parser).m_doctypeName.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                        (*parser).m_doctypePubid =
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
                     (*parser).m_doctypeSysid =
-                        &raw const externalSubsetName as *const crate::expat_external_h::XML_Char;
+                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    c2rust_current_block = 8258632986558375165;
                 }
-                if (*dtd).standalone == 0
-                    && (*parser).m_paramEntityParsing as u64 == 0
-                    && (*parser).m_notStandaloneHandler.is_some()
-                    && (*parser)
-                        .m_notStandaloneHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg
-                    ) == 0
-                {
-                    return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                7 => {
+                    if (*parser).m_startDoctypeDeclHandler.is_some() {
+                        (*parser)
+                            .m_startDoctypeDeclHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg,
+                            (*parser).m_doctypeName,
+                            (*parser).m_doctypeSysid,
+                            (*parser).m_doctypePubid,
+                            1 as ::core::ffi::c_int,
+                        );
+                        (*parser).m_doctypeName =
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                        poolClear(&mut (*parser).m_tempPool);
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
                 }
-                if (*parser).m_declEntity.is_null() {
+                57 => {
+                    let mut result_0: crate::expat_h::XML_Error =
+                        processXmlDecl(parser, 1 as ::core::ffi::c_int, s, next);
+                    if result_0 as ::core::ffi::c_uint
+                        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                            as ::core::ffi::c_uint
+                    {
+                        return result_0;
+                    }
+                    enc = (*parser).m_encoding;
+                    handleDefault = crate::expat_h::XML_FALSE;
+                    c2rust_current_block = 8258632986558375165;
+                }
+                6 => {
+                    (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
                     (*parser).m_declEntity = lookup(
                         parser,
                         &mut (*dtd).paramEntities,
@@ -9061,344 +8563,866 @@ unsafe extern "C" fn doProlog(
                     if (*parser).m_declEntity.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    (*(*parser).m_declEntity).publicId =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                }
-                c2rust_current_block = 16790621803724920579;
-            }
-            13 => {
-                c2rust_current_block = 16790621803724920579;
-            }
-            15 => {
-                if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                    && !(*parser).m_declEntity.is_null()
-                    && (*parser).m_entityDeclHandler.is_some()
-                {
-                    *eventEndPP = s;
-                    (*parser)
-                        .m_entityDeclHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*(*parser).m_declEntity).name,
-                        (*(*parser).m_declEntity).is_param as ::core::ffi::c_int,
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                        0 as ::core::ffi::c_int,
-                        (*(*parser).m_declEntity).base,
-                        (*(*parser).m_declEntity).systemId,
-                        (*(*parser).m_declEntity).publicId,
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                    );
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            16 => {
-                if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                    && !(*parser).m_declEntity.is_null()
-                {
-                    (*(*parser).m_declEntity).notation =
-                        poolStoreString(&mut (*dtd).pool, enc, s, next);
-                    if (*(*parser).m_declEntity).notation.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                    if (*parser).m_startDoctypeDeclHandler.is_some() {
+                        let mut pubId: *mut crate::expat_external_h::XML_Char =
+                            ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+                        if (*enc).isPublicId.expect("non-null function pointer")(
+                            enc, s, next, eventPP,
+                        ) == 0
+                        {
+                            return crate::expat_h::XML_ERROR_PUBLICID;
+                        }
+                        pubId = poolStoreString(
+                            &mut (*parser).m_tempPool,
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        );
+                        if pubId.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        let pub_id_len =
+                            ::core::ffi::CStr::from_ptr(pubId).to_bytes_with_nul().len();
+                        normalizePublicId(::core::slice::from_raw_parts_mut(pubId, pub_id_len));
+                        (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                        (*parser).m_doctypePubid = pubId;
+                        handleDefault = crate::expat_h::XML_FALSE;
+                        c2rust_current_block = 14769507584970373587;
+                    } else {
+                        c2rust_current_block = 3681359897139369850;
                     }
-                    (*dtd).pool.start = (*dtd).pool.ptr;
-                    if (*parser).m_unparsedEntityDeclHandler.is_some() {
-                        *eventEndPP = s;
+                }
+                14 => {
+                    c2rust_current_block = 3681359897139369850;
+                }
+                8 => {
+                    if allowClosingDoctype as ::core::ffi::c_int
+                        != crate::expat_h::XML_TRUE as ::core::ffi::c_int
+                    {
+                        return crate::expat_h::XML_ERROR_INVALID_TOKEN;
+                    }
+                    if !(*parser).m_doctypeName.is_null() {
                         (*parser)
-                            .m_unparsedEntityDeclHandler
+                            .m_startDoctypeDeclHandler
                             .expect("non-null function pointer")(
                             (*parser).m_handlerArg,
-                            (*(*parser).m_declEntity).name,
-                            (*(*parser).m_declEntity).base,
-                            (*(*parser).m_declEntity).systemId,
-                            (*(*parser).m_declEntity).publicId,
-                            (*(*parser).m_declEntity).notation,
+                            (*parser).m_doctypeName,
+                            (*parser).m_doctypeSysid,
+                            (*parser).m_doctypePubid,
+                            0 as ::core::ffi::c_int,
+                        );
+                        poolClear(&mut (*parser).m_tempPool);
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    if !(*parser).m_doctypeSysid.is_null()
+                        || (*parser).m_useForeignDTD as ::core::ffi::c_int != 0
+                    {
+                        let mut hadParamEntityRefs: crate::expat_h::XML_Bool =
+                            (*dtd).hasParamEntityRefs;
+                        (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                        if (*parser).m_paramEntityParsing as ::core::ffi::c_uint != 0
+                            && (*parser).m_externalEntityRefHandler.is_some()
+                        {
+                            let mut entity: *mut ENTITY = lookup(
+                                parser,
+                                &mut (*dtd).paramEntities,
+                                &raw const externalSubsetName as KEY,
+                                ::core::mem::size_of::<ENTITY>()
+                                    as crate::__stddef_size_t_h::size_t,
+                            )
+                                as *mut ENTITY;
+                            if entity.is_null() {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
+                            if (*parser).m_useForeignDTD != 0 {
+                                (*entity).base = (*parser).m_curBase;
+                            }
+                            (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
+                            if (*parser)
+                                .m_externalEntityRefHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_externalEntityRefHandlerArg,
+                                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                (*entity).base,
+                                (*entity).systemId,
+                                (*entity).publicId,
+                            ) == 0
+                            {
+                                return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+                            }
+                            if (*dtd).paramEntityRead != 0 {
+                                if (*dtd).standalone == 0
+                                    && (*parser).m_notStandaloneHandler.is_some()
+                                    && (*parser)
+                                        .m_notStandaloneHandler
+                                        .expect("non-null function pointer")(
+                                        (*parser).m_handlerArg
+                                    ) == 0
+                                {
+                                    return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                }
+                            } else if (*parser).m_doctypeSysid.is_null() {
+                                (*dtd).hasParamEntityRefs = hadParamEntityRefs;
+                            }
+                        }
+                        (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
+                    }
+                    if (*parser).m_endDoctypeDeclHandler.is_some() {
+                        (*parser)
+                            .m_endDoctypeDeclHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg
                         );
                         handleDefault = crate::expat_h::XML_FALSE;
-                    } else if (*parser).m_entityDeclHandler.is_some() {
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                2 => {
+                    if (*parser).m_useForeignDTD != 0 {
+                        let mut hadParamEntityRefs_0: crate::expat_h::XML_Bool =
+                            (*dtd).hasParamEntityRefs;
+                        (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                        if (*parser).m_paramEntityParsing as ::core::ffi::c_uint != 0
+                            && (*parser).m_externalEntityRefHandler.is_some()
+                        {
+                            let mut entity_0: *mut ENTITY = lookup(
+                                parser,
+                                &mut (*dtd).paramEntities,
+                                &raw const externalSubsetName as KEY,
+                                ::core::mem::size_of::<ENTITY>()
+                                    as crate::__stddef_size_t_h::size_t,
+                            )
+                                as *mut ENTITY;
+                            if entity_0.is_null() {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
+                            (*entity_0).base = (*parser).m_curBase;
+                            (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
+                            if (*parser)
+                                .m_externalEntityRefHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_externalEntityRefHandlerArg,
+                                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                (*entity_0).base,
+                                (*entity_0).systemId,
+                                (*entity_0).publicId,
+                            ) == 0
+                            {
+                                return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+                            }
+                            if (*dtd).paramEntityRead != 0 {
+                                if (*dtd).standalone == 0
+                                    && (*parser).m_notStandaloneHandler.is_some()
+                                    && (*parser)
+                                        .m_notStandaloneHandler
+                                        .expect("non-null function pointer")(
+                                        (*parser).m_handlerArg
+                                    ) == 0
+                                {
+                                    return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                }
+                            } else {
+                                (*dtd).hasParamEntityRefs = hadParamEntityRefs_0;
+                            }
+                        }
+                    }
+                    (*parser).m_processor = Some(contentProcessor);
+                    return contentProcessor(parser, s, end, nextPtr);
+                }
+                34 => {
+                    (*parser).m_declElementType = getElementType(parser, enc, s, next);
+                    if (*parser).m_declElementType.is_null() {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                    c2rust_current_block = 11852364650731333344;
+                }
+                22 => {
+                    (*parser).m_declAttributeId = getAttributeId(parser, enc, s, next);
+                    if (*parser).m_declAttributeId.is_null() {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                    (*parser).m_declAttributeIsCdata = crate::expat_h::XML_FALSE;
+                    (*parser).m_declAttributeType =
+                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    (*parser).m_declAttributeIsId = crate::expat_h::XML_FALSE;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                23 => {
+                    (*parser).m_declAttributeIsCdata = crate::expat_h::XML_TRUE;
+                    (*parser).m_declAttributeType =
+                        &raw const atypeCDATA as *const crate::expat_external_h::XML_Char;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                24 => {
+                    (*parser).m_declAttributeIsId = crate::expat_h::XML_TRUE;
+                    (*parser).m_declAttributeType =
+                        &raw const atypeID as *const crate::expat_external_h::XML_Char;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                25 => {
+                    (*parser).m_declAttributeType =
+                        &raw const atypeIDREF as *const crate::expat_external_h::XML_Char;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                26 => {
+                    (*parser).m_declAttributeType =
+                        &raw const atypeIDREFS as *const crate::expat_external_h::XML_Char;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                27 => {
+                    (*parser).m_declAttributeType =
+                        &raw const atypeENTITY as *const crate::expat_external_h::XML_Char;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                28 => {
+                    (*parser).m_declAttributeType =
+                        &raw const atypeENTITIES as *const crate::expat_external_h::XML_Char;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                29 => {
+                    (*parser).m_declAttributeType =
+                        &raw const atypeNMTOKEN as *const crate::expat_external_h::XML_Char;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                30 => {
+                    (*parser).m_declAttributeType =
+                        &raw const atypeNMTOKENS as *const crate::expat_external_h::XML_Char;
+                    c2rust_current_block = 11852364650731333344;
+                }
+                31 | 32 => {
+                    if (*dtd).keepProcessing as ::core::ffi::c_int != 0
+                        && (*parser).m_attlistDeclHandler.is_some()
+                    {
+                        let mut prefix: *const crate::expat_external_h::XML_Char =
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                        if !(*parser).m_declAttributeType.is_null() {
+                            prefix =
+                                &raw const enumValueSep as *const crate::expat_external_h::XML_Char;
+                        } else {
+                            prefix = if role
+                                == crate::src::xmlrole::XML_ROLE_ATTRIBUTE_NOTATION_VALUE
+                                    as ::core::ffi::c_int
+                            {
+                                &raw const notationPrefix
+                                    as *const crate::expat_external_h::XML_Char
+                            } else {
+                                &raw const enumValueStart
+                                    as *const crate::expat_external_h::XML_Char
+                            };
+                        }
+                        if poolAppendString(&mut (*parser).m_tempPool, prefix).is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        if poolAppend(&mut (*parser).m_tempPool, enc, s, next).is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*parser).m_declAttributeType = (*parser).m_tempPool.start;
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                35 | 36 => {
+                    if (*dtd).keepProcessing != 0 {
+                        if defineAttribute(
+                            (*parser).m_declElementType,
+                            (*parser).m_declAttributeId,
+                            (*parser).m_declAttributeIsCdata,
+                            (*parser).m_declAttributeIsId,
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                            parser,
+                        ) == 0
+                        {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        if (*parser).m_attlistDeclHandler.is_some()
+                            && !(*parser).m_declAttributeType.is_null()
+                        {
+                            if *(*parser).m_declAttributeType as ::core::ffi::c_int
+                                == 0x28 as ::core::ffi::c_int
+                                || *(*parser).m_declAttributeType as ::core::ffi::c_int
+                                    == 0x4e as ::core::ffi::c_int
+                                    && *(*parser)
+                                        .m_declAttributeType
+                                        .offset(1 as ::core::ffi::c_int as isize)
+                                        as ::core::ffi::c_int
+                                        == 0x4f as ::core::ffi::c_int
+                            {
+                                if (if (*parser).m_tempPool.ptr
+                                    == (*parser).m_tempPool.end
+                                        as *mut crate::expat_external_h::XML_Char
+                                    && poolGrow(&mut (*parser).m_tempPool) == 0
+                                {
+                                    0 as ::core::ffi::c_int
+                                } else {
+                                    let c2rust_fresh1 = (*parser).m_tempPool.ptr;
+                                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                                    *c2rust_fresh1 = 0x29 as crate::expat_external_h::XML_Char;
+                                    1 as ::core::ffi::c_int
+                                }) == 0
+                                    || (if (*parser).m_tempPool.ptr
+                                        == (*parser).m_tempPool.end
+                                            as *mut crate::expat_external_h::XML_Char
+                                        && poolGrow(&mut (*parser).m_tempPool) == 0
+                                    {
+                                        0 as ::core::ffi::c_int
+                                    } else {
+                                        let c2rust_fresh2 = (*parser).m_tempPool.ptr;
+                                        (*parser).m_tempPool.ptr =
+                                            (*parser).m_tempPool.ptr.offset(1);
+                                        *c2rust_fresh2 =
+                                            '\0' as i32 as crate::expat_external_h::XML_Char;
+                                        1 as ::core::ffi::c_int
+                                    }) == 0
+                                {
+                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                }
+                                (*parser).m_declAttributeType = (*parser).m_tempPool.start;
+                                (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                            }
+                            *eventEndPP = s;
+                            (*parser)
+                                .m_attlistDeclHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_handlerArg,
+                                (*(*parser).m_declElementType).name,
+                                (*(*parser).m_declAttributeId).name,
+                                (*parser).m_declAttributeType,
+                                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                (role
+                                    == crate::src::xmlrole::XML_ROLE_REQUIRED_ATTRIBUTE_VALUE
+                                        as ::core::ffi::c_int)
+                                    as ::core::ffi::c_int,
+                            );
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                    }
+                    poolClear(&mut (*parser).m_tempPool);
+                    c2rust_current_block = 8258632986558375165;
+                }
+                37 | 38 => {
+                    if (*dtd).keepProcessing != 0 {
+                        let mut attVal: *const crate::expat_external_h::XML_Char =
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                        let mut result_1: crate::expat_h::XML_Error = storeAttributeValue(
+                            parser,
+                            enc,
+                            (*parser).m_declAttributeIsCdata,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            &raw mut (*dtd).pool,
+                            XML_ACCOUNT_NONE,
+                        );
+                        if result_1 as u64 != 0 {
+                            return result_1;
+                        }
+                        attVal = (*dtd).pool.start;
+                        (*dtd).pool.start = (*dtd).pool.ptr;
+                        if defineAttribute(
+                            (*parser).m_declElementType,
+                            (*parser).m_declAttributeId,
+                            (*parser).m_declAttributeIsCdata,
+                            crate::expat_h::XML_FALSE,
+                            attVal,
+                            parser,
+                        ) == 0
+                        {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        if (*parser).m_attlistDeclHandler.is_some()
+                            && !(*parser).m_declAttributeType.is_null()
+                        {
+                            if *(*parser).m_declAttributeType as ::core::ffi::c_int
+                                == 0x28 as ::core::ffi::c_int
+                                || *(*parser).m_declAttributeType as ::core::ffi::c_int
+                                    == 0x4e as ::core::ffi::c_int
+                                    && *(*parser)
+                                        .m_declAttributeType
+                                        .offset(1 as ::core::ffi::c_int as isize)
+                                        as ::core::ffi::c_int
+                                        == 0x4f as ::core::ffi::c_int
+                            {
+                                if (if (*parser).m_tempPool.ptr
+                                    == (*parser).m_tempPool.end
+                                        as *mut crate::expat_external_h::XML_Char
+                                    && poolGrow(&mut (*parser).m_tempPool) == 0
+                                {
+                                    0 as ::core::ffi::c_int
+                                } else {
+                                    let c2rust_fresh3 = (*parser).m_tempPool.ptr;
+                                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                                    *c2rust_fresh3 = 0x29 as crate::expat_external_h::XML_Char;
+                                    1 as ::core::ffi::c_int
+                                }) == 0
+                                    || (if (*parser).m_tempPool.ptr
+                                        == (*parser).m_tempPool.end
+                                            as *mut crate::expat_external_h::XML_Char
+                                        && poolGrow(&mut (*parser).m_tempPool) == 0
+                                    {
+                                        0 as ::core::ffi::c_int
+                                    } else {
+                                        let c2rust_fresh4 = (*parser).m_tempPool.ptr;
+                                        (*parser).m_tempPool.ptr =
+                                            (*parser).m_tempPool.ptr.offset(1);
+                                        *c2rust_fresh4 =
+                                            '\0' as i32 as crate::expat_external_h::XML_Char;
+                                        1 as ::core::ffi::c_int
+                                    }) == 0
+                                {
+                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                }
+                                (*parser).m_declAttributeType = (*parser).m_tempPool.start;
+                                (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                            }
+                            *eventEndPP = s;
+                            (*parser)
+                                .m_attlistDeclHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_handlerArg,
+                                (*(*parser).m_declElementType).name,
+                                (*(*parser).m_declAttributeId).name,
+                                (*parser).m_declAttributeType,
+                                attVal,
+                                (role
+                                    == crate::src::xmlrole::XML_ROLE_FIXED_ATTRIBUTE_VALUE
+                                        as ::core::ffi::c_int)
+                                    as ::core::ffi::c_int,
+                            );
+                            poolClear(&mut (*parser).m_tempPool);
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                12 => {
+                    if (*dtd).keepProcessing != 0 {
+                        let mut result_2: crate::expat_h::XML_Error = callStoreEntityValue(
+                            parser,
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            XML_ACCOUNT_NONE,
+                        );
+                        if !(*parser).m_declEntity.is_null() {
+                            (*(*parser).m_declEntity).textPtr = (*dtd).entityValuePool.start;
+                            (*(*parser).m_declEntity).textLen = (*dtd)
+                                .entityValuePool
+                                .ptr
+                                .offset_from((*dtd).entityValuePool.start)
+                                as ::core::ffi::c_long
+                                as ::core::ffi::c_int;
+                            (*dtd).entityValuePool.start = (*dtd).entityValuePool.ptr;
+                            if (*parser).m_entityDeclHandler.is_some() {
+                                *eventEndPP = s;
+                                (*parser)
+                                    .m_entityDeclHandler
+                                    .expect("non-null function pointer")(
+                                    (*parser).m_handlerArg,
+                                    (*(*parser).m_declEntity).name,
+                                    (*(*parser).m_declEntity).is_param as ::core::ffi::c_int,
+                                    (*(*parser).m_declEntity).textPtr,
+                                    (*(*parser).m_declEntity).textLen,
+                                    (*parser).m_curBase,
+                                    ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                    ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                    ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                );
+                                handleDefault = crate::expat_h::XML_FALSE;
+                            }
+                        } else {
+                            (*dtd).entityValuePool.ptr = (*dtd).entityValuePool.start;
+                        }
+                        if result_2 as ::core::ffi::c_uint
+                            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                                as ::core::ffi::c_uint
+                        {
+                            return result_2;
+                        }
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                5 => {
+                    (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
+                    (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                    if (*parser).m_startDoctypeDeclHandler.is_some() {
+                        (*parser).m_doctypeSysid = poolStoreString(
+                            &mut (*parser).m_tempPool,
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        );
+                        if (*parser).m_doctypeSysid.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    } else {
+                        (*parser).m_doctypeSysid = &raw const externalSubsetName
+                            as *const crate::expat_external_h::XML_Char;
+                    }
+                    if (*dtd).standalone == 0
+                        && (*parser).m_paramEntityParsing as u64 == 0
+                        && (*parser).m_notStandaloneHandler.is_some()
+                        && (*parser)
+                            .m_notStandaloneHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg
+                        ) == 0
+                    {
+                        return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                    }
+                    if (*parser).m_declEntity.is_null() {
+                        (*parser).m_declEntity = lookup(
+                            parser,
+                            &mut (*dtd).paramEntities,
+                            &raw const externalSubsetName as KEY,
+                            ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
+                        ) as *mut ENTITY;
+                        if (*parser).m_declEntity.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*(*parser).m_declEntity).publicId =
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    }
+                    c2rust_current_block = 16790621803724920579;
+                }
+                13 => {
+                    c2rust_current_block = 16790621803724920579;
+                }
+                15 => {
+                    if (*dtd).keepProcessing as ::core::ffi::c_int != 0
+                        && !(*parser).m_declEntity.is_null()
+                        && (*parser).m_entityDeclHandler.is_some()
+                    {
                         *eventEndPP = s;
                         (*parser)
                             .m_entityDeclHandler
                             .expect("non-null function pointer")(
                             (*parser).m_handlerArg,
                             (*(*parser).m_declEntity).name,
-                            0 as ::core::ffi::c_int,
+                            (*(*parser).m_declEntity).is_param as ::core::ffi::c_int,
                             ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
                             0 as ::core::ffi::c_int,
                             (*(*parser).m_declEntity).base,
                             (*(*parser).m_declEntity).systemId,
                             (*(*parser).m_declEntity).publicId,
-                            (*(*parser).m_declEntity).notation,
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
                         );
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
+                    c2rust_current_block = 8258632986558375165;
                 }
-                c2rust_current_block = 8258632986558375165;
-            }
-            9 => {
-                if (*enc)
-                    .predefinedEntityName
-                    .expect("non-null function pointer")(enc, s, next)
-                    != 0
-                {
-                    (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
-                } else if (*dtd).keepProcessing != 0 {
-                    let mut name: *const crate::expat_external_h::XML_Char =
-                        poolStoreString(&mut (*dtd).pool, enc, s, next);
-                    if name.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*parser).m_declEntity = lookup(
-                        parser,
-                        &mut (*dtd).generalEntities,
-                        name as KEY,
-                        ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
-                    ) as *mut ENTITY;
-                    if (*parser).m_declEntity.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    if (*(*parser).m_declEntity).name != name {
-                        (*dtd).pool.ptr = (*dtd).pool.start;
-                        (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
-                    } else {
-                        (*dtd).pool.start = (*dtd).pool.ptr;
-                        (*(*parser).m_declEntity).publicId =
-                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                        (*(*parser).m_declEntity).is_param = crate::expat_h::XML_FALSE;
-                        (*(*parser).m_declEntity).is_internal =
-                            !(!(*parser).m_parentParser.is_null()
-                                || !(*parser).m_openInternalEntities.is_null())
-                                as ::core::ffi::c_int
-                                as crate::expat_h::XML_Bool;
-                        if (*parser).m_entityDeclHandler.is_some() {
-                            handleDefault = crate::expat_h::XML_FALSE;
-                        }
-                    }
-                } else {
-                    (*dtd).pool.ptr = (*dtd).pool.start;
-                    (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            10 => {
-                if (*dtd).keepProcessing != 0 {
-                    let mut name_0: *const crate::expat_external_h::XML_Char =
-                        poolStoreString(&mut (*dtd).pool, enc, s, next);
-                    if name_0.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*parser).m_declEntity = lookup(
-                        parser,
-                        &mut (*dtd).paramEntities,
-                        name_0 as KEY,
-                        ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
-                    ) as *mut ENTITY;
-                    if (*parser).m_declEntity.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    if (*(*parser).m_declEntity).name != name_0 {
-                        (*dtd).pool.ptr = (*dtd).pool.start;
-                        (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
-                    } else {
-                        (*dtd).pool.start = (*dtd).pool.ptr;
-                        (*(*parser).m_declEntity).publicId =
-                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                        (*(*parser).m_declEntity).is_param = crate::expat_h::XML_TRUE;
-                        (*(*parser).m_declEntity).is_internal =
-                            !(!(*parser).m_parentParser.is_null()
-                                || !(*parser).m_openInternalEntities.is_null())
-                                as ::core::ffi::c_int
-                                as crate::expat_h::XML_Bool;
-                        if (*parser).m_entityDeclHandler.is_some() {
-                            handleDefault = crate::expat_h::XML_FALSE;
-                        }
-                    }
-                } else {
-                    (*dtd).pool.ptr = (*dtd).pool.start;
-                    (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            18 => {
-                (*parser).m_declNotationPublicId =
-                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                (*parser).m_declNotationName =
-                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                if (*parser).m_notationDeclHandler.is_some() {
-                    (*parser).m_declNotationName =
-                        poolStoreString(&mut (*parser).m_tempPool, enc, s, next);
-                    if (*parser).m_declNotationName.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            21 => {
-                if (*enc).isPublicId.expect("non-null function pointer")(enc, s, next, eventPP) == 0
-                {
-                    return crate::expat_h::XML_ERROR_PUBLICID;
-                }
-                if !(*parser).m_declNotationName.is_null() {
-                    let mut tem_0: *mut crate::expat_external_h::XML_Char = poolStoreString(
-                        &mut (*parser).m_tempPool,
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    );
-                    if tem_0.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    let public_id_len =
-                        ::core::ffi::CStr::from_ptr(tem_0).to_bytes_with_nul().len();
-                    normalizePublicId(::core::slice::from_raw_parts_mut(tem_0, public_id_len));
-                    (*parser).m_declNotationPublicId = tem_0;
-                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            19 => {
-                if !(*parser).m_declNotationName.is_null()
-                    && (*parser).m_notationDeclHandler.is_some()
-                {
-                    let mut systemId: *const crate::expat_external_h::XML_Char = poolStoreString(
-                        &mut (*parser).m_tempPool,
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    );
-                    if systemId.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    *eventEndPP = s;
-                    (*parser)
-                        .m_notationDeclHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*parser).m_declNotationName,
-                        (*parser).m_curBase,
-                        systemId,
-                        (*parser).m_declNotationPublicId,
-                    );
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                poolClear(&mut (*parser).m_tempPool);
-                c2rust_current_block = 8258632986558375165;
-            }
-            20 => {
-                if !(*parser).m_declNotationPublicId.is_null()
-                    && (*parser).m_notationDeclHandler.is_some()
-                {
-                    *eventEndPP = s;
-                    (*parser)
-                        .m_notationDeclHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*parser).m_declNotationName,
-                        (*parser).m_curBase,
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                        (*parser).m_declNotationPublicId,
-                    );
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                poolClear(&mut (*parser).m_tempPool);
-                c2rust_current_block = 8258632986558375165;
-            }
-            -1 => match tok {
-                crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF => {
-                    return crate::expat_h::XML_ERROR_PARAM_ENTITY_REF
-                }
-                crate::src::xmltok::XML_TOK_XML_DECL => {
-                    return crate::expat_h::XML_ERROR_MISPLACED_XML_PI
-                }
-                _ => return crate::expat_h::XML_ERROR_SYNTAX,
-            },
-            58 => {
-                let mut result_3: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, next);
-                }
-                handleDefault = crate::expat_h::XML_FALSE;
-                result_3 = doIgnoreSection(parser, enc, &raw mut next, end, nextPtr, haveMore);
-                if result_3 as ::core::ffi::c_uint
-                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return result_3;
-                } else if next.is_null() {
-                    (*parser).m_processor = Some(ignoreSectionProcessor);
-                    return result_3;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            44 => {
-                if (*parser).m_prologState.level >= (*parser).m_groupSize {
-                    if (*parser).m_groupSize != 0 {
-                        if (*parser).m_groupSize
-                            > (-1 as ::core::ffi::c_int as ::core::ffi::c_uint)
-                                .wrapping_div(2 as ::core::ffi::c_uint)
-                        {
+                16 => {
+                    if (*dtd).keepProcessing as ::core::ffi::c_int != 0
+                        && !(*parser).m_declEntity.is_null()
+                    {
+                        (*(*parser).m_declEntity).notation =
+                            poolStoreString(&mut (*dtd).pool, enc, s, next);
+                        if (*(*parser).m_declEntity).notation.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        (*parser).m_groupSize =
-                            (*parser).m_groupSize.wrapping_mul(2 as ::core::ffi::c_uint);
-                        let new_connector: *mut ::core::ffi::c_char = expat_realloc(
+                        (*dtd).pool.start = (*dtd).pool.ptr;
+                        if (*parser).m_unparsedEntityDeclHandler.is_some() {
+                            *eventEndPP = s;
+                            (*parser)
+                                .m_unparsedEntityDeclHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_handlerArg,
+                                (*(*parser).m_declEntity).name,
+                                (*(*parser).m_declEntity).base,
+                                (*(*parser).m_declEntity).systemId,
+                                (*(*parser).m_declEntity).publicId,
+                                (*(*parser).m_declEntity).notation,
+                            );
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        } else if (*parser).m_entityDeclHandler.is_some() {
+                            *eventEndPP = s;
+                            (*parser)
+                                .m_entityDeclHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_handlerArg,
+                                (*(*parser).m_declEntity).name,
+                                0 as ::core::ffi::c_int,
+                                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                0 as ::core::ffi::c_int,
+                                (*(*parser).m_declEntity).base,
+                                (*(*parser).m_declEntity).systemId,
+                                (*(*parser).m_declEntity).publicId,
+                                (*(*parser).m_declEntity).notation,
+                            );
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                9 => {
+                    if (*enc)
+                        .predefinedEntityName
+                        .expect("non-null function pointer")(enc, s, next)
+                        != 0
+                    {
+                        (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
+                    } else if (*dtd).keepProcessing != 0 {
+                        let mut name: *const crate::expat_external_h::XML_Char =
+                            poolStoreString(&mut (*dtd).pool, enc, s, next);
+                        if name.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*parser).m_declEntity = lookup(
                             parser,
-                            (*parser).m_groupConnector as *mut ::core::ffi::c_void,
-                            (*parser).m_groupSize as crate::__stddef_size_t_h::size_t,
-                            5915 as ::core::ffi::c_int,
-                        )
-                            as *mut ::core::ffi::c_char;
-                        if new_connector.is_null() {
-                            (*parser).m_groupSize =
-                                (*parser).m_groupSize.wrapping_div(2 as ::core::ffi::c_uint);
+                            &mut (*dtd).generalEntities,
+                            name as KEY,
+                            ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
+                        ) as *mut ENTITY;
+                        if (*parser).m_declEntity.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        (*parser).m_groupConnector = new_connector;
-                        if !(*dtd).scaffIndex.is_null() {
-                            let new_scaff_index: *mut ::core::ffi::c_int = expat_realloc(
+                        if (*(*parser).m_declEntity).name != name {
+                            (*dtd).pool.ptr = (*dtd).pool.start;
+                            (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
+                        } else {
+                            (*dtd).pool.start = (*dtd).pool.ptr;
+                            (*(*parser).m_declEntity).publicId =
+                                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                            (*(*parser).m_declEntity).is_param = crate::expat_h::XML_FALSE;
+                            (*(*parser).m_declEntity).is_internal =
+                                !(!(*parser).m_parentParser.is_null()
+                                    || !(*parser).m_openInternalEntities.is_null())
+                                    as ::core::ffi::c_int
+                                    as crate::expat_h::XML_Bool;
+                            if (*parser).m_entityDeclHandler.is_some() {
+                                handleDefault = crate::expat_h::XML_FALSE;
+                            }
+                        }
+                    } else {
+                        (*dtd).pool.ptr = (*dtd).pool.start;
+                        (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                10 => {
+                    if (*dtd).keepProcessing != 0 {
+                        let mut name_0: *const crate::expat_external_h::XML_Char =
+                            poolStoreString(&mut (*dtd).pool, enc, s, next);
+                        if name_0.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*parser).m_declEntity = lookup(
+                            parser,
+                            &mut (*dtd).paramEntities,
+                            name_0 as KEY,
+                            ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
+                        ) as *mut ENTITY;
+                        if (*parser).m_declEntity.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        if (*(*parser).m_declEntity).name != name_0 {
+                            (*dtd).pool.ptr = (*dtd).pool.start;
+                            (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
+                        } else {
+                            (*dtd).pool.start = (*dtd).pool.ptr;
+                            (*(*parser).m_declEntity).publicId =
+                                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                            (*(*parser).m_declEntity).is_param = crate::expat_h::XML_TRUE;
+                            (*(*parser).m_declEntity).is_internal =
+                                !(!(*parser).m_parentParser.is_null()
+                                    || !(*parser).m_openInternalEntities.is_null())
+                                    as ::core::ffi::c_int
+                                    as crate::expat_h::XML_Bool;
+                            if (*parser).m_entityDeclHandler.is_some() {
+                                handleDefault = crate::expat_h::XML_FALSE;
+                            }
+                        }
+                    } else {
+                        (*dtd).pool.ptr = (*dtd).pool.start;
+                        (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                18 => {
+                    (*parser).m_declNotationPublicId =
+                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    (*parser).m_declNotationName =
+                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    if (*parser).m_notationDeclHandler.is_some() {
+                        (*parser).m_declNotationName =
+                            poolStoreString(&mut (*parser).m_tempPool, enc, s, next);
+                        if (*parser).m_declNotationName.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                21 => {
+                    if (*enc).isPublicId.expect("non-null function pointer")(enc, s, next, eventPP)
+                        == 0
+                    {
+                        return crate::expat_h::XML_ERROR_PUBLICID;
+                    }
+                    if !(*parser).m_declNotationName.is_null() {
+                        let mut tem_0: *mut crate::expat_external_h::XML_Char = poolStoreString(
+                            &mut (*parser).m_tempPool,
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        );
+                        if tem_0.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        let public_id_len =
+                            ::core::ffi::CStr::from_ptr(tem_0).to_bytes_with_nul().len();
+                        normalizePublicId(::core::slice::from_raw_parts_mut(tem_0, public_id_len));
+                        (*parser).m_declNotationPublicId = tem_0;
+                        (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                19 => {
+                    if !(*parser).m_declNotationName.is_null()
+                        && (*parser).m_notationDeclHandler.is_some()
+                    {
+                        let mut systemId: *const crate::expat_external_h::XML_Char =
+                            poolStoreString(
+                                &mut (*parser).m_tempPool,
+                                enc,
+                                s.offset((*enc).minBytesPerChar as isize),
+                                next.offset(-((*enc).minBytesPerChar as isize)),
+                            );
+                        if systemId.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        *eventEndPP = s;
+                        (*parser)
+                            .m_notationDeclHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg,
+                            (*parser).m_declNotationName,
+                            (*parser).m_curBase,
+                            systemId,
+                            (*parser).m_declNotationPublicId,
+                        );
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    poolClear(&mut (*parser).m_tempPool);
+                    c2rust_current_block = 8258632986558375165;
+                }
+                20 => {
+                    if !(*parser).m_declNotationPublicId.is_null()
+                        && (*parser).m_notationDeclHandler.is_some()
+                    {
+                        *eventEndPP = s;
+                        (*parser)
+                            .m_notationDeclHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg,
+                            (*parser).m_declNotationName,
+                            (*parser).m_curBase,
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                            (*parser).m_declNotationPublicId,
+                        );
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    poolClear(&mut (*parser).m_tempPool);
+                    c2rust_current_block = 8258632986558375165;
+                }
+                -1 => match tok {
+                    crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF => {
+                        return crate::expat_h::XML_ERROR_PARAM_ENTITY_REF
+                    }
+                    crate::src::xmltok::XML_TOK_XML_DECL => {
+                        return crate::expat_h::XML_ERROR_MISPLACED_XML_PI
+                    }
+                    _ => return crate::expat_h::XML_ERROR_SYNTAX,
+                },
+                58 => {
+                    let mut result_3: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
+                    if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, next);
+                    }
+                    handleDefault = crate::expat_h::XML_FALSE;
+                    result_3 = doIgnoreSection(parser, enc, &raw mut next, end, nextPtr, haveMore);
+                    if result_3 as ::core::ffi::c_uint
+                        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                            as ::core::ffi::c_uint
+                    {
+                        return result_3;
+                    } else if next.is_null() {
+                        (*parser).m_processor = Some(ignoreSectionProcessor);
+                        return result_3;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                44 => {
+                    if (*parser).m_prologState.level >= (*parser).m_groupSize {
+                        if (*parser).m_groupSize != 0 {
+                            if (*parser).m_groupSize
+                                > (-1 as ::core::ffi::c_int as ::core::ffi::c_uint)
+                                    .wrapping_div(2 as ::core::ffi::c_uint)
+                            {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
+                            (*parser).m_groupSize =
+                                (*parser).m_groupSize.wrapping_mul(2 as ::core::ffi::c_uint);
+                            let new_connector: *mut ::core::ffi::c_char = expat_realloc(
                                 parser,
-                                (*dtd).scaffIndex as *mut ::core::ffi::c_void,
-                                ((*parser).m_groupSize as crate::__stddef_size_t_h::size_t)
-                                    .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>()
-                                        as crate::__stddef_size_t_h::size_t),
-                                5936 as ::core::ffi::c_int,
+                                (*parser).m_groupConnector as *mut ::core::ffi::c_void,
+                                (*parser).m_groupSize as crate::__stddef_size_t_h::size_t,
+                                5915 as ::core::ffi::c_int,
                             )
-                                as *mut ::core::ffi::c_int;
-                            if new_scaff_index.is_null() {
+                                as *mut ::core::ffi::c_char;
+                            if new_connector.is_null() {
                                 (*parser).m_groupSize =
                                     (*parser).m_groupSize.wrapping_div(2 as ::core::ffi::c_uint);
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
-                            (*dtd).scaffIndex = new_scaff_index;
+                            (*parser).m_groupConnector = new_connector;
+                            if !(*dtd).scaffIndex.is_null() {
+                                let new_scaff_index: *mut ::core::ffi::c_int = expat_realloc(
+                                    parser,
+                                    (*dtd).scaffIndex as *mut ::core::ffi::c_void,
+                                    ((*parser).m_groupSize as crate::__stddef_size_t_h::size_t)
+                                        .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>()
+                                            as crate::__stddef_size_t_h::size_t),
+                                    5936 as ::core::ffi::c_int,
+                                )
+                                    as *mut ::core::ffi::c_int;
+                                if new_scaff_index.is_null() {
+                                    (*parser).m_groupSize = (*parser)
+                                        .m_groupSize
+                                        .wrapping_div(2 as ::core::ffi::c_uint);
+                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                }
+                                (*dtd).scaffIndex = new_scaff_index;
+                            }
+                        } else {
+                            (*parser).m_groupSize = 32 as ::core::ffi::c_uint;
+                            (*parser).m_groupConnector = expat_malloc(
+                                parser,
+                                (*parser).m_groupSize as crate::__stddef_size_t_h::size_t,
+                                5944 as ::core::ffi::c_int,
+                            )
+                                as *mut ::core::ffi::c_char;
+                            if (*parser).m_groupConnector.is_null() {
+                                (*parser).m_groupSize = 0 as ::core::ffi::c_uint;
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
                         }
-                    } else {
-                        (*parser).m_groupSize = 32 as ::core::ffi::c_uint;
-                        (*parser).m_groupConnector = expat_malloc(
-                            parser,
-                            (*parser).m_groupSize as crate::__stddef_size_t_h::size_t,
-                            5944 as ::core::ffi::c_int,
-                        )
-                            as *mut ::core::ffi::c_char;
-                        if (*parser).m_groupConnector.is_null() {
-                            (*parser).m_groupSize = 0 as ::core::ffi::c_uint;
+                    }
+                    *(*parser)
+                        .m_groupConnector
+                        .offset((*parser).m_prologState.level as isize) = 0 as ::core::ffi::c_char;
+                    if (*dtd).in_eldecl != 0 {
+                        let mut myindex: ::core::ffi::c_int = nextScaffoldPart(parser);
+                        if myindex < 0 as ::core::ffi::c_int {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                    }
-                }
-                *(*parser)
-                    .m_groupConnector
-                    .offset((*parser).m_prologState.level as isize) = 0 as ::core::ffi::c_char;
-                if (*dtd).in_eldecl != 0 {
-                    let mut myindex: ::core::ffi::c_int = nextScaffoldPart(parser);
-                    if myindex < 0 as ::core::ffi::c_int {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    '_c2rust_label: {
-                        if !(*dtd).scaffIndex.is_null() {
-                        } else {
-                            crate::stdlib::__assert_fail(
+                        '_c2rust_label: {
+                            if !(*dtd).scaffIndex.is_null() {
+                            } else {
+                                crate::stdlib::__assert_fail(
                                 b"dtd->scaffIndex != NULL\0".as_ptr()
                                     as *const ::core::ffi::c_char,
                                 b"../../expat/lib/xmlparse.c\0".as_ptr()
@@ -9407,559 +9431,575 @@ unsafe extern "C" fn doProlog(
                                 b"enum XML_Error doProlog(XML_Parser, const ENCODING *, const char *, const char *, int, const char *, const char **, XML_Bool, XML_Bool, enum XML_Account)\0"
                                     .as_ptr() as *const ::core::ffi::c_char,
                             );
-                        }
-                    };
-                    *(*dtd).scaffIndex.offset((*dtd).scaffLevel as isize) = myindex;
-                    (*dtd).scaffLevel += 1;
-                    (*(*dtd).scaffold.offset(myindex as isize)).type_0 =
-                        crate::expat_h::XML_CTYPE_SEQ;
-                    if (*parser).m_elementDeclHandler.is_some() {
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            50 => {
-                if *(*parser)
-                    .m_groupConnector
-                    .offset((*parser).m_prologState.level as isize)
-                    as ::core::ffi::c_int
-                    == crate::ascii_h::ASCII_PIPE
-                {
-                    return crate::expat_h::XML_ERROR_SYNTAX;
-                }
-                *(*parser)
-                    .m_groupConnector
-                    .offset((*parser).m_prologState.level as isize) =
-                    crate::ascii_h::ASCII_COMMA as ::core::ffi::c_char;
-                if (*dtd).in_eldecl as ::core::ffi::c_int != 0
-                    && (*parser).m_elementDeclHandler.is_some()
-                {
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            49 => {
-                if *(*parser)
-                    .m_groupConnector
-                    .offset((*parser).m_prologState.level as isize)
-                    as ::core::ffi::c_int
-                    == crate::ascii_h::ASCII_COMMA
-                {
-                    return crate::expat_h::XML_ERROR_SYNTAX;
-                }
-                if (*dtd).in_eldecl as ::core::ffi::c_int != 0
-                    && *(*parser)
-                        .m_groupConnector
-                        .offset((*parser).m_prologState.level as isize)
-                        == 0
-                    && (*(*dtd).scaffold.offset(
-                        *(*dtd)
-                            .scaffIndex
-                            .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
-                            as isize,
-                    ))
-                    .type_0 as ::core::ffi::c_uint
-                        != crate::expat_h::XML_CTYPE_MIXED as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                {
-                    (*(*dtd).scaffold.offset(
-                        *(*dtd)
-                            .scaffIndex
-                            .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
-                            as isize,
-                    ))
-                    .type_0 = crate::expat_h::XML_CTYPE_CHOICE;
-                    if (*parser).m_elementDeclHandler.is_some() {
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                }
-                *(*parser)
-                    .m_groupConnector
-                    .offset((*parser).m_prologState.level as isize) =
-                    crate::ascii_h::ASCII_PIPE as ::core::ffi::c_char;
-                c2rust_current_block = 8258632986558375165;
-            }
-            60 | 59 => {
-                (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                if (*parser).m_paramEntityParsing as u64 == 0 {
-                    (*dtd).keepProcessing = (*dtd).standalone;
-                    c2rust_current_block = 16953886395775657100;
-                } else {
-                    let mut name_1: *const crate::expat_external_h::XML_Char =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    let mut entity_1: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-                    name_1 = poolStoreString(
-                        &mut (*dtd).pool,
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    );
-                    if name_1.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    entity_1 = lookup(
-                        parser,
-                        &mut (*dtd).paramEntities,
-                        name_1 as KEY,
-                        0 as crate::__stddef_size_t_h::size_t,
-                    ) as *mut ENTITY;
-                    (*dtd).pool.ptr = (*dtd).pool.start;
-                    if (*parser).m_prologState.documentEntity != 0
-                        && (if (*dtd).standalone as ::core::ffi::c_int != 0 {
-                            (*parser).m_openInternalEntities.is_null() as ::core::ffi::c_int
-                        } else {
-                            ((*dtd).hasParamEntityRefs == 0) as ::core::ffi::c_int
-                        }) != 0
-                    {
-                        if entity_1.is_null() {
-                            return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
-                        } else if (*entity_1).is_internal == 0 {
-                            return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
-                        }
-                        c2rust_current_block = 11938645146649090955;
-                    } else if entity_1.is_null() {
-                        (*dtd).keepProcessing = (*dtd).standalone;
-                        if role
-                            == crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF as ::core::ffi::c_int
-                            && (*parser).m_skippedEntityHandler.is_some()
-                        {
-                            (*parser)
-                                .m_skippedEntityHandler
-                                .expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
-                                name_1,
-                                1 as ::core::ffi::c_int,
-                            );
+                            }
+                        };
+                        *(*dtd).scaffIndex.offset((*dtd).scaffLevel as isize) = myindex;
+                        (*dtd).scaffLevel += 1;
+                        (*(*dtd).scaffold.offset(myindex as isize)).type_0 =
+                            crate::expat_h::XML_CTYPE_SEQ;
+                        if (*parser).m_elementDeclHandler.is_some() {
                             handleDefault = crate::expat_h::XML_FALSE;
                         }
-                        c2rust_current_block = 8258632986558375165;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                50 => {
+                    if *(*parser)
+                        .m_groupConnector
+                        .offset((*parser).m_prologState.level as isize)
+                        as ::core::ffi::c_int
+                        == crate::ascii_h::ASCII_PIPE
+                    {
+                        return crate::expat_h::XML_ERROR_SYNTAX;
+                    }
+                    *(*parser)
+                        .m_groupConnector
+                        .offset((*parser).m_prologState.level as isize) =
+                        crate::ascii_h::ASCII_COMMA as ::core::ffi::c_char;
+                    if (*dtd).in_eldecl as ::core::ffi::c_int != 0
+                        && (*parser).m_elementDeclHandler.is_some()
+                    {
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                49 => {
+                    if *(*parser)
+                        .m_groupConnector
+                        .offset((*parser).m_prologState.level as isize)
+                        as ::core::ffi::c_int
+                        == crate::ascii_h::ASCII_COMMA
+                    {
+                        return crate::expat_h::XML_ERROR_SYNTAX;
+                    }
+                    if (*dtd).in_eldecl as ::core::ffi::c_int != 0
+                        && *(*parser)
+                            .m_groupConnector
+                            .offset((*parser).m_prologState.level as isize)
+                            == 0
+                        && (*(*dtd).scaffold.offset(
+                            *(*dtd)
+                                .scaffIndex
+                                .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
+                                as isize,
+                        ))
+                        .type_0 as ::core::ffi::c_uint
+                            != crate::expat_h::XML_CTYPE_MIXED as ::core::ffi::c_int
+                                as ::core::ffi::c_uint
+                    {
+                        (*(*dtd).scaffold.offset(
+                            *(*dtd)
+                                .scaffIndex
+                                .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
+                                as isize,
+                        ))
+                        .type_0 = crate::expat_h::XML_CTYPE_CHOICE;
+                        if (*parser).m_elementDeclHandler.is_some() {
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                    }
+                    *(*parser)
+                        .m_groupConnector
+                        .offset((*parser).m_prologState.level as isize) =
+                        crate::ascii_h::ASCII_PIPE as ::core::ffi::c_char;
+                    c2rust_current_block = 8258632986558375165;
+                }
+                60 | 59 => {
+                    (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                    if (*parser).m_paramEntityParsing as u64 == 0 {
+                        (*dtd).keepProcessing = (*dtd).standalone;
+                        c2rust_current_block = 16953886395775657100;
                     } else {
-                        c2rust_current_block = 11938645146649090955;
+                        let mut name_1: *const crate::expat_external_h::XML_Char =
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                        let mut entity_1: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
+                        name_1 = poolStoreString(
+                            &mut (*dtd).pool,
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        );
+                        if name_1.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        entity_1 = lookup(
+                            parser,
+                            &mut (*dtd).paramEntities,
+                            name_1 as KEY,
+                            0 as crate::__stddef_size_t_h::size_t,
+                        ) as *mut ENTITY;
+                        (*dtd).pool.ptr = (*dtd).pool.start;
+                        if (*parser).m_prologState.documentEntity != 0
+                            && (if (*dtd).standalone as ::core::ffi::c_int != 0 {
+                                (*parser).m_openInternalEntities.is_null() as ::core::ffi::c_int
+                            } else {
+                                ((*dtd).hasParamEntityRefs == 0) as ::core::ffi::c_int
+                            }) != 0
+                        {
+                            if entity_1.is_null() {
+                                return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
+                            } else if (*entity_1).is_internal == 0 {
+                                return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
+                            }
+                            c2rust_current_block = 11938645146649090955;
+                        } else if entity_1.is_null() {
+                            (*dtd).keepProcessing = (*dtd).standalone;
+                            if role
+                                == crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF
+                                    as ::core::ffi::c_int
+                                && (*parser).m_skippedEntityHandler.is_some()
+                            {
+                                (*parser)
+                                    .m_skippedEntityHandler
+                                    .expect("non-null function pointer")(
+                                    (*parser).m_handlerArg,
+                                    name_1,
+                                    1 as ::core::ffi::c_int,
+                                );
+                                handleDefault = crate::expat_h::XML_FALSE;
+                            }
+                            c2rust_current_block = 8258632986558375165;
+                        } else {
+                            c2rust_current_block = 11938645146649090955;
+                        }
+                        match c2rust_current_block {
+                            8258632986558375165 => {}
+                            _ => {
+                                if (*entity_1).open != 0 {
+                                    return crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
+                                }
+                                if !(*entity_1).textPtr.is_null() {
+                                    let mut result_4: crate::expat_h::XML_Error =
+                                        crate::expat_h::XML_ERROR_NONE;
+                                    let mut betweenDecl: crate::expat_h::XML_Bool = (if role
+                                        == crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF
+                                            as ::core::ffi::c_int
+                                    {
+                                        crate::expat_h::XML_TRUE as ::core::ffi::c_int
+                                    } else {
+                                        crate::expat_h::XML_FALSE as ::core::ffi::c_int
+                                    })
+                                        as crate::expat_h::XML_Bool;
+                                    result_4 = processEntity(
+                                        parser,
+                                        entity_1,
+                                        betweenDecl,
+                                        ENTITY_INTERNAL,
+                                    );
+                                    if result_4 as ::core::ffi::c_uint
+                                        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                                            as ::core::ffi::c_uint
+                                    {
+                                        return result_4;
+                                    }
+                                    handleDefault = crate::expat_h::XML_FALSE;
+                                    c2rust_current_block = 8258632986558375165;
+                                } else if (*parser).m_externalEntityRefHandler.is_some() {
+                                    (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
+                                    (*entity_1).open = crate::expat_h::XML_TRUE;
+                                    entityTrackingOnOpen(
+                                        parser,
+                                        entity_1,
+                                        6057 as ::core::ffi::c_int,
+                                    );
+                                    if (*parser)
+                                        .m_externalEntityRefHandler
+                                        .expect("non-null function pointer")(
+                                        (*parser).m_externalEntityRefHandlerArg,
+                                        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                        (*entity_1).base,
+                                        (*entity_1).systemId,
+                                        (*entity_1).publicId,
+                                    ) == 0
+                                    {
+                                        entityTrackingOnClose(
+                                            parser,
+                                            entity_1,
+                                            6061 as ::core::ffi::c_int,
+                                        );
+                                        (*entity_1).open = crate::expat_h::XML_FALSE;
+                                        return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+                                    }
+                                    entityTrackingOnClose(
+                                        parser,
+                                        entity_1,
+                                        6065 as ::core::ffi::c_int,
+                                    );
+                                    (*entity_1).open = crate::expat_h::XML_FALSE;
+                                    handleDefault = crate::expat_h::XML_FALSE;
+                                    if (*dtd).paramEntityRead == 0 {
+                                        (*dtd).keepProcessing = (*dtd).standalone;
+                                        c2rust_current_block = 8258632986558375165;
+                                    } else {
+                                        c2rust_current_block = 16953886395775657100;
+                                    }
+                                } else {
+                                    (*dtd).keepProcessing = (*dtd).standalone;
+                                    c2rust_current_block = 8258632986558375165;
+                                }
+                            }
+                        }
                     }
                     match c2rust_current_block {
                         8258632986558375165 => {}
                         _ => {
-                            if (*entity_1).open != 0 {
-                                return crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
-                            }
-                            if !(*entity_1).textPtr.is_null() {
-                                let mut result_4: crate::expat_h::XML_Error =
-                                    crate::expat_h::XML_ERROR_NONE;
-                                let mut betweenDecl: crate::expat_h::XML_Bool = (if role
-                                    == crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF
-                                        as ::core::ffi::c_int
-                                {
-                                    crate::expat_h::XML_TRUE as ::core::ffi::c_int
-                                } else {
-                                    crate::expat_h::XML_FALSE as ::core::ffi::c_int
-                                })
-                                    as crate::expat_h::XML_Bool;
-                                result_4 =
-                                    processEntity(parser, entity_1, betweenDecl, ENTITY_INTERNAL);
-                                if result_4 as ::core::ffi::c_uint
-                                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
-                                        as ::core::ffi::c_uint
-                                {
-                                    return result_4;
-                                }
-                                handleDefault = crate::expat_h::XML_FALSE;
-                                c2rust_current_block = 8258632986558375165;
-                            } else if (*parser).m_externalEntityRefHandler.is_some() {
-                                (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
-                                (*entity_1).open = crate::expat_h::XML_TRUE;
-                                entityTrackingOnOpen(parser, entity_1, 6057 as ::core::ffi::c_int);
-                                if (*parser)
-                                    .m_externalEntityRefHandler
+                            if (*dtd).standalone == 0
+                                && (*parser).m_notStandaloneHandler.is_some()
+                                && (*parser)
+                                    .m_notStandaloneHandler
                                     .expect("non-null function pointer")(
-                                    (*parser).m_externalEntityRefHandlerArg,
-                                    ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                                    (*entity_1).base,
-                                    (*entity_1).systemId,
-                                    (*entity_1).publicId,
+                                    (*parser).m_handlerArg
                                 ) == 0
-                                {
-                                    entityTrackingOnClose(
-                                        parser,
-                                        entity_1,
-                                        6061 as ::core::ffi::c_int,
-                                    );
-                                    (*entity_1).open = crate::expat_h::XML_FALSE;
-                                    return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
-                                }
-                                entityTrackingOnClose(parser, entity_1, 6065 as ::core::ffi::c_int);
-                                (*entity_1).open = crate::expat_h::XML_FALSE;
-                                handleDefault = crate::expat_h::XML_FALSE;
-                                if (*dtd).paramEntityRead == 0 {
-                                    (*dtd).keepProcessing = (*dtd).standalone;
-                                    c2rust_current_block = 8258632986558375165;
-                                } else {
-                                    c2rust_current_block = 16953886395775657100;
-                                }
-                            } else {
-                                (*dtd).keepProcessing = (*dtd).standalone;
-                                c2rust_current_block = 8258632986558375165;
+                            {
+                                return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                             }
+                            c2rust_current_block = 8258632986558375165;
                         }
                     }
                 }
-                match c2rust_current_block {
-                    8258632986558375165 => {}
-                    _ => {
-                        if (*dtd).standalone == 0
-                            && (*parser).m_notStandaloneHandler.is_some()
-                            && (*parser)
-                                .m_notStandaloneHandler
-                                .expect("non-null function pointer")(
-                                (*parser).m_handlerArg
-                            ) == 0
-                        {
-                            return crate::expat_h::XML_ERROR_NOT_STANDALONE;
-                        }
-                        c2rust_current_block = 8258632986558375165;
-                    }
-                }
-            }
-            40 => {
-                if (*parser).m_elementDeclHandler.is_some() {
-                    (*parser).m_declElementType = getElementType(parser, enc, s, next);
-                    if (*parser).m_declElementType.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*dtd).scaffLevel = 0 as ::core::ffi::c_int;
-                    (*dtd).scaffCount = 0 as ::core::ffi::c_uint;
-                    (*dtd).in_eldecl = crate::expat_h::XML_TRUE;
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            41 | 42 => {
-                if (*dtd).in_eldecl != 0 {
+                40 => {
                     if (*parser).m_elementDeclHandler.is_some() {
-                        let mut content: *mut crate::expat_h::XML_Content = (*parser)
-                            .m_mem
-                            .malloc_fcn
-                            .expect("non-null function pointer")(
-                            ::core::mem::size_of::<crate::expat_h::XML_Content>()
-                                as crate::__stddef_size_t_h::size_t,
-                        )
-                            as *mut crate::expat_h::XML_Content;
-                        if content.is_null() {
+                        (*parser).m_declElementType = getElementType(parser, enc, s, next);
+                        if (*parser).m_declElementType.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        (*content).quant = crate::expat_h::XML_CQUANT_NONE;
-                        (*content).name =
-                            ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                        (*content).numchildren = 0 as ::core::ffi::c_uint;
-                        (*content).children =
-                            ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                        (*content).type_0 = (if role
-                            == crate::src::xmlrole::XML_ROLE_CONTENT_ANY as ::core::ffi::c_int
-                        {
-                            crate::expat_h::XML_CTYPE_ANY as ::core::ffi::c_int
-                        } else {
-                            crate::expat_h::XML_CTYPE_EMPTY as ::core::ffi::c_int
-                        })
-                            as crate::expat_h::XML_Content_Type;
-                        *eventEndPP = s;
-                        (*parser)
-                            .m_elementDeclHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            (*(*parser).m_declElementType).name,
-                            content,
-                        );
+                        (*dtd).scaffLevel = 0 as ::core::ffi::c_int;
+                        (*dtd).scaffCount = 0 as ::core::ffi::c_uint;
+                        (*dtd).in_eldecl = crate::expat_h::XML_TRUE;
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
-                    (*dtd).in_eldecl = crate::expat_h::XML_FALSE;
+                    c2rust_current_block = 8258632986558375165;
                 }
-                c2rust_current_block = 8258632986558375165;
-            }
-            43 => {
-                if (*dtd).in_eldecl != 0 {
-                    (*(*dtd).scaffold.offset(
-                        *(*dtd)
-                            .scaffIndex
-                            .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
-                            as isize,
-                    ))
-                    .type_0 = crate::expat_h::XML_CTYPE_MIXED;
-                    if (*parser).m_elementDeclHandler.is_some() {
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            51 => {
-                quant = crate::expat_h::XML_CQUANT_NONE;
-                c2rust_current_block = 9506620664607974954;
-            }
-            53 => {
-                quant = crate::expat_h::XML_CQUANT_OPT;
-                c2rust_current_block = 9506620664607974954;
-            }
-            52 => {
-                quant = crate::expat_h::XML_CQUANT_REP;
-                c2rust_current_block = 9506620664607974954;
-            }
-            54 => {
-                quant = crate::expat_h::XML_CQUANT_PLUS;
-                c2rust_current_block = 9506620664607974954;
-            }
-            45 => {
-                quant = crate::expat_h::XML_CQUANT_NONE;
-                c2rust_current_block = 2837971202649219995;
-            }
-            47 => {
-                quant = crate::expat_h::XML_CQUANT_OPT;
-                c2rust_current_block = 2837971202649219995;
-            }
-            46 => {
-                quant = crate::expat_h::XML_CQUANT_REP;
-                c2rust_current_block = 2837971202649219995;
-            }
-            48 => {
-                quant = crate::expat_h::XML_CQUANT_PLUS;
-                c2rust_current_block = 2837971202649219995;
-            }
-            55 => {
-                if reportProcessingInstruction(parser, enc, s, next) == 0 {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                handleDefault = crate::expat_h::XML_FALSE;
-                c2rust_current_block = 8258632986558375165;
-            }
-            56 => {
-                if reportComment(parser, enc, s, next) == 0 {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                handleDefault = crate::expat_h::XML_FALSE;
-                c2rust_current_block = 8258632986558375165;
-            }
-            0 => {
-                match tok {
-                    crate::src::xmltok::XML_TOK_BOM => {
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                    _ => {}
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            3 => {
-                if (*parser).m_startDoctypeDeclHandler.is_some() {
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            11 => {
-                if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                    && (*parser).m_entityDeclHandler.is_some()
-                {
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            17 => {
-                if (*parser).m_notationDeclHandler.is_some() {
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            33 => {
-                if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                    && (*parser).m_attlistDeclHandler.is_some()
-                {
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            39 => {
-                if (*parser).m_elementDeclHandler.is_some() {
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            _ => {
-                c2rust_current_block = 8258632986558375165;
-            }
-        }
-        match c2rust_current_block {
-            3681359897139369850 => {
-                if (*enc).isPublicId.expect("non-null function pointer")(enc, s, next, eventPP) == 0
-                {
-                    return crate::expat_h::XML_ERROR_PUBLICID;
-                }
-                c2rust_current_block = 14769507584970373587;
-            }
-            16790621803724920579 => {
-                if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                    && !(*parser).m_declEntity.is_null()
-                {
-                    (*(*parser).m_declEntity).systemId = poolStoreString(
-                        &mut (*dtd).pool,
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    );
-                    if (*(*parser).m_declEntity).systemId.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*(*parser).m_declEntity).base = (*parser).m_curBase;
-                    (*dtd).pool.start = (*dtd).pool.ptr;
-                    if (*parser).m_entityDeclHandler.is_some()
-                        && role
-                            == crate::src::xmlrole::XML_ROLE_ENTITY_SYSTEM_ID as ::core::ffi::c_int
-                    {
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            11852364650731333344 => {
-                if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                    && (*parser).m_attlistDeclHandler.is_some()
-                {
-                    handleDefault = crate::expat_h::XML_FALSE;
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            9506620664607974954 => {
-                if (*dtd).in_eldecl != 0 {
-                    let mut el: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-                    let mut name_2: *const crate::expat_external_h::XML_Char =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    let mut nameLen: crate::__stddef_size_t_h::size_t = 0;
-                    let mut nxt: *const ::core::ffi::c_char = if quant as ::core::ffi::c_uint
-                        == crate::expat_h::XML_CQUANT_NONE as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        next
-                    } else {
-                        next.offset(-((*enc).minBytesPerChar as isize))
-                    };
-                    let mut myindex_0: ::core::ffi::c_int = nextScaffoldPart(parser);
-                    if myindex_0 < 0 as ::core::ffi::c_int {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*(*dtd).scaffold.offset(myindex_0 as isize)).type_0 =
-                        crate::expat_h::XML_CTYPE_NAME;
-                    (*(*dtd).scaffold.offset(myindex_0 as isize)).quant = quant;
-                    el = getElementType(parser, enc, s, nxt);
-                    if el.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    name_2 = (*el).name;
-                    let ref mut c2rust_fresh5 = (*(*dtd).scaffold.offset(myindex_0 as isize)).name;
-                    *c2rust_fresh5 = name_2;
-                    nameLen = 0 as crate::__stddef_size_t_h::size_t;
-                    loop {
-                        let c2rust_fresh6 = nameLen;
-                        nameLen = nameLen.wrapping_add(1);
-                        if !(*name_2.offset(c2rust_fresh6 as isize) != 0) {
-                            break;
-                        }
-                    }
-                    if nameLen
-                        > crate::limits_h::UINT_MAX.wrapping_sub((*dtd).contentStringLen)
-                            as crate::__stddef_size_t_h::size_t
-                    {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    (*dtd).contentStringLen = (*dtd)
-                        .contentStringLen
-                        .wrapping_add(nameLen as ::core::ffi::c_uint);
-                    if (*parser).m_elementDeclHandler.is_some() {
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                }
-                c2rust_current_block = 8258632986558375165;
-            }
-            2837971202649219995 => {
-                if (*dtd).in_eldecl != 0 {
-                    if (*parser).m_elementDeclHandler.is_some() {
-                        handleDefault = crate::expat_h::XML_FALSE;
-                    }
-                    (*dtd).scaffLevel -= 1;
-                    (*(*dtd)
-                        .scaffold
-                        .offset(*(*dtd).scaffIndex.offset((*dtd).scaffLevel as isize) as isize))
-                    .quant = quant;
-                    if (*dtd).scaffLevel == 0 as ::core::ffi::c_int {
-                        if handleDefault == 0 {
-                            let mut model: *mut crate::expat_h::XML_Content = build_model(parser);
-                            if model.is_null() {
+                41 | 42 => {
+                    if (*dtd).in_eldecl != 0 {
+                        if (*parser).m_elementDeclHandler.is_some() {
+                            let mut content: *mut crate::expat_h::XML_Content = (*parser)
+                                .m_mem
+                                .malloc_fcn
+                                .expect("non-null function pointer")(
+                                ::core::mem::size_of::<crate::expat_h::XML_Content>()
+                                    as crate::__stddef_size_t_h::size_t,
+                            )
+                                as *mut crate::expat_h::XML_Content;
+                            if content.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
+                            (*content).quant = crate::expat_h::XML_CQUANT_NONE;
+                            (*content).name =
+                                ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+                            (*content).numchildren = 0 as ::core::ffi::c_uint;
+                            (*content).children =
+                                ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                            (*content).type_0 = (if role
+                                == crate::src::xmlrole::XML_ROLE_CONTENT_ANY as ::core::ffi::c_int
+                            {
+                                crate::expat_h::XML_CTYPE_ANY as ::core::ffi::c_int
+                            } else {
+                                crate::expat_h::XML_CTYPE_EMPTY as ::core::ffi::c_int
+                            })
+                                as crate::expat_h::XML_Content_Type;
                             *eventEndPP = s;
                             (*parser)
                                 .m_elementDeclHandler
                                 .expect("non-null function pointer")(
                                 (*parser).m_handlerArg,
                                 (*(*parser).m_declElementType).name,
-                                model,
+                                content,
                             );
+                            handleDefault = crate::expat_h::XML_FALSE;
                         }
                         (*dtd).in_eldecl = crate::expat_h::XML_FALSE;
-                        (*dtd).contentStringLen = 0 as ::core::ffi::c_uint;
                     }
+                    c2rust_current_block = 8258632986558375165;
                 }
-                c2rust_current_block = 8258632986558375165;
-            }
-            _ => {}
-        }
-        match c2rust_current_block {
-            14769507584970373587 => {
-                if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                    && !(*parser).m_declEntity.is_null()
-                {
-                    let mut tem: *mut crate::expat_external_h::XML_Char = poolStoreString(
-                        &mut (*dtd).pool,
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    );
-                    if tem.is_null() {
+                43 => {
+                    if (*dtd).in_eldecl != 0 {
+                        (*(*dtd).scaffold.offset(
+                            *(*dtd)
+                                .scaffIndex
+                                .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
+                                as isize,
+                        ))
+                        .type_0 = crate::expat_h::XML_CTYPE_MIXED;
+                        if (*parser).m_elementDeclHandler.is_some() {
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                51 => {
+                    quant = crate::expat_h::XML_CQUANT_NONE;
+                    c2rust_current_block = 9506620664607974954;
+                }
+                53 => {
+                    quant = crate::expat_h::XML_CQUANT_OPT;
+                    c2rust_current_block = 9506620664607974954;
+                }
+                52 => {
+                    quant = crate::expat_h::XML_CQUANT_REP;
+                    c2rust_current_block = 9506620664607974954;
+                }
+                54 => {
+                    quant = crate::expat_h::XML_CQUANT_PLUS;
+                    c2rust_current_block = 9506620664607974954;
+                }
+                45 => {
+                    quant = crate::expat_h::XML_CQUANT_NONE;
+                    c2rust_current_block = 2837971202649219995;
+                }
+                47 => {
+                    quant = crate::expat_h::XML_CQUANT_OPT;
+                    c2rust_current_block = 2837971202649219995;
+                }
+                46 => {
+                    quant = crate::expat_h::XML_CQUANT_REP;
+                    c2rust_current_block = 2837971202649219995;
+                }
+                48 => {
+                    quant = crate::expat_h::XML_CQUANT_PLUS;
+                    c2rust_current_block = 2837971202649219995;
+                }
+                55 => {
+                    if reportProcessingInstruction(parser, enc, s, next) == 0 {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    let public_id_len = ::core::ffi::CStr::from_ptr(tem).to_bytes_with_nul().len();
-                    normalizePublicId(::core::slice::from_raw_parts_mut(tem, public_id_len));
-                    (*(*parser).m_declEntity).publicId = tem;
-                    (*dtd).pool.start = (*dtd).pool.ptr;
-                    if (*parser).m_entityDeclHandler.is_some()
-                        && role
-                            == crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int
+                    handleDefault = crate::expat_h::XML_FALSE;
+                    c2rust_current_block = 8258632986558375165;
+                }
+                56 => {
+                    if reportComment(parser, enc, s, next) == 0 {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                    handleDefault = crate::expat_h::XML_FALSE;
+                    c2rust_current_block = 8258632986558375165;
+                }
+                0 => {
+                    match tok {
+                        crate::src::xmltok::XML_TOK_BOM => {
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                        _ => {}
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                3 => {
+                    if (*parser).m_startDoctypeDeclHandler.is_some() {
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                11 => {
+                    if (*dtd).keepProcessing as ::core::ffi::c_int != 0
+                        && (*parser).m_entityDeclHandler.is_some()
                     {
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                17 => {
+                    if (*parser).m_notationDeclHandler.is_some() {
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                33 => {
+                    if (*dtd).keepProcessing as ::core::ffi::c_int != 0
+                        && (*parser).m_attlistDeclHandler.is_some()
+                    {
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                39 => {
+                    if (*parser).m_elementDeclHandler.is_some() {
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                _ => {
+                    c2rust_current_block = 8258632986558375165;
                 }
             }
-            _ => {}
-        }
-        if handleDefault as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler.is_some() {
-            reportDefault(parser, enc, s, next);
-        }
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-            3 => {
-                *nextPtr = next;
-                return crate::expat_h::XML_ERROR_NONE;
+            match c2rust_current_block {
+                3681359897139369850 => {
+                    if (*enc).isPublicId.expect("non-null function pointer")(enc, s, next, eventPP)
+                        == 0
+                    {
+                        return crate::expat_h::XML_ERROR_PUBLICID;
+                    }
+                    c2rust_current_block = 14769507584970373587;
+                }
+                16790621803724920579 => {
+                    if (*dtd).keepProcessing as ::core::ffi::c_int != 0
+                        && !(*parser).m_declEntity.is_null()
+                    {
+                        (*(*parser).m_declEntity).systemId = poolStoreString(
+                            &mut (*dtd).pool,
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        );
+                        if (*(*parser).m_declEntity).systemId.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*(*parser).m_declEntity).base = (*parser).m_curBase;
+                        (*dtd).pool.start = (*dtd).pool.ptr;
+                        if (*parser).m_entityDeclHandler.is_some()
+                            && role
+                                == crate::src::xmlrole::XML_ROLE_ENTITY_SYSTEM_ID
+                                    as ::core::ffi::c_int
+                        {
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                11852364650731333344 => {
+                    if (*dtd).keepProcessing as ::core::ffi::c_int != 0
+                        && (*parser).m_attlistDeclHandler.is_some()
+                    {
+                        handleDefault = crate::expat_h::XML_FALSE;
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                9506620664607974954 => {
+                    if (*dtd).in_eldecl != 0 {
+                        let mut el: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                        let mut name_2: *const crate::expat_external_h::XML_Char =
+                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                        let mut nameLen: crate::__stddef_size_t_h::size_t = 0;
+                        let mut nxt: *const ::core::ffi::c_char = if quant as ::core::ffi::c_uint
+                            == crate::expat_h::XML_CQUANT_NONE as ::core::ffi::c_int
+                                as ::core::ffi::c_uint
+                        {
+                            next
+                        } else {
+                            next.offset(-((*enc).minBytesPerChar as isize))
+                        };
+                        let mut myindex_0: ::core::ffi::c_int = nextScaffoldPart(parser);
+                        if myindex_0 < 0 as ::core::ffi::c_int {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*(*dtd).scaffold.offset(myindex_0 as isize)).type_0 =
+                            crate::expat_h::XML_CTYPE_NAME;
+                        (*(*dtd).scaffold.offset(myindex_0 as isize)).quant = quant;
+                        el = getElementType(parser, enc, s, nxt);
+                        if el.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        name_2 = (*el).name;
+                        let ref mut c2rust_fresh5 =
+                            (*(*dtd).scaffold.offset(myindex_0 as isize)).name;
+                        *c2rust_fresh5 = name_2;
+                        nameLen = 0 as crate::__stddef_size_t_h::size_t;
+                        loop {
+                            let c2rust_fresh6 = nameLen;
+                            nameLen = nameLen.wrapping_add(1);
+                            if !(*name_2.offset(c2rust_fresh6 as isize) != 0) {
+                                break;
+                            }
+                        }
+                        if nameLen
+                            > crate::limits_h::UINT_MAX.wrapping_sub((*dtd).contentStringLen)
+                                as crate::__stddef_size_t_h::size_t
+                        {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        (*dtd).contentStringLen = (*dtd)
+                            .contentStringLen
+                            .wrapping_add(nameLen as ::core::ffi::c_uint);
+                        if (*parser).m_elementDeclHandler.is_some() {
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                2837971202649219995 => {
+                    if (*dtd).in_eldecl != 0 {
+                        if (*parser).m_elementDeclHandler.is_some() {
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                        (*dtd).scaffLevel -= 1;
+                        (*(*dtd).scaffold.offset(
+                            *(*dtd).scaffIndex.offset((*dtd).scaffLevel as isize) as isize,
+                        ))
+                        .quant = quant;
+                        if (*dtd).scaffLevel == 0 as ::core::ffi::c_int {
+                            if handleDefault == 0 {
+                                let mut model: *mut crate::expat_h::XML_Content =
+                                    build_model(parser);
+                                if model.is_null() {
+                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                }
+                                *eventEndPP = s;
+                                (*parser)
+                                    .m_elementDeclHandler
+                                    .expect("non-null function pointer")(
+                                    (*parser).m_handlerArg,
+                                    (*(*parser).m_declElementType).name,
+                                    model,
+                                );
+                            }
+                            (*dtd).in_eldecl = crate::expat_h::XML_FALSE;
+                            (*dtd).contentStringLen = 0 as ::core::ffi::c_uint;
+                        }
+                    }
+                    c2rust_current_block = 8258632986558375165;
+                }
+                _ => {}
             }
-            2 => return crate::expat_h::XML_ERROR_ABORTED,
-            1 => {
-                if (*parser).m_reenter != 0 {
+            match c2rust_current_block {
+                14769507584970373587 => {
+                    if (*dtd).keepProcessing as ::core::ffi::c_int != 0
+                        && !(*parser).m_declEntity.is_null()
+                    {
+                        let mut tem: *mut crate::expat_external_h::XML_Char = poolStoreString(
+                            &mut (*dtd).pool,
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        );
+                        if tem.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        let public_id_len =
+                            ::core::ffi::CStr::from_ptr(tem).to_bytes_with_nul().len();
+                        normalizePublicId(::core::slice::from_raw_parts_mut(tem, public_id_len));
+                        (*(*parser).m_declEntity).publicId = tem;
+                        (*dtd).pool.start = (*dtd).pool.ptr;
+                        if (*parser).m_entityDeclHandler.is_some()
+                            && role
+                                == crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID
+                                    as ::core::ffi::c_int
+                        {
+                            handleDefault = crate::expat_h::XML_FALSE;
+                        }
+                    }
+                }
+                _ => {}
+            }
+            if handleDefault as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler.is_some() {
+                reportDefault(parser, enc, s, next);
+            }
+            match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+                3 => {
                     *nextPtr = next;
                     return crate::expat_h::XML_ERROR_NONE;
                 }
+                2 => return crate::expat_h::XML_ERROR_ABORTED,
+                1 => {
+                    if (*parser).m_reenter != 0 {
+                        *nextPtr = next;
+                        return crate::expat_h::XML_ERROR_NONE;
+                    }
+                }
+                _ => {}
             }
-            _ => {}
+            s = next;
+            tok = (*enc).scanners[0 as ::core::ffi::c_int as usize]
+                .expect("non-null function pointer")(enc, s, end, &raw mut next);
         }
-        s = next;
-        tok = (*enc).scanners[0 as ::core::ffi::c_int as usize].expect("non-null function pointer")(
-            enc,
-            s,
-            end,
-            &raw mut next,
-        );
-    }
+    })
 }
 
 extern "C" fn epilogProcessor(
