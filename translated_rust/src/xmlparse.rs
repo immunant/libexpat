@@ -4783,9 +4783,14 @@ pub unsafe extern "C" fn expat_malloc(
             sourceLine,
         );
     }
+    // The allocation size above includes this fixed header and padding, so
+    // advancing the returned address cannot escape the allocated object.
+    // `wrapping_add` expresses that address adjustment without an unsafe
+    // pointer-offset operation; the allocation remains owned by `mallocedPtr`
+    // and is recovered by the inverse adjustment in `expat_free`.
     return (mallocedPtr as *mut ::core::ffi::c_char)
-        .offset(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as isize)
-        .offset(crate::internal_h::EXPAT_MALLOC_PADDING as isize)
+        .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         as *mut ::core::ffi::c_void;
 }
 #[export_name = "expat_malloc"]
