@@ -17424,7 +17424,7 @@ pub unsafe extern "C" fn XmlUtf16Encode_ffi(
 ) -> ::core::ffi::c_int {
     XmlUtf16Encode(charNum, buf)
 }
-pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
+pub extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
     return ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int;
 }
 #[export_name = "XmlSizeOfUnknownEncoding"]
