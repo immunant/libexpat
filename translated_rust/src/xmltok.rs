@@ -1511,38 +1511,60 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
-    fn utf8_sequence_is_invalid(bytes: &[u8]) -> bool {
-        match bytes {
-            [first, second] => *first < 0xc2 || second & 0x80 == 0 || second & 0xc0 == 0xc0,
-            [first, second, third] => {
+    trait CdataByte: Copy {
+        fn as_u8(self) -> u8;
+    }
+
+    impl CdataByte for u8 {
+        fn as_u8(self) -> u8 {
+            self
+        }
+    }
+
+    impl CdataByte for ::core::ffi::c_char {
+        fn as_u8(self) -> u8 {
+            self as u8
+        }
+    }
+
+    fn utf8_sequence_is_invalid<T: CdataByte>(bytes: &[T]) -> bool {
+        let first = bytes.first().map(|byte| byte.as_u8());
+        let second = bytes.get(1).map(|byte| byte.as_u8());
+        let third = bytes.get(2).map(|byte| byte.as_u8());
+        let fourth = bytes.get(3).map(|byte| byte.as_u8());
+        match (first, second, third, fourth) {
+            (Some(first), Some(second), None, None) => {
+                first < 0xc2 || second & 0x80 == 0 || second & 0xc0 == 0xc0
+            }
+            (Some(first), Some(second), Some(third), None) => {
                 third & 0x80 == 0
-                    || if *first == 0xef && *second == 0xbf {
-                        *third > 0xbd
+                    || if first == 0xef && second == 0xbf {
+                        third > 0xbd
                     } else {
                         third & 0xc0 == 0xc0
                     }
-                    || if *first == 0xe0 {
-                        *second < 0xa0 || second & 0xc0 == 0xc0
+                    || if first == 0xe0 {
+                        second < 0xa0 || second & 0xc0 == 0xc0
                     } else {
                         second & 0x80 == 0
-                            || if *first == 0xed {
-                                *second > 0x9f
+                            || if first == 0xed {
+                                second > 0x9f
                             } else {
                                 second & 0xc0 == 0xc0
                             }
                     }
             }
-            [first, second, third, fourth] => {
+            (Some(first), Some(second), Some(third), Some(fourth)) => {
                 fourth & 0x80 == 0
                     || fourth & 0xc0 == 0xc0
                     || third & 0x80 == 0
                     || third & 0xc0 == 0xc0
-                    || if *first == 0xf0 {
-                        *second < 0x90 || second & 0xc0 == 0xc0
+                    || if first == 0xf0 {
+                        second < 0x90 || second & 0xc0 == 0xc0
                     } else {
                         second & 0x80 == 0
-                            || if *first == 0xf4 {
-                                *second > 0x8f
+                            || if first == 0xf4 {
+                                second > 0x8f
                             } else {
                                 second & 0xc0 == 0xc0
                             }
@@ -1552,8 +1574,8 @@ pub mod xmltok_impl_c {
         }
     }
 
-    fn normal_cdata_section_tok(
-        input: &[u8],
+    fn normal_cdata_section_tok<T: CdataByte>(
+        input: &[T],
         byte_types: &[::core::ffi::c_uchar; 256],
         is_utf8: bool,
     ) -> (::core::ffi::c_int, Option<usize>) {
@@ -1561,7 +1583,7 @@ pub mod xmltok_impl_c {
             return (crate::src::xmltok::XML_TOK_NONE_1, None);
         }
 
-        let byte_type = |offset: usize| byte_types[input[offset] as usize] as u32;
+        let byte_type = |offset: usize| byte_types[input[offset].as_u8() as usize] as u32;
         let invalid_sequence = |offset: usize, width: usize| {
             is_utf8 && utf8_sequence_is_invalid(&input[offset..offset + width])
         };
@@ -1572,12 +1594,12 @@ pub mod xmltok_impl_c {
                 if offset == input.len() {
                     return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
                 }
-                if input[offset] == b']' {
+                if input[offset].as_u8() == b']' {
                     offset += 1;
                     if offset == input.len() {
                         return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
                     }
-                    if input[offset] == b'>' {
+                    if input[offset].as_u8() == b'>' {
                         return (
                             crate::src::xmltok::XML_TOK_CDATA_SECT_CLOSE_1,
                             Some(offset + 1),
@@ -8112,6 +8134,22 @@ pub mod xmltok_impl_c {
             crate::src::xmltok::Scanner::Big2CdataSection => {
                 let result = big2_cdata_section_tok_impl(normal, input);
                 (result.token, result.next)
+            }
+            _ => (crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
+        }
+    }
+
+    // Internal entity replacement text is retained as `XML_Char` data.  Its
+    // encoding is always the parser's UTF-8 internal encoding, so scan that
+    // bounded character slice directly instead of reinterpreting it through
+    // a raw byte pointer.
+    pub(crate) fn internal_cdata_token(
+        normal: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        match normal.enc.scanners[2] {
+            crate::src::xmltok::Scanner::NormalCdataSection => {
+                normal_cdata_section_tok(input, &normal.type_0, normal.enc.isUtf8 != 0)
             }
             _ => (crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
         }

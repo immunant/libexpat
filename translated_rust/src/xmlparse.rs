@@ -3369,6 +3369,12 @@ pub struct open_internal_entity {
     // The end of an internal-entity default event is measured from its start.
     // This event-local offset stays valid when its pool storage moves.
     pub internalEventEndPtr: Option<usize>,
+    // The active frame retains the pool handle for its replacement text so
+    // token processors can re-establish a bounded view for each token.  It
+    // deliberately stores no borrowed slice: callbacks may re-enter and
+    // mutate the parser between tokens.
+    eventText: EntityTextRef,
+    eventTextLen: ::core::ffi::c_int,
     // The active entity stacks own every frame.  Retaining the predecessor as
     // an index preserves the C frame's link word and LIFO relationship
     // without keeping an address that vector growth could invalidate.
@@ -10526,10 +10532,18 @@ unsafe extern "C" fn doCdataSection(
     let mut eventPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
+    let mut internal_event_text: Option<(
+        EntityTextRef,
+        ::core::ffi::c_int,
+        std::sync::Arc<SharedDtd>,
+    )> = None;
     let internal_event_start = std::cell::Cell::new(::core::ptr::null::<::core::ffi::c_char>());
     if !parser_events {
         let open_entity = {
             let parser_state = &mut *parser_handle;
+            let Some(dtd) = parser_state.m_dtd.clone() else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
             let Some(open_entity_index) = parser_state.m_openInternalEntities else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -10537,6 +10551,11 @@ unsafe extern "C" fn doCdataSection(
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
+            internal_event_text = Some((
+                open_entity.node().eventText,
+                open_entity.node().eventTextLen,
+                dtd,
+            ));
             std::ptr::from_mut(open_entity.node_mut())
         };
         eventPP = &raw mut (*open_entity).internalEventPtr;
@@ -10554,25 +10573,40 @@ unsafe extern "C" fn doCdataSection(
     };
     update_event_start(s);
     loop {
-        // Form the token window from parser-owned storage, validate both
-        // cursor addresses against that storage, and drop the borrow before
-        // any callback.  CDATA sections are parsed from a parser input buffer
-        // (never an internal replacement-text entity).  External entity
-        // cursors retain their established boundary scanner path.
-        let (tok, mut next) = if parser_events {
-            let input = match (&*parser_handle)
-                .m_buffer
-                .window_from_addresses(s.addr(), end.addr())
-            {
-                Some(input) => input,
-                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+        // Form the token window from owned storage and drop it before a
+        // callback.  Internal replacement text is resolved afresh from its
+        // pool handle on every iteration, so a re-entrant callback cannot
+        // leave this processor holding a stale DTD-pool slice.
+        let (tok, mut next) = {
+            let (tok, next_offset) = if parser_events {
+                let input = match (&*parser_handle)
+                    .m_buffer
+                    .window_from_addresses(s.addr(), end.addr())
+                {
+                    Some(input) => input,
+                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                };
+                crate::src::xmltok::xmltok_impl_c::cdata_token(enc, input)
+            } else {
+                let Some((text_ref, text_len, dtd)) = internal_event_text.as_ref() else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let dtd = &*dtd.value.get();
+                let Some(text) = entity_text_chars(dtd, *text_ref, *text_len) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(start) = s.addr().checked_sub(text.as_ptr().addr()) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(end) = end.addr().checked_sub(text.as_ptr().addr()) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(input) = text.get(start..end) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                crate::src::xmltok::xmltok_impl_c::internal_cdata_token(enc, input)
             };
-            let (tok, next_offset) = crate::src::xmltok::xmltok_impl_c::cdata_token(enc, input);
             (tok, next_offset.map_or(s, |offset| s.wrapping_add(offset)))
-        } else {
-            let mut next = s;
-            let tok = enc.enc.scanners[2].scan(enc_ptr, s, end, &raw mut next);
-            (tok, next)
         };
         if accountingDiffTolerated(parser_handle, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
             accountingOnAbort(parser_handle);
@@ -14669,6 +14703,8 @@ unsafe extern "C" fn processEntity(
         open_entity.betweenDecl = betweenDecl;
         open_entity.internalEventPtr = ::core::ptr::null::<::core::ffi::c_char>();
         open_entity.internalEventEndPtr = None;
+        open_entity.eventText = entity.textPtr;
+        open_entity.eventTextLen = entity.textLen;
     }
     if type_0 as ::core::ffi::c_uint == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -17245,6 +17281,11 @@ fn internal_entity_storage_new(
     node.push(OPEN_INTERNAL_ENTITY {
         internalEventPtr: ::core::ptr::null(),
         internalEventEndPtr: None,
+        eventText: EntityTextRef {
+            pool: EntityTextPool::Dtd,
+            string: None,
+        },
+        eventTextLen: 0,
         next: usize::MAX,
         entity_slot: 0,
         startTagLevel: 0,
