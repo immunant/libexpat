@@ -5024,10 +5024,7 @@ unsafe extern "C" fn ENTROPY_DEBUG(
     mut label: *const ::core::ffi::c_char,
     mut entropy: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_ulong {
-    if getDebugLevel(
-        b"EXPAT_ENTROPY_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-        0 as ::core::ffi::c_ulong,
-    ) >= 1 as ::core::ffi::c_ulong
+    if environment_decimal_debug_level("EXPAT_ENTROPY_DEBUG", 0) >= 1
     {
         crate::stdlib::fprintf(
             crate::stdlib::stderr,
@@ -5687,10 +5684,13 @@ fn environment_decimal_debug_level(
     variable_name: &str,
     default_debug_level: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_ulong {
-    let Ok(value) = std::env::var(variable_name) else {
+    let Some(value) = std::env::var_os(variable_name) else {
         return default_debug_level;
     };
-    let bytes = value.as_bytes();
+    // Environment variable values are C byte strings.  Avoid `var`, which
+    // rejects non-Unicode values before the decimal parser can reject them
+    // according to the original `strtoul` contract.
+    let bytes = value.as_encoded_bytes();
     let mut offset = 0;
     while bytes
         .get(offset)
@@ -5958,14 +5958,8 @@ unsafe extern "C" fn parserInit(
     } else {
         copyString(encodingName, parser)
     };
-    let accounting_debug_level = getDebugLevel(
-        b"EXPAT_ACCOUNTING_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-        0 as ::core::ffi::c_ulong,
-    );
-    let entity_debug_level = getDebugLevel(
-        b"EXPAT_ENTITY_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-        0 as ::core::ffi::c_ulong,
-    );
+    let accounting_debug_level = environment_decimal_debug_level("EXPAT_ACCOUNTING_DEBUG", 0);
+    let entity_debug_level = environment_decimal_debug_level("EXPAT_ENTITY_DEBUG", 0);
     let reparse_deferral_enabled = g_reparseDeferralEnabledDefault;
     let parser_key = parser as usize;
     let parser_state = &mut *parser;
@@ -22896,28 +22890,6 @@ pub unsafe extern "C" fn unsignedCharToPrintable_ffi(
     mut c: ::core::ffi::c_uchar,
 ) -> *const ::core::ffi::c_char {
     unsignedCharToPrintable(c)
-}
-unsafe extern "C" fn getDebugLevel(
-    mut variableName: *const ::core::ffi::c_char,
-    mut defaultDebugLevel: ::core::ffi::c_ulong,
-) -> ::core::ffi::c_ulong {
-    let valueOrNull: *const ::core::ffi::c_char = crate::stdlib::getenv(variableName);
-    if valueOrNull.is_null() {
-        return defaultDebugLevel;
-    }
-    let value: *const ::core::ffi::c_char = valueOrNull;
-    *crate::stdlib::__errno_location() = 0 as ::core::ffi::c_int;
-    let mut afterValue: *mut ::core::ffi::c_char = ::core::ptr::null_mut::<::core::ffi::c_char>();
-    let mut debugLevel: ::core::ffi::c_ulong =
-        crate::stdlib::strtoul(value, &raw mut afterValue, 10 as ::core::ffi::c_int);
-    if *crate::stdlib::__errno_location() != 0 as ::core::ffi::c_int
-        || afterValue == value as *mut ::core::ffi::c_char
-        || *afterValue.offset(0 as isize) as ::core::ffi::c_int != '\0' as ::core::ffi::c_int
-    {
-        *crate::stdlib::__errno_location() = 0 as ::core::ffi::c_int;
-        return defaultDebugLevel;
-    }
-    return debugLevel;
 }
 extern "C" fn c2rust_run_static_initializers() {}
 #[used]
