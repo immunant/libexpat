@@ -101,30 +101,6 @@ macro_rules! call_fail {
     }};
 }
 
-macro_rules! clone_c_string_arg {
-    ($ptr:expr, $assertion:expr, $line:expr, $function:expr $(,)?) => {{
-        let ptr = require_non_null($ptr, $assertion, $line, $function);
-        unsafe { CStr::from_ptr(ptr.as_ptr()) }.to_owned()
-    }};
-}
-
-macro_rules! expected_slice {
-    ($expected:expr, $count:expr $(,)?) => {{
-        let expected = require_non_null(
-            $expected,
-            b"expected != NULL\0",
-            113 as ::core::ffi::c_uint,
-            FN_CHECK_ITEMS,
-        );
-        unsafe {
-            ::core::slice::from_raw_parts(
-                expected.as_ptr(),
-                usize::try_from($count).expect("expected count should be non-negative"),
-            )
-        }
-    }};
-}
-
 fn fail_with_static(line: ::core::ffi::c_int, msg: &'static [u8]) -> ! {
     let msg =
         CStr::from_bytes_with_nul(msg).expect("static failure messages must be NUL-terminated");
@@ -395,7 +371,8 @@ pub unsafe extern "C" fn StructData_AddItem(
     );
     let storage_key = StorageKey(storage);
     let storage = unsafe { storage.as_mut() };
-    let s = clone_c_string_arg!(s, b"s != NULL\0", 85 as ::core::ffi::c_uint, FN_ADD_ITEM);
+    let s = require_non_null(s, b"s != NULL\0", 85 as ::core::ffi::c_uint, FN_ADD_ITEM);
+    let s = unsafe { CStr::from_ptr(s.as_ptr()) }.to_owned();
 
     with_registry(|registry| {
         let model = get_or_insert_model(registry, storage_key, storage_max_count(storage));
@@ -433,17 +410,31 @@ pub unsafe extern "C" fn StructData_CheckItems(
         )
     }
 
-    let expected = expected_slice!(expected, count);
+    let expected = require_non_null(
+        expected,
+        b"expected != NULL\0",
+        113 as ::core::ffi::c_uint,
+        FN_CHECK_ITEMS,
+    );
+    let expected = unsafe {
+        ::core::slice::from_raw_parts(
+            expected.as_ptr(),
+            usize::try_from(count).expect("expected count should be non-negative"),
+        )
+    };
 
     let expected_entries: Vec<ExpectedEntry> = expected
         .iter()
         .map(|entry| ExpectedEntry {
-            text: clone_c_string_arg!(
-                entry.str,
-                b"expected[i].str != NULL\0",
-                130 as ::core::ffi::c_uint,
-                FN_CHECK_ITEMS,
-            ),
+            text: {
+                let text = require_non_null(
+                    entry.str,
+                    b"expected[i].str != NULL\0",
+                    130 as ::core::ffi::c_uint,
+                    FN_CHECK_ITEMS,
+                );
+                unsafe { CStr::from_ptr(text.as_ptr()) }.to_owned()
+            },
             data0: entry.data0,
             data1: entry.data1,
             data2: entry.data2,
