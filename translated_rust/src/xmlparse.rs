@@ -1596,6 +1596,7 @@ fn expat_heap_increase_tolerable(
     }
     return tolerable;
 }
+#[export_name = "expat_malloc"]
 pub unsafe extern "C" fn expat_malloc(
     mut parser: crate::expat_h::XML_Parser,
     mut size: crate::__stddef_size_t_h::size_t,
@@ -1671,15 +1672,7 @@ pub unsafe extern "C" fn expat_malloc(
         .offset(crate::internal_h::EXPAT_MALLOC_PADDING as isize)
         as *mut ::core::ffi::c_void;
 }
-#[export_name = "expat_malloc"]
-
-pub unsafe extern "C" fn expat_malloc_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut size: crate::__stddef_size_t_h::size_t,
-    mut sourceLine: ::core::ffi::c_int,
-) -> *mut ::core::ffi::c_void {
-    expat_malloc(parser, size, sourceLine)
-}
+#[export_name = "expat_free"]
 pub unsafe extern "C" fn expat_free(
     mut parser: crate::expat_h::XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
@@ -1753,15 +1746,7 @@ pub unsafe extern "C" fn expat_free(
     }
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(mallocedPtr);
 }
-#[export_name = "expat_free"]
-
-pub unsafe extern "C" fn expat_free_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut ptr: *mut ::core::ffi::c_void,
-    mut sourceLine: ::core::ffi::c_int,
-) {
-    expat_free(parser, ptr, sourceLine)
-}
+#[export_name = "expat_realloc"]
 pub unsafe extern "C" fn expat_realloc(
     mut parser: crate::expat_h::XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
@@ -1918,16 +1903,6 @@ pub unsafe extern "C" fn expat_realloc(
         .offset(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as usize as isize)
         .offset(crate::internal_h::EXPAT_MALLOC_PADDING as isize)
         as *mut ::core::ffi::c_void;
-}
-#[export_name = "expat_realloc"]
-
-pub unsafe extern "C" fn expat_realloc_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut ptr: *mut ::core::ffi::c_void,
-    mut size: crate::__stddef_size_t_h::size_t,
-    mut sourceLine: ::core::ffi::c_int,
-) -> *mut ::core::ffi::c_void {
-    expat_realloc(parser, ptr, size, sourceLine)
 }
 #[export_name = "XML_ParserCreate"]
 
