@@ -14340,15 +14340,58 @@ unsafe extern "C" fn ignoreSectionProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = doIgnoreSection(
-        parser,
-        parser_encoding(parser),
-        &mut start,
-        end,
-        endPtr,
-        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-            as crate::expat_h::XML_Bool,
-    );
+    let enc = parser_encoding(parser);
+    let result = if parser.is_null()
+        || enc.is_null()
+        || endPtr.is_null()
+        || start.is_null()
+        || end.is_null()
+    {
+        crate::expat_h::XML_ERROR_UNEXPECTED_STATE
+    } else {
+        let s = start;
+        let action = {
+            let parser_state = &mut *parser;
+            // The safe implementation never dispatches a callback, so this DTD
+            // observation cannot outlive the exclusive parser turn.  Keep the
+            // `UnsafeCell` access at this raw boundary and pass only `&DTD` on.
+            let dtd_owner = parser_state.m_dtd.clone();
+            let dtd = dtd_owner.as_ref().map(|dtd| &*dtd.value.get());
+            do_ignore_section_checked(
+                parser_state,
+                dtd,
+                IgnoreSectionRequest {
+                    start_address: s.addr(),
+                    end_address: end.addr(),
+                    encoding_address: enc.addr(),
+                    have_more: parser_state.m_parsingStatus.finalBuffer == 0,
+                },
+            )
+        };
+        if let Some(default_range) = action.default_range {
+            reportDefault(
+                parser,
+                enc,
+                s.wrapping_add(default_range.start),
+                s.wrapping_add(default_range.end),
+            );
+        }
+        start = action
+            .start_offset
+            .map(|offset| s.wrapping_add(offset))
+            .unwrap_or(::core::ptr::null());
+        if let Some(offset) = action.next_offset {
+            *endPtr = s.wrapping_add(offset);
+        }
+        if action.check_finished_after_default
+            && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            crate::expat_h::XML_ERROR_ABORTED
+        } else {
+            action.error
+        }
+    };
     if result as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -14359,65 +14402,6 @@ unsafe extern "C" fn ignoreSectionProcessor(
         return prologProcessor(parser, start, end, endPtr);
     }
     return result;
-}
-
-unsafe extern "C" fn doIgnoreSection(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    startPtr: &mut *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-    mut haveMore: crate::expat_h::XML_Bool,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null()
-        || enc.is_null()
-        || nextPtr.is_null()
-        || (*startPtr).is_null()
-        || end.is_null()
-    {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    let s = *startPtr;
-    let action = {
-        let parser_state = &mut *parser;
-        // The safe implementation never dispatches a callback, so this DTD
-        // observation cannot outlive the exclusive parser turn.  Keep the
-        // `UnsafeCell` access at this raw boundary and pass only `&DTD` on.
-        let dtd_owner = parser_state.m_dtd.clone();
-        let dtd = dtd_owner.as_ref().map(|dtd| &*dtd.value.get());
-        do_ignore_section_checked(
-            parser_state,
-            dtd,
-            IgnoreSectionRequest {
-                start_address: s.addr(),
-                end_address: end.addr(),
-                encoding_address: enc.addr(),
-                have_more: haveMore != 0,
-            },
-        )
-    };
-    if let Some(default_range) = action.default_range {
-        reportDefault(
-            parser,
-            enc,
-            s.wrapping_add(default_range.start),
-            s.wrapping_add(default_range.end),
-        );
-    }
-    *startPtr = action
-        .start_offset
-        .map(|offset| s.wrapping_add(offset))
-        .unwrap_or(::core::ptr::null());
-    if let Some(offset) = action.next_offset {
-        *nextPtr = s.wrapping_add(offset);
-    }
-    if action.check_finished_after_default
-        && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-            == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        return crate::expat_h::XML_ERROR_ABORTED;
-    }
-    action.error
 }
 
 /// Checked input supplied by the raw ignore-section cursor adapter.  The
