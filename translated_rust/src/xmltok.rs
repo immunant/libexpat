@@ -603,6 +603,35 @@ pub mod xmltok_impl_c {
         })
     }
 
+    fn scan_cdata_section_open(
+        mut ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        next_tok_ptr: *mut *const ::core::ffi::c_char,
+        unit: EncodingUnit,
+    ) -> ::core::ffi::c_int {
+        let cdata_lsqb = [
+            crate::ascii_h::ASCII_C,
+            crate::ascii_h::ASCII_D,
+            crate::ascii_h::ASCII_A,
+            crate::ascii_h::ASCII_T,
+            crate::ascii_h::ASCII_A,
+            crate::ascii_h::ASCII_LSQB,
+        ];
+        let step = unit.min_bytes();
+        if !has_at_least_bytes(ptr, end, cdata_lsqb.len() * step as usize) {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        for expected in cdata_lsqb {
+            if encoded_ascii_at(ptr, unit) != expected {
+                write_bad_ptr(next_tok_ptr, ptr);
+                return crate::src::xmltok::XML_TOK_INVALID_1;
+            }
+            ptr = ptr.wrapping_offset(step);
+        }
+        write_bad_ptr(next_tok_ptr, ptr);
+        crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1
+    }
+
     fn char_ref_number(
         mut ptr: *const ::core::ffi::c_char,
         unit: EncodingUnit,
@@ -1212,37 +1241,13 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanCdataSection(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
+    pub extern "C" fn normal_scanCdataSection(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
-            crate::ascii_h::ASCII_C as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_D as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_LSQB as ::core::ffi::c_char,
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr as ::core::ffi::c_int == CDATA_LSQB[i as usize] as ::core::ffi::c_int) {
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_INVALID_1;
-            }
-            i += 1;
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        }
-        *nextTokPtr = ptr;
-        return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
+        scan_cdata_section_open(ptr, end, nextTokPtr, EncodingUnit::Normal)
     }
 
     pub unsafe extern "C" fn normal_cdataSectionTok(
@@ -5271,41 +5276,13 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanCdataSection(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
+    pub extern "C" fn little2_scanCdataSection(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
-            crate::ascii_h::ASCII_C as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_D as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_LSQB as ::core::ffi::c_char,
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_INVALID_1;
-            }
-            i += 1;
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-        *nextTokPtr = ptr;
-        return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
+        scan_cdata_section_open(ptr, end, nextTokPtr, EncodingUnit::Little2)
     }
 
     pub unsafe extern "C" fn little2_cdataSectionTok(
@@ -9448,41 +9425,13 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanCdataSection(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
+    pub extern "C" fn big2_scanCdataSection(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
-            crate::ascii_h::ASCII_C as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_D as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_LSQB as ::core::ffi::c_char,
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_INVALID_1;
-            }
-            i += 1;
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-        *nextTokPtr = ptr;
-        return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
+        scan_cdata_section_open(ptr, end, nextTokPtr, EncodingUnit::Big2)
     }
 
     pub unsafe extern "C" fn big2_cdataSectionTok(
