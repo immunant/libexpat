@@ -1,4 +1,5 @@
 use ::c2rust_bitfields;
+use std::cell::Cell;
 use std::ffi::{CStr, CString};
 
 extern "C" {
@@ -120,26 +121,43 @@ pub const NULL: *mut ::core::ffi::c_void =
 pub const CK_SILENT: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
 pub const CK_NORMAL: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
 pub const CK_VERBOSE: ::core::ffi::c_int = 2 as ::core::ffi::c_int;
+
+#[repr(transparent)]
+pub struct TestParserCell(Cell<XML_Parser>);
+
+impl TestParserCell {
+    const fn new(parser: XML_Parser) -> Self {
+        Self(Cell::new(parser))
+    }
+
+    fn get(&self) -> XML_Parser {
+        self.0.get()
+    }
+
+    fn set(&self, parser: XML_Parser) {
+        self.0.set(parser);
+    }
+
+    fn take(&self) -> XML_Parser {
+        self.0.replace(::core::ptr::null_mut())
+    }
+}
+
+unsafe impl Sync for TestParserCell {}
+
 #[no_mangle]
-pub static mut g_parser: XML_Parser =
-    ::core::ptr::null::<XML_ParserStruct>() as *mut XML_ParserStruct;
+pub static g_parser: TestParserCell = TestParserCell::new(::core::ptr::null_mut());
 
 pub(crate) fn current_test_parser() -> XML_Parser {
-    unsafe { g_parser }
+    g_parser.get()
 }
 
 pub(crate) fn set_current_test_parser(parser: XML_Parser) {
-    unsafe {
-        g_parser = parser;
-    }
+    g_parser.set(parser);
 }
 
 pub(crate) fn take_current_test_parser() -> XML_Parser {
-    unsafe {
-        let parser = g_parser;
-        g_parser = ::core::ptr::null_mut();
-        parser
-    }
+    g_parser.take()
 }
 
 fn parse_verbosity(args: impl IntoIterator<Item = String>) -> Result<::core::ffi::c_int, String> {
