@@ -3768,6 +3768,32 @@ fn event_raw_name_source<'a>(
     Some(RawNameSource::Chars(text.get(start..end)?))
 }
 
+/// Resolves an entity-value token through the storage that owns its cursors.
+///
+/// Entity values can be scanned directly from the parser input or from the
+/// replacement text of the current value entity.  In both cases the tokenizer
+/// has already supplied a bounded token range; resolving that range here keeps
+/// character-reference decoding from fabricating a slice out of raw cursors.
+fn entity_value_token_source<'a>(
+    parser: &'a XML_ParserStruct,
+    dtd: &'a DTD,
+    start: usize,
+    end: usize,
+) -> Option<RawNameSource<'a>> {
+    if let Some(bytes) = parser.m_buffer.window_from_addresses(start, end) {
+        return Some(RawNameSource::Bytes(bytes));
+    }
+
+    let open_entity = parser
+        .m_openValueEntities
+        .and_then(|index| parser.m_activeValueEntities.get(index))?
+        .node();
+    let text = entity_text_chars(dtd, open_entity.eventText, open_entity.eventTextLen)?;
+    let start = start.checked_sub(text.as_ptr().addr())?;
+    let end = end.checked_sub(text.as_ptr().addr())?;
+    Some(RawNameSource::Chars(text.get(start..end)?))
+}
+
 /// Resolves a complete start-tag token into the storage that owns both of its
 /// cursors.  Parser-buffer events and internal-entity events deliberately use
 /// different backing storage, so callers never derive a range from cursors
@@ -12089,8 +12115,8 @@ unsafe extern "C" fn entityValueInitProcessor(
                 s,
                 end,
                 XML_ACCOUNT_DIRECT,
-                ::core::ptr::null_mut::<*const ::core::ffi::c_char>(),
-            );
+            )
+            .error;
         } else if tok == crate::src::xmltok::XML_TOK_XML_DECL {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             result = processXmlDecl(parser, 0 as ::core::ffi::c_int, start, next);
@@ -12233,8 +12259,8 @@ unsafe extern "C" fn entityValueProcessor(
                 s,
                 end,
                 XML_ACCOUNT_DIRECT,
-                ::core::ptr::null_mut::<*const ::core::ffi::c_char>(),
-            );
+            )
+            .error;
         }
         start = next;
     }
@@ -15984,6 +16010,14 @@ fn encode_xml_char_ref(
     (buf, 0)
 }
 
+#[derive(Copy, Clone)]
+struct EntityValueResult {
+    error: crate::expat_h::XML_Error,
+    /// Offset from the token window supplied to `storeEntityValue`.  `None`
+    /// preserves the pre-scan failure state, when no cursor exists yet.
+    next_offset: Option<usize>,
+}
+
 /// Appends one character to a valid string pool.  Growth happens before the
 /// temporary mutable borrow, so no borrow is held across an allocator callback.
 fn pool_append_char(pool: &mut STRING_POOL, value: crate::expat_external_h::XML_Char) -> bool {
@@ -16254,25 +16288,27 @@ unsafe fn appendAttributeValue(
     }
 }
 
-unsafe extern "C" fn storeEntityValue(
+unsafe fn storeEntityValue(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut entityTextPtr: *const ::core::ffi::c_char,
     mut entityTextEnd: *const ::core::ffi::c_char,
     mut account: XML_Account,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
+) -> EntityValueResult {
+    let entity_text_start = entityTextPtr;
     let parser = &mut *parser;
     let enc_ptr = enc;
     let enc = &*enc;
     let dtd = &mut *parser_dtd_ptr!(parser);
-    let pool = &mut dtd.entityValuePool;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     let oldInEntityValue = parser.m_prologState.inEntityValue;
     parser.m_prologState.inEntityValue = 1 as ::core::ffi::c_int;
-    if pool.storage.active.is_empty() {
-        if poolGrow(pool) == 0 {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
+    if dtd.entityValuePool.storage.active.is_empty() {
+        if poolGrow(&mut dtd.entityValuePool) == 0 {
+            return EntityValueResult {
+                error: crate::expat_h::XML_ERROR_NO_MEMORY,
+                next_offset: None,
+            };
         }
     }
     let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
@@ -16317,8 +16353,8 @@ unsafe extern "C" fn storeEntityValue(
                             name = poolStoreString(
                                 &raw mut (*parser).m_tempPool,
                                 enc_ptr,
-                                entityTextPtr.offset(enc.minBytesPerChar as isize),
-                                next.offset(-(enc.minBytesPerChar as isize)),
+                                entityTextPtr.wrapping_add(enc.minBytesPerChar as usize),
+                                next.wrapping_sub(enc.minBytesPerChar as usize),
                             );
                             if name.is_null() {
                                 result = crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -16429,7 +16465,14 @@ unsafe extern "C" fn storeEntityValue(
                     }
                     crate::src::xmltok::XML_TOK_ENTITY_REF
                     | crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                        if poolAppend(pool, enc_ptr, entityTextPtr, next).is_null() {
+                        if poolAppend(
+                            &raw mut dtd.entityValuePool,
+                            enc_ptr,
+                            entityTextPtr,
+                            next,
+                        )
+                        .is_null()
+                        {
                             result = crate::expat_h::XML_ERROR_NO_MEMORY;
                             break '_endEntityValue;
                         } else {
@@ -16437,17 +16480,23 @@ unsafe extern "C" fn storeEntityValue(
                         }
                     }
                     crate::src::xmltok::XML_TOK_TRAILING_CR => {
-                        next = entityTextPtr.offset(enc.minBytesPerChar as isize);
+                        next = entityTextPtr.wrapping_add(enc.minBytesPerChar as usize);
                     }
                     crate::src::xmltok::XML_TOK_DATA_NEWLINE => {}
                     crate::src::xmltok::XML_TOK_CHAR_REF => {
-                        // `next` bounds the character-reference token the
-                        // entity-value scanner just recognized.
-                        let token = ::core::slice::from_raw_parts(
-                            entityTextPtr.cast::<u8>(),
-                            next.offset_from(entityTextPtr) as usize,
-                        );
-                        let n = enc.charRefNumber.decode(token);
+                        // The literal scanner returned one complete token.
+                        // Resolve its cursors through their input/entity
+                        // owner before decoding it.
+                        let Some(token) = entity_value_token_source(
+                            parser,
+                            dtd,
+                            entityTextPtr.addr(),
+                            next.addr(),
+                        ) else {
+                            result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            break '_endEntityValue;
+                        };
+                        let n = token.decode_char_ref(enc.charRefNumber);
                         if n < 0 as ::core::ffi::c_int {
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, entityTextPtr);
@@ -16457,8 +16506,13 @@ unsafe extern "C" fn storeEntityValue(
                         } else {
                             let (buf, n) = encode_xml_char_ref(n);
                             for value in buf[..n as usize].iter().copied() {
-                                if !pool_append_char(pool, value) {
-                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                if !pool_append_char(&mut dtd.entityValuePool, value) {
+                                    return EntityValueResult {
+                                        error: crate::expat_h::XML_ERROR_NO_MEMORY,
+                                        next_offset: next
+                                            .addr()
+                                            .checked_sub(entity_text_start.addr()),
+                                    };
                                 }
                             }
                             break 's_340;
@@ -16486,12 +16540,20 @@ unsafe extern "C" fn storeEntityValue(
                         break '_endEntityValue;
                     }
                 }
-                if pool.is_full() && poolGrow(pool) == 0 {
+                if dtd.entityValuePool.is_full() && poolGrow(&mut dtd.entityValuePool) == 0 {
                     result = crate::expat_h::XML_ERROR_NO_MEMORY;
                     break '_endEntityValue;
                 } else {
-                    if !pool.write_cursor(0xa as crate::expat_external_h::XML_Char) {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    if !dtd
+                        .entityValuePool
+                        .write_cursor(0xa as crate::expat_external_h::XML_Char)
+                    {
+                        return EntityValueResult {
+                            error: crate::expat_h::XML_ERROR_NO_MEMORY,
+                            next_offset: next
+                                .addr()
+                                .checked_sub(entity_text_start.addr()),
+                        };
                     }
                 }
             }
@@ -16499,10 +16561,12 @@ unsafe extern "C" fn storeEntityValue(
         }
     }
     parser.m_prologState.inEntityValue = oldInEntityValue;
-    if !nextPtr.is_null() {
-        *nextPtr = next;
+    EntityValueResult {
+        error: result,
+        next_offset: next
+            .addr()
+            .checked_sub(entity_text_start.addr()),
     }
-    return result;
 }
 
 unsafe extern "C" fn callStoreEntityValue(
@@ -16516,7 +16580,12 @@ unsafe extern "C" fn callStoreEntityValue(
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
         if (*parser).m_openValueEntities.is_none() {
-            result = storeEntityValue(parser, enc, next, entityTextEnd, account, &raw mut next);
+            let input_start = next;
+            let stored = storeEntityValue(parser, enc, input_start, entityTextEnd, account);
+            result = stored.error;
+            next = stored
+                .next_offset
+                .map_or(input_start, |offset| input_start.wrapping_add(offset));
         } else {
             let (open_entity_index, openEntity, entity_ref) = {
                 let parser_state = &*parser;
@@ -16583,14 +16652,17 @@ unsafe extern "C" fn callStoreEntityValue(
                 .cast::<::core::ffi::c_char>();
             let mut nextInEntity: *const ::core::ffi::c_char = textStart;
             if has_more {
-                result = storeEntityValue(
+                let stored = storeEntityValue(
                     parser,
                     internal_encoding((*parser).m_internalEncoding) as *const _,
                     textStart,
                     textEnd,
                     XML_ACCOUNT_ENTITY_EXPANSION,
-                    &raw mut nextInEntity,
                 );
+                result = stored.error;
+                nextInEntity = stored
+                    .next_offset
+                    .map_or(textStart, |offset| textStart.wrapping_add(offset));
                 if result as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
