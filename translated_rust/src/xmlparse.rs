@@ -1502,7 +1502,13 @@ unsafe fn callCharacterDataHandler(
         .get(&(parser as usize))
         .cloned();
     if let Some(callback) = callback {
-        callback.invoke((*parser).m_handlerArg, data, len);
+        callback.invoke(
+            (*parser)
+                .m_handlerArg
+                .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr),
+            data,
+            len,
+        );
     }
 }
 
@@ -1518,7 +1524,13 @@ unsafe fn callElementDeclHandler(
         .get(&(parser as usize))
         .cloned();
     if let Some(callback) = callback {
-        callback.invoke((*parser).m_handlerArg, name, model);
+        callback.invoke(
+            (*parser)
+                .m_handlerArg
+                .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr),
+            name,
+            model,
+        );
     }
 }
 
@@ -2037,7 +2049,9 @@ enum DeclaredEntity {
 #[repr(C)]
 pub struct XML_ParserStruct {
     pub m_userData: *mut ::core::ffi::c_void,
-    pub m_handlerArg: *mut ::core::ffi::c_void,
+    // The handler context is an opaque token passed back to C callbacks.  It
+    // is never dereferenced by parser logic; `None` preserves a null context.
+    pub m_handlerArg: Option<::core::ptr::NonNull<::core::ffi::c_void>>,
     m_buffer: InputBuffer,
     pub m_mem: crate::expat_h::XML_Memory_Handling_Suite,
     // The current input cursor is an offset into `m_buffer.bytes`.  `None`
@@ -3742,7 +3756,7 @@ fn initial_parser_struct(
 ) -> XML_ParserStruct {
     XML_ParserStruct {
         m_userData: crate::__stddef_null_h::NULL,
-        m_handlerArg: crate::__stddef_null_h::NULL,
+        m_handlerArg: None,
         m_buffer: InputBuffer::empty(),
         m_mem: memory_suite,
         m_bufferPtr: None,
@@ -4122,7 +4136,7 @@ fn parser_init(
     parser.m_initEncoding.selected_encoding = None;
     parser.m_encoding = EncodingState::Initial;
     parser.m_userData = crate::__stddef_null_h::NULL;
-    parser.m_handlerArg = crate::__stddef_null_h::NULL;
+    parser.m_handlerArg = None;
     parser.m_startElementHandler = false;
     START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -4523,8 +4537,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldXmlDeclHandler: Option<std::sync::Arc<dyn XmlDeclCallback>> = None;
     let mut oldDeclElementType: Option<PoolStringRef> = None;
     let mut oldUserData: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-    let mut oldHandlerArg: *mut ::core::ffi::c_void =
-        ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut oldHandlerArg: Option<::core::ptr::NonNull<::core::ffi::c_void>> = None;
     let mut oldDefaultExpandInternalEntities: crate::expat_h::XML_Bool = 0;
     let mut oldExternalEntityRefHandlerArg: crate::expat_h::XML_Parser =
         ::core::ptr::null_mut::<XML_ParserStruct>();
@@ -4843,10 +4856,10 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     }
     (*parser).m_declElementType = oldDeclElementType;
     (*parser).m_userData = oldUserData;
-    if oldUserData == oldHandlerArg {
-        (*parser).m_handlerArg = (*parser).m_userData;
+    if ::core::ptr::NonNull::new(oldUserData) == oldHandlerArg {
+        (*parser).m_handlerArg = ::core::ptr::NonNull::new((*parser).m_userData);
     } else {
-        (*parser).m_handlerArg = parser as *mut ::core::ffi::c_void;
+        (*parser).m_handlerArg = ::core::ptr::NonNull::new(parser.cast());
     }
     if oldExternalEntityRefHandlerArg != oldParser {
         (*parser).m_externalEntityRefHandlerArg = oldExternalEntityRefHandlerArg;
@@ -5167,7 +5180,7 @@ pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Pars
 }
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
     if !parser.is_null() {
-        (*parser).m_handlerArg = parser as *mut ::core::ffi::c_void;
+        (*parser).m_handlerArg = ::core::ptr::NonNull::new(parser.cast());
     }
 }
 #[export_name = "XML_UseParserAsHandlerArg"]
@@ -5227,9 +5240,9 @@ pub unsafe extern "C" fn XML_SetUserData(
     if parser.is_null() {
         return;
     }
-    if (*parser).m_handlerArg == (*parser).m_userData {
+    if (*parser).m_handlerArg == ::core::ptr::NonNull::new((*parser).m_userData) {
         (*parser).m_userData = p;
-        (*parser).m_handlerArg = (*parser).m_userData;
+        (*parser).m_handlerArg = ::core::ptr::NonNull::new((*parser).m_userData);
     } else {
         (*parser).m_userData = p;
     };
@@ -7782,7 +7795,10 @@ unsafe extern "C" fn doContent(
                                     .cloned();
                                 if let Some(callback) = callback {
                                     callback.invoke(
-                                        (*parser).m_handlerArg,
+                                        (*parser).m_handlerArg.map_or(
+                                            ::core::ptr::null_mut(),
+                                            ::core::ptr::NonNull::as_ptr,
+                                        ),
                                         name,
                                         0 as ::core::ffi::c_int,
                                     );
@@ -7813,7 +7829,10 @@ unsafe extern "C" fn doContent(
                                         .cloned();
                                     if let Some(callback) = callback {
                                         callback.invoke(
-                                            (*parser).m_handlerArg,
+                                            (*parser).m_handlerArg.map_or(
+                                                ::core::ptr::null_mut(),
+                                                ::core::ptr::NonNull::as_ptr,
+                                            ),
                                             (*entity).named.name,
                                             0 as ::core::ffi::c_int,
                                         );
@@ -8007,7 +8026,10 @@ unsafe extern "C" fn doContent(
                                 _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             callback.invoke(
-                                (*parser).m_handlerArg,
+                                (*parser).m_handlerArg.map_or(
+                                    ::core::ptr::null_mut(),
+                                    ::core::ptr::NonNull::as_ptr,
+                                ),
                                 name,
                                 (*parser).m_atts.records.as_mut_ptr().cast(),
                             );
@@ -8085,7 +8107,10 @@ unsafe extern "C" fn doContent(
                             .cloned();
                         if let Some(callback) = callback {
                             callback.invoke(
-                                (*parser).m_handlerArg,
+                                (*parser).m_handlerArg.map_or(
+                                    ::core::ptr::null_mut(),
+                                    ::core::ptr::NonNull::as_ptr,
+                                ),
                                 name_pointer,
                                 (*parser).m_atts.records.as_mut_ptr().cast(),
                             );
@@ -8118,7 +8143,13 @@ unsafe extern "C" fn doContent(
                             .get(&(parser as usize))
                             .cloned();
                         if let Some(callback) = callback {
-                            callback.invoke((*parser).m_handlerArg, name_pointer);
+                            callback.invoke(
+                                (*parser).m_handlerArg.map_or(
+                                    ::core::ptr::null_mut(),
+                                    ::core::ptr::NonNull::as_ptr,
+                                ),
+                                name_pointer,
+                            );
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
@@ -8239,7 +8270,13 @@ unsafe extern "C" fn doContent(
                                 .get(&(parser as usize))
                                 .cloned();
                             if let Some(callback) = callback {
-                                callback.invoke((*parser).m_handlerArg, name);
+                                callback.invoke(
+                                    (*parser).m_handlerArg.map_or(
+                                        ::core::ptr::null_mut(),
+                                        ::core::ptr::NonNull::as_ptr,
+                                    ),
+                                    name,
+                                );
                             }
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
@@ -8256,7 +8293,13 @@ unsafe extern "C" fn doContent(
                                     .get(&(parser as usize))
                                     .cloned();
                                 if let Some(callback) = callback {
-                                    callback.invoke((*parser).m_handlerArg, (*(*b).prefix).name);
+                                    callback.invoke(
+                                        (*parser).m_handlerArg.map_or(
+                                            ::core::ptr::null_mut(),
+                                            ::core::ptr::NonNull::as_ptr,
+                                        ),
+                                        (*(*b).prefix).name,
+                                    );
                                 }
                             }
                             (*tag_0).bindings = (*(*tag_0).bindings).nextTagBinding as *mut BINDING;
@@ -8322,7 +8365,10 @@ unsafe extern "C" fn doContent(
                         (*parser)
                             .m_startCdataSectionHandler
                             .expect("non-null function pointer")(
-                            (*parser).m_handlerArg
+                            (*parser).m_handlerArg.map_or(
+                                ::core::ptr::null_mut(),
+                                ::core::ptr::NonNull::as_ptr,
+                            )
                         );
                     } else if false && (*parser).m_characterDataHandler {
                         callCharacterDataHandler(
@@ -8446,7 +8492,14 @@ unsafe extern "C" fn doContent(
                                     Some(len) => len,
                                     None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                                 };
-                                charDataHandler.invoke((*parser).m_handlerArg, data_start, data_len);
+                                charDataHandler.invoke(
+                                    (*parser).m_handlerArg.map_or(
+                                        ::core::ptr::null_mut(),
+                                        ::core::ptr::NonNull::as_ptr,
+                                    ),
+                                    data_start,
+                                    data_len,
+                                );
                                 if convert_res_0 as ::core::ffi::c_uint
                                     == crate::src::xmltok::XML_CONVERT_COMPLETED
                                         as ::core::ffi::c_int
@@ -8470,7 +8523,10 @@ unsafe extern "C" fn doContent(
                                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             charDataHandler.invoke(
-                                (*parser).m_handlerArg,
+                                (*parser).m_handlerArg.map_or(
+                                    ::core::ptr::null_mut(),
+                                    ::core::ptr::NonNull::as_ptr,
+                                ),
                                 s as *const crate::expat_external_h::XML_Char,
                                 data_len,
                             );
@@ -8533,7 +8589,13 @@ unsafe extern "C" fn freeBindings(
                 .get(&(parser as usize))
                 .cloned();
             if let Some(callback) = callback {
-                callback.invoke((*parser).m_handlerArg, (*(*b).prefix).name);
+                callback.invoke(
+                    (*parser).m_handlerArg.map_or(
+                        ::core::ptr::null_mut(),
+                        ::core::ptr::NonNull::as_ptr,
+                    ),
+                    (*(*b).prefix).name,
+                );
             }
         }
         bindings = (*bindings).nextTagBinding as *mut BINDING;
@@ -9624,7 +9686,10 @@ unsafe extern "C" fn addBinding(
             .cloned();
         if let Some(callback) = callback {
             callback.invoke(
-                parser.m_handlerArg,
+                parser.m_handlerArg.map_or(
+                    ::core::ptr::null_mut(),
+                    ::core::ptr::NonNull::as_ptr,
+                ),
                 prefix.name,
                 if !prefix.binding.is_null() {
                     uri.as_ptr().cast()
@@ -9756,7 +9821,10 @@ unsafe extern "C" fn doCdataSection(
                         .get(&(parser as usize))
                         .cloned()
                         .expect("installed end CDATA handler");
-                    callback.invoke((*parser).m_handlerArg);
+                    callback.invoke((*parser).m_handlerArg.map_or(
+                        ::core::ptr::null_mut(),
+                        ::core::ptr::NonNull::as_ptr,
+                    ));
                 } else if handler_flags.default {
                     reportDefault(parser, enc, s, next);
                 }
@@ -9820,7 +9888,10 @@ unsafe extern "C" fn doCdataSection(
                                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             charDataHandler.invoke(
-                                (*parser).m_handlerArg,
+                                (*parser).m_handlerArg.map_or(
+                                    ::core::ptr::null_mut(),
+                                    ::core::ptr::NonNull::as_ptr,
+                                ),
                                 data_start,
                                 data_len,
                             );
@@ -9842,7 +9913,10 @@ unsafe extern "C" fn doCdataSection(
                             None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                         };
                         charDataHandler.invoke(
-                            (*parser).m_handlerArg,
+                            (*parser).m_handlerArg.map_or(
+                                ::core::ptr::null_mut(),
+                                ::core::ptr::NonNull::as_ptr,
+                            ),
                             s as *const crate::expat_external_h::XML_Char,
                             data_len,
                         );
@@ -10179,7 +10253,10 @@ unsafe extern "C" fn processXmlDecl(
         };
         (
             xml_decl_handler,
-            parser_state.m_handlerArg,
+            parser_state.m_handlerArg.map_or(
+                ::core::ptr::null_mut(),
+                ::core::ptr::NonNull::as_ptr,
+            ),
             callback,
             parser_state.m_defaultHandler,
         )
@@ -10970,7 +11047,10 @@ unsafe extern "C" fn doProlog(
                                                     };
                                                     (
                                                         doctype_name,
-                                                        parser_ref.m_handlerArg,
+                                                        parser_ref.m_handlerArg.map_or(
+                                                            ::core::ptr::null_mut(),
+                                                            ::core::ptr::NonNull::as_ptr,
+                                                        ),
                                                         doctype_sysid,
                                                         doctype_pubid,
                                                     )
@@ -11126,7 +11206,10 @@ unsafe extern "C" fn doProlog(
                                                     };
                                                     (
                                                         doctype_name,
-                                                        parser_ref.m_handlerArg,
+                                                        parser_ref.m_handlerArg.map_or(
+                                                            ::core::ptr::null_mut(),
+                                                            ::core::ptr::NonNull::as_ptr,
+                                                        ),
                                                         doctype_sysid,
                                                         doctype_pubid,
                                                     )
@@ -11197,7 +11280,10 @@ unsafe extern "C" fn doProlog(
                                                         && (*parser)
                                                             .m_notStandaloneHandler
                                                             .expect("non-null function pointer")(
-                                                            (*parser).m_handlerArg,
+                                                            (*parser).m_handlerArg.map_or(
+                                                                ::core::ptr::null_mut(),
+                                                                ::core::ptr::NonNull::as_ptr,
+                                                            ),
                                                         ) == 0
                                                     {
                                                         return crate::expat_h::XML_ERROR_NOT_STANDALONE;
@@ -11220,7 +11306,10 @@ unsafe extern "C" fn doProlog(
                                                 .get(&parser_key)
                                                 .cloned()
                                                 .expect("installed end doctype handler");
-                                            callback.invoke((*parser).m_handlerArg);
+                                            callback.invoke((*parser).m_handlerArg.map_or(
+                                                ::core::ptr::null_mut(),
+                                                ::core::ptr::NonNull::as_ptr,
+                                            ));
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -11277,7 +11366,10 @@ unsafe extern "C" fn doProlog(
                                                         && (*parser)
                                                             .m_notStandaloneHandler
                                                             .expect("non-null function pointer")(
-                                                            (*parser).m_handlerArg,
+                                                            (*parser).m_handlerArg.map_or(
+                                                                ::core::ptr::null_mut(),
+                                                                ::core::ptr::NonNull::as_ptr,
+                                                            ),
                                                         ) == 0
                                                     {
                                                         return crate::expat_h::XML_ERROR_NOT_STANDALONE;
@@ -11555,7 +11647,10 @@ unsafe extern "C" fn doProlog(
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
                                                     callback.invoke(
-                                                        (*parser).m_handlerArg,
+                                                        (*parser).m_handlerArg.map_or(
+                                                            ::core::ptr::null_mut(),
+                                                            ::core::ptr::NonNull::as_ptr,
+                                                        ),
                                                         (*dtd)
                                                             .pool
                                                             .chars_from(
@@ -11754,7 +11849,10 @@ unsafe extern "C" fn doProlog(
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
                                                     callback.invoke(
-                                                        (*parser).m_handlerArg,
+                                                        (*parser).m_handlerArg.map_or(
+                                                            ::core::ptr::null_mut(),
+                                                            ::core::ptr::NonNull::as_ptr,
+                                                        ),
                                                         (*dtd)
                                                             .pool
                                                             .chars_from(
@@ -11832,7 +11930,10 @@ unsafe extern "C" fn doProlog(
                                                         .cloned();
                                                     if let Some(callback) = callback {
                                                         callback.invoke(
-                                                            (*parser).m_handlerArg,
+                                                            (*parser).m_handlerArg.map_or(
+                                                                ::core::ptr::null_mut(),
+                                                                ::core::ptr::NonNull::as_ptr,
+                                                            ),
                                                             (*entity).named.name,
                                                             (*entity).is_param
                                                                 as ::core::ffi::c_int,
@@ -11910,7 +12011,10 @@ unsafe extern "C" fn doProlog(
                                             && (*parser)
                                                 .m_notStandaloneHandler
                                                 .expect("non-null function pointer")(
-                                                (*parser).m_handlerArg,
+                                                (*parser).m_handlerArg.map_or(
+                                                    ::core::ptr::null_mut(),
+                                                    ::core::ptr::NonNull::as_ptr,
+                                                ),
                                             ) == 0
                                         {
                                             return crate::expat_h::XML_ERROR_NOT_STANDALONE;
@@ -11967,7 +12071,10 @@ unsafe extern "C" fn doProlog(
                                                 ) = {
                                                     let entity = &*entity;
                                                     (
-                                                        (*parser).m_handlerArg,
+                                                        (*parser).m_handlerArg.map_or(
+                                                            ::core::ptr::null_mut(),
+                                                            ::core::ptr::NonNull::as_ptr,
+                                                        ),
                                                         entity.named.name,
                                                         entity.is_param as ::core::ffi::c_int,
                                                         entity.base,
@@ -12062,7 +12169,10 @@ unsafe extern "C" fn doProlog(
                                             ) = {
                                                 let entity = &*entity;
                                                 (
-                                                    (*parser).m_handlerArg,
+                                                    (*parser).m_handlerArg.map_or(
+                                                        ::core::ptr::null_mut(),
+                                                        ::core::ptr::NonNull::as_ptr,
+                                                    ),
                                                     entity.named.name,
                                                     entity.base,
                                                     entity.systemId,
@@ -12346,7 +12456,10 @@ unsafe extern "C" fn doProlog(
                                                 ) = {
                                                     let parser_ref = &*parser;
                                                     (
-                                                        parser_ref.m_handlerArg,
+                                                        parser_ref.m_handlerArg.map_or(
+                                                            ::core::ptr::null_mut(),
+                                                            ::core::ptr::NonNull::as_ptr,
+                                                        ),
                                                         parser_ref
                                                             .m_declNotationName
                                                             .and_then(|notation_name| {
@@ -12415,7 +12528,10 @@ unsafe extern "C" fn doProlog(
                                                 ) = {
                                                     let parser_ref = &*parser;
                                                     (
-                                                        parser_ref.m_handlerArg,
+                                                        parser_ref.m_handlerArg.map_or(
+                                                            ::core::ptr::null_mut(),
+                                                            ::core::ptr::NonNull::as_ptr,
+                                                        ),
                                                         parser_ref
                                                             .m_declNotationName
                                                             .and_then(|notation_name| {
@@ -12804,7 +12920,10 @@ unsafe extern "C" fn doProlog(
                                                         .cloned();
                                                     if let Some(callback) = callback {
                                                         callback.invoke(
-                                                            (*parser).m_handlerArg,
+                                                            (*parser).m_handlerArg.map_or(
+                                                                ::core::ptr::null_mut(),
+                                                                ::core::ptr::NonNull::as_ptr,
+                                                            ),
                                                             name_1,
                                                             1 as ::core::ffi::c_int,
                                                         );
@@ -12901,7 +13020,10 @@ unsafe extern "C" fn doProlog(
                                             && (*parser)
                                                 .m_notStandaloneHandler
                                                 .expect("non-null function pointer")(
-                                                (*parser).m_handlerArg,
+                                                (*parser).m_handlerArg.map_or(
+                                                    ::core::ptr::null_mut(),
+                                                    ::core::ptr::NonNull::as_ptr,
+                                                ),
                                             ) == 0
                                         {
                                             return crate::expat_h::XML_ERROR_NOT_STANDALONE;
@@ -14462,7 +14584,14 @@ unsafe extern "C" fn reportProcessingInstruction(
             return 0 as ::core::ffi::c_int;
         }
         normalizeLines(data);
-        (target, data, parser_state.m_handlerArg)
+        (
+            target,
+            data,
+            parser_state.m_handlerArg.map_or(
+                ::core::ptr::null_mut(),
+                ::core::ptr::NonNull::as_ptr,
+            ),
+        )
     };
     let callback = PROCESSING_INSTRUCTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -14516,7 +14645,13 @@ unsafe extern "C" fn reportComment(
         .get(&(parser as usize))
         .cloned();
     if let Some(callback) = callback {
-        callback.invoke((*parser).m_handlerArg, data);
+        callback.invoke(
+            (*parser).m_handlerArg.map_or(
+                ::core::ptr::null_mut(),
+                ::core::ptr::NonNull::as_ptr,
+            ),
+            data,
+        );
     }
     poolClear(temp_pool);
     return 1 as ::core::ffi::c_int;
@@ -14563,7 +14698,10 @@ unsafe extern "C" fn reportDefault(
                 .cloned()
                 .expect("default callback must be registered when installed");
             callback.invoke(
-                (*parser).m_handlerArg,
+                (*parser).m_handlerArg.map_or(
+                    ::core::ptr::null_mut(),
+                    ::core::ptr::NonNull::as_ptr,
+                ),
                 data_start,
                 dataPtr.offset_from(data_start) as ::core::ffi::c_int,
             );
@@ -14587,7 +14725,10 @@ unsafe extern "C" fn reportDefault(
             .cloned()
             .expect("default callback must be registered when installed");
         callback.invoke(
-            (*parser).m_handlerArg,
+            (*parser).m_handlerArg.map_or(
+                ::core::ptr::null_mut(),
+                ::core::ptr::NonNull::as_ptr,
+            ),
             s as *const crate::expat_external_h::XML_Char,
             (end as *const crate::expat_external_h::XML_Char)
                 .offset_from(s as *const crate::expat_external_h::XML_Char)
