@@ -22097,40 +22097,98 @@ unsafe extern "C" fn build_model(
     ret
 }
 
+// The DTD owns both the string-pool entry and the hash-table element.  Keep
+// those owners explicit while insertion may grow either collection.
+fn get_element_type_impl(
+    dtd: &mut DTD,
+    salt: ::core::ffi::c_ulong,
+    name: PoolStringRef,
+) -> Option<bool> {
+    let used_before = dtd.elementTypes.used;
+    let element = lookup_impl(
+        &mut dtd.pool,
+        &mut dtd.elementTypes,
+        LookupName::Retained(name),
+        ::core::mem::size_of::<ELEMENT_TYPE>(),
+        salt,
+    )?;
+    if !matches!(element, NamedRecord::Element(_)) {
+        return None;
+    }
+    Some(dtd.elementTypes.used != used_before)
+}
+
 unsafe extern "C" fn getElementType(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut ELEMENT_TYPE {
-    let dtd = parser_dtd_ptr!(parser);
-    let mut name: *const crate::expat_external_h::XML_Char =
-        poolStoreString(&raw mut (*dtd).pool, enc, ptr, end);
-    let mut ret: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    if name.is_null() {
-        return ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    }
-    ret = lookup(
-        parser,
-        &raw mut (*dtd).elementTypes,
-        name as KEY,
-        ::core::mem::size_of::<ELEMENT_TYPE>(),
-    ) as *mut ELEMENT_TYPE;
-    if ret.is_null() {
-        return ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    }
-    let Some(name_ref) = pool_string_ref(&raw const (*dtd).pool, name, false) else {
-        return ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    let parser_handle = parser;
+    let Some(parser) = parser.as_mut() else {
+        return ::core::ptr::null_mut();
     };
-    if (*ret).named.name != name_ref {
-        (*dtd).pool.rewind();
-    } else {
-        (*dtd).pool.commit();
-        if setElementTypePrefix(parser, ret) == 0 {
-            return ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        }
+    let Some(enc) = enc.as_ref() else {
+        return ::core::ptr::null_mut();
+    };
+    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+        return ::core::ptr::null_mut();
+    };
+    let dtd = &mut *dtd_owner.value.get();
+    // A tokenizer name must be wholly contained in the parser input or in
+    // the active entity text before it becomes an owned conversion buffer.
+    let Some(source) = entity_value_token_source(parser, dtd, ptr.addr(), end.addr()) else {
+        return ::core::ptr::null_mut();
+    };
+    let Some(source) = raw_name_bytes(source) else {
+        return ::core::ptr::null_mut();
+    };
+    let unknown_encoding = match parser.m_encoding {
+        EncodingState::Initial => None,
+        EncodingState::Unknown => parser
+            .m_unknownEncodingMem
+            .as_ref()
+            .and_then(UnknownEncodingMemory::initialized_encoding)
+            .copied(),
+    };
+    if matches!(enc.utf8Convert, crate::src::xmltok::Utf8Converter::Unknown)
+        && unknown_encoding.is_none()
+    {
+        return ::core::ptr::null_mut();
     }
-    return ret;
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let Some(name) = pool_store_name_source(&mut dtd.pool, enc, unknown_encoding.as_ref(), &source)
+    else {
+        return ::core::ptr::null_mut();
+    };
+    let Some(is_new) = get_element_type_impl(dtd, salt, name) else {
+        return ::core::ptr::null_mut();
+    };
+    let Some(name_chars) = dtd.pool.chars_from(name) else {
+        return ::core::ptr::null_mut();
+    };
+    let element = lookup(
+        parser_handle,
+        &raw mut dtd.elementTypes,
+        name_chars.as_ptr() as KEY,
+        0,
+    ) as *mut ELEMENT_TYPE;
+    if element.is_null() {
+        return ::core::ptr::null_mut();
+    }
+    if is_new {
+        dtd.pool.commit();
+        if setElementTypePrefix(parser_handle, element) == 0 {
+            return ::core::ptr::null_mut();
+        }
+    } else {
+        dtd.pool.rewind();
+    }
+    element
 }
 
 unsafe fn copyString(
