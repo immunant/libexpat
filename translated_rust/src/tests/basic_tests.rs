@@ -1450,8 +1450,25 @@ fn parser_set_unknown_encoding_handler(
     );
 }
 
+fn parser_set_unknown_encoding_handler_for(
+    parser: XML_Parser,
+    handler: XML_UnknownEncodingHandler,
+    encoding_handler_data: *mut ::core::ffi::c_void,
+) {
+    ffi_call3(
+        XML_SetUnknownEncodingHandler,
+        parser,
+        handler,
+        encoding_handler_data,
+    );
+}
+
 fn parser_set_user_data(user_data: *mut ::core::ffi::c_void) {
     ffi_call2(XML_SetUserData, current_parser(), user_data);
+}
+
+fn parser_set_user_data_for(parser: XML_Parser, user_data: *mut ::core::ffi::c_void) {
+    ffi_call2(XML_SetUserData, parser, user_data);
 }
 
 fn parser_set_encoding(encoding: *const XML_Char) -> XML_Status {
@@ -1486,6 +1503,40 @@ fn parse_single_bytes_with_final(
         len,
         is_final,
     )
+}
+
+fn parse_single_bytes_with_final_for(
+    parser: XML_Parser,
+    text: *const ::core::ffi::c_char,
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
+) -> XML_Status {
+    ffi_call4(_XML_Parse_SINGLE_BYTES, parser, text, len, is_final)
+}
+
+fn parse_single_bytes_c_string_for(
+    parser: XML_Parser,
+    text: *const ::core::ffi::c_char,
+) -> XML_Status {
+    parse_single_bytes_with_final_for(
+        parser,
+        text,
+        c_string_len(text),
+        XML_TRUE as ::core::ffi::c_int,
+    )
+}
+
+fn parser_set_external_entity_ref_handler_for(
+    parser: XML_Parser,
+    handler: XML_ExternalEntityRefHandler,
+) {
+    ffi_call2(XML_SetExternalEntityRefHandler, parser, handler);
+}
+
+fn assert_status_ok(status: XML_Status, line: ::core::ffi::c_int, message: &[u8]) {
+    if status as ::core::ffi::c_uint != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint {
+        fail_test(line, message);
+    }
 }
 
 fn parse_single_bytes_buffer(text: &[u8], is_final: ::core::ffi::c_int) -> XML_Status {
@@ -1589,12 +1640,24 @@ fn unknown_encoding_handler_for_tests() -> XML_UnknownEncodingHandler {
     Some(UnknownEncodingHandler)
 }
 
+fn misc_encoding_handler_for_tests() -> XML_UnknownEncodingHandler {
+    Some(MiscEncodingHandler)
+}
+
 fn unrecognised_encoding_handler_for_tests() -> XML_UnknownEncodingHandler {
     Some(UnrecognisedEncodingHandler)
 }
 
+fn user_data_checking_unknown_encoding_handler_for_tests() -> XML_UnknownEncodingHandler {
+    Some(user_data_checking_unknown_encoding_handler)
+}
+
 fn external_entity_loader_handler_for_tests() -> XML_ExternalEntityRefHandler {
     Some(external_entity_loader)
+}
+
+fn external_entity_loader2_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_loader2)
 }
 
 fn external_entity_faulter_handler_for_tests() -> XML_ExternalEntityRefHandler {
@@ -1642,6 +1705,17 @@ fn parser_stop_character_data_handler() -> XML_CharacterDataHandler {
 fn start_element_event_handler2_for_tests() -> XML_StartElementHandler {
     Some(
         start_element_event_handler2
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *mut *const XML_Char,
+            ) -> (),
+    )
+}
+
+fn record_element_start_handler_for_tests() -> XML_StartElementHandler {
+    Some(
+        record_element_start_handler
             as unsafe extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const XML_Char,
@@ -12845,627 +12919,335 @@ unsafe extern "C" fn test_utf16_le_comment() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_missing_encoding_conversion_fn() {
-    unsafe {
-        _check_set_test_info(
-            b"test_missing_encoding_conversion_fn\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4386 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='no-conv'?>\n<doc>\x81</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_UNKNOWN_ENCODING,
-            b"Encoding with missing convert() not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4398 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_missing_encoding_conversion_fn() {
+    set_test_info(
+        b"test_missing_encoding_conversion_fn\0",
+        4386 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='no-conv'?>\n<doc>\x81</doc>\0");
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_UNKNOWN_ENCODING,
+        b"Encoding with missing convert() not faulted\0",
+        4398 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_failing_encoding_conversion_fn() {
-    unsafe {
-        _check_set_test_info(
-            b"test_failing_encoding_conversion_fn\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4402 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='failing-conv'?>\n<doc>\x81</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Encoding with failing convert() not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4413 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_failing_encoding_conversion_fn() {
+    set_test_info(
+        b"test_failing_encoding_conversion_fn\0",
+        4402 as ::core::ffi::c_int,
+    );
+    let text =
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='failing-conv'?>\n<doc>\x81</doc>\0");
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_INVALID_TOKEN,
+        b"Encoding with failing convert() not faulted\0",
+        4413 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_success() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_success\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4418 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?>\n<\x81d\x80oc>Hello, world</\x81d\x80oc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _run_character_check(
-            text,
-            b"Hello, world\0".as_ptr() as *const XML_Char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4424 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_encoding_success() {
+    set_test_info(
+        b"test_unknown_encoding_success\0",
+        4418 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='prefix-conv'?>\n<\x81d\x80oc>Hello, world</\x81d\x80oc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    run_character_check(
+        text,
+        bytes_as_xml_char_ptr(b"Hello, world\0"),
+        4424 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_bad_name() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_bad_name\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4429 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='prefix-conv'?>\n<\xFFdoc>Hello, world</\xFFdoc>\0"
-                .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Bad name start in unknown encoding not faulted\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4435 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_encoding_bad_name() {
+    set_test_info(
+        b"test_unknown_encoding_bad_name\0",
+        4429 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='prefix-conv'?>\n<\xFFdoc>Hello, world</\xFFdoc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_INVALID_TOKEN,
+        b"Bad name start in unknown encoding not faulted\0",
+        4435 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_bad_name_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_bad_name_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4440 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='prefix-conv'?>\n<d\xFFoc>Hello, world</d\xFFoc>\0"
-                .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Bad name in unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4446 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_encoding_bad_name_2() {
+    set_test_info(
+        b"test_unknown_encoding_bad_name_2\0",
+        4440 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='prefix-conv'?>\n<d\xFFoc>Hello, world</d\xFFoc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_INVALID_TOKEN,
+        b"Bad name in unknown encoding not faulted\0",
+        4446 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_long_name_1() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_long_name_1\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4453 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?>\n<abcdefghabcdefghabcdefghijkl\x80m\x80n\x80o\x80p>Hi</abcdefghabcdefghabcdefghijkl\x80m\x80n\x80o\x80p>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"abcdefghabcdefghabcdefghijklmnop\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        XML_SetStartElementHandler(
-            g_parser,
-            Some(
-                record_element_start_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4467 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+
+extern "C" fn test_unknown_encoding_long_name_1() {
+    set_test_info(
+        b"test_unknown_encoding_long_name_1\0",
+        4453 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='prefix-conv'?>\n<abcdefghabcdefghabcdefghijkl\x80m\x80n\x80o\x80p>Hi</abcdefghabcdefghabcdefghijkl\x80m\x80n\x80o\x80p>\0",
+    );
+    let expected = bytes_as_xml_char_ptr(b"abcdefghabcdefghabcdefghijklmnop\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    parser_set_start_element_handler(record_element_start_handler_for_tests());
+    parser_set_user_data((&raw mut storage).cast());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        4467 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, expected);
 }
-unsafe extern "C" fn test_unknown_encoding_long_name_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_long_name_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4475 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?>\n<abcdefghabcdefghabcdefghijklmnop>Hi</abcdefghabcdefghabcdefghijklmnop>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"abcdefghabcdefghabcdefghijklmnop\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        XML_SetStartElementHandler(
-            g_parser,
-            Some(
-                record_element_start_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4489 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+
+extern "C" fn test_unknown_encoding_long_name_2() {
+    set_test_info(
+        b"test_unknown_encoding_long_name_2\0",
+        4475 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='prefix-conv'?>\n<abcdefghabcdefghabcdefghijklmnop>Hi</abcdefghabcdefghabcdefghijklmnop>\0",
+    );
+    let expected = bytes_as_xml_char_ptr(b"abcdefghabcdefghabcdefghijklmnop\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    parser_set_start_element_handler(record_element_start_handler_for_tests());
+    parser_set_user_data((&raw mut storage).cast());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        4489 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, expected);
 }
-unsafe extern "C" fn test_invalid_unknown_encoding() {
-    unsafe {
-        _check_set_test_info(
-            b"test_invalid_unknown_encoding\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4494 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='invalid-9'?>\n<doc>Hello world</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_UNKNOWN_ENCODING,
-            b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4500 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_invalid_unknown_encoding() {
+    set_test_info(
+        b"test_invalid_unknown_encoding\0",
+        4494 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='invalid-9'?>\n<doc>Hello world</doc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_UNKNOWN_ENCODING,
+        b"Invalid unknown encoding not faulted\0",
+        4500 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_ascii_encoding_ok() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_ascii_encoding_ok\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4504 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='ascii-like'?>\n<doc>Hello, world</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _run_character_check(
-            text,
-            b"Hello, world\0".as_ptr() as *const XML_Char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4509 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_ascii_encoding_ok() {
+    set_test_info(
+        b"test_unknown_ascii_encoding_ok\0",
+        4504 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='ascii-like'?>\n<doc>Hello, world</doc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    run_character_check(
+        text,
+        bytes_as_xml_char_ptr(b"Hello, world\0"),
+        4509 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_ascii_encoding_fail() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_ascii_encoding_fail\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4513 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='ascii-like'?>\n<doc>Hello, \x80 world</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Invalid character not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4519 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_ascii_encoding_fail() {
+    set_test_info(
+        b"test_unknown_ascii_encoding_fail\0",
+        4513 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='ascii-like'?>\n<doc>Hello, \x80 world</doc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_INVALID_TOKEN,
+        b"Invalid character not faulted\0",
+        4519 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_invalid_length() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_invalid_length\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4523 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='invalid-len'?>\n<doc>Hello, world</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_UNKNOWN_ENCODING,
-            b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4529 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_encoding_invalid_length() {
+    set_test_info(
+        b"test_unknown_encoding_invalid_length\0",
+        4523 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='invalid-len'?>\n<doc>Hello, world</doc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_UNKNOWN_ENCODING,
+        b"Invalid unknown encoding not faulted\0",
+        4529 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_invalid_topbit() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_invalid_topbit\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4533 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='invalid-a'?>\n<doc>Hello, world</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_UNKNOWN_ENCODING,
-            b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4539 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_encoding_invalid_topbit() {
+    set_test_info(
+        b"test_unknown_encoding_invalid_topbit\0",
+        4533 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='invalid-a'?>\n<doc>Hello, world</doc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_UNKNOWN_ENCODING,
+        b"Invalid unknown encoding not faulted\0",
+        4539 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_invalid_surrogate() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_invalid_surrogate\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4543 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='invalid-surrogate'?>\n<doc>Hello, \x82 world</doc>\0"
-                .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4549 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_encoding_invalid_surrogate() {
+    set_test_info(
+        b"test_unknown_encoding_invalid_surrogate\0",
+        4543 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='invalid-surrogate'?>\n<doc>Hello, \x82 world</doc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_INVALID_TOKEN,
+        b"Invalid unknown encoding not faulted\0",
+        4549 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_invalid_high() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_invalid_high\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4553 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='invalid-high'?>\n<doc>Hello, world</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_UNKNOWN_ENCODING,
-            b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4559 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_encoding_invalid_high() {
+    set_test_info(
+        b"test_unknown_encoding_invalid_high\0",
+        4553 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='invalid-high'?>\n<doc>Hello, world</doc>\0",
+    );
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_UNKNOWN_ENCODING,
+        b"Invalid unknown encoding not faulted\0",
+        4559 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_invalid_attr_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_invalid_attr_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4563 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='prefix-conv'?>\n<doc attr='\xFF0'/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Invalid attribute valid not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4569 as ::core::ffi::c_int,
-        );
-    }
+
+extern "C" fn test_unknown_encoding_invalid_attr_value() {
+    set_test_info(
+        b"test_unknown_encoding_invalid_attr_value\0",
+        4563 as ::core::ffi::c_int,
+    );
+    let text =
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='prefix-conv'?>\n<doc attr='\xFF0'/>\0");
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        text,
+        XML_ERROR_INVALID_TOKEN,
+        b"Invalid attribute valid not faulted\0",
+        4569 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_unknown_encoding_user_data_primary() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_user_data_primary\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4573 as ::core::ffi::c_int,
-        );
-        let text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='x-unk'?>\n<root />\n\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        XML_SetUnknownEncodingHandler(
-            parser,
-            Some(
-                user_data_checking_unknown_encoding_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            0xc0ffee as ::core::ffi::c_int as intptr_t as *mut ::core::ffi::c_void,
-        );
-        if !(_XML_Parse_SINGLE_BYTES(
-            parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                4583 as ::core::ffi::c_int,
-                b"check failed: _XML_Parse_SINGLE_BYTES(parser, text, (int)strlen(text), XML_TRUE) == XML_STATUS_OK\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserFree(parser);
-    }
+
+extern "C" fn test_unknown_encoding_user_data_primary() {
+    set_test_info(
+        b"test_unknown_encoding_user_data_primary\0",
+        4573 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='x-unk'?>\n<root />\n\0");
+    let parser = parser_create();
+
+    parser_set_unknown_encoding_handler_for(
+        parser,
+        user_data_checking_unknown_encoding_handler_for_tests(),
+        0xc0ffee as ::core::ffi::c_int as intptr_t as *mut ::core::ffi::c_void,
+    );
+    assert_status_ok(
+        parse_single_bytes_c_string_for(parser, text),
+        4583 as ::core::ffi::c_int,
+        b"check failed: _XML_Parse_SINGLE_BYTES(parser, text, (int)strlen(text), XML_TRUE) == XML_STATUS_OK\0",
+    );
+    parser_free(parser);
 }
-unsafe extern "C" fn test_unknown_encoding_user_data_secondary() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_user_data_secondary\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4589 as ::core::ffi::c_int,
-        );
-        let text_main: *const ::core::ffi::c_char =
-            b"<!DOCTYPE r [\n  <!ENTITY ext SYSTEM 'ext.ent'>\n]>\n<r>&ext;</r>\n\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let text_external: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='x-unk'?>\n<e>data</e>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut test_data: ExtTest2 = ExtTest2 {
-            parse_text: text_external,
-            parse_len: strlen(text_external) as ::core::ffi::c_int,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        XML_SetExternalEntityRefHandler(
-            parser,
-            Some(
-                external_entity_loader2
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_SetUnknownEncodingHandler(
-            parser,
-            Some(
-                user_data_checking_unknown_encoding_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            0xc0ffee as ::core::ffi::c_int as intptr_t as *mut ::core::ffi::c_void,
-        );
-        XML_SetUserData(parser, &raw mut test_data as *mut ::core::ffi::c_void);
-        if !(_XML_Parse_SINGLE_BYTES(
-            parser,
-            text_main,
-            strlen(text_main) as ::core::ffi::c_int,
-            1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                4607 as ::core::ffi::c_int,
-                b"check failed: _XML_Parse_SINGLE_BYTES(parser, text_main, (int)strlen(text_main), XML_TRUE) == XML_STATUS_OK\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserFree(parser);
-    }
+
+extern "C" fn test_unknown_encoding_user_data_secondary() {
+    set_test_info(
+        b"test_unknown_encoding_user_data_secondary\0",
+        4589 as ::core::ffi::c_int,
+    );
+    let text_main = bytes_as_c_char_ptr(
+        b"<!DOCTYPE r [\n  <!ENTITY ext SYSTEM 'ext.ent'>\n]>\n<r>&ext;</r>\n\0",
+    );
+    let text_external =
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='x-unk'?>\n<e>data</e>\0");
+    let mut test_data = ExtTest2 {
+        parse_text: text_external,
+        parse_len: c_string_len(text_external),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+    let parser = parser_create();
+
+    parser_set_external_entity_ref_handler_for(parser, external_entity_loader2_handler_for_tests());
+    parser_set_unknown_encoding_handler_for(
+        parser,
+        user_data_checking_unknown_encoding_handler_for_tests(),
+        0xc0ffee as ::core::ffi::c_int as intptr_t as *mut ::core::ffi::c_void,
+    );
+    parser_set_user_data_for(parser, (&raw mut test_data).cast());
+    assert_status_ok(
+        parse_single_bytes_c_string_for(parser, text_main),
+        4607 as ::core::ffi::c_int,
+        b"check failed: _XML_Parse_SINGLE_BYTES(parser, text_main, (int)strlen(text_main), XML_TRUE) == XML_STATUS_OK\0",
+    );
+    parser_free(parser);
 }
 unsafe extern "C" fn test_ext_entity_latin1_utf16le_bom() {
     unsafe {
@@ -14627,58 +14409,31 @@ unsafe extern "C" fn test_bad_doctype_query() {
         );
     }
 }
-unsafe extern "C" fn test_unknown_encoding_bad_ignore() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unknown_encoding_bad_ignore\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5190 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?><!DOCTYPE doc SYSTEM 'foo'><doc><e>&entity;</e></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut fault: ExtFaults = ext_faults {
-            parse_text: b"<![IGNORE[<!ELEMENT \xFFG (#PCDATA)*>]]>\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            fail_text: b"Invalid character not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            encoding: b"prefix-conv\0".as_ptr() as *const XML_Char,
-            error: XML_ERROR_INVALID_TOKEN,
-        };
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_faulter
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut fault as *mut ::core::ffi::c_void);
-        _expect_failure(
-            text,
-            XML_ERROR_EXTERNAL_ENTITY_HANDLING,
-            b"Bad IGNORE section with unknown encoding not failed\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5203 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_unknown_encoding_bad_ignore() {
+    set_test_info(
+        b"test_unknown_encoding_bad_ignore\0",
+        5190 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='prefix-conv'?><!DOCTYPE doc SYSTEM 'foo'><doc><e>&entity;</e></doc>\0",
+    );
+    let mut fault = ExtFaults {
+        parse_text: bytes_as_c_char_ptr(b"<![IGNORE[<!ELEMENT \xFFG (#PCDATA)*>]]>\0"),
+        fail_text: bytes_as_c_char_ptr(b"Invalid character not faulted\0"),
+        encoding: bytes_as_xml_char_ptr(b"prefix-conv\0"),
+        error: XML_ERROR_INVALID_TOKEN,
+    };
+
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(external_entity_faulter_handler_for_tests());
+    parser_set_user_data((&raw mut fault).cast());
+    expect_failure(
+        text,
+        XML_ERROR_EXTERNAL_ENTITY_HANDLING,
+        b"Bad IGNORE section with unknown encoding not failed\0",
+        5203 as ::core::ffi::c_int,
+    );
 }
 unsafe extern "C" fn test_entity_in_utf16_be_attr() {
     unsafe {
