@@ -2851,6 +2851,11 @@ pub struct XML_ParserStruct {
     pub m_useForeignDTD: crate::expat_h::XML_Bool,
     pub m_paramEntityParsing: crate::expat_h::XML_ParamEntityParsing,
     pub m_reenter: crate::expat_h::XML_Bool,
+    // CDATA completion resumes the normal processor on the remaining input.
+    // Keep that scheduling decision separate from callback re-entry: the
+    // dispatcher consumes this flag without another raw processor call from
+    // the CDATA adapter.
+    m_resumeAfterCdata: bool,
 }
 
 impl XML_ParserStruct {
@@ -5393,7 +5398,8 @@ unsafe fn call_processor_impl(
                 true
             }
         };
-        if !reenter {
+        let resume_after_cdata = std::mem::take(&mut parser.m_resumeAfterCdata);
+        if !reenter && !resume_after_cdata {
             break;
         }
         if ret as ::core::ffi::c_uint
@@ -5655,6 +5661,7 @@ fn initial_parser_struct(
         m_useForeignDTD: crate::expat_h::XML_FALSE,
         m_paramEntityParsing: crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER,
         m_reenter: crate::expat_h::XML_FALSE,
+        m_resumeAfterCdata: false,
     }
 }
 
@@ -6163,6 +6170,7 @@ fn parser_init(
     parser.m_unknownEncodingMem = None;
     parser.m_parsingStatus.parsing = crate::expat_h::XML_INITIALIZED;
     parser.m_reenter = crate::expat_h::XML_FALSE;
+    parser.m_resumeAfterCdata = false;
     parser.m_isParamEntity = crate::expat_h::XML_FALSE;
     parser.m_useForeignDTD = crate::expat_h::XML_FALSE;
     parser.m_paramEntityParsing = crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
@@ -13246,13 +13254,13 @@ unsafe extern "C" fn cdataSectionProcessor(
     {
         return result;
     }
-    match cdata_processor_continuation(parser_state, !start.is_null()) {
-        CdataProcessorContinuation::Complete => result,
-        CdataProcessorContinuation::ExternalEntityContent => {
-            externalEntityContentProcessor(parser, start, end, endPtr)
-        }
-        CdataProcessorContinuation::Content => contentProcessor(parser, start, end, endPtr),
+    if !matches!(
+        cdata_processor_continuation(parser_state, !start.is_null()),
+        CdataProcessorContinuation::Complete
+    ) {
+        parser_state.m_resumeAfterCdata = true;
     }
+    result
 }
 
 /// Chooses the processor that resumes after a CDATA section has yielded a
