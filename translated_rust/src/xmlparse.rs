@@ -2899,20 +2899,6 @@ macro_rules! set_event_end {
     };
 }
 
-macro_rules! parser_event_end {
-    ($parser:expr) => {{
-        let parser_ref = &*$parser;
-        parser_ref
-            .m_eventEndPtr
-            .and_then(|offset| {
-                parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
-                    (offset <= bytes.len()).then(|| bytes.as_ptr().wrapping_add(offset).cast())
-                })
-            })
-            .unwrap_or(::core::ptr::null::<::core::ffi::c_char>())
-    }};
-}
-
 macro_rules! set_event_start {
     ($parser:expr, $parser_events:expr, $event_start:expr, $internal_window:expr, $start:expr) => {
         if $parser_events {
@@ -10044,12 +10030,11 @@ unsafe fn doContent(
     // In particular, do not retain an input slice across a callback, because
     // re-entry may grow and relocate the parser buffer.
     let encoding = &normal_encoding.enc;
-    let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-    let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let internal_event_start = std::cell::Cell::new(None);
-    let mut internal_event_window = None;
-    if !parser_events {
-        let (window, event_start, event_end) = {
+    let (event_target, internal_event_window) = if parser_events {
+        (EventCursorTarget::Parser, None)
+    } else {
+        let (open_entity_index, window) = {
             let parser_state = &mut *parser;
             let open_entity_index = parser_state
                 .m_openInternalEntities
@@ -10062,28 +10047,18 @@ unsafe fn doContent(
             let Some(window) = event_text_window(&*dtd, open_entity) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            (
-                window,
-                &raw mut open_entity.internalEventPtr,
-                &raw mut open_entity.internalEventEndPtr,
-            )
+            (open_entity_index, window)
         };
-        internal_event_window = Some(window);
-        eventPP = event_start;
-        eventEndPP = event_end;
-    }
-    let event_parser = parser;
-    let parser_event_start_ptr = eventPP;
-    let mut update_event_start = |start: *const ::core::ffi::c_char| {
-        if parser_events {
-            set_parser_event_start!(&mut *event_parser, start);
-        } else {
-            let offset = internal_event_offset(internal_event_window, start.addr());
-            *parser_event_start_ptr = offset;
-            internal_event_start.set(offset);
-        }
+        (EventCursorTarget::InternalEntity(open_entity_index), Some(window))
     };
-    update_event_start(s);
+    content_update_event_start(
+        &mut *parser,
+        event_target,
+        parser_events,
+        &internal_event_start,
+        internal_event_window,
+        s.addr(),
+    );
     loop {
         let (scan, mut next): (
             crate::src::xmltok::ScannerResult,
@@ -10144,13 +10119,12 @@ unsafe fn doContent(
             accountingOnAbort(parser);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
-        set_event_end!(
-            parser,
-            parser_events,
+        content_update_event_end(
+            &mut *parser,
+            event_target,
             internal_event_start.get(),
             internal_event_window,
-            eventEndPP,
-            next
+            next.addr(),
         );
         's_1235: {
             match tok {
@@ -10159,13 +10133,12 @@ unsafe fn doContent(
                         *nextPtr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
-                    set_event_end!(
-                        parser,
-                        parser_events,
+                    content_update_event_end(
+                        &mut *parser,
+                        event_target,
                         internal_event_start.get(),
                         internal_event_window,
-                        eventEndPP,
-                        end
+                        end.addr(),
                     );
                     // Take the handler state before invoking either callback,
                     // but release the parser borrow before re-entry.
@@ -10201,7 +10174,14 @@ unsafe fn doContent(
                     return crate::expat_h::XML_ERROR_NO_ELEMENTS;
                 }
                 crate::src::xmltok::XML_TOK_INVALID => {
-                    update_event_start(next);
+                    content_update_event_start(
+                        &mut *parser,
+                        event_target,
+                        parser_events,
+                        &internal_event_start,
+                        internal_event_window,
+                        next.addr(),
+                    );
                     return crate::expat_h::XML_ERROR_INVALID_TOKEN;
                 }
                 crate::src::xmltok::XML_TOK_PARTIAL => {
@@ -10704,25 +10684,11 @@ unsafe fn doContent(
                     let end_handlers = content_token_handlers(&*parser);
                     if end_handlers.end_element {
                         if end_handlers.start_element {
-                            if parser_events {
-                                let event_end = parser_event_end!(parser);
-                                let parser_ref = &mut *parser;
-                                set_parser_event_start!(parser_ref, event_end);
-                                parser_ref.m_eventEndPtr =
-                                    parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
-                                        event_end
-                                            .addr()
-                                            .checked_sub(bytes.as_ptr().addr())
-                                            .filter(|offset| *offset <= bytes.len())
-                                    });
-                            } else {
-                                *eventPP = (*eventEndPP).and_then(|offset| {
-                                    internal_event_start
-                                        .get()
-                                        .and_then(|start| start.checked_add(offset))
-                                });
-                                internal_event_start.set(*eventPP);
-                            }
+                            content_advance_event_start_to_end(
+                                &mut *parser,
+                                event_target,
+                                &internal_event_start,
+                            );
                         }
                         let callback = END_ELEMENT_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -10770,7 +10736,14 @@ unsafe fn doContent(
                             Err(error) => return error,
                         };
                         if !names_match {
-                            update_event_start(rawName_0);
+                            content_update_event_start(
+                                &mut *parser,
+                                event_target,
+                                parser_events,
+                                &internal_event_start,
+                                internal_event_window,
+                                rawName_0.addr(),
+                            );
                             return crate::expat_h::XML_ERROR_TAG_MISMATCH;
                         }
                         let ClosedContentTag {
@@ -11078,11 +11051,25 @@ unsafe fn doContent(
                         reportDefault(parser, enc, s, end);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
-                        update_event_start(end);
+                        content_update_event_start(
+                            &mut *parser,
+                            event_target,
+                            parser_events,
+                            &internal_event_start,
+                            internal_event_window,
+                            end.addr(),
+                        );
                         return crate::expat_h::XML_ERROR_NO_ELEMENTS;
                     }
                     if (*parser).m_tagLevel != startTagLevel {
-                        update_event_start(end);
+                        content_update_event_start(
+                            &mut *parser,
+                            event_target,
+                            parser_events,
+                            &internal_event_start,
+                            internal_event_window,
+                            end.addr(),
+                        );
                         return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
                     }
                     *nextPtr = end;
@@ -11116,13 +11103,12 @@ unsafe fn doContent(
                                         &raw mut dataPtr_0,
                                         data_end,
                                     );
-                                set_event_end!(
-                                    parser,
-                                    parser_events,
+                                content_update_event_end(
+                                    &mut *parser,
+                                    event_target,
                                     internal_event_start.get(),
                                     internal_event_window,
-                                    eventEndPP,
-                                    s
+                                    s.addr(),
                                 );
                                 let data_len = match dataPtr_0
                                     .addr()
@@ -11145,7 +11131,14 @@ unsafe fn doContent(
                                 {
                                     break;
                                 }
-                                update_event_start(s);
+                                content_update_event_start(
+                                    &mut *parser,
+                                    event_target,
+                                    parser_events,
+                                    &internal_event_start,
+                                    internal_event_window,
+                                    s.addr(),
+                                );
                             }
                         } else {
                             let data_len = match next
@@ -11192,12 +11185,26 @@ unsafe fn doContent(
         };
         match loop_status {
             ContentLoopStatus::Suspended => {
-                update_event_start(next);
+                content_update_event_start(
+                    &mut *parser,
+                    event_target,
+                    parser_events,
+                    &internal_event_start,
+                    internal_event_window,
+                    next.addr(),
+                );
                 *nextPtr = next;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             ContentLoopStatus::Aborted => {
-                update_event_start(next);
+                content_update_event_start(
+                    &mut *parser,
+                    event_target,
+                    parser_events,
+                    &internal_event_start,
+                    internal_event_window,
+                    next.addr(),
+                );
                 return crate::expat_h::XML_ERROR_ABORTED;
             }
             ContentLoopStatus::Reentered => {
@@ -11207,7 +11214,14 @@ unsafe fn doContent(
             ContentLoopStatus::Continue => {}
         }
         s = next;
-        update_event_start(s);
+        content_update_event_start(
+            &mut *parser,
+            event_target,
+            parser_events,
+            &internal_event_start,
+            internal_event_window,
+            s.addr(),
+        );
     }
 }
 
@@ -12666,6 +12680,59 @@ fn cdata_update_event_start(
     event_target.set_start(parser, internal_window, start);
     if !parser_events {
         internal_event_start.set(internal_event_offset(internal_window, start));
+    }
+}
+
+// Content and CDATA events share the same two destinations: the parser input
+// buffer or an active internal entity's retained replacement text.  Keep the
+// cursor update on this reference-based side of the boundary so content
+// processing does not retain raw pointers to either destination field.
+fn content_update_event_start(
+    parser: &mut XML_ParserStruct,
+    event_target: EventCursorTarget,
+    parser_events: bool,
+    internal_event_start: &std::cell::Cell<Option<usize>>,
+    internal_window: Option<(usize, usize)>,
+    start: usize,
+) {
+    event_target.set_start(parser, internal_window, start);
+    if !parser_events {
+        internal_event_start.set(internal_event_offset(internal_window, start));
+    }
+}
+
+fn content_update_event_end(
+    parser: &mut XML_ParserStruct,
+    event_target: EventCursorTarget,
+    internal_event_start: Option<usize>,
+    internal_window: Option<(usize, usize)>,
+    end: usize,
+) {
+    event_target.set_end(parser, internal_event_start, internal_window, end);
+}
+
+// Empty-element dispatch reports the end callback as the second half of the
+// same event.  Advance the stored event start without exposing either cursor
+// field as a raw pointer to the content loop.
+fn content_advance_event_start_to_end(
+    parser: &mut XML_ParserStruct,
+    event_target: EventCursorTarget,
+    internal_event_start: &std::cell::Cell<Option<usize>>,
+) {
+    match event_target {
+        EventCursorTarget::Parser => {
+            parser.m_eventPtr = parser.m_eventEndPtr;
+        }
+        EventCursorTarget::InternalEntity(index) => {
+            let Some(entity) = parser.m_activeInternalEntities.get_mut(index) else {
+                return;
+            };
+            let entity = entity.node_mut();
+            let start = entity.internalEventPtr;
+            let end = entity.internalEventEndPtr;
+            entity.internalEventPtr = start.and_then(|start| end.and_then(|end| start.checked_add(end)));
+            internal_event_start.set(entity.internalEventPtr);
+        }
     }
 }
 
