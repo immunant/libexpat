@@ -6974,7 +6974,7 @@ unsafe fn parse_buffer_impl(
             }
         }
     }
-    let encoding = parser_encoding(parser);
+    let encoding = &*(parser_encoding(parser) as *const crate::src::xmltok::normal_encoding);
     let parser_ref = &mut *parser;
     let buffer = parser_ref.m_buffer.bytes.as_ref().unwrap();
     let buffer_cursor = parser_ref.m_bufferPtr.unwrap();
@@ -6982,13 +6982,14 @@ unsafe fn parse_buffer_impl(
         .m_positionPtr
         .filter(|position_cursor| *position_cursor <= buffer.len())
     {
-        crate::src::xmltok::initUpdatePosition(
-            (*encoding).updatePosition,
-            encoding,
-            buffer.as_ptr().wrapping_add(position_cursor).cast(),
-            buffer.as_ptr().wrapping_add(buffer_cursor).cast(),
-            &raw mut parser_ref.m_position,
-        );
+        if position_cursor <= buffer_cursor {
+            crate::src::xmltok::initUpdatePosition(
+                encoding.enc.updatePosition,
+                encoding,
+                &buffer[position_cursor..buffer_cursor],
+                &mut parser_ref.m_position,
+            );
+        }
     }
     parser_ref.m_positionPtr = Some(buffer_cursor);
     return result;
@@ -7285,7 +7286,7 @@ pub unsafe extern "C" fn XML_ResumeParser(
             _ => {}
         }
     }
-    let encoding = parser_encoding(parser);
+    let encoding = &*(parser_encoding(parser) as *const crate::src::xmltok::normal_encoding);
     let parser_ref = &mut *parser;
     let buffer = parser_ref.m_buffer.bytes.as_ref().unwrap();
     let buffer_cursor = parser_ref.m_bufferPtr.unwrap();
@@ -7293,13 +7294,14 @@ pub unsafe extern "C" fn XML_ResumeParser(
         .m_positionPtr
         .filter(|position_cursor| *position_cursor <= buffer.len())
     {
-        crate::src::xmltok::initUpdatePosition(
-            (*encoding).updatePosition,
-            encoding,
-            buffer.as_ptr().wrapping_add(position_cursor).cast(),
-            buffer.as_ptr().wrapping_add(buffer_cursor).cast(),
-            &raw mut parser_ref.m_position,
-        );
+        if position_cursor <= buffer_cursor {
+            crate::src::xmltok::initUpdatePosition(
+                encoding.enc.updatePosition,
+                encoding,
+                &buffer[position_cursor..buffer_cursor],
+                &mut parser_ref.m_position,
+            );
+        }
     }
     parser_ref.m_positionPtr = Some(buffer_cursor);
     return result;
@@ -7442,13 +7444,16 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber(
         }
         if let Some(bytes) = (*parser).m_buffer.bytes.as_ref() {
             if position_cursor <= bytes.len() && event_cursor <= bytes.len() {
-                crate::src::xmltok::initUpdatePosition(
-                    (*parser_encoding(parser)).updatePosition,
-                    parser_encoding(parser),
-                    bytes.as_ptr().wrapping_add(position_cursor).cast(),
-                    bytes.as_ptr().wrapping_add(event_cursor).cast(),
-                    &raw mut (*parser).m_position,
-                );
+                if position_cursor <= event_cursor {
+                    let encoding = &*(parser_encoding(parser)
+                        as *const crate::src::xmltok::normal_encoding);
+                    crate::src::xmltok::initUpdatePosition(
+                        encoding.enc.updatePosition,
+                        encoding,
+                        &bytes[position_cursor..event_cursor],
+                        &mut (*parser).m_position,
+                    );
+                }
                 (*parser).m_positionPtr = Some(event_cursor);
             }
         }
@@ -7479,13 +7484,16 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
         }
         if let Some(bytes) = (*parser).m_buffer.bytes.as_ref() {
             if position_cursor <= bytes.len() && event_cursor <= bytes.len() {
-                crate::src::xmltok::initUpdatePosition(
-                    (*parser_encoding(parser)).updatePosition,
-                    parser_encoding(parser),
-                    bytes.as_ptr().wrapping_add(position_cursor).cast(),
-                    bytes.as_ptr().wrapping_add(event_cursor).cast(),
-                    &raw mut (*parser).m_position,
-                );
+                if position_cursor <= event_cursor {
+                    let encoding = &*(parser_encoding(parser)
+                        as *const crate::src::xmltok::normal_encoding);
+                    crate::src::xmltok::initUpdatePosition(
+                        encoding.enc.updatePosition,
+                        encoding,
+                        &bytes[position_cursor..event_cursor],
+                        &mut (*parser).m_position,
+                    );
+                }
                 (*parser).m_positionPtr = Some(event_cursor);
             }
         }

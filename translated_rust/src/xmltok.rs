@@ -4024,9 +4024,9 @@ pub mod xmltok_impl_c {
         bytes[skipper.skip_s_bytes(encoding, bytes)..].as_ptr()
     }
 
-    fn normal_update_position(
+    pub(crate) fn normal_update_position(
         encoding: &normal_encoding,
-        bytes: &[::core::ffi::c_char],
+        bytes: &[u8],
         pos: &mut crate::src::xmltok::POSITION,
     ) {
         let mut offset = 0;
@@ -4079,7 +4079,7 @@ pub mod xmltok_impl_c {
             return;
         }
         let encoding = unsafe { &*(enc as *const normal_encoding) };
-        let bytes = unsafe { ::core::slice::from_raw_parts(ptr, byte_len as usize) };
+        let bytes = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), byte_len as usize) };
         let pos = unsafe { &mut *pos };
         normal_update_position(encoding, bytes, pos);
     }
@@ -5222,6 +5222,20 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let lo = input[ptr] as ::core::ffi::c_uchar;
         let hi = input[ptr + 1] as ::core::ffi::c_uchar;
+        if hi == 0 {
+            byte_types[lo as usize] as ::core::ffi::c_int
+        } else {
+            unicode_byte_type(hi as ::core::ffi::c_char, lo as ::core::ffi::c_char)
+        }
+    }
+
+    fn little2_position_byte_type(
+        byte_types: &[::core::ffi::c_uchar; 256],
+        input: &[u8],
+        offset: usize,
+    ) -> ::core::ffi::c_int {
+        let lo = input[offset];
+        let hi = input[offset + 1];
         if hi == 0 {
             byte_types[lo as usize] as ::core::ffi::c_int
         } else {
@@ -7435,14 +7449,14 @@ pub mod xmltok_impl_c {
         }
     }
 
-    fn little2_update_position(
+    pub(crate) fn little2_update_position(
         encoding: &normal_encoding,
-        bytes: &[::core::ffi::c_char],
+        bytes: &[u8],
         pos: &mut crate::src::xmltok::POSITION,
     ) {
         let mut offset = 0;
         while bytes.len().saturating_sub(offset) >= 2 {
-            match little2_byte_type(&encoding.type_0, bytes, offset) {
+            match little2_position_byte_type(&encoding.type_0, bytes, offset) {
                 5 => {
                     offset = (offset + 2).min(bytes.len());
                     pos.columnNumber = pos.columnNumber.wrapping_add(1);
@@ -7464,7 +7478,7 @@ pub mod xmltok_impl_c {
                     pos.lineNumber = pos.lineNumber.wrapping_add(1);
                     offset = (offset + 2).min(bytes.len());
                     if bytes.len().saturating_sub(offset) >= 2
-                        && little2_byte_type(&encoding.type_0, bytes, offset)
+                        && little2_position_byte_type(&encoding.type_0, bytes, offset)
                             == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
                     {
                         offset = (offset + 2).min(bytes.len());
@@ -7490,7 +7504,7 @@ pub mod xmltok_impl_c {
             return;
         }
         let encoding = unsafe { &*(enc as *const normal_encoding) };
-        let bytes = unsafe { ::core::slice::from_raw_parts(ptr, byte_len as usize) };
+        let bytes = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), byte_len as usize) };
         let pos = unsafe { &mut *pos };
         little2_update_position(encoding, bytes, pos);
     }
@@ -7709,6 +7723,20 @@ pub mod xmltok_impl_c {
             enc.type_0[lo as u8 as usize] as ::core::ffi::c_int
         } else {
             unicode_byte_type(hi, lo)
+        }
+    }
+
+    fn big2_position_byte_type(
+        enc: &normal_encoding,
+        input: &[u8],
+        offset: usize,
+    ) -> ::core::ffi::c_int {
+        let hi = input[offset];
+        let lo = input[offset + 1];
+        if hi == 0 {
+            enc.type_0[lo as usize] as ::core::ffi::c_int
+        } else {
+            unicode_byte_type(hi as ::core::ffi::c_char, lo as ::core::ffi::c_char)
         }
     }
 
@@ -10687,14 +10715,14 @@ pub mod xmltok_impl_c {
         }
     }
 
-    fn big2_update_position(
+    pub(crate) fn big2_update_position(
         encoding: &normal_encoding,
-        bytes: &[::core::ffi::c_char],
+        bytes: &[u8],
         pos: &mut crate::src::xmltok::POSITION,
     ) {
         let mut offset = 0;
         while bytes.len().saturating_sub(offset) >= 2 {
-            match big2_byte_type(encoding, bytes, offset) {
+            match big2_position_byte_type(encoding, bytes, offset) {
                 5 => {
                     offset = (offset + 2).min(bytes.len());
                     pos.columnNumber = pos.columnNumber.wrapping_add(1);
@@ -10716,7 +10744,7 @@ pub mod xmltok_impl_c {
                     pos.lineNumber = pos.lineNumber.wrapping_add(1);
                     offset = (offset + 2).min(bytes.len());
                     if bytes.len().saturating_sub(offset) >= 2
-                        && big2_byte_type(encoding, bytes, offset)
+                        && big2_position_byte_type(encoding, bytes, offset)
                             == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
                     {
                         offset = (offset + 2).min(bytes.len());
@@ -10742,7 +10770,7 @@ pub mod xmltok_impl_c {
             return;
         }
         let encoding = unsafe { &*(enc as *const normal_encoding) };
-        let bytes = unsafe { ::core::slice::from_raw_parts(ptr, byte_len as usize) };
+        let bytes = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), byte_len as usize) };
         let pos = unsafe { &mut *pos };
         big2_update_position(encoding, bytes, pos);
     }
@@ -16996,23 +17024,24 @@ fn ascii_case_insensitive_eq(left: &[u8], right: &[u8]) -> bool {
         })
 }
 
-pub(crate) unsafe fn initUpdatePosition(
+pub(crate) fn initUpdatePosition(
     updater: crate::src::xmltok::PositionUpdater,
-    _enc: *const crate::src::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pos: *mut crate::src::xmltok::POSITION,
+    encoding: &normal_encoding,
+    bytes: &[u8],
+    pos: &mut crate::src::xmltok::POSITION,
 ) {
     match updater {
         crate::src::xmltok::PositionUpdater::Init => {
-            normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos)
+            xmltok_impl_c::normal_update_position(&utf8_encoding, bytes, pos)
         }
-        crate::src::xmltok::PositionUpdater::Normal => normal_updatePosition(_enc, ptr, end, pos),
+        crate::src::xmltok::PositionUpdater::Normal => {
+            xmltok_impl_c::normal_update_position(encoding, bytes, pos)
+        }
         crate::src::xmltok::PositionUpdater::Little2 => {
-            crate::src::xmltok::xmltok_impl_c::little2_updatePosition(_enc, ptr, end, pos)
+            xmltok_impl_c::little2_update_position(encoding, bytes, pos)
         }
         crate::src::xmltok::PositionUpdater::Big2 => {
-            crate::src::xmltok::xmltok_impl_c::big2_updatePosition(_enc, ptr, end, pos)
+            xmltok_impl_c::big2_update_position(encoding, bytes, pos)
         }
     }
 }
