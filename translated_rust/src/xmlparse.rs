@@ -13580,12 +13580,99 @@ unsafe extern "C" fn doIgnoreSection(
     mut nextPtr: *mut *const ::core::ffi::c_char,
     mut haveMore: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Error {
-    if parser.is_null() || enc.is_null() || nextPtr.is_null() || (*startPtr).is_null() || end.is_null() {
+    if parser.is_null()
+        || enc.is_null()
+        || nextPtr.is_null()
+        || (*startPtr).is_null()
+        || end.is_null()
+    {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
     let s = *startPtr;
-    let parser_state = &mut *parser;
-    let parser_events = enc == std::ptr::from_ref(current_parser_encoding(parser_state));
+    let action = {
+        let parser_state = &mut *parser;
+        // The safe implementation never dispatches a callback, so this DTD
+        // observation cannot outlive the exclusive parser turn.  Keep the
+        // `UnsafeCell` access at this raw boundary and pass only `&DTD` on.
+        let dtd_owner = parser_state.m_dtd.clone();
+        let dtd = dtd_owner.as_ref().map(|dtd| &*dtd.value.get());
+        do_ignore_section_checked(
+            parser_state,
+            dtd,
+            IgnoreSectionRequest {
+                start_address: s.addr(),
+                end_address: end.addr(),
+                encoding_address: enc.addr(),
+                have_more: haveMore != 0,
+            },
+        )
+    };
+    if let Some(default_range) = action.default_range {
+        reportDefault(
+            parser,
+            enc,
+            s.wrapping_add(default_range.start),
+            s.wrapping_add(default_range.end),
+        );
+    }
+    *startPtr = action
+        .start_offset
+        .map(|offset| s.wrapping_add(offset))
+        .unwrap_or(::core::ptr::null());
+    if let Some(offset) = action.next_offset {
+        *nextPtr = s.wrapping_add(offset);
+    }
+    if action.check_finished_after_default
+        && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+            == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        return crate::expat_h::XML_ERROR_ABORTED;
+    }
+    action.error
+}
+
+/// Checked input supplied by the raw ignore-section cursor adapter.  The
+/// implementation works entirely in parser-owned windows and offsets, so it
+/// cannot fabricate a slice or retain a raw cursor across a callback.
+struct IgnoreSectionRequest {
+    start_address: usize,
+    end_address: usize,
+    encoding_address: usize,
+    have_more: bool,
+}
+
+struct IgnoreSectionAction {
+    error: crate::expat_h::XML_Error,
+    start_offset: Option<usize>,
+    next_offset: Option<usize>,
+    default_range: Option<std::ops::Range<usize>>,
+    check_finished_after_default: bool,
+}
+
+fn ignore_section_action(
+    error: crate::expat_h::XML_Error,
+    start_offset: Option<usize>,
+    next_offset: Option<usize>,
+) -> IgnoreSectionAction {
+    IgnoreSectionAction {
+        error,
+        start_offset,
+        next_offset,
+        default_range: None,
+        check_finished_after_default: false,
+    }
+}
+
+/// Scans and applies one ignore-section token using only checked parser-owned
+/// state.  The callback range is returned as offsets so the raw adapter can
+/// invoke the legacy default handler after this mutable borrow has ended.
+fn do_ignore_section_checked(
+    parser_state: &mut XML_ParserStruct,
+    dtd: Option<&DTD>,
+    request: IgnoreSectionRequest,
+) -> IgnoreSectionAction {
+    let parser_events = request.encoding_address
+        == std::ptr::from_ref(current_parser_encoding(parser_state)).addr();
     // Event cursors name either the parser buffer or a live internal-entity
     // slot.  Retain the slot index, rather than an interior pointer to its
     // cursor fields, because callbacks may grow the entity storage.
@@ -13594,63 +13681,88 @@ unsafe extern "C" fn doIgnoreSection(
     if !parser_events {
         let open_entity_index = {
             let Some(open_entity_index) = parser_state.m_openInternalEntities else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                return ignore_section_action(
+                    crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                    None,
+                    None,
+                );
             };
-            let Some(dtd) = parser_state.m_dtd.clone() else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            let Some(dtd) = dtd else {
+                return ignore_section_action(
+                    crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                    None,
+                    None,
+                );
             };
             let Some(open_entity) = parser_state.m_activeInternalEntities.get(open_entity_index)
             else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                return ignore_section_action(
+                    crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                    None,
+                    None,
+                );
             };
             let entity = open_entity.node();
-            let Some(text) = shared_entity_text_chars(&dtd, entity.eventText, entity.eventTextLen)
-            else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            let Some(text) = entity_text_chars(dtd, entity.eventText, entity.eventTextLen) else {
+                return ignore_section_action(
+                    crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                    None,
+                    None,
+                );
             };
             internal_event_window = Some((text.as_ptr().addr(), text.len()));
             open_entity_index
         };
         event_target = EventCursorTarget::InternalEntity(open_entity_index);
     }
-    let encoding = &*(enc as *const crate::src::xmltok::normal_encoding);
-    let scanner = (*enc).scanners[3];
+    // Ignore sections may be parsed from either the parser buffer or an
+    // internal entity.  Resolve the ABI-table address through those two
+    // parser-owned encodings instead of reinterpreting an `ENCODING` prefix
+    // as a complete `normal_encoding` record.
+    let Some(encoding) = entity_value_normal_encoding(parser_state, request.encoding_address)
+    else {
+        return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
+    };
+    let scanner = encoding.enc.scanners[3];
     let outcome = if parser_events {
-        let Some(window) = parser_state.m_buffer.window_from_addresses(s.addr(), end.addr()) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some(window) = parser_state
+            .m_buffer
+            .window_from_addresses(request.start_address, request.end_address)
+        else {
+            return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
         };
         ignore_section_token_and_account(
             parser_state,
-            encoding,
+            &encoding,
             scanner,
             IgnoreSectionInput::from_bytes(window),
         )
     } else {
         let Some(index) = parser_state.m_openInternalEntities else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
         };
-        let Some(dtd) = parser_state.m_dtd.clone() else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some(dtd) = dtd else {
+            return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
         };
         let Some(entity) = parser_state.m_activeInternalEntities.get(index) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
         };
         let entity = entity.node();
-        let Some(text) = shared_entity_text_chars(&dtd, entity.eventText, entity.eventTextLen) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some(text) = entity_text_chars(dtd, entity.eventText, entity.eventTextLen) else {
+            return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
         };
-        let Some(start) = s.addr().checked_sub(text.as_ptr().addr()) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some(start) = request.start_address.checked_sub(text.as_ptr().addr()) else {
+            return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
         };
-        let Some(end) = end.addr().checked_sub(text.as_ptr().addr()) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some(end) = request.end_address.checked_sub(text.as_ptr().addr()) else {
+            return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
         };
         let Some(window) = text.get(start..end) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
         };
         ignore_section_token_and_account(
             parser_state,
-            encoding,
+            &encoding,
             scanner,
             IgnoreSectionInput::from_chars(window),
         )
@@ -13660,45 +13772,42 @@ unsafe extern "C" fn doIgnoreSection(
         outcome,
         event_target,
         internal_event_window,
-        s.addr(),
+        request.start_address,
     );
-    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
     match result {
-        IgnoreSectionResult::Closed { next_offset } => {
-            let next = s.wrapping_add(next_offset);
-            if parser_state.m_defaultHandler {
-                reportDefault(parser, enc, s, next);
-            }
-            *startPtr = next;
-            *nextPtr = next;
-            if parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint
-                == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                return crate::expat_h::XML_ERROR_ABORTED;
-            } else {
-                return crate::expat_h::XML_ERROR_NONE;
-            }
+        IgnoreSectionResult::Closed { next_offset } => IgnoreSectionAction {
+            error: crate::expat_h::XML_ERROR_NONE,
+            start_offset: Some(next_offset),
+            next_offset: Some(next_offset),
+            default_range: parser_state.m_defaultHandler.then_some(0..next_offset),
+            check_finished_after_default: true,
+        },
+        IgnoreSectionResult::Invalid => {
+            ignore_section_action(crate::expat_h::XML_ERROR_INVALID_TOKEN, None, None)
         }
-        IgnoreSectionResult::Invalid => return crate::expat_h::XML_ERROR_INVALID_TOKEN,
         IgnoreSectionResult::PartialChar => {
-            if haveMore != 0 {
-                *nextPtr = s;
-                return crate::expat_h::XML_ERROR_NONE;
+            if request.have_more {
+                ignore_section_action(crate::expat_h::XML_ERROR_NONE, None, Some(0))
+            } else {
+                ignore_section_action(crate::expat_h::XML_ERROR_PARTIAL_CHAR, None, None)
             }
-            return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
         }
         IgnoreSectionResult::Partial => {
-            if haveMore != 0 {
-                *nextPtr = s;
-                return crate::expat_h::XML_ERROR_NONE;
+            if request.have_more {
+                ignore_section_action(crate::expat_h::XML_ERROR_NONE, None, Some(0))
+            } else {
+                ignore_section_action(crate::expat_h::XML_ERROR_SYNTAX, None, None)
             }
-            return crate::expat_h::XML_ERROR_SYNTAX;
         }
-        IgnoreSectionResult::Unexpected => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
-        IgnoreSectionResult::AmplificationLimit => {
-            return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH
+        IgnoreSectionResult::Unexpected => {
+            ignore_section_action(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None)
         }
-    };
+        IgnoreSectionResult::AmplificationLimit => ignore_section_action(
+            crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH,
+            None,
+            None,
+        ),
+    }
 }
 
 /// An owned, tokenizer-bounded view of an ignore-section token.  The C
