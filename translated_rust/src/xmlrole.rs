@@ -1951,13 +1951,7 @@ unsafe extern "C" fn declClose(
     return common(state, tok);
 }
 
-unsafe extern "C" fn error(
-    _state: *mut crate::src::xmlrole::PROLOG_STATE,
-    _tok: ::core::ffi::c_int,
-    _ptr: *const ::core::ffi::c_char,
-    _end: *const ::core::ffi::c_char,
-    _enc: *const crate::src::xmltok::ENCODING,
-) -> ::core::ffi::c_int {
+fn error() -> ::core::ffi::c_int {
     return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
 }
 
@@ -2020,7 +2014,7 @@ pub unsafe fn prolog_handler_dispatch(
         PrologHandler::CondSect1 => condSect1,
         PrologHandler::CondSect2 => condSect2,
         PrologHandler::DeclClose => declClose,
-        PrologHandler::Error => error,
+        PrologHandler::Error => return error(),
     };
     handler(state, tok, ptr, end, enc)
 }
