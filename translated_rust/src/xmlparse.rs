@@ -8918,27 +8918,26 @@ pub unsafe extern "C" fn XML_SetEndCdataSectionHandler_ffi(
 ) {
     XML_SetEndCdataSectionHandler(parser, end)
 }
-pub unsafe extern "C" fn XML_SetDefaultHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_DefaultHandler,
+fn XML_SetDefaultHandler(
+    default_handler_enabled: &mut bool,
+    default_expand_internal_entities: &mut crate::expat_h::XML_Bool,
+    parser_address: usize,
+    handler: Option<std::sync::Arc<dyn DefaultCallback>>,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_defaultHandler = handler.is_some();
+    *default_handler_enabled = handler.is_some();
     let mut handlers = DEFAULT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     match handler {
         Some(callback) => {
-            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            handlers.insert(parser_address, callback);
         }
         None => {
-            handlers.remove(&(parser as usize));
+            handlers.remove(&parser_address);
         }
     }
-    (*parser).m_defaultExpandInternalEntities = crate::expat_h::XML_FALSE;
+    *default_expand_internal_entities = crate::expat_h::XML_FALSE;
 }
 #[export_name = "XML_SetDefaultHandler"]
 
@@ -8946,7 +8945,18 @@ pub unsafe extern "C" fn XML_SetDefaultHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_DefaultHandler,
 ) {
-    XML_SetDefaultHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let handler = handler.map(|callback| std::sync::Arc::new(callback) as _);
+    let parser = parser.as_mut().expect("non-null parser was checked");
+    XML_SetDefaultHandler(
+        &mut parser.m_defaultHandler,
+        &mut parser.m_defaultExpandInternalEntities,
+        parser_address,
+        handler,
+    )
 }
 pub unsafe extern "C" fn XML_SetDefaultHandlerExpand(
     mut parser: crate::expat_h::XML_Parser,
