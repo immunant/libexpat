@@ -2524,16 +2524,7 @@ fn dispatch_unparsed_entity_decl_callback(
     }
 }
 
-trait NotationDeclCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        notation_name: *const crate::expat_external_h::XML_Char,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-    );
-}
+trait NotationDeclCallback: Send + Sync + std::any::Any {}
 
 impl NotationDeclCallback
     for unsafe extern "C" fn(
@@ -2543,30 +2534,79 @@ impl NotationDeclCallback
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
     ) -> ()
-{
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        notation_name: *const crate::expat_external_h::XML_Char,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-    ) {
-        self(user_data, notation_name, base, system_id, public_id);
+{}
+
+/// A notation declaration held in parser-managed storage for one callback.
+/// All identifier slices are NUL-terminated where present, matching Expat's
+/// callback contract without making parser-side dispatch reconstruct raw
+/// pointers.
+struct NotationDeclCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    notation_name: Option<&'a [crate::expat_external_h::XML_Char]>,
+    base: Option<&'a [crate::expat_external_h::XML_Char]>,
+    system_id: Option<&'a [crate::expat_external_h::XML_Char]>,
+    public_id: Option<&'a [crate::expat_external_h::XML_Char]>,
+}
+
+/// Owns the erased C callback representation while parser-side declaration
+/// processing operates exclusively on checked event views.
+struct NotationDeclCallbackAdapter {
+    callback: std::sync::Arc<dyn NotationDeclCallback>,
+}
+
+impl NotationDeclCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: NotationDeclCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
+    }
+
+    fn invoke(&self, event: NotationDeclCallbackEvent<'_>) {
+        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+            ),
+        >() else {
+            return;
+        };
+        unsafe {
+            callback(
+                handler_arg_from_state!(event.parser),
+                event
+                    .notation_name
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event.base.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event
+                    .system_id
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event
+                    .public_id
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            );
+        }
     }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a notation-declaration callback is installed.
 static NOTATION_DECL_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn NotationDeclCallback>>>,
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<NotationDeclCallbackAdapter>>,
+    >,
 > = std::sync::OnceLock::new();
 
 /// A notation-declaration handler registration prepared from the ABI callback
 /// value.  Parser state keeps only this typed registry entry and an opaque
 /// parser address key.
 struct NotationDeclHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn NotationDeclCallback>>,
+    callback: Option<std::sync::Arc<NotationDeclCallbackAdapter>>,
 }
 
 fn notation_decl_handler_registration<Callback>(
@@ -2576,7 +2616,7 @@ where
     Callback: NotationDeclCallback + 'static,
 {
     NotationDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| std::sync::Arc::new(NotationDeclCallbackAdapter::new(callback))),
     }
 }
 
@@ -2621,29 +2661,23 @@ fn dispatch_notation_decl_callback(
 
     let notation_name = parser
         .m_declNotationName
-        .and_then(|name| parser.m_tempPool.chars_from(name))
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        .and_then(|name| parser.m_tempPool.chars_from(name));
     let base = parser
         .m_curBase
-        .and_then(|name| dtd.pool.chars_from(name))
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        .and_then(|name| dtd.pool.chars_from(name));
     let system_id = system_id
-        .and_then(|name| parser.m_tempPool.chars_from(name))
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        .and_then(|name| parser.m_tempPool.chars_from(name));
     let public_id = parser
         .m_declNotationPublicId
-        .and_then(|name| parser.m_tempPool.chars_from(name))
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        .and_then(|name| parser.m_tempPool.chars_from(name));
 
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            notation_name,
-            base,
-            system_id,
-            public_id,
-        );
-    }
+    callback.invoke(NotationDeclCallbackEvent {
+        parser,
+        notation_name,
+        base,
+        system_id,
+        public_id,
+    });
     true
 }
 
@@ -8531,7 +8565,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldUnparsedEntityDeclCallback: Option<std::sync::Arc<dyn UnparsedEntityDeclCallback>> =
         None;
     let mut oldNotationDeclHandler = false;
-    let mut oldNotationDeclCallback: Option<std::sync::Arc<dyn NotationDeclCallback>> = None;
+    let mut oldNotationDeclCallback: Option<std::sync::Arc<NotationDeclCallbackAdapter>> = None;
     let mut oldStartNamespaceDeclHandler = false;
     let mut oldStartNamespaceDeclCallback: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>> = None;
     let mut oldEndNamespaceDeclHandler = false;
