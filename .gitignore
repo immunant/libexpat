@@ -36,3 +36,7 @@ expat/**/*.sdf
 expat/**/*.VC.db
 expat/tests/**/Debug/
 expat/tests/**/Release/
+# Rust and c2rust related
+target
+expat/build
+expat/**/*.c_decls.json
