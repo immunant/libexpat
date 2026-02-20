@@ -7,6 +7,11 @@
 #![feature(extern_types)]
 #![feature(label_break_value)]
 #![feature(raw_ref_op)]
+#![feature(register_tool)]
+#![register_tool(c2rust)]
+
+#[macro_use]
+extern crate c2rust_bitfields;
 
 pub mod src {
     pub mod lib {

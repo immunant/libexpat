@@ -17,4 +17,5 @@ crate-type = ["staticlib", "rlib"]
 path = "src/xmlwf/xmlwf.rs"
 name = "xmlwf"
 [dependencies]
+c2rust-bitfields = "0.22.1"
 

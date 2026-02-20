@@ -1,192 +1,425 @@
-pub type XML_Size = ::core::ffi::c_ulong;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct position {
-    pub lineNumber: XML_Size,
-    pub columnNumber: XML_Size,
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/expat_external.h:50"]
+pub mod expat_external_h {
+    #[c2rust::src_loc = "158:1"]
+    pub type XML_Size = ::core::ffi::c_ulong;
 }
-pub type POSITION = position;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct ATTRIBUTE {
-    pub name: *const ::core::ffi::c_char,
-    pub valuePtr: *const ::core::ffi::c_char,
-    pub valueEnd: *const ::core::ffi::c_char,
-    pub normalized: ::core::ffi::c_char,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct encoding {
-    pub scanners: [SCANNER; 4],
-    pub literalScanners: [SCANNER; 2],
-    pub nameMatchesAscii: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub nameLength: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub skipS: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> *const ::core::ffi::c_char,
-    >,
-    pub getAtts: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            ::core::ffi::c_int,
-            *mut ATTRIBUTE,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub charRefNumber: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub predefinedEntityName: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub updatePosition: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut POSITION,
-        ) -> (),
-    >,
-    pub isPublicId: Option<
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmltok.h:51"]
+pub mod xmltok_h {
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "146:9"]
+    pub struct position {
+        pub lineNumber: XML_Size,
+        pub columnNumber: XML_Size,
+    }
+    #[c2rust::src_loc = "146:1"]
+    pub type POSITION = position;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "152:9"]
+    pub struct ATTRIBUTE {
+        pub name: *const ::core::ffi::c_char,
+        pub valuePtr: *const ::core::ffi::c_char,
+        pub valueEnd: *const ::core::ffi::c_char,
+        pub normalized: ::core::ffi::c_char,
+    }
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "172:1"]
+    pub struct encoding {
+        pub scanners: [SCANNER; 4],
+        pub literalScanners: [SCANNER; 2],
+        pub nameMatchesAscii: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub nameLength: Option<
+            unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
+        >,
+        pub skipS: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+            ) -> *const ::core::ffi::c_char,
+        >,
+        pub getAtts: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                ::core::ffi::c_int,
+                *mut ATTRIBUTE,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub charRefNumber: Option<
+            unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
+        >,
+        pub predefinedEntityName: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub updatePosition: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut POSITION,
+            ) -> (),
+        >,
+        pub isPublicId: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub utf8Convert: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *mut *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *mut ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+            ) -> XML_Convert_Result,
+        >,
+        pub utf16Convert: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *mut *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *mut ::core::ffi::c_ushort,
+                *const ::core::ffi::c_ushort,
+            ) -> XML_Convert_Result,
+        >,
+        pub minBytesPerChar: ::core::ffi::c_int,
+        pub isUtf8: ::core::ffi::c_char,
+        pub isUtf16: ::core::ffi::c_char,
+    }
+    #[c2rust::src_loc = "160:1"]
+    pub type ENCODING = encoding;
+    #[c2rust::src_loc = "165:1"]
+    pub type XML_Convert_Result = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "168:3"]
+    pub const XML_CONVERT_OUTPUT_EXHAUSTED: XML_Convert_Result = 2;
+    #[c2rust::src_loc = "167:3"]
+    pub const XML_CONVERT_INPUT_INCOMPLETE: XML_Convert_Result = 1;
+    #[c2rust::src_loc = "166:3"]
+    pub const XML_CONVERT_COMPLETED: XML_Convert_Result = 0;
+    #[c2rust::src_loc = "162:1"]
+    pub type SCANNER = Option<
         unsafe extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
             *mut *const ::core::ffi::c_char,
         ) -> ::core::ffi::c_int,
-    >,
-    pub utf8Convert: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *mut *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut *mut ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> XML_Convert_Result,
-    >,
-    pub utf16Convert: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *mut *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut *mut ::core::ffi::c_ushort,
-            *const ::core::ffi::c_ushort,
-        ) -> XML_Convert_Result,
-    >,
-    pub minBytesPerChar: ::core::ffi::c_int,
-    pub isUtf8: ::core::ffi::c_char,
-    pub isUtf16: ::core::ffi::c_char,
+    >;
+    #[c2rust::src_loc = "51:11"]
+    pub const XML_TOK_NONE: ::core::ffi::c_int = -4;
+    #[c2rust::src_loc = "76:11"]
+    pub const XML_TOK_PI: ::core::ffi::c_int = 11;
+    #[c2rust::src_loc = "77:11"]
+    pub const XML_TOK_XML_DECL: ::core::ffi::c_int = 12;
+    #[c2rust::src_loc = "78:11"]
+    pub const XML_TOK_COMMENT: ::core::ffi::c_int = 13;
+    #[c2rust::src_loc = "79:11"]
+    pub const XML_TOK_BOM: ::core::ffi::c_int = 14;
+    #[c2rust::src_loc = "82:11"]
+    pub const XML_TOK_PROLOG_S: ::core::ffi::c_int = 15;
+    #[c2rust::src_loc = "83:11"]
+    pub const XML_TOK_DECL_OPEN: ::core::ffi::c_int = 16;
+    #[c2rust::src_loc = "84:11"]
+    pub const XML_TOK_DECL_CLOSE: ::core::ffi::c_int = 17;
+    #[c2rust::src_loc = "85:11"]
+    pub const XML_TOK_NAME: ::core::ffi::c_int = 18;
+    #[c2rust::src_loc = "86:11"]
+    pub const XML_TOK_NMTOKEN: ::core::ffi::c_int = 19;
+    #[c2rust::src_loc = "87:11"]
+    pub const XML_TOK_POUND_NAME: ::core::ffi::c_int = 20;
+    #[c2rust::src_loc = "88:11"]
+    pub const XML_TOK_OR: ::core::ffi::c_int = 21;
+    #[c2rust::src_loc = "89:11"]
+    pub const XML_TOK_PERCENT: ::core::ffi::c_int = 22;
+    #[c2rust::src_loc = "90:11"]
+    pub const XML_TOK_OPEN_PAREN: ::core::ffi::c_int = 23;
+    #[c2rust::src_loc = "91:11"]
+    pub const XML_TOK_CLOSE_PAREN: ::core::ffi::c_int = 24;
+    #[c2rust::src_loc = "92:11"]
+    pub const XML_TOK_OPEN_BRACKET: ::core::ffi::c_int = 25;
+    #[c2rust::src_loc = "93:11"]
+    pub const XML_TOK_CLOSE_BRACKET: ::core::ffi::c_int = 26;
+    #[c2rust::src_loc = "94:11"]
+    pub const XML_TOK_LITERAL: ::core::ffi::c_int = 27;
+    #[c2rust::src_loc = "95:11"]
+    pub const XML_TOK_PARAM_ENTITY_REF: ::core::ffi::c_int = 28 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "96:11"]
+    pub const XML_TOK_INSTANCE_START: ::core::ffi::c_int = 29;
+    #[c2rust::src_loc = "99:11"]
+    pub const XML_TOK_NAME_QUESTION: ::core::ffi::c_int = 30;
+    #[c2rust::src_loc = "100:11"]
+    pub const XML_TOK_NAME_ASTERISK: ::core::ffi::c_int = 31;
+    #[c2rust::src_loc = "101:11"]
+    pub const XML_TOK_NAME_PLUS: ::core::ffi::c_int = 32;
+    #[c2rust::src_loc = "102:11"]
+    pub const XML_TOK_COND_SECT_OPEN: ::core::ffi::c_int = 33;
+    #[c2rust::src_loc = "103:11"]
+    pub const XML_TOK_COND_SECT_CLOSE: ::core::ffi::c_int = 34;
+    #[c2rust::src_loc = "104:11"]
+    pub const XML_TOK_CLOSE_PAREN_QUESTION: ::core::ffi::c_int = 35;
+    #[c2rust::src_loc = "105:11"]
+    pub const XML_TOK_CLOSE_PAREN_ASTERISK: ::core::ffi::c_int = 36;
+    #[c2rust::src_loc = "106:11"]
+    pub const XML_TOK_CLOSE_PAREN_PLUS: ::core::ffi::c_int = 37;
+    #[c2rust::src_loc = "107:11"]
+    pub const XML_TOK_COMMA: ::core::ffi::c_int = 38;
+    #[c2rust::src_loc = "118:11"]
+    pub const XML_TOK_PREFIXED_NAME: ::core::ffi::c_int = 41;
+    use super::expat_external_h::XML_Size;
 }
-pub type ENCODING = encoding;
-pub type XML_Convert_Result = ::core::ffi::c_uint;
-pub const XML_CONVERT_OUTPUT_EXHAUSTED: XML_Convert_Result = 2;
-pub const XML_CONVERT_INPUT_INCOMPLETE: XML_Convert_Result = 1;
-pub const XML_CONVERT_COMPLETED: XML_Convert_Result = 0;
-pub type SCANNER = Option<
-    unsafe extern "C" fn(
-        *const ENCODING,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-        *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
->;
-pub type C2RustUnnamed_2 = ::core::ffi::c_int;
-pub const XML_ROLE_PARAM_ENTITY_REF: C2RustUnnamed_2 = 60;
-pub const XML_ROLE_INNER_PARAM_ENTITY_REF: C2RustUnnamed_2 = 59;
-pub const XML_ROLE_IGNORE_SECT: C2RustUnnamed_2 = 58;
-pub const XML_ROLE_TEXT_DECL: C2RustUnnamed_2 = 57;
-pub const XML_ROLE_COMMENT: C2RustUnnamed_2 = 56;
-pub const XML_ROLE_PI: C2RustUnnamed_2 = 55;
-pub const XML_ROLE_CONTENT_ELEMENT_PLUS: C2RustUnnamed_2 = 54;
-pub const XML_ROLE_CONTENT_ELEMENT_OPT: C2RustUnnamed_2 = 53;
-pub const XML_ROLE_CONTENT_ELEMENT_REP: C2RustUnnamed_2 = 52;
-pub const XML_ROLE_CONTENT_ELEMENT: C2RustUnnamed_2 = 51;
-pub const XML_ROLE_GROUP_SEQUENCE: C2RustUnnamed_2 = 50;
-pub const XML_ROLE_GROUP_CHOICE: C2RustUnnamed_2 = 49;
-pub const XML_ROLE_GROUP_CLOSE_PLUS: C2RustUnnamed_2 = 48;
-pub const XML_ROLE_GROUP_CLOSE_OPT: C2RustUnnamed_2 = 47;
-pub const XML_ROLE_GROUP_CLOSE_REP: C2RustUnnamed_2 = 46;
-pub const XML_ROLE_GROUP_CLOSE: C2RustUnnamed_2 = 45;
-pub const XML_ROLE_GROUP_OPEN: C2RustUnnamed_2 = 44;
-pub const XML_ROLE_CONTENT_PCDATA: C2RustUnnamed_2 = 43;
-pub const XML_ROLE_CONTENT_EMPTY: C2RustUnnamed_2 = 42;
-pub const XML_ROLE_CONTENT_ANY: C2RustUnnamed_2 = 41;
-pub const XML_ROLE_ELEMENT_NAME: C2RustUnnamed_2 = 40;
-pub const XML_ROLE_ELEMENT_NONE: C2RustUnnamed_2 = 39;
-pub const XML_ROLE_FIXED_ATTRIBUTE_VALUE: C2RustUnnamed_2 = 38;
-pub const XML_ROLE_DEFAULT_ATTRIBUTE_VALUE: C2RustUnnamed_2 = 37;
-pub const XML_ROLE_REQUIRED_ATTRIBUTE_VALUE: C2RustUnnamed_2 = 36;
-pub const XML_ROLE_IMPLIED_ATTRIBUTE_VALUE: C2RustUnnamed_2 = 35;
-pub const XML_ROLE_ATTLIST_ELEMENT_NAME: C2RustUnnamed_2 = 34;
-pub const XML_ROLE_ATTLIST_NONE: C2RustUnnamed_2 = 33;
-pub const XML_ROLE_ATTRIBUTE_NOTATION_VALUE: C2RustUnnamed_2 = 32;
-pub const XML_ROLE_ATTRIBUTE_ENUM_VALUE: C2RustUnnamed_2 = 31;
-pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS: C2RustUnnamed_2 = 30;
-pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN: C2RustUnnamed_2 = 29;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITIES: C2RustUnnamed_2 = 28;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITY: C2RustUnnamed_2 = 27;
-pub const XML_ROLE_ATTRIBUTE_TYPE_IDREFS: C2RustUnnamed_2 = 26;
-pub const XML_ROLE_ATTRIBUTE_TYPE_IDREF: C2RustUnnamed_2 = 25;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ID: C2RustUnnamed_2 = 24;
-pub const XML_ROLE_ATTRIBUTE_TYPE_CDATA: C2RustUnnamed_2 = 23;
-pub const XML_ROLE_ATTRIBUTE_NAME: C2RustUnnamed_2 = 22;
-pub const XML_ROLE_NOTATION_PUBLIC_ID: C2RustUnnamed_2 = 21;
-pub const XML_ROLE_NOTATION_NO_SYSTEM_ID: C2RustUnnamed_2 = 20;
-pub const XML_ROLE_NOTATION_SYSTEM_ID: C2RustUnnamed_2 = 19;
-pub const XML_ROLE_NOTATION_NAME: C2RustUnnamed_2 = 18;
-pub const XML_ROLE_NOTATION_NONE: C2RustUnnamed_2 = 17;
-pub const XML_ROLE_ENTITY_NOTATION_NAME: C2RustUnnamed_2 = 16;
-pub const XML_ROLE_ENTITY_COMPLETE: C2RustUnnamed_2 = 15;
-pub const XML_ROLE_ENTITY_PUBLIC_ID: C2RustUnnamed_2 = 14;
-pub const XML_ROLE_ENTITY_SYSTEM_ID: C2RustUnnamed_2 = 13;
-pub const XML_ROLE_ENTITY_VALUE: C2RustUnnamed_2 = 12;
-pub const XML_ROLE_ENTITY_NONE: C2RustUnnamed_2 = 11;
-pub const XML_ROLE_PARAM_ENTITY_NAME: C2RustUnnamed_2 = 10;
-pub const XML_ROLE_GENERAL_ENTITY_NAME: C2RustUnnamed_2 = 9;
-pub const XML_ROLE_DOCTYPE_CLOSE: C2RustUnnamed_2 = 8;
-pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2RustUnnamed_2 = 7;
-pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2RustUnnamed_2 = 6;
-pub const XML_ROLE_DOCTYPE_SYSTEM_ID: C2RustUnnamed_2 = 5;
-pub const XML_ROLE_DOCTYPE_NAME: C2RustUnnamed_2 = 4;
-pub const XML_ROLE_DOCTYPE_NONE: C2RustUnnamed_2 = 3;
-pub const XML_ROLE_INSTANCE_START: C2RustUnnamed_2 = 2;
-pub const XML_ROLE_XML_DECL: C2RustUnnamed_2 = 1;
-pub const XML_ROLE_NONE: C2RustUnnamed_2 = 0;
-pub const XML_ROLE_ERROR: C2RustUnnamed_2 = -1;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct prolog_state {
-    pub handler: Option<
-        unsafe extern "C" fn(
-            *mut prolog_state,
-            ::core::ffi::c_int,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *const ENCODING,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub level: ::core::ffi::c_uint,
-    pub role_none: ::core::ffi::c_int,
-    pub includeLevel: ::core::ffi::c_uint,
-    pub documentEntity: ::core::ffi::c_int,
-    pub inEntityValue: ::core::ffi::c_int,
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlrole.h:51"]
+pub mod xmlrole_h {
+    #[c2rust::src_loc = "45:1"]
+    pub type C2RustUnnamed = ::core::ffi::c_int;
+    #[c2rust::src_loc = "109:3"]
+    pub const XML_ROLE_PARAM_ENTITY_REF: C2RustUnnamed = 60;
+    #[c2rust::src_loc = "107:3"]
+    pub const XML_ROLE_INNER_PARAM_ENTITY_REF: C2RustUnnamed = 59;
+    #[c2rust::src_loc = "106:3"]
+    pub const XML_ROLE_IGNORE_SECT: C2RustUnnamed = 58;
+    #[c2rust::src_loc = "105:3"]
+    pub const XML_ROLE_TEXT_DECL: C2RustUnnamed = 57;
+    #[c2rust::src_loc = "103:3"]
+    pub const XML_ROLE_COMMENT: C2RustUnnamed = 56;
+    #[c2rust::src_loc = "102:3"]
+    pub const XML_ROLE_PI: C2RustUnnamed = 55;
+    #[c2rust::src_loc = "101:3"]
+    pub const XML_ROLE_CONTENT_ELEMENT_PLUS: C2RustUnnamed = 54;
+    #[c2rust::src_loc = "100:3"]
+    pub const XML_ROLE_CONTENT_ELEMENT_OPT: C2RustUnnamed = 53;
+    #[c2rust::src_loc = "99:3"]
+    pub const XML_ROLE_CONTENT_ELEMENT_REP: C2RustUnnamed = 52;
+    #[c2rust::src_loc = "98:3"]
+    pub const XML_ROLE_CONTENT_ELEMENT: C2RustUnnamed = 51;
+    #[c2rust::src_loc = "97:3"]
+    pub const XML_ROLE_GROUP_SEQUENCE: C2RustUnnamed = 50;
+    #[c2rust::src_loc = "96:3"]
+    pub const XML_ROLE_GROUP_CHOICE: C2RustUnnamed = 49;
+    #[c2rust::src_loc = "95:3"]
+    pub const XML_ROLE_GROUP_CLOSE_PLUS: C2RustUnnamed = 48;
+    #[c2rust::src_loc = "94:3"]
+    pub const XML_ROLE_GROUP_CLOSE_OPT: C2RustUnnamed = 47;
+    #[c2rust::src_loc = "93:3"]
+    pub const XML_ROLE_GROUP_CLOSE_REP: C2RustUnnamed = 46;
+    #[c2rust::src_loc = "92:3"]
+    pub const XML_ROLE_GROUP_CLOSE: C2RustUnnamed = 45;
+    #[c2rust::src_loc = "91:3"]
+    pub const XML_ROLE_GROUP_OPEN: C2RustUnnamed = 44;
+    #[c2rust::src_loc = "90:3"]
+    pub const XML_ROLE_CONTENT_PCDATA: C2RustUnnamed = 43;
+    #[c2rust::src_loc = "89:3"]
+    pub const XML_ROLE_CONTENT_EMPTY: C2RustUnnamed = 42;
+    #[c2rust::src_loc = "88:3"]
+    pub const XML_ROLE_CONTENT_ANY: C2RustUnnamed = 41;
+    #[c2rust::src_loc = "87:3"]
+    pub const XML_ROLE_ELEMENT_NAME: C2RustUnnamed = 40;
+    #[c2rust::src_loc = "86:3"]
+    pub const XML_ROLE_ELEMENT_NONE: C2RustUnnamed = 39;
+    #[c2rust::src_loc = "85:3"]
+    pub const XML_ROLE_FIXED_ATTRIBUTE_VALUE: C2RustUnnamed = 38;
+    #[c2rust::src_loc = "84:3"]
+    pub const XML_ROLE_DEFAULT_ATTRIBUTE_VALUE: C2RustUnnamed = 37;
+    #[c2rust::src_loc = "83:3"]
+    pub const XML_ROLE_REQUIRED_ATTRIBUTE_VALUE: C2RustUnnamed = 36;
+    #[c2rust::src_loc = "82:3"]
+    pub const XML_ROLE_IMPLIED_ATTRIBUTE_VALUE: C2RustUnnamed = 35;
+    #[c2rust::src_loc = "81:3"]
+    pub const XML_ROLE_ATTLIST_ELEMENT_NAME: C2RustUnnamed = 34;
+    #[c2rust::src_loc = "80:3"]
+    pub const XML_ROLE_ATTLIST_NONE: C2RustUnnamed = 33;
+    #[c2rust::src_loc = "79:3"]
+    pub const XML_ROLE_ATTRIBUTE_NOTATION_VALUE: C2RustUnnamed = 32;
+    #[c2rust::src_loc = "78:3"]
+    pub const XML_ROLE_ATTRIBUTE_ENUM_VALUE: C2RustUnnamed = 31;
+    #[c2rust::src_loc = "77:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS: C2RustUnnamed = 30;
+    #[c2rust::src_loc = "76:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN: C2RustUnnamed = 29;
+    #[c2rust::src_loc = "75:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITIES: C2RustUnnamed = 28;
+    #[c2rust::src_loc = "74:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITY: C2RustUnnamed = 27;
+    #[c2rust::src_loc = "73:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_IDREFS: C2RustUnnamed = 26;
+    #[c2rust::src_loc = "72:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_IDREF: C2RustUnnamed = 25;
+    #[c2rust::src_loc = "71:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ID: C2RustUnnamed = 24;
+    #[c2rust::src_loc = "70:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_CDATA: C2RustUnnamed = 23;
+    #[c2rust::src_loc = "69:3"]
+    pub const XML_ROLE_ATTRIBUTE_NAME: C2RustUnnamed = 22;
+    #[c2rust::src_loc = "68:3"]
+    pub const XML_ROLE_NOTATION_PUBLIC_ID: C2RustUnnamed = 21;
+    #[c2rust::src_loc = "67:3"]
+    pub const XML_ROLE_NOTATION_NO_SYSTEM_ID: C2RustUnnamed = 20;
+    #[c2rust::src_loc = "66:3"]
+    pub const XML_ROLE_NOTATION_SYSTEM_ID: C2RustUnnamed = 19;
+    #[c2rust::src_loc = "65:3"]
+    pub const XML_ROLE_NOTATION_NAME: C2RustUnnamed = 18;
+    #[c2rust::src_loc = "64:3"]
+    pub const XML_ROLE_NOTATION_NONE: C2RustUnnamed = 17;
+    #[c2rust::src_loc = "63:3"]
+    pub const XML_ROLE_ENTITY_NOTATION_NAME: C2RustUnnamed = 16;
+    #[c2rust::src_loc = "62:3"]
+    pub const XML_ROLE_ENTITY_COMPLETE: C2RustUnnamed = 15;
+    #[c2rust::src_loc = "61:3"]
+    pub const XML_ROLE_ENTITY_PUBLIC_ID: C2RustUnnamed = 14;
+    #[c2rust::src_loc = "60:3"]
+    pub const XML_ROLE_ENTITY_SYSTEM_ID: C2RustUnnamed = 13;
+    #[c2rust::src_loc = "59:3"]
+    pub const XML_ROLE_ENTITY_VALUE: C2RustUnnamed = 12;
+    #[c2rust::src_loc = "58:3"]
+    pub const XML_ROLE_ENTITY_NONE: C2RustUnnamed = 11;
+    #[c2rust::src_loc = "57:3"]
+    pub const XML_ROLE_PARAM_ENTITY_NAME: C2RustUnnamed = 10;
+    #[c2rust::src_loc = "56:3"]
+    pub const XML_ROLE_GENERAL_ENTITY_NAME: C2RustUnnamed = 9;
+    #[c2rust::src_loc = "55:3"]
+    pub const XML_ROLE_DOCTYPE_CLOSE: C2RustUnnamed = 8;
+    #[c2rust::src_loc = "54:3"]
+    pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2RustUnnamed = 7;
+    #[c2rust::src_loc = "53:3"]
+    pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2RustUnnamed = 6;
+    #[c2rust::src_loc = "52:3"]
+    pub const XML_ROLE_DOCTYPE_SYSTEM_ID: C2RustUnnamed = 5;
+    #[c2rust::src_loc = "51:3"]
+    pub const XML_ROLE_DOCTYPE_NAME: C2RustUnnamed = 4;
+    #[c2rust::src_loc = "50:3"]
+    pub const XML_ROLE_DOCTYPE_NONE: C2RustUnnamed = 3;
+    #[c2rust::src_loc = "49:3"]
+    pub const XML_ROLE_INSTANCE_START: C2RustUnnamed = 2;
+    #[c2rust::src_loc = "48:3"]
+    pub const XML_ROLE_XML_DECL: C2RustUnnamed = 1;
+    #[c2rust::src_loc = "47:3"]
+    pub const XML_ROLE_NONE: C2RustUnnamed = 0;
+    #[c2rust::src_loc = "46:3"]
+    pub const XML_ROLE_ERROR: C2RustUnnamed = -1;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "112:9"]
+    pub struct prolog_state {
+        pub handler: Option<
+            unsafe extern "C" fn(
+                *mut prolog_state,
+                ::core::ffi::c_int,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *const ENCODING,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub level: ::core::ffi::c_uint,
+        pub role_none: ::core::ffi::c_int,
+        pub includeLevel: ::core::ffi::c_uint,
+        pub documentEntity: ::core::ffi::c_int,
+        pub inEntityValue: ::core::ffi::c_int,
+    }
+    #[c2rust::src_loc = "112:1"]
+    pub type PROLOG_STATE = prolog_state;
+    use super::xmltok_h::ENCODING;
 }
-pub type PROLOG_STATE = prolog_state;
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/ascii.h:52"]
+pub mod ascii_h {
+    #[c2rust::src_loc = "36:9"]
+    pub const ASCII_A: ::core::ffi::c_int = 0x41 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "37:9"]
+    pub const ASCII_B: ::core::ffi::c_int = 0x42 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "38:9"]
+    pub const ASCII_C: ::core::ffi::c_int = 0x43 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "39:9"]
+    pub const ASCII_D: ::core::ffi::c_int = 0x44 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "40:9"]
+    pub const ASCII_E: ::core::ffi::c_int = 0x45 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "41:9"]
+    pub const ASCII_F: ::core::ffi::c_int = 0x46 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "42:9"]
+    pub const ASCII_G: ::core::ffi::c_int = 0x47 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "44:9"]
+    pub const ASCII_I: ::core::ffi::c_int = 0x49 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "46:9"]
+    pub const ASCII_K: ::core::ffi::c_int = 0x4b as ::core::ffi::c_int;
+    #[c2rust::src_loc = "47:9"]
+    pub const ASCII_L: ::core::ffi::c_int = 0x4c as ::core::ffi::c_int;
+    #[c2rust::src_loc = "48:9"]
+    pub const ASCII_M: ::core::ffi::c_int = 0x4d as ::core::ffi::c_int;
+    #[c2rust::src_loc = "49:9"]
+    pub const ASCII_N: ::core::ffi::c_int = 0x4e as ::core::ffi::c_int;
+    #[c2rust::src_loc = "50:9"]
+    pub const ASCII_O: ::core::ffi::c_int = 0x4f as ::core::ffi::c_int;
+    #[c2rust::src_loc = "51:9"]
+    pub const ASCII_P: ::core::ffi::c_int = 0x50 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "52:9"]
+    pub const ASCII_Q: ::core::ffi::c_int = 0x51 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "53:9"]
+    pub const ASCII_R: ::core::ffi::c_int = 0x52 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "54:9"]
+    pub const ASCII_S: ::core::ffi::c_int = 0x53 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "55:9"]
+    pub const ASCII_T: ::core::ffi::c_int = 0x54 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "56:9"]
+    pub const ASCII_U: ::core::ffi::c_int = 0x55 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "59:9"]
+    pub const ASCII_X: ::core::ffi::c_int = 0x58 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "60:9"]
+    pub const ASCII_Y: ::core::ffi::c_int = 0x59 as ::core::ffi::c_int;
+}
+pub use self::ascii_h::{
+    ASCII_A, ASCII_B, ASCII_C, ASCII_D, ASCII_E, ASCII_F, ASCII_G, ASCII_I, ASCII_K, ASCII_L,
+    ASCII_M, ASCII_N, ASCII_O, ASCII_P, ASCII_Q, ASCII_R, ASCII_S, ASCII_T, ASCII_U, ASCII_X,
+    ASCII_Y,
+};
+pub use self::expat_external_h::XML_Size;
+pub use self::xmlrole_h::{
+    prolog_state, C2RustUnnamed, PROLOG_STATE, XML_ROLE_ATTLIST_ELEMENT_NAME,
+    XML_ROLE_ATTLIST_NONE, XML_ROLE_ATTRIBUTE_ENUM_VALUE, XML_ROLE_ATTRIBUTE_NAME,
+    XML_ROLE_ATTRIBUTE_NOTATION_VALUE, XML_ROLE_ATTRIBUTE_TYPE_CDATA,
+    XML_ROLE_ATTRIBUTE_TYPE_ENTITIES, XML_ROLE_ATTRIBUTE_TYPE_ENTITY, XML_ROLE_ATTRIBUTE_TYPE_ID,
+    XML_ROLE_ATTRIBUTE_TYPE_IDREF, XML_ROLE_ATTRIBUTE_TYPE_IDREFS, XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN,
+    XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS, XML_ROLE_COMMENT, XML_ROLE_CONTENT_ANY,
+    XML_ROLE_CONTENT_ELEMENT, XML_ROLE_CONTENT_ELEMENT_OPT, XML_ROLE_CONTENT_ELEMENT_PLUS,
+    XML_ROLE_CONTENT_ELEMENT_REP, XML_ROLE_CONTENT_EMPTY, XML_ROLE_CONTENT_PCDATA,
+    XML_ROLE_DEFAULT_ATTRIBUTE_VALUE, XML_ROLE_DOCTYPE_CLOSE, XML_ROLE_DOCTYPE_INTERNAL_SUBSET,
+    XML_ROLE_DOCTYPE_NAME, XML_ROLE_DOCTYPE_NONE, XML_ROLE_DOCTYPE_PUBLIC_ID,
+    XML_ROLE_DOCTYPE_SYSTEM_ID, XML_ROLE_ELEMENT_NAME, XML_ROLE_ELEMENT_NONE,
+    XML_ROLE_ENTITY_COMPLETE, XML_ROLE_ENTITY_NONE, XML_ROLE_ENTITY_NOTATION_NAME,
+    XML_ROLE_ENTITY_PUBLIC_ID, XML_ROLE_ENTITY_SYSTEM_ID, XML_ROLE_ENTITY_VALUE, XML_ROLE_ERROR,
+    XML_ROLE_FIXED_ATTRIBUTE_VALUE, XML_ROLE_GENERAL_ENTITY_NAME, XML_ROLE_GROUP_CHOICE,
+    XML_ROLE_GROUP_CLOSE, XML_ROLE_GROUP_CLOSE_OPT, XML_ROLE_GROUP_CLOSE_PLUS,
+    XML_ROLE_GROUP_CLOSE_REP, XML_ROLE_GROUP_OPEN, XML_ROLE_GROUP_SEQUENCE, XML_ROLE_IGNORE_SECT,
+    XML_ROLE_IMPLIED_ATTRIBUTE_VALUE, XML_ROLE_INNER_PARAM_ENTITY_REF, XML_ROLE_INSTANCE_START,
+    XML_ROLE_NONE, XML_ROLE_NOTATION_NAME, XML_ROLE_NOTATION_NONE, XML_ROLE_NOTATION_NO_SYSTEM_ID,
+    XML_ROLE_NOTATION_PUBLIC_ID, XML_ROLE_NOTATION_SYSTEM_ID, XML_ROLE_PARAM_ENTITY_NAME,
+    XML_ROLE_PARAM_ENTITY_REF, XML_ROLE_PI, XML_ROLE_REQUIRED_ATTRIBUTE_VALUE, XML_ROLE_TEXT_DECL,
+    XML_ROLE_XML_DECL,
+};
+pub use self::xmltok_h::{
+    encoding, position, XML_Convert_Result, ATTRIBUTE, ENCODING, POSITION, SCANNER,
+    XML_CONVERT_COMPLETED, XML_CONVERT_INPUT_INCOMPLETE, XML_CONVERT_OUTPUT_EXHAUSTED, XML_TOK_BOM,
+    XML_TOK_CLOSE_BRACKET, XML_TOK_CLOSE_PAREN, XML_TOK_CLOSE_PAREN_ASTERISK,
+    XML_TOK_CLOSE_PAREN_PLUS, XML_TOK_CLOSE_PAREN_QUESTION, XML_TOK_COMMA, XML_TOK_COMMENT,
+    XML_TOK_COND_SECT_CLOSE, XML_TOK_COND_SECT_OPEN, XML_TOK_DECL_CLOSE, XML_TOK_DECL_OPEN,
+    XML_TOK_INSTANCE_START, XML_TOK_LITERAL, XML_TOK_NAME, XML_TOK_NAME_ASTERISK,
+    XML_TOK_NAME_PLUS, XML_TOK_NAME_QUESTION, XML_TOK_NMTOKEN, XML_TOK_NONE, XML_TOK_OPEN_BRACKET,
+    XML_TOK_OPEN_PAREN, XML_TOK_OR, XML_TOK_PARAM_ENTITY_REF, XML_TOK_PERCENT, XML_TOK_PI,
+    XML_TOK_POUND_NAME, XML_TOK_PREFIXED_NAME, XML_TOK_PROLOG_S, XML_TOK_XML_DECL,
+};
+#[c2rust::src_loc = "122:1"]
 pub type PROLOG_HANDLER = unsafe extern "C" fn(
     *mut PROLOG_STATE,
     ::core::ffi::c_int,
@@ -194,63 +427,14 @@ pub type PROLOG_HANDLER = unsafe extern "C" fn(
     *const ::core::ffi::c_char,
     *const ENCODING,
 ) -> ::core::ffi::c_int;
-pub const XML_TOK_NONE: ::core::ffi::c_int = -4;
-pub const XML_TOK_PI: ::core::ffi::c_int = 11;
-pub const XML_TOK_XML_DECL: ::core::ffi::c_int = 12;
-pub const XML_TOK_COMMENT: ::core::ffi::c_int = 13;
-pub const XML_TOK_BOM: ::core::ffi::c_int = 14;
-pub const XML_TOK_PROLOG_S: ::core::ffi::c_int = 15;
-pub const XML_TOK_DECL_OPEN: ::core::ffi::c_int = 16;
-pub const XML_TOK_DECL_CLOSE: ::core::ffi::c_int = 17;
-pub const XML_TOK_NAME: ::core::ffi::c_int = 18;
-pub const XML_TOK_NMTOKEN: ::core::ffi::c_int = 19;
-pub const XML_TOK_POUND_NAME: ::core::ffi::c_int = 20;
-pub const XML_TOK_OR: ::core::ffi::c_int = 21;
-pub const XML_TOK_PERCENT: ::core::ffi::c_int = 22;
-pub const XML_TOK_OPEN_PAREN: ::core::ffi::c_int = 23;
-pub const XML_TOK_CLOSE_PAREN: ::core::ffi::c_int = 24;
-pub const XML_TOK_OPEN_BRACKET: ::core::ffi::c_int = 25;
-pub const XML_TOK_CLOSE_BRACKET: ::core::ffi::c_int = 26;
-pub const XML_TOK_LITERAL: ::core::ffi::c_int = 27;
-pub const XML_TOK_PARAM_ENTITY_REF: ::core::ffi::c_int = 28 as ::core::ffi::c_int;
-pub const XML_TOK_INSTANCE_START: ::core::ffi::c_int = 29;
-pub const XML_TOK_NAME_QUESTION: ::core::ffi::c_int = 30;
-pub const XML_TOK_NAME_ASTERISK: ::core::ffi::c_int = 31;
-pub const XML_TOK_NAME_PLUS: ::core::ffi::c_int = 32;
-pub const XML_TOK_COND_SECT_OPEN: ::core::ffi::c_int = 33;
-pub const XML_TOK_COND_SECT_CLOSE: ::core::ffi::c_int = 34;
-pub const XML_TOK_CLOSE_PAREN_QUESTION: ::core::ffi::c_int = 35;
-pub const XML_TOK_CLOSE_PAREN_ASTERISK: ::core::ffi::c_int = 36;
-pub const XML_TOK_CLOSE_PAREN_PLUS: ::core::ffi::c_int = 37;
-pub const XML_TOK_COMMA: ::core::ffi::c_int = 38;
-pub const XML_TOK_PREFIXED_NAME: ::core::ffi::c_int = 41;
-pub const ASCII_A: ::core::ffi::c_int = 0x41 as ::core::ffi::c_int;
-pub const ASCII_B: ::core::ffi::c_int = 0x42 as ::core::ffi::c_int;
-pub const ASCII_C: ::core::ffi::c_int = 0x43 as ::core::ffi::c_int;
-pub const ASCII_D: ::core::ffi::c_int = 0x44 as ::core::ffi::c_int;
-pub const ASCII_E: ::core::ffi::c_int = 0x45 as ::core::ffi::c_int;
-pub const ASCII_F: ::core::ffi::c_int = 0x46 as ::core::ffi::c_int;
-pub const ASCII_G: ::core::ffi::c_int = 0x47 as ::core::ffi::c_int;
-pub const ASCII_I: ::core::ffi::c_int = 0x49 as ::core::ffi::c_int;
-pub const ASCII_K: ::core::ffi::c_int = 0x4b as ::core::ffi::c_int;
-pub const ASCII_L: ::core::ffi::c_int = 0x4c as ::core::ffi::c_int;
-pub const ASCII_M: ::core::ffi::c_int = 0x4d as ::core::ffi::c_int;
-pub const ASCII_N: ::core::ffi::c_int = 0x4e as ::core::ffi::c_int;
-pub const ASCII_O: ::core::ffi::c_int = 0x4f as ::core::ffi::c_int;
-pub const ASCII_P: ::core::ffi::c_int = 0x50 as ::core::ffi::c_int;
-pub const ASCII_Q: ::core::ffi::c_int = 0x51 as ::core::ffi::c_int;
-pub const ASCII_R: ::core::ffi::c_int = 0x52 as ::core::ffi::c_int;
-pub const ASCII_S: ::core::ffi::c_int = 0x53 as ::core::ffi::c_int;
-pub const ASCII_T: ::core::ffi::c_int = 0x54 as ::core::ffi::c_int;
-pub const ASCII_U: ::core::ffi::c_int = 0x55 as ::core::ffi::c_int;
-pub const ASCII_X: ::core::ffi::c_int = 0x58 as ::core::ffi::c_int;
-pub const ASCII_Y: ::core::ffi::c_int = 0x59 as ::core::ffi::c_int;
+#[c2rust::src_loc = "61:1"]
 static mut KW_ANY: [::core::ffi::c_char; 4] = [
     ASCII_A as ::core::ffi::c_char,
     ASCII_N as ::core::ffi::c_char,
     ASCII_Y as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "62:1"]
 static mut KW_ATTLIST: [::core::ffi::c_char; 8] = [
     ASCII_A as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
@@ -261,6 +445,7 @@ static mut KW_ATTLIST: [::core::ffi::c_char; 8] = [
     ASCII_T as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "64:1"]
 static mut KW_CDATA: [::core::ffi::c_char; 6] = [
     ASCII_C as ::core::ffi::c_char,
     ASCII_D as ::core::ffi::c_char,
@@ -269,6 +454,7 @@ static mut KW_CDATA: [::core::ffi::c_char; 6] = [
     ASCII_A as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "66:1"]
 static mut KW_DOCTYPE: [::core::ffi::c_char; 8] = [
     ASCII_D as ::core::ffi::c_char,
     ASCII_O as ::core::ffi::c_char,
@@ -279,6 +465,7 @@ static mut KW_DOCTYPE: [::core::ffi::c_char; 8] = [
     ASCII_E as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "68:1"]
 static mut KW_ELEMENT: [::core::ffi::c_char; 8] = [
     ASCII_E as ::core::ffi::c_char,
     ASCII_L as ::core::ffi::c_char,
@@ -289,6 +476,7 @@ static mut KW_ELEMENT: [::core::ffi::c_char; 8] = [
     ASCII_T as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "70:1"]
 static mut KW_EMPTY: [::core::ffi::c_char; 6] = [
     ASCII_E as ::core::ffi::c_char,
     ASCII_M as ::core::ffi::c_char,
@@ -297,6 +485,7 @@ static mut KW_EMPTY: [::core::ffi::c_char; 6] = [
     ASCII_Y as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "72:1"]
 static mut KW_ENTITIES: [::core::ffi::c_char; 9] = [
     ASCII_E as ::core::ffi::c_char,
     ASCII_N as ::core::ffi::c_char,
@@ -308,6 +497,7 @@ static mut KW_ENTITIES: [::core::ffi::c_char; 9] = [
     ASCII_S as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "74:1"]
 static mut KW_ENTITY: [::core::ffi::c_char; 7] = [
     ASCII_E as ::core::ffi::c_char,
     ASCII_N as ::core::ffi::c_char,
@@ -317,6 +507,7 @@ static mut KW_ENTITY: [::core::ffi::c_char; 7] = [
     ASCII_Y as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "76:1"]
 static mut KW_FIXED: [::core::ffi::c_char; 6] = [
     ASCII_F as ::core::ffi::c_char,
     ASCII_I as ::core::ffi::c_char,
@@ -325,11 +516,13 @@ static mut KW_FIXED: [::core::ffi::c_char; 6] = [
     ASCII_D as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "78:1"]
 static mut KW_ID: [::core::ffi::c_char; 3] = [
     ASCII_I as ::core::ffi::c_char,
     ASCII_D as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "79:1"]
 static mut KW_IDREF: [::core::ffi::c_char; 6] = [
     ASCII_I as ::core::ffi::c_char,
     ASCII_D as ::core::ffi::c_char,
@@ -338,6 +531,7 @@ static mut KW_IDREF: [::core::ffi::c_char; 6] = [
     ASCII_F as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "81:1"]
 static mut KW_IDREFS: [::core::ffi::c_char; 7] = [
     ASCII_I as ::core::ffi::c_char,
     ASCII_D as ::core::ffi::c_char,
@@ -347,6 +541,7 @@ static mut KW_IDREFS: [::core::ffi::c_char; 7] = [
     ASCII_S as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "84:1"]
 static mut KW_IGNORE: [::core::ffi::c_char; 7] = [
     ASCII_I as ::core::ffi::c_char,
     ASCII_G as ::core::ffi::c_char,
@@ -356,6 +551,7 @@ static mut KW_IGNORE: [::core::ffi::c_char; 7] = [
     ASCII_E as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "87:1"]
 static mut KW_IMPLIED: [::core::ffi::c_char; 8] = [
     ASCII_I as ::core::ffi::c_char,
     ASCII_M as ::core::ffi::c_char,
@@ -366,6 +562,7 @@ static mut KW_IMPLIED: [::core::ffi::c_char; 8] = [
     ASCII_D as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "90:1"]
 static mut KW_INCLUDE: [::core::ffi::c_char; 8] = [
     ASCII_I as ::core::ffi::c_char,
     ASCII_N as ::core::ffi::c_char,
@@ -376,6 +573,7 @@ static mut KW_INCLUDE: [::core::ffi::c_char; 8] = [
     ASCII_E as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "93:1"]
 static mut KW_NDATA: [::core::ffi::c_char; 6] = [
     ASCII_N as ::core::ffi::c_char,
     ASCII_D as ::core::ffi::c_char,
@@ -384,6 +582,7 @@ static mut KW_NDATA: [::core::ffi::c_char; 6] = [
     ASCII_A as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "95:1"]
 static mut KW_NMTOKEN: [::core::ffi::c_char; 8] = [
     ASCII_N as ::core::ffi::c_char,
     ASCII_M as ::core::ffi::c_char,
@@ -394,6 +593,7 @@ static mut KW_NMTOKEN: [::core::ffi::c_char; 8] = [
     ASCII_N as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "97:1"]
 static mut KW_NMTOKENS: [::core::ffi::c_char; 9] = [
     ASCII_N as ::core::ffi::c_char,
     ASCII_M as ::core::ffi::c_char,
@@ -405,6 +605,7 @@ static mut KW_NMTOKENS: [::core::ffi::c_char; 9] = [
     ASCII_S as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "99:1"]
 static mut KW_NOTATION: [::core::ffi::c_char; 9] = [
     ASCII_N as ::core::ffi::c_char,
     ASCII_O as ::core::ffi::c_char,
@@ -416,6 +617,7 @@ static mut KW_NOTATION: [::core::ffi::c_char; 9] = [
     ASCII_N as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "101:1"]
 static mut KW_PCDATA: [::core::ffi::c_char; 7] = [
     ASCII_P as ::core::ffi::c_char,
     ASCII_C as ::core::ffi::c_char,
@@ -425,6 +627,7 @@ static mut KW_PCDATA: [::core::ffi::c_char; 7] = [
     ASCII_A as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "103:1"]
 static mut KW_PUBLIC: [::core::ffi::c_char; 7] = [
     ASCII_P as ::core::ffi::c_char,
     ASCII_U as ::core::ffi::c_char,
@@ -434,6 +637,7 @@ static mut KW_PUBLIC: [::core::ffi::c_char; 7] = [
     ASCII_C as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "105:1"]
 static mut KW_REQUIRED: [::core::ffi::c_char; 9] = [
     ASCII_R as ::core::ffi::c_char,
     ASCII_E as ::core::ffi::c_char,
@@ -445,6 +649,7 @@ static mut KW_REQUIRED: [::core::ffi::c_char; 9] = [
     ASCII_D as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "107:1"]
 static mut KW_SYSTEM: [::core::ffi::c_char; 7] = [
     ASCII_S as ::core::ffi::c_char,
     ASCII_Y as ::core::ffi::c_char,
@@ -454,6 +659,7 @@ static mut KW_SYSTEM: [::core::ffi::c_char; 7] = [
     ASCII_M as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
+#[c2rust::src_loc = "140:1"]
 unsafe extern "C" fn prolog0(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -607,6 +813,7 @@ unsafe extern "C" fn prolog0(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "171:1"]
 unsafe extern "C" fn prolog1(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -675,6 +882,7 @@ unsafe extern "C" fn prolog1(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "203:1"]
 unsafe extern "C" fn prolog2(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -712,6 +920,7 @@ unsafe extern "C" fn prolog2(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "223:1"]
 unsafe extern "C" fn doctype0(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -747,6 +956,7 @@ unsafe extern "C" fn doctype0(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "240:1"]
 unsafe extern "C" fn doctype1(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -862,6 +1072,7 @@ unsafe extern "C" fn doctype1(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "266:1"]
 unsafe extern "C" fn doctype2(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -897,6 +1108,7 @@ unsafe extern "C" fn doctype2(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "282:1"]
 unsafe extern "C" fn doctype3(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -932,6 +1144,7 @@ unsafe extern "C" fn doctype3(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "298:1"]
 unsafe extern "C" fn doctype4(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -989,6 +1202,7 @@ unsafe extern "C" fn doctype4(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "317:1"]
 unsafe extern "C" fn doctype5(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1024,6 +1238,7 @@ unsafe extern "C" fn doctype5(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "333:1"]
 unsafe extern "C" fn internalSubset(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1179,6 +1394,7 @@ unsafe extern "C" fn internalSubset(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "378:1"]
 unsafe extern "C" fn externalSubset0(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1210,6 +1426,7 @@ unsafe extern "C" fn externalSubset0(
     }
     return externalSubset1(state, tok, ptr, end, enc);
 }
+#[c2rust::src_loc = "387:1"]
 unsafe extern "C" fn externalSubset1(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1258,6 +1475,7 @@ unsafe extern "C" fn externalSubset1(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "415:1"]
 unsafe extern "C" fn entity0(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1315,6 +1533,7 @@ unsafe extern "C" fn entity0(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "434:1"]
 unsafe extern "C" fn entity1(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1350,6 +1569,7 @@ unsafe extern "C" fn entity1(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "450:1"]
 unsafe extern "C" fn entity2(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1444,6 +1664,7 @@ unsafe extern "C" fn entity2(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "474:1"]
 unsafe extern "C" fn entity3(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1479,6 +1700,7 @@ unsafe extern "C" fn entity3(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "490:1"]
 unsafe extern "C" fn entity4(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1514,6 +1736,7 @@ unsafe extern "C" fn entity4(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "506:1"]
 unsafe extern "C" fn entity5(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1592,6 +1815,7 @@ unsafe extern "C" fn entity5(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "525:1"]
 unsafe extern "C" fn entity6(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1628,6 +1852,7 @@ unsafe extern "C" fn entity6(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "542:1"]
 unsafe extern "C" fn entity7(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1722,6 +1947,7 @@ unsafe extern "C" fn entity7(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "566:1"]
 unsafe extern "C" fn entity8(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1757,6 +1983,7 @@ unsafe extern "C" fn entity8(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "582:1"]
 unsafe extern "C" fn entity9(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1792,6 +2019,7 @@ unsafe extern "C" fn entity9(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "598:1"]
 unsafe extern "C" fn entity10(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1840,6 +2068,7 @@ unsafe extern "C" fn entity10(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "614:1"]
 unsafe extern "C" fn notation0(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1875,6 +2104,7 @@ unsafe extern "C" fn notation0(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "630:1"]
 unsafe extern "C" fn notation1(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1946,6 +2176,7 @@ unsafe extern "C" fn notation1(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "650:1"]
 unsafe extern "C" fn notation2(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -1981,6 +2212,7 @@ unsafe extern "C" fn notation2(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "666:1"]
 unsafe extern "C" fn notation3(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2017,6 +2249,7 @@ unsafe extern "C" fn notation3(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "683:1"]
 unsafe extern "C" fn notation4(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2088,6 +2321,7 @@ unsafe extern "C" fn notation4(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "703:1"]
 unsafe extern "C" fn attlist0(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2123,6 +2357,7 @@ unsafe extern "C" fn attlist0(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "720:1"]
 unsafe extern "C" fn attlist1(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2193,6 +2428,7 @@ unsafe extern "C" fn attlist1(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "740:1"]
 unsafe extern "C" fn attlist2(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2308,6 +2544,7 @@ unsafe extern "C" fn attlist2(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "770:1"]
 unsafe extern "C" fn attlist3(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2343,6 +2580,7 @@ unsafe extern "C" fn attlist3(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "788:1"]
 unsafe extern "C" fn attlist4(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2400,6 +2638,7 @@ unsafe extern "C" fn attlist4(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "807:1"]
 unsafe extern "C" fn attlist5(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2435,6 +2674,7 @@ unsafe extern "C" fn attlist5(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "823:1"]
 unsafe extern "C" fn attlist6(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2470,6 +2710,7 @@ unsafe extern "C" fn attlist6(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "839:1"]
 unsafe extern "C" fn attlist7(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2527,6 +2768,7 @@ unsafe extern "C" fn attlist7(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "859:1"]
 unsafe extern "C" fn attlist8(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2648,6 +2890,7 @@ unsafe extern "C" fn attlist8(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "889:1"]
 unsafe extern "C" fn attlist9(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2683,6 +2926,7 @@ unsafe extern "C" fn attlist9(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "905:1"]
 unsafe extern "C" fn element0(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2718,6 +2962,7 @@ unsafe extern "C" fn element0(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "922:1"]
 unsafe extern "C" fn element1(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2814,6 +3059,7 @@ unsafe extern "C" fn element1(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "948:1"]
 unsafe extern "C" fn element2(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -2968,6 +3214,7 @@ unsafe extern "C" fn element2(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "982:1"]
 unsafe extern "C" fn element3(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3049,6 +3296,7 @@ unsafe extern "C" fn element3(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1006:1"]
 unsafe extern "C" fn element4(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3084,6 +3332,7 @@ unsafe extern "C" fn element4(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1023:1"]
 unsafe extern "C" fn element5(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3142,6 +3391,7 @@ unsafe extern "C" fn element5(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1043:1"]
 unsafe extern "C" fn element6(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3247,6 +3497,7 @@ unsafe extern "C" fn element6(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1072:1"]
 unsafe extern "C" fn element7(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3408,6 +3659,7 @@ unsafe extern "C" fn element7(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1121:1"]
 unsafe extern "C" fn condSect0(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3479,6 +3731,7 @@ unsafe extern "C" fn condSect0(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1141:1"]
 unsafe extern "C" fn condSect1(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3515,6 +3768,7 @@ unsafe extern "C" fn condSect1(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1158:1"]
 unsafe extern "C" fn condSect2(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3550,6 +3804,7 @@ unsafe extern "C" fn condSect2(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1176:1"]
 unsafe extern "C" fn declClose(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3598,6 +3853,7 @@ unsafe extern "C" fn declClose(
     }
     return common(state, tok);
 }
+#[c2rust::src_loc = "1212:1"]
 unsafe extern "C" fn error(
     mut _state: *mut PROLOG_STATE,
     mut _tok: ::core::ffi::c_int,
@@ -3607,6 +3863,7 @@ unsafe extern "C" fn error(
 ) -> ::core::ffi::c_int {
     return XML_ROLE_NONE as ::core::ffi::c_int;
 }
+#[c2rust::src_loc = "1224:1"]
 unsafe extern "C" fn common(
     mut state: *mut PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
@@ -3636,6 +3893,7 @@ unsafe extern "C" fn common(
     return XML_ROLE_ERROR as ::core::ffi::c_int;
 }
 #[no_mangle]
+#[c2rust::src_loc = "1236:1"]
 pub unsafe extern "C" fn XmlPrologStateInit(mut state: *mut PROLOG_STATE) {
     (*state).handler = Some(
         prolog0
@@ -3661,6 +3919,7 @@ pub unsafe extern "C" fn XmlPrologStateInit(mut state: *mut PROLOG_STATE) {
     (*state).inEntityValue = 0 as ::core::ffi::c_int;
 }
 #[no_mangle]
+#[c2rust::src_loc = "1248:1"]
 pub unsafe extern "C" fn XmlPrologStateInitExternalEntity(mut state: *mut PROLOG_STATE) {
     (*state).handler = Some(
         externalSubset0

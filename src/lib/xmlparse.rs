@@ -1,178 +1,2338 @@
-extern "C" {
-    pub type _IO_wide_data;
-    pub type _IO_codecvt;
-    pub type _IO_marker;
-    fn memcpy(
-        __dest: *mut ::core::ffi::c_void,
-        __src: *const ::core::ffi::c_void,
-        __n: size_t,
-    ) -> *mut ::core::ffi::c_void;
-    fn memmove(
-        __dest: *mut ::core::ffi::c_void,
-        __src: *const ::core::ffi::c_void,
-        __n: size_t,
-    ) -> *mut ::core::ffi::c_void;
-    fn memset(
-        __s: *mut ::core::ffi::c_void,
-        __c: ::core::ffi::c_int,
-        __n: size_t,
-    ) -> *mut ::core::ffi::c_void;
-    fn memcmp(
-        __s1: *const ::core::ffi::c_void,
-        __s2: *const ::core::ffi::c_void,
-        __n: size_t,
-    ) -> ::core::ffi::c_int;
-    fn __assert_fail(
-        __assertion: *const ::core::ffi::c_char,
-        __file: *const ::core::ffi::c_char,
-        __line: ::core::ffi::c_uint,
-        __function: *const ::core::ffi::c_char,
-    ) -> !;
-    static mut stderr: *mut FILE;
-    fn fprintf(
-        __stream: *mut FILE,
-        __format: *const ::core::ffi::c_char,
-        ...
-    ) -> ::core::ffi::c_int;
-    fn strtoul(
-        __nptr: *const ::core::ffi::c_char,
-        __endptr: *mut *mut ::core::ffi::c_char,
-        __base: ::core::ffi::c_int,
-    ) -> ::core::ffi::c_ulong;
-    fn malloc(__size: size_t) -> *mut ::core::ffi::c_void;
-    fn realloc(__ptr: *mut ::core::ffi::c_void, __size: size_t) -> *mut ::core::ffi::c_void;
-    fn free(__ptr: *mut ::core::ffi::c_void);
-    fn getenv(__name: *const ::core::ffi::c_char) -> *mut ::core::ffi::c_char;
-    fn gettimeofday(__tv: *mut timeval, __tz: *mut ::core::ffi::c_void) -> ::core::ffi::c_int;
-    fn close(__fd: ::core::ffi::c_int) -> ::core::ffi::c_int;
-    fn read(__fd: ::core::ffi::c_int, __buf: *mut ::core::ffi::c_void, __nbytes: size_t)
-        -> ssize_t;
-    fn getpid() -> __pid_t;
-    fn open(
-        __file: *const ::core::ffi::c_char,
-        __oflag: ::core::ffi::c_int,
-        ...
-    ) -> ::core::ffi::c_int;
-    fn __errno_location() -> *mut ::core::ffi::c_int;
-    fn XmlParseXmlDecl(
-        isGeneralTextEntity: ::core::ffi::c_int,
-        enc: *const ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        badPtr: *mut *const ::core::ffi::c_char,
-        versionPtr: *mut *const ::core::ffi::c_char,
-        versionEndPtr: *mut *const ::core::ffi::c_char,
-        encodingNamePtr: *mut *const ::core::ffi::c_char,
-        namedEncodingPtr: *mut *const ENCODING,
-        standalonePtr: *mut ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int;
-    fn XmlInitEncoding(
-        p: *mut INIT_ENCODING,
-        encPtr: *mut *const ENCODING,
-        name: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int;
-    fn XmlGetUtf8InternalEncoding() -> *const ENCODING;
-    fn XmlUtf8Encode(
-        charNumber: ::core::ffi::c_int,
-        buf: *mut ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int;
-    fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int;
-    fn XmlInitUnknownEncoding(
-        mem: *mut ::core::ffi::c_void,
-        table: *const ::core::ffi::c_int,
-        convert: CONVERTER,
-        userData: *mut ::core::ffi::c_void,
-    ) -> *mut ENCODING;
-    fn XmlParseXmlDeclNS(
-        isGeneralTextEntity: ::core::ffi::c_int,
-        enc: *const ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        badPtr: *mut *const ::core::ffi::c_char,
-        versionPtr: *mut *const ::core::ffi::c_char,
-        versionEndPtr: *mut *const ::core::ffi::c_char,
-        encodingNamePtr: *mut *const ::core::ffi::c_char,
-        namedEncodingPtr: *mut *const ENCODING,
-        standalonePtr: *mut ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int;
-    fn XmlInitEncodingNS(
-        p: *mut INIT_ENCODING,
-        encPtr: *mut *const ENCODING,
-        name: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int;
-    fn XmlGetUtf8InternalEncodingNS() -> *const ENCODING;
-    fn XmlInitUnknownEncodingNS(
-        mem: *mut ::core::ffi::c_void,
-        table: *const ::core::ffi::c_int,
-        convert: CONVERTER,
-        userData: *mut ::core::ffi::c_void,
-    ) -> *mut ENCODING;
-    fn XmlPrologStateInit(state: *mut PROLOG_STATE);
-    fn XmlPrologStateInitExternalEntity(state: *mut PROLOG_STATE);
-    fn getrandom(
-        __buffer: *mut ::core::ffi::c_void,
-        __length: size_t,
-        __flags: ::core::ffi::c_uint,
-    ) -> ssize_t;
+#[c2rust::header_src = "/usr/lib/clang/21/include/__stddef_ptrdiff_t.h:101"]
+pub mod __stddef_ptrdiff_t_h {
+    #[c2rust::src_loc = "18:1"]
+    pub type ptrdiff_t = isize;
 }
-pub type ptrdiff_t = isize;
-pub type size_t = usize;
-pub type __uint64_t = u64;
-pub type __off_t = ::core::ffi::c_long;
-pub type __off64_t = ::core::ffi::c_long;
-pub type __pid_t = ::core::ffi::c_int;
-pub type __time_t = ::core::ffi::c_long;
-pub type __suseconds_t = ::core::ffi::c_long;
-pub type __ssize_t = ::core::ffi::c_long;
+#[c2rust::header_src = "/usr/lib/clang/21/include/__stddef_size_t.h:101"]
+pub mod __stddef_size_t_h {
+    #[c2rust::src_loc = "18:1"]
+    pub type size_t = usize;
+}
+#[c2rust::header_src = "/usr/include/bits/types.h:105"]
+pub mod types_h {
+    #[c2rust::src_loc = "45:1"]
+    pub type __uint64_t = u64;
+    #[c2rust::src_loc = "152:1"]
+    pub type __off_t = ::core::ffi::c_long;
+    #[c2rust::src_loc = "153:1"]
+    pub type __off64_t = ::core::ffi::c_long;
+    #[c2rust::src_loc = "154:1"]
+    pub type __pid_t = ::core::ffi::c_int;
+    #[c2rust::src_loc = "160:1"]
+    pub type __time_t = ::core::ffi::c_long;
+    #[c2rust::src_loc = "162:1"]
+    pub type __suseconds_t = ::core::ffi::c_long;
+    #[c2rust::src_loc = "194:1"]
+    pub type __ssize_t = ::core::ffi::c_long;
+}
+#[c2rust::header_src = "/usr/include/bits/types/struct_FILE.h:105"]
+pub mod struct_FILE_h {
+    #[derive(Copy, Clone, BitfieldStruct)]
+    #[repr(C)]
+    #[c2rust::src_loc = "51:1"]
+    pub struct _IO_FILE {
+        pub _flags: ::core::ffi::c_int,
+        pub _IO_read_ptr: *mut ::core::ffi::c_char,
+        pub _IO_read_end: *mut ::core::ffi::c_char,
+        pub _IO_read_base: *mut ::core::ffi::c_char,
+        pub _IO_write_base: *mut ::core::ffi::c_char,
+        pub _IO_write_ptr: *mut ::core::ffi::c_char,
+        pub _IO_write_end: *mut ::core::ffi::c_char,
+        pub _IO_buf_base: *mut ::core::ffi::c_char,
+        pub _IO_buf_end: *mut ::core::ffi::c_char,
+        pub _IO_save_base: *mut ::core::ffi::c_char,
+        pub _IO_backup_base: *mut ::core::ffi::c_char,
+        pub _IO_save_end: *mut ::core::ffi::c_char,
+        pub _markers: *mut _IO_marker,
+        pub _chain: *mut _IO_FILE,
+        pub _fileno: ::core::ffi::c_int,
+        #[bitfield(name = "_flags2", ty = "::core::ffi::c_int", bits = "0..=23")]
+        pub _flags2: [u8; 3],
+        pub _short_backupbuf: [::core::ffi::c_char; 1],
+        pub _old_offset: __off_t,
+        pub _cur_column: ::core::ffi::c_ushort,
+        pub _vtable_offset: ::core::ffi::c_schar,
+        pub _shortbuf: [::core::ffi::c_char; 1],
+        pub _lock: *mut ::core::ffi::c_void,
+        pub _offset: __off64_t,
+        pub _codecvt: *mut _IO_codecvt,
+        pub _wide_data: *mut _IO_wide_data,
+        pub _freeres_list: *mut _IO_FILE,
+        pub _freeres_buf: *mut ::core::ffi::c_void,
+        pub _prevchain: *mut *mut _IO_FILE,
+        pub _mode: ::core::ffi::c_int,
+        pub _unused3: ::core::ffi::c_int,
+        pub _total_written: __uint64_t,
+        pub _unused2: [::core::ffi::c_char; 8],
+    }
+    #[c2rust::src_loc = "45:1"]
+    pub type _IO_lock_t = ();
+    use super::types_h::{__off64_t, __off_t, __uint64_t};
+    extern "C" {
+        #[c2rust::src_loc = "40:1"]
+        pub type _IO_wide_data;
+        #[c2rust::src_loc = "39:1"]
+        pub type _IO_codecvt;
+        #[c2rust::src_loc = "38:1"]
+        pub type _IO_marker;
+    }
+}
+#[c2rust::header_src = "/usr/include/bits/types/FILE.h:105"]
+pub mod FILE_h {
+    #[c2rust::src_loc = "7:1"]
+    pub type FILE = _IO_FILE;
+    use super::struct_FILE_h::_IO_FILE;
+}
+#[c2rust::header_src = "/usr/include/stdio.h:105"]
+pub mod stdio_h {
+    #[c2rust::src_loc = "78:1"]
+    pub type ssize_t = __ssize_t;
+    use super::types_h::__ssize_t;
+    use super::FILE_h::FILE;
+    extern "C" {
+        #[c2rust::src_loc = "151:1"]
+        pub static mut stderr: *mut FILE;
+        #[c2rust::src_loc = "360:1"]
+        pub fn fprintf(
+            __stream: *mut FILE,
+            __format: *const ::core::ffi::c_char,
+            ...
+        ) -> ::core::ffi::c_int;
+    }
+}
+#[c2rust::header_src = "/usr/include/bits/types/struct_timeval.h:106"]
+pub mod struct_timeval_h {
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "8:1"]
+    pub struct timeval {
+        pub tv_sec: __time_t,
+        pub tv_usec: __suseconds_t,
+    }
+    use super::types_h::{__suseconds_t, __time_t};
+}
+#[c2rust::header_src = "/usr/include/bits/stdint-uintn.h:107"]
+pub mod stdint_uintn_h {
+    #[c2rust::src_loc = "27:1"]
+    pub type uint64_t = __uint64_t;
+    use super::types_h::__uint64_t;
+}
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/expat_external.h:108"]
+pub mod expat_external_h {
+    #[c2rust::src_loc = "149:1"]
+    pub type XML_Char = ::core::ffi::c_char;
+    #[c2rust::src_loc = "150:1"]
+    pub type XML_LChar = ::core::ffi::c_char;
+    #[c2rust::src_loc = "157:1"]
+    pub type XML_Index = ::core::ffi::c_long;
+    #[c2rust::src_loc = "158:1"]
+    pub type XML_Size = ::core::ffi::c_ulong;
+}
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/expat.h:108"]
+pub mod expat_h {
+    #[c2rust::src_loc = "58:1"]
+    pub type XML_Bool = ::core::ffi::c_uchar;
+    #[c2rust::src_loc = "881:1"]
+    pub type XML_ParamEntityParsing = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "884:3"]
+    pub const XML_PARAM_ENTITY_PARSING_ALWAYS: XML_ParamEntityParsing = 2;
+    #[c2rust::src_loc = "883:3"]
+    pub const XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: XML_ParamEntityParsing = 1;
+    #[c2rust::src_loc = "882:3"]
+    pub const XML_PARAM_ENTITY_PARSING_NEVER: XML_ParamEntityParsing = 0;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "848:9"]
+    pub struct XML_ParsingStatus {
+        pub parsing: XML_Parsing,
+        pub finalBuffer: XML_Bool,
+    }
+    #[c2rust::src_loc = "846:1"]
+    pub type XML_Parsing = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "846:64"]
+    pub const XML_SUSPENDED: XML_Parsing = 3;
+    #[c2rust::src_loc = "846:50"]
+    pub const XML_FINISHED: XML_Parsing = 2;
+    #[c2rust::src_loc = "846:37"]
+    pub const XML_PARSING: XML_Parsing = 1;
+    #[c2rust::src_loc = "846:20"]
+    pub const XML_INITIALIZED: XML_Parsing = 0;
+    #[c2rust::src_loc = "56:1"]
+    pub type XML_Parser = *mut XML_ParserStruct;
+    #[c2rust::src_loc = "148:1"]
+    pub type XML_Content_Quant = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "152:3"]
+    pub const XML_CQUANT_PLUS: XML_Content_Quant = 3;
+    #[c2rust::src_loc = "151:3"]
+    pub const XML_CQUANT_REP: XML_Content_Quant = 2;
+    #[c2rust::src_loc = "150:3"]
+    pub const XML_CQUANT_OPT: XML_Content_Quant = 1;
+    #[c2rust::src_loc = "149:3"]
+    pub const XML_CQUANT_NONE: XML_Content_Quant = 0;
+    #[c2rust::src_loc = "139:1"]
+    pub type XML_Content_Type = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "145:3"]
+    pub const XML_CTYPE_SEQ: XML_Content_Type = 6;
+    #[c2rust::src_loc = "144:3"]
+    pub const XML_CTYPE_CHOICE: XML_Content_Type = 5;
+    #[c2rust::src_loc = "143:3"]
+    pub const XML_CTYPE_NAME: XML_Content_Type = 4;
+    #[c2rust::src_loc = "142:3"]
+    pub const XML_CTYPE_MIXED: XML_Content_Type = 3;
+    #[c2rust::src_loc = "141:3"]
+    pub const XML_CTYPE_ANY: XML_Content_Type = 2;
+    #[c2rust::src_loc = "140:3"]
+    pub const XML_CTYPE_EMPTY: XML_Content_Type = 1;
+    #[c2rust::src_loc = "84:1"]
+    pub type XML_Error = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "136:3"]
+    pub const XML_ERROR_NOT_STARTED: XML_Error = 44;
+    #[c2rust::src_loc = "134:3"]
+    pub const XML_ERROR_AMPLIFICATION_LIMIT_BREACH: XML_Error = 43;
+    #[c2rust::src_loc = "132:3"]
+    pub const XML_ERROR_NO_BUFFER: XML_Error = 42;
+    #[c2rust::src_loc = "130:3"]
+    pub const XML_ERROR_INVALID_ARGUMENT: XML_Error = 41;
+    #[c2rust::src_loc = "128:3"]
+    pub const XML_ERROR_RESERVED_NAMESPACE_URI: XML_Error = 40;
+    #[c2rust::src_loc = "127:3"]
+    pub const XML_ERROR_RESERVED_PREFIX_XMLNS: XML_Error = 39;
+    #[c2rust::src_loc = "126:3"]
+    pub const XML_ERROR_RESERVED_PREFIX_XML: XML_Error = 38;
+    #[c2rust::src_loc = "124:3"]
+    pub const XML_ERROR_SUSPEND_PE: XML_Error = 37;
+    #[c2rust::src_loc = "123:3"]
+    pub const XML_ERROR_FINISHED: XML_Error = 36;
+    #[c2rust::src_loc = "122:3"]
+    pub const XML_ERROR_ABORTED: XML_Error = 35;
+    #[c2rust::src_loc = "121:3"]
+    pub const XML_ERROR_NOT_SUSPENDED: XML_Error = 34;
+    #[c2rust::src_loc = "120:3"]
+    pub const XML_ERROR_SUSPENDED: XML_Error = 33;
+    #[c2rust::src_loc = "119:3"]
+    pub const XML_ERROR_PUBLICID: XML_Error = 32;
+    #[c2rust::src_loc = "118:3"]
+    pub const XML_ERROR_TEXT_DECL: XML_Error = 31;
+    #[c2rust::src_loc = "117:3"]
+    pub const XML_ERROR_XML_DECL: XML_Error = 30;
+    #[c2rust::src_loc = "116:3"]
+    pub const XML_ERROR_INCOMPLETE_PE: XML_Error = 29;
+    #[c2rust::src_loc = "115:3"]
+    pub const XML_ERROR_UNDECLARING_PREFIX: XML_Error = 28;
+    #[c2rust::src_loc = "113:3"]
+    pub const XML_ERROR_UNBOUND_PREFIX: XML_Error = 27;
+    #[c2rust::src_loc = "111:3"]
+    pub const XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING: XML_Error = 26;
+    #[c2rust::src_loc = "110:3"]
+    pub const XML_ERROR_FEATURE_REQUIRES_XML_DTD: XML_Error = 25;
+    #[c2rust::src_loc = "109:3"]
+    pub const XML_ERROR_ENTITY_DECLARED_IN_PE: XML_Error = 24;
+    #[c2rust::src_loc = "108:3"]
+    pub const XML_ERROR_UNEXPECTED_STATE: XML_Error = 23;
+    #[c2rust::src_loc = "107:3"]
+    pub const XML_ERROR_NOT_STANDALONE: XML_Error = 22;
+    #[c2rust::src_loc = "106:3"]
+    pub const XML_ERROR_EXTERNAL_ENTITY_HANDLING: XML_Error = 21;
+    #[c2rust::src_loc = "105:3"]
+    pub const XML_ERROR_UNCLOSED_CDATA_SECTION: XML_Error = 20;
+    #[c2rust::src_loc = "104:3"]
+    pub const XML_ERROR_INCORRECT_ENCODING: XML_Error = 19;
+    #[c2rust::src_loc = "103:3"]
+    pub const XML_ERROR_UNKNOWN_ENCODING: XML_Error = 18;
+    #[c2rust::src_loc = "102:3"]
+    pub const XML_ERROR_MISPLACED_XML_PI: XML_Error = 17;
+    #[c2rust::src_loc = "101:3"]
+    pub const XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF: XML_Error = 16;
+    #[c2rust::src_loc = "100:3"]
+    pub const XML_ERROR_BINARY_ENTITY_REF: XML_Error = 15;
+    #[c2rust::src_loc = "99:3"]
+    pub const XML_ERROR_BAD_CHAR_REF: XML_Error = 14;
+    #[c2rust::src_loc = "98:3"]
+    pub const XML_ERROR_ASYNC_ENTITY: XML_Error = 13;
+    #[c2rust::src_loc = "97:3"]
+    pub const XML_ERROR_RECURSIVE_ENTITY_REF: XML_Error = 12;
+    #[c2rust::src_loc = "96:3"]
+    pub const XML_ERROR_UNDEFINED_ENTITY: XML_Error = 11;
+    #[c2rust::src_loc = "95:3"]
+    pub const XML_ERROR_PARAM_ENTITY_REF: XML_Error = 10;
+    #[c2rust::src_loc = "94:3"]
+    pub const XML_ERROR_JUNK_AFTER_DOC_ELEMENT: XML_Error = 9;
+    #[c2rust::src_loc = "93:3"]
+    pub const XML_ERROR_DUPLICATE_ATTRIBUTE: XML_Error = 8;
+    #[c2rust::src_loc = "92:3"]
+    pub const XML_ERROR_TAG_MISMATCH: XML_Error = 7;
+    #[c2rust::src_loc = "91:3"]
+    pub const XML_ERROR_PARTIAL_CHAR: XML_Error = 6;
+    #[c2rust::src_loc = "90:3"]
+    pub const XML_ERROR_UNCLOSED_TOKEN: XML_Error = 5;
+    #[c2rust::src_loc = "89:3"]
+    pub const XML_ERROR_INVALID_TOKEN: XML_Error = 4;
+    #[c2rust::src_loc = "88:3"]
+    pub const XML_ERROR_NO_ELEMENTS: XML_Error = 3;
+    #[c2rust::src_loc = "87:3"]
+    pub const XML_ERROR_SYNTAX: XML_Error = 2;
+    #[c2rust::src_loc = "86:3"]
+    pub const XML_ERROR_NO_MEMORY: XML_Error = 1;
+    #[c2rust::src_loc = "85:3"]
+    pub const XML_ERROR_NONE: XML_Error = 0;
+    #[c2rust::src_loc = "219:1"]
+    pub type XML_XmlDeclHandler = Option<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const XML_Char,
+            *const XML_Char,
+            ::core::ffi::c_int,
+        ) -> (),
+    >;
+    #[c2rust::src_loc = "364:1"]
+    pub type XML_EntityDeclHandler = Option<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const XML_Char,
+            ::core::ffi::c_int,
+            *const XML_Char,
+            ::core::ffi::c_int,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+        ) -> (),
+    >;
+    #[c2rust::src_loc = "204:1"]
+    pub type XML_AttlistDeclHandler = Option<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            ::core::ffi::c_int,
+        ) -> (),
+    >;
+    #[c2rust::src_loc = "189:1"]
+    pub type XML_ElementDeclHandler = Option<
+        unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *mut XML_Content) -> (),
+    >;
+    #[c2rust::src_loc = "173:1"]
+    pub type XML_Content = XML_cp;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "175:1"]
+    pub struct XML_cp {
+        pub type_0: XML_Content_Type,
+        pub quant: XML_Content_Quant,
+        pub name: *mut XML_Char,
+        pub numchildren: ::core::ffi::c_uint,
+        pub children: *mut XML_Content,
+    }
+    #[c2rust::src_loc = "549:1"]
+    pub type XML_UnknownEncodingHandler = Option<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const XML_Char,
+            *mut XML_Encoding,
+        ) -> ::core::ffi::c_int,
+    >;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "527:9"]
+    pub struct XML_Encoding {
+        pub map: [::core::ffi::c_int; 256],
+        pub data: *mut ::core::ffi::c_void,
+        pub convert: Option<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub release: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+    }
+    #[c2rust::src_loc = "471:1"]
+    pub type XML_SkippedEntityHandler = Option<
+        unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int) -> (),
+    >;
+    #[c2rust::src_loc = "455:1"]
+    pub type XML_ExternalEntityRefHandler = Option<
+        unsafe extern "C" fn(
+            XML_Parser,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+        ) -> ::core::ffi::c_int,
+    >;
+    #[c2rust::src_loc = "419:1"]
+    pub type XML_NotStandaloneHandler =
+        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int>;
+    #[c2rust::src_loc = "407:1"]
+    pub type XML_EndNamespaceDeclHandler =
+        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> ()>;
+    #[c2rust::src_loc = "403:1"]
+    pub type XML_StartNamespaceDeclHandler = Option<
+        unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *const XML_Char) -> (),
+    >;
+    #[c2rust::src_loc = "391:1"]
+    pub type XML_NotationDeclHandler = Option<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+        ) -> (),
+    >;
+    #[c2rust::src_loc = "382:1"]
+    pub type XML_UnparsedEntityDeclHandler = Option<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+        ) -> (),
+    >;
+    #[c2rust::src_loc = "344:1"]
+    pub type XML_EndDoctypeDeclHandler =
+        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+    #[c2rust::src_loc = "334:1"]
+    pub type XML_StartDoctypeDeclHandler = Option<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            ::core::ffi::c_int,
+        ) -> (),
+    >;
+    #[c2rust::src_loc = "328:1"]
+    pub type XML_DefaultHandler = Option<
+        unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int) -> (),
+    >;
+    #[c2rust::src_loc = "313:1"]
+    pub type XML_EndCdataSectionHandler =
+        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+    #[c2rust::src_loc = "312:1"]
+    pub type XML_StartCdataSectionHandler =
+        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+    #[c2rust::src_loc = "310:1"]
+    pub type XML_CommentHandler =
+        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> ()>;
+    #[c2rust::src_loc = "305:1"]
+    pub type XML_ProcessingInstructionHandler = Option<
+        unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *const XML_Char) -> (),
+    >;
+    #[c2rust::src_loc = "301:1"]
+    pub type XML_CharacterDataHandler = Option<
+        unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int) -> (),
+    >;
+    #[c2rust::src_loc = "297:1"]
+    pub type XML_EndElementHandler =
+        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> ()>;
+    #[c2rust::src_loc = "293:1"]
+    pub type XML_StartElementHandler = Option<
+        unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *mut *const XML_Char) -> (),
+    >;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "227:9"]
+    pub struct XML_Memory_Handling_Suite {
+        pub malloc_fcn: Option<unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void>,
+        pub realloc_fcn: Option<
+            unsafe extern "C" fn(*mut ::core::ffi::c_void, size_t) -> *mut ::core::ffi::c_void,
+        >,
+        pub free_fcn: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+    }
+    #[c2rust::src_loc = "75:1"]
+    pub type XML_Status = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "80:3"]
+    pub const XML_STATUS_SUSPENDED: XML_Status = 2;
+    #[c2rust::src_loc = "78:3"]
+    pub const XML_STATUS_OK: XML_Status = 1;
+    #[c2rust::src_loc = "76:3"]
+    pub const XML_STATUS_ERROR: XML_Status = 0;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "1007:9"]
+    pub struct XML_Expat_Version {
+        pub major: ::core::ffi::c_int,
+        pub minor: ::core::ffi::c_int,
+        pub micro: ::core::ffi::c_int,
+    }
+    #[c2rust::src_loc = "1020:1"]
+    pub type XML_FeatureEnum = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "1039:3"]
+    pub const XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT: XML_FeatureEnum = 15;
+    #[c2rust::src_loc = "1038:3"]
+    pub const XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT: XML_FeatureEnum = 14;
+    #[c2rust::src_loc = "1036:3"]
+    pub const XML_FEATURE_GE: XML_FeatureEnum = 13;
+    #[c2rust::src_loc = "1034:3"]
+    pub const XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT:
+        XML_FeatureEnum = 12;
+    #[c2rust::src_loc = "1033:3"]
+    pub const XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT:
+        XML_FeatureEnum = 11;
+    #[c2rust::src_loc = "1031:3"]
+    pub const XML_FEATURE_ATTR_INFO: XML_FeatureEnum = 10;
+    #[c2rust::src_loc = "1030:3"]
+    pub const XML_FEATURE_LARGE_SIZE: XML_FeatureEnum = 9;
+    #[c2rust::src_loc = "1029:3"]
+    pub const XML_FEATURE_NS: XML_FeatureEnum = 8;
+    #[c2rust::src_loc = "1028:3"]
+    pub const XML_FEATURE_SIZEOF_XML_LCHAR: XML_FeatureEnum = 7;
+    #[c2rust::src_loc = "1027:3"]
+    pub const XML_FEATURE_SIZEOF_XML_CHAR: XML_FeatureEnum = 6;
+    #[c2rust::src_loc = "1026:3"]
+    pub const XML_FEATURE_MIN_SIZE: XML_FeatureEnum = 5;
+    #[c2rust::src_loc = "1025:3"]
+    pub const XML_FEATURE_CONTEXT_BYTES: XML_FeatureEnum = 4;
+    #[c2rust::src_loc = "1024:3"]
+    pub const XML_FEATURE_DTD: XML_FeatureEnum = 3;
+    #[c2rust::src_loc = "1023:3"]
+    pub const XML_FEATURE_UNICODE_WCHAR_T: XML_FeatureEnum = 2;
+    #[c2rust::src_loc = "1022:3"]
+    pub const XML_FEATURE_UNICODE: XML_FeatureEnum = 1;
+    #[c2rust::src_loc = "1021:3"]
+    pub const XML_FEATURE_END: XML_FeatureEnum = 0;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "1043:9"]
+    pub struct XML_Feature {
+        pub feature: XML_FeatureEnum,
+        pub name: *const XML_LChar,
+        pub value: ::core::ffi::c_long,
+    }
+    #[c2rust::src_loc = "59:11"]
+    pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
+    #[c2rust::src_loc = "60:11"]
+    pub const XML_FALSE: XML_Bool = 0 as ::core::ffi::c_int as XML_Bool;
+    #[c2rust::src_loc = "1083:11"]
+    pub const XML_MAJOR_VERSION: ::core::ffi::c_int = 2 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "1084:11"]
+    pub const XML_MINOR_VERSION: ::core::ffi::c_int = 7 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "1085:11"]
+    pub const XML_MICRO_VERSION: ::core::ffi::c_int = 4 as ::core::ffi::c_int;
+    use super::expat_external_h::{XML_Char, XML_LChar};
+    use super::XML_ParserStruct;
+    use super::__stddef_size_t_h::size_t;
+}
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmltok.h:108"]
+pub mod xmltok_h {
+    #[c2rust::src_loc = "146:1"]
+    pub type POSITION = position;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "146:9"]
+    pub struct position {
+        pub lineNumber: XML_Size,
+        pub columnNumber: XML_Size,
+    }
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "152:9"]
+    pub struct ATTRIBUTE {
+        pub name: *const ::core::ffi::c_char,
+        pub valuePtr: *const ::core::ffi::c_char,
+        pub valueEnd: *const ::core::ffi::c_char,
+        pub normalized: ::core::ffi::c_char,
+    }
+    #[c2rust::src_loc = "160:1"]
+    pub type ENCODING = encoding;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "172:1"]
+    pub struct encoding {
+        pub scanners: [SCANNER; 4],
+        pub literalScanners: [SCANNER; 2],
+        pub nameMatchesAscii: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub nameLength: Option<
+            unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
+        >,
+        pub skipS: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+            ) -> *const ::core::ffi::c_char,
+        >,
+        pub getAtts: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                ::core::ffi::c_int,
+                *mut ATTRIBUTE,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub charRefNumber: Option<
+            unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
+        >,
+        pub predefinedEntityName: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub updatePosition: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut POSITION,
+            ) -> (),
+        >,
+        pub isPublicId: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub utf8Convert: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *mut *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *mut ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+            ) -> XML_Convert_Result,
+        >,
+        pub utf16Convert: Option<
+            unsafe extern "C" fn(
+                *const ENCODING,
+                *mut *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *mut ::core::ffi::c_ushort,
+                *const ::core::ffi::c_ushort,
+            ) -> XML_Convert_Result,
+        >,
+        pub minBytesPerChar: ::core::ffi::c_int,
+        pub isUtf8: ::core::ffi::c_char,
+        pub isUtf16: ::core::ffi::c_char,
+    }
+    #[c2rust::src_loc = "165:1"]
+    pub type XML_Convert_Result = ::core::ffi::c_uint;
+    #[c2rust::src_loc = "168:3"]
+    pub const XML_CONVERT_OUTPUT_EXHAUSTED: XML_Convert_Result = 2;
+    #[c2rust::src_loc = "167:3"]
+    pub const XML_CONVERT_INPUT_INCOMPLETE: XML_Convert_Result = 1;
+    #[c2rust::src_loc = "166:3"]
+    pub const XML_CONVERT_COMPLETED: XML_Convert_Result = 0;
+    #[c2rust::src_loc = "162:1"]
+    pub type SCANNER = Option<
+        unsafe extern "C" fn(
+            *const ENCODING,
+            *const ::core::ffi::c_char,
+            *const ::core::ffi::c_char,
+            *mut *const ::core::ffi::c_char,
+        ) -> ::core::ffi::c_int,
+    >;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "281:9"]
+    pub struct INIT_ENCODING {
+        pub initEnc: ENCODING,
+        pub encPtr: *mut *const ENCODING,
+    }
+    #[c2rust::src_loc = "300:1"]
+    pub type CONVERTER = Option<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const ::core::ffi::c_char,
+        ) -> ::core::ffi::c_int,
+    >;
+    #[c2rust::src_loc = "45:11"]
+    pub const XML_TOK_TRAILING_RSQB: ::core::ffi::c_int = -5;
+    #[c2rust::src_loc = "51:11"]
+    pub const XML_TOK_NONE: ::core::ffi::c_int = -4;
+    #[c2rust::src_loc = "52:11"]
+    pub const XML_TOK_TRAILING_CR: ::core::ffi::c_int = -3;
+    #[c2rust::src_loc = "55:11"]
+    pub const XML_TOK_PARTIAL_CHAR: ::core::ffi::c_int = -2;
+    #[c2rust::src_loc = "56:11"]
+    pub const XML_TOK_PARTIAL: ::core::ffi::c_int = -1;
+    #[c2rust::src_loc = "57:11"]
+    pub const XML_TOK_INVALID: ::core::ffi::c_int = 0;
+    #[c2rust::src_loc = "62:11"]
+    pub const XML_TOK_START_TAG_WITH_ATTS: ::core::ffi::c_int = 1;
+    #[c2rust::src_loc = "63:11"]
+    pub const XML_TOK_START_TAG_NO_ATTS: ::core::ffi::c_int = 2;
+    #[c2rust::src_loc = "64:11"]
+    pub const XML_TOK_EMPTY_ELEMENT_WITH_ATTS: ::core::ffi::c_int = 3;
+    #[c2rust::src_loc = "65:11"]
+    pub const XML_TOK_EMPTY_ELEMENT_NO_ATTS: ::core::ffi::c_int = 4;
+    #[c2rust::src_loc = "66:11"]
+    pub const XML_TOK_END_TAG: ::core::ffi::c_int = 5;
+    #[c2rust::src_loc = "67:11"]
+    pub const XML_TOK_DATA_CHARS: ::core::ffi::c_int = 6;
+    #[c2rust::src_loc = "68:11"]
+    pub const XML_TOK_DATA_NEWLINE: ::core::ffi::c_int = 7;
+    #[c2rust::src_loc = "69:11"]
+    pub const XML_TOK_CDATA_SECT_OPEN: ::core::ffi::c_int = 8;
+    #[c2rust::src_loc = "70:11"]
+    pub const XML_TOK_ENTITY_REF: ::core::ffi::c_int = 9;
+    #[c2rust::src_loc = "71:11"]
+    pub const XML_TOK_CHAR_REF: ::core::ffi::c_int = 10;
+    #[c2rust::src_loc = "76:11"]
+    pub const XML_TOK_PI: ::core::ffi::c_int = 11;
+    #[c2rust::src_loc = "77:11"]
+    pub const XML_TOK_XML_DECL: ::core::ffi::c_int = 12;
+    #[c2rust::src_loc = "78:11"]
+    pub const XML_TOK_COMMENT: ::core::ffi::c_int = 13;
+    #[c2rust::src_loc = "79:11"]
+    pub const XML_TOK_BOM: ::core::ffi::c_int = 14;
+    #[c2rust::src_loc = "82:11"]
+    pub const XML_TOK_PROLOG_S: ::core::ffi::c_int = 15;
+    #[c2rust::src_loc = "95:11"]
+    pub const XML_TOK_PARAM_ENTITY_REF: ::core::ffi::c_int = 28;
+    #[c2rust::src_loc = "96:11"]
+    pub const XML_TOK_INSTANCE_START: ::core::ffi::c_int = 29 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "110:11"]
+    pub const XML_TOK_ATTRIBUTE_VALUE_S: ::core::ffi::c_int = 39;
+    #[c2rust::src_loc = "113:11"]
+    pub const XML_TOK_CDATA_SECT_CLOSE: ::core::ffi::c_int = 40;
+    #[c2rust::src_loc = "121:13"]
+    pub const XML_TOK_IGNORE_SECT: ::core::ffi::c_int = 42;
+    use super::expat_external_h::XML_Size;
+    extern "C" {
+        #[c2rust::src_loc = "286:1"]
+        pub fn XmlParseXmlDecl(
+            isGeneralTextEntity: ::core::ffi::c_int,
+            enc: *const ENCODING,
+            ptr: *const ::core::ffi::c_char,
+            end: *const ::core::ffi::c_char,
+            badPtr: *mut *const ::core::ffi::c_char,
+            versionPtr: *mut *const ::core::ffi::c_char,
+            versionEndPtr: *mut *const ::core::ffi::c_char,
+            encodingNamePtr: *mut *const ::core::ffi::c_char,
+            namedEncodingPtr: *mut *const ENCODING,
+            standalonePtr: *mut ::core::ffi::c_int,
+        ) -> ::core::ffi::c_int;
+        #[c2rust::src_loc = "292:1"]
+        pub fn XmlInitEncoding(
+            p: *mut INIT_ENCODING,
+            encPtr: *mut *const ENCODING,
+            name: *const ::core::ffi::c_char,
+        ) -> ::core::ffi::c_int;
+        #[c2rust::src_loc = "294:1"]
+        pub fn XmlGetUtf8InternalEncoding() -> *const ENCODING;
+        #[c2rust::src_loc = "296:1"]
+        pub fn XmlUtf8Encode(
+            charNumber: ::core::ffi::c_int,
+            buf: *mut ::core::ffi::c_char,
+        ) -> ::core::ffi::c_int;
+        #[c2rust::src_loc = "298:1"]
+        pub fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int;
+        #[c2rust::src_loc = "302:1"]
+        pub fn XmlInitUnknownEncoding(
+            mem: *mut ::core::ffi::c_void,
+            table: *const ::core::ffi::c_int,
+            convert: CONVERTER,
+            userData: *mut ::core::ffi::c_void,
+        ) -> *mut ENCODING;
+        #[c2rust::src_loc = "305:1"]
+        pub fn XmlParseXmlDeclNS(
+            isGeneralTextEntity: ::core::ffi::c_int,
+            enc: *const ENCODING,
+            ptr: *const ::core::ffi::c_char,
+            end: *const ::core::ffi::c_char,
+            badPtr: *mut *const ::core::ffi::c_char,
+            versionPtr: *mut *const ::core::ffi::c_char,
+            versionEndPtr: *mut *const ::core::ffi::c_char,
+            encodingNamePtr: *mut *const ::core::ffi::c_char,
+            namedEncodingPtr: *mut *const ENCODING,
+            standalonePtr: *mut ::core::ffi::c_int,
+        ) -> ::core::ffi::c_int;
+        #[c2rust::src_loc = "311:1"]
+        pub fn XmlInitEncodingNS(
+            p: *mut INIT_ENCODING,
+            encPtr: *mut *const ENCODING,
+            name: *const ::core::ffi::c_char,
+        ) -> ::core::ffi::c_int;
+        #[c2rust::src_loc = "313:1"]
+        pub fn XmlGetUtf8InternalEncodingNS() -> *const ENCODING;
+        #[c2rust::src_loc = "315:1"]
+        pub fn XmlInitUnknownEncodingNS(
+            mem: *mut ::core::ffi::c_void,
+            table: *const ::core::ffi::c_int,
+            convert: CONVERTER,
+            userData: *mut ::core::ffi::c_void,
+        ) -> *mut ENCODING;
+    }
+}
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlrole.h:108"]
+pub mod xmlrole_h {
+    #[c2rust::src_loc = "112:1"]
+    pub type PROLOG_STATE = prolog_state;
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "112:9"]
+    pub struct prolog_state {
+        pub handler: Option<
+            unsafe extern "C" fn(
+                *mut prolog_state,
+                ::core::ffi::c_int,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *const ENCODING,
+            ) -> ::core::ffi::c_int,
+        >,
+        pub level: ::core::ffi::c_uint,
+        pub role_none: ::core::ffi::c_int,
+        pub includeLevel: ::core::ffi::c_uint,
+        pub documentEntity: ::core::ffi::c_int,
+        pub inEntityValue: ::core::ffi::c_int,
+    }
+    #[c2rust::src_loc = "86:3"]
+    pub const XML_ROLE_ELEMENT_NONE: C2RustUnnamed_0 = 39;
+    #[c2rust::src_loc = "80:3"]
+    pub const XML_ROLE_ATTLIST_NONE: C2RustUnnamed_0 = 33;
+    #[c2rust::src_loc = "64:3"]
+    pub const XML_ROLE_NOTATION_NONE: C2RustUnnamed_0 = 17;
+    #[c2rust::src_loc = "58:3"]
+    pub const XML_ROLE_ENTITY_NONE: C2RustUnnamed_0 = 11;
+    #[c2rust::src_loc = "50:3"]
+    pub const XML_ROLE_DOCTYPE_NONE: C2RustUnnamed_0 = 3;
+    #[c2rust::src_loc = "47:3"]
+    pub const XML_ROLE_NONE: C2RustUnnamed_0 = 0;
+    #[c2rust::src_loc = "103:3"]
+    pub const XML_ROLE_COMMENT: C2RustUnnamed_0 = 56;
+    #[c2rust::src_loc = "102:3"]
+    pub const XML_ROLE_PI: C2RustUnnamed_0 = 55;
+    #[c2rust::src_loc = "95:3"]
+    pub const XML_ROLE_GROUP_CLOSE_PLUS: C2RustUnnamed_0 = 48;
+    #[c2rust::src_loc = "93:3"]
+    pub const XML_ROLE_GROUP_CLOSE_REP: C2RustUnnamed_0 = 46;
+    #[c2rust::src_loc = "94:3"]
+    pub const XML_ROLE_GROUP_CLOSE_OPT: C2RustUnnamed_0 = 47;
+    #[c2rust::src_loc = "92:3"]
+    pub const XML_ROLE_GROUP_CLOSE: C2RustUnnamed_0 = 45;
+    #[c2rust::src_loc = "101:3"]
+    pub const XML_ROLE_CONTENT_ELEMENT_PLUS: C2RustUnnamed_0 = 54;
+    #[c2rust::src_loc = "99:3"]
+    pub const XML_ROLE_CONTENT_ELEMENT_REP: C2RustUnnamed_0 = 52;
+    #[c2rust::src_loc = "100:3"]
+    pub const XML_ROLE_CONTENT_ELEMENT_OPT: C2RustUnnamed_0 = 53;
+    #[c2rust::src_loc = "98:3"]
+    pub const XML_ROLE_CONTENT_ELEMENT: C2RustUnnamed_0 = 51;
+    #[c2rust::src_loc = "90:3"]
+    pub const XML_ROLE_CONTENT_PCDATA: C2RustUnnamed_0 = 43;
+    #[c2rust::src_loc = "88:3"]
+    pub const XML_ROLE_CONTENT_ANY: C2RustUnnamed_0 = 41;
+    #[c2rust::src_loc = "89:3"]
+    pub const XML_ROLE_CONTENT_EMPTY: C2RustUnnamed_0 = 42;
+    #[c2rust::src_loc = "87:3"]
+    pub const XML_ROLE_ELEMENT_NAME: C2RustUnnamed_0 = 40;
+    #[c2rust::src_loc = "109:3"]
+    pub const XML_ROLE_PARAM_ENTITY_REF: C2RustUnnamed_0 = 60;
+    #[c2rust::src_loc = "107:3"]
+    pub const XML_ROLE_INNER_PARAM_ENTITY_REF: C2RustUnnamed_0 = 59;
+    #[c2rust::src_loc = "96:3"]
+    pub const XML_ROLE_GROUP_CHOICE: C2RustUnnamed_0 = 49;
+    #[c2rust::src_loc = "97:3"]
+    pub const XML_ROLE_GROUP_SEQUENCE: C2RustUnnamed_0 = 50;
+    #[c2rust::src_loc = "91:3"]
+    pub const XML_ROLE_GROUP_OPEN: C2RustUnnamed_0 = 44;
+    #[c2rust::src_loc = "106:3"]
+    pub const XML_ROLE_IGNORE_SECT: C2RustUnnamed_0 = 58;
+    #[c2rust::src_loc = "46:3"]
+    pub const XML_ROLE_ERROR: C2RustUnnamed_0 = -1;
+    #[c2rust::src_loc = "67:3"]
+    pub const XML_ROLE_NOTATION_NO_SYSTEM_ID: C2RustUnnamed_0 = 20;
+    #[c2rust::src_loc = "66:3"]
+    pub const XML_ROLE_NOTATION_SYSTEM_ID: C2RustUnnamed_0 = 19;
+    #[c2rust::src_loc = "68:3"]
+    pub const XML_ROLE_NOTATION_PUBLIC_ID: C2RustUnnamed_0 = 21;
+    #[c2rust::src_loc = "65:3"]
+    pub const XML_ROLE_NOTATION_NAME: C2RustUnnamed_0 = 18;
+    #[c2rust::src_loc = "57:3"]
+    pub const XML_ROLE_PARAM_ENTITY_NAME: C2RustUnnamed_0 = 10;
+    #[c2rust::src_loc = "56:3"]
+    pub const XML_ROLE_GENERAL_ENTITY_NAME: C2RustUnnamed_0 = 9;
+    #[c2rust::src_loc = "63:3"]
+    pub const XML_ROLE_ENTITY_NOTATION_NAME: C2RustUnnamed_0 = 16;
+    #[c2rust::src_loc = "62:3"]
+    pub const XML_ROLE_ENTITY_COMPLETE: C2RustUnnamed_0 = 15;
+    #[c2rust::src_loc = "60:3"]
+    pub const XML_ROLE_ENTITY_SYSTEM_ID: C2RustUnnamed_0 = 13;
+    #[c2rust::src_loc = "52:3"]
+    pub const XML_ROLE_DOCTYPE_SYSTEM_ID: C2RustUnnamed_0 = 5;
+    #[c2rust::src_loc = "59:3"]
+    pub const XML_ROLE_ENTITY_VALUE: C2RustUnnamed_0 = 12;
+    #[c2rust::src_loc = "85:3"]
+    pub const XML_ROLE_FIXED_ATTRIBUTE_VALUE: C2RustUnnamed_0 = 38;
+    #[c2rust::src_loc = "84:3"]
+    pub const XML_ROLE_DEFAULT_ATTRIBUTE_VALUE: C2RustUnnamed_0 = 37;
+    #[c2rust::src_loc = "83:3"]
+    pub const XML_ROLE_REQUIRED_ATTRIBUTE_VALUE: C2RustUnnamed_0 = 36;
+    #[c2rust::src_loc = "82:3"]
+    pub const XML_ROLE_IMPLIED_ATTRIBUTE_VALUE: C2RustUnnamed_0 = 35;
+    #[c2rust::src_loc = "79:3"]
+    pub const XML_ROLE_ATTRIBUTE_NOTATION_VALUE: C2RustUnnamed_0 = 32;
+    #[c2rust::src_loc = "78:3"]
+    pub const XML_ROLE_ATTRIBUTE_ENUM_VALUE: C2RustUnnamed_0 = 31;
+    #[c2rust::src_loc = "77:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS: C2RustUnnamed_0 = 30;
+    #[c2rust::src_loc = "76:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN: C2RustUnnamed_0 = 29;
+    #[c2rust::src_loc = "75:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITIES: C2RustUnnamed_0 = 28;
+    #[c2rust::src_loc = "74:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITY: C2RustUnnamed_0 = 27;
+    #[c2rust::src_loc = "73:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_IDREFS: C2RustUnnamed_0 = 26;
+    #[c2rust::src_loc = "72:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_IDREF: C2RustUnnamed_0 = 25;
+    #[c2rust::src_loc = "71:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ID: C2RustUnnamed_0 = 24;
+    #[c2rust::src_loc = "70:3"]
+    pub const XML_ROLE_ATTRIBUTE_TYPE_CDATA: C2RustUnnamed_0 = 23;
+    #[c2rust::src_loc = "69:3"]
+    pub const XML_ROLE_ATTRIBUTE_NAME: C2RustUnnamed_0 = 22;
+    #[c2rust::src_loc = "81:3"]
+    pub const XML_ROLE_ATTLIST_ELEMENT_NAME: C2RustUnnamed_0 = 34;
+    #[c2rust::src_loc = "49:3"]
+    pub const XML_ROLE_INSTANCE_START: C2RustUnnamed_0 = 2;
+    #[c2rust::src_loc = "55:3"]
+    pub const XML_ROLE_DOCTYPE_CLOSE: C2RustUnnamed_0 = 8;
+    #[c2rust::src_loc = "61:3"]
+    pub const XML_ROLE_ENTITY_PUBLIC_ID: C2RustUnnamed_0 = 14;
+    #[c2rust::src_loc = "53:3"]
+    pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2RustUnnamed_0 = 6;
+    #[c2rust::src_loc = "105:3"]
+    pub const XML_ROLE_TEXT_DECL: C2RustUnnamed_0 = 57;
+    #[c2rust::src_loc = "54:3"]
+    pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2RustUnnamed_0 = 7;
+    #[c2rust::src_loc = "51:3"]
+    pub const XML_ROLE_DOCTYPE_NAME: C2RustUnnamed_0 = 4;
+    #[c2rust::src_loc = "48:3"]
+    pub const XML_ROLE_XML_DECL: C2RustUnnamed_0 = 1;
+    #[c2rust::src_loc = "45:1"]
+    pub type C2RustUnnamed_0 = ::core::ffi::c_int;
+    use super::xmltok_h::ENCODING;
+    extern "C" {
+        #[c2rust::src_loc = "124:1"]
+        pub fn XmlPrologStateInit(state: *mut PROLOG_STATE);
+        #[c2rust::src_loc = "126:1"]
+        pub fn XmlPrologStateInitExternalEntity(state: *mut PROLOG_STATE);
+    }
+}
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/siphash.h:108"]
+pub mod siphash_h {
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "131:1"]
+    pub struct siphash {
+        pub v0: uint64_t,
+        pub v1: uint64_t,
+        pub v2: uint64_t,
+        pub v3: uint64_t,
+        pub buf: [::core::ffi::c_uchar; 8],
+        pub p: *mut ::core::ffi::c_uchar,
+        pub c: uint64_t,
+    }
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    #[c2rust::src_loc = "140:1"]
+    pub struct sipkey {
+        pub k: [uint64_t; 2],
+    }
+    #[c2rust::src_loc = "146:1"]
+    pub unsafe extern "C" fn sip_tokey(
+        mut key: *mut sipkey,
+        mut src: *const ::core::ffi::c_void,
+    ) -> *mut sipkey {
+        (*key).k[0 as ::core::ffi::c_int as usize] = (*(src as *const ::core::ffi::c_uchar)
+            .offset(0 as ::core::ffi::c_int as isize)
+            as uint64_t)
+            << 0 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
+                as uint64_t)
+                << 8 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
+                as uint64_t)
+                << 16 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar).offset(3 as ::core::ffi::c_int as isize)
+                as uint64_t)
+                << 24 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar).offset(4 as ::core::ffi::c_int as isize)
+                as uint64_t)
+                << 32 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar).offset(5 as ::core::ffi::c_int as isize)
+                as uint64_t)
+                << 40 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar).offset(6 as ::core::ffi::c_int as isize)
+                as uint64_t)
+                << 48 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar).offset(7 as ::core::ffi::c_int as isize)
+                as uint64_t)
+                << 56 as ::core::ffi::c_int;
+        (*key).k[1 as ::core::ffi::c_int as usize] = (*(src as *const ::core::ffi::c_uchar)
+            .offset(8 as ::core::ffi::c_int as isize)
+            .offset(0 as ::core::ffi::c_int as isize)
+            as uint64_t)
+            << 0 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar)
+                .offset(8 as ::core::ffi::c_int as isize)
+                .offset(1 as ::core::ffi::c_int as isize) as uint64_t)
+                << 8 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar)
+                .offset(8 as ::core::ffi::c_int as isize)
+                .offset(2 as ::core::ffi::c_int as isize) as uint64_t)
+                << 16 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar)
+                .offset(8 as ::core::ffi::c_int as isize)
+                .offset(3 as ::core::ffi::c_int as isize) as uint64_t)
+                << 24 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar)
+                .offset(8 as ::core::ffi::c_int as isize)
+                .offset(4 as ::core::ffi::c_int as isize) as uint64_t)
+                << 32 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar)
+                .offset(8 as ::core::ffi::c_int as isize)
+                .offset(5 as ::core::ffi::c_int as isize) as uint64_t)
+                << 40 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar)
+                .offset(8 as ::core::ffi::c_int as isize)
+                .offset(6 as ::core::ffi::c_int as isize) as uint64_t)
+                << 48 as ::core::ffi::c_int
+            | (*(src as *const ::core::ffi::c_uchar)
+                .offset(8 as ::core::ffi::c_int as isize)
+                .offset(7 as ::core::ffi::c_int as isize) as uint64_t)
+                << 56 as ::core::ffi::c_int;
+        return key;
+    }
+    #[c2rust::src_loc = "165:1"]
+    pub unsafe extern "C" fn sip_round(mut H: *mut siphash, rounds: ::core::ffi::c_int) {
+        let mut i: ::core::ffi::c_int = 0;
+        i = 0 as ::core::ffi::c_int;
+        while i < rounds {
+            (*H).v0 = (*H).v0.wrapping_add((*H).v1);
+            (*H).v1 = (*H).v1 << 13 as ::core::ffi::c_int
+                | (*H).v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
+            (*H).v1 ^= (*H).v0;
+            (*H).v0 = (*H).v0 << 32 as ::core::ffi::c_int
+                | (*H).v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
+            (*H).v2 = (*H).v2.wrapping_add((*H).v3);
+            (*H).v3 = (*H).v3 << 16 as ::core::ffi::c_int
+                | (*H).v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
+            (*H).v3 ^= (*H).v2;
+            (*H).v0 = (*H).v0.wrapping_add((*H).v3);
+            (*H).v3 = (*H).v3 << 21 as ::core::ffi::c_int
+                | (*H).v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
+            (*H).v3 ^= (*H).v0;
+            (*H).v2 = (*H).v2.wrapping_add((*H).v1);
+            (*H).v1 = (*H).v1 << 17 as ::core::ffi::c_int
+                | (*H).v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
+            (*H).v1 ^= (*H).v2;
+            (*H).v2 = (*H).v2 << 32 as ::core::ffi::c_int
+                | (*H).v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
+            i += 1;
+        }
+    }
+    #[c2rust::src_loc = "190:1"]
+    pub unsafe extern "C" fn sip24_init(
+        mut H: *mut siphash,
+        mut key: *const sipkey,
+    ) -> *mut siphash {
+        (*H).v0 = ((0x736f6d65 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+            | 0x70736575 as uint64_t)
+            ^ (*key).k[0 as ::core::ffi::c_int as usize];
+        (*H).v1 = ((0x646f7261 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+            | 0x6e646f6d as uint64_t)
+            ^ (*key).k[1 as ::core::ffi::c_int as usize];
+        (*H).v2 = ((0x6c796765 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+            | 0x6e657261 as uint64_t)
+            ^ (*key).k[0 as ::core::ffi::c_int as usize];
+        (*H).v3 = ((0x74656462 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+            | 0x79746573 as uint64_t)
+            ^ (*key).k[1 as ::core::ffi::c_int as usize];
+        (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
+        (*H).c = 0 as uint64_t;
+        return H;
+    }
+    #[c2rust::src_loc = "205:1"]
+    pub unsafe extern "C" fn sip24_update(
+        mut H: *mut siphash,
+        mut src: *const ::core::ffi::c_void,
+        mut len: size_t,
+    ) -> *mut siphash {
+        let mut p: *const ::core::ffi::c_uchar = src as *const ::core::ffi::c_uchar;
+        let mut pe: *const ::core::ffi::c_uchar = p.offset(len as isize);
+        let mut m: uint64_t = 0;
+        loop {
+            while p < pe
+                && (*H).p
+                    < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
+                        (::core::mem::size_of::<[::core::ffi::c_uchar; 8]>() as usize)
+                            .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>() as usize)
+                            as isize,
+                    ) as *mut ::core::ffi::c_uchar
+            {
+                let fresh20 = p;
+                p = p.offset(1);
+                let fresh21 = (*H).p;
+                (*H).p = (*H).p.offset(1);
+                *fresh21 = *fresh20;
+            }
+            if (*H).p
+                < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
+                    (::core::mem::size_of::<[::core::ffi::c_uchar; 8]>() as usize)
+                        .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>() as usize)
+                        as isize,
+                ) as *mut ::core::ffi::c_uchar
+            {
+                break;
+            }
+            m = ((*H).buf[0 as ::core::ffi::c_int as usize] as uint64_t) << 0 as ::core::ffi::c_int
+                | ((*H).buf[1 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 8 as ::core::ffi::c_int
+                | ((*H).buf[2 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 16 as ::core::ffi::c_int
+                | ((*H).buf[3 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 24 as ::core::ffi::c_int
+                | ((*H).buf[4 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 32 as ::core::ffi::c_int
+                | ((*H).buf[5 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 40 as ::core::ffi::c_int
+                | ((*H).buf[6 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 48 as ::core::ffi::c_int
+                | ((*H).buf[7 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 56 as ::core::ffi::c_int;
+            (*H).v3 ^= m;
+            sip_round(H, 2 as ::core::ffi::c_int);
+            (*H).v0 ^= m;
+            (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
+            (*H).c = (*H).c.wrapping_add(8 as uint64_t);
+            if !(p < pe) {
+                break;
+            }
+        }
+        return H;
+    }
+    #[c2rust::src_loc = "229:1"]
+    pub unsafe extern "C" fn sip24_final(mut H: *mut siphash) -> uint64_t {
+        let left: ::core::ffi::c_char = (*H)
+            .p
+            .offset_from(&raw mut (*H).buf as *mut ::core::ffi::c_uchar)
+            as ::core::ffi::c_long as ::core::ffi::c_char;
+        let mut b: uint64_t = (*H).c.wrapping_add(left as uint64_t) << 56 as ::core::ffi::c_int;
+        let mut current_block_6: u64;
+        match left as ::core::ffi::c_int {
+            7 => {
+                b |= ((*H).buf[6 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 48 as ::core::ffi::c_int;
+                current_block_6 = 4021588137456158946;
+            }
+            6 => {
+                current_block_6 = 4021588137456158946;
+            }
+            5 => {
+                current_block_6 = 12485585037491154495;
+            }
+            4 => {
+                current_block_6 = 435354115069985819;
+            }
+            3 => {
+                current_block_6 = 1199690694990637288;
+            }
+            2 => {
+                current_block_6 = 2615438511104190163;
+            }
+            1 => {
+                current_block_6 = 4681268752173749360;
+            }
+            0 | _ => {
+                current_block_6 = 5720623009719927633;
+            }
+        }
+        match current_block_6 {
+            4021588137456158946 => {
+                b |= ((*H).buf[5 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 40 as ::core::ffi::c_int;
+                current_block_6 = 12485585037491154495;
+            }
+            _ => {}
+        }
+        match current_block_6 {
+            12485585037491154495 => {
+                b |= ((*H).buf[4 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 32 as ::core::ffi::c_int;
+                current_block_6 = 435354115069985819;
+            }
+            _ => {}
+        }
+        match current_block_6 {
+            435354115069985819 => {
+                b |= ((*H).buf[3 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 24 as ::core::ffi::c_int;
+                current_block_6 = 1199690694990637288;
+            }
+            _ => {}
+        }
+        match current_block_6 {
+            1199690694990637288 => {
+                b |= ((*H).buf[2 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 16 as ::core::ffi::c_int;
+                current_block_6 = 2615438511104190163;
+            }
+            _ => {}
+        }
+        match current_block_6 {
+            2615438511104190163 => {
+                b |= ((*H).buf[1 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 8 as ::core::ffi::c_int;
+                current_block_6 = 4681268752173749360;
+            }
+            _ => {}
+        }
+        match current_block_6 {
+            4681268752173749360 => {
+                b |= ((*H).buf[0 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 0 as ::core::ffi::c_int;
+            }
+            _ => {}
+        }
+        (*H).v3 ^= b;
+        sip_round(H, 2 as ::core::ffi::c_int);
+        (*H).v0 ^= b;
+        (*H).v2 ^= 0xff as uint64_t;
+        sip_round(H, 4 as ::core::ffi::c_int);
+        return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
+    }
+    #[c2rust::src_loc = "269:1"]
+    pub unsafe extern "C" fn siphash24(
+        mut src: *const ::core::ffi::c_void,
+        mut len: size_t,
+        mut key: *const sipkey,
+    ) -> uint64_t {
+        let mut state: siphash = siphash {
+            v0: 0 as uint64_t,
+            v1: 0 as uint64_t,
+            v2: 0 as uint64_t,
+            v3: 0 as uint64_t,
+            buf: [
+                0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+            p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
+            c: 0 as uint64_t,
+        };
+        return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
+    }
+    #[c2rust::src_loc = "286:1"]
+    pub unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
+        pub static mut vectors: [[::core::ffi::c_uchar; 8]; 64] = [
+            [
+                0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xdd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x47 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xfd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xdc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x39 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x74 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x4f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x80 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x2d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x7e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xfb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x85 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xb7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x99 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x64 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x55 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x18 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xfe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x58 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x37 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xab as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xdf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x82 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xdd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x7a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x22 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xfb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x86 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x84 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x56 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x14 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x7a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x29 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x7f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x47 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x69 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x9c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x4b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xbd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x98 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xc7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x88 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xc8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x85 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xde as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x35 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x17 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x63 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xa5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xac as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xaa as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xde as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x65 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x28 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xef as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x42 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x41 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xfa as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x7c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x51 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x78 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x59 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x38 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xae as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x97 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x34 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xb4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xff as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x81 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x39 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x29 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xdc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x73 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x33 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x59 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x58 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xfc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x42 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x73 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x18 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x35 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x19 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x10 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xdf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xeb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x98 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x51 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xfc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xfe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x52 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x97 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x43 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x64 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x16 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x74 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x6f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x20 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x81 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xec as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x22 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x7f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x99 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xc1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xbd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x83 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x3a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x65 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x13 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x60 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x2b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x28 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xd7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xe1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x91 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xb1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xec as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x25 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x9f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x5f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x60 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x38 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x1b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+            [
+                0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0xeb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x4c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x8a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+                0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            ],
+        ];
+        let mut in_0: [::core::ffi::c_uchar; 64] = [0; 64];
+        let mut k: sipkey = sipkey { k: [0; 2] };
+        let mut i: size_t = 0;
+        sip_tokey(
+            &raw mut k,
+            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\0" as *const u8
+                as *const ::core::ffi::c_char as *const ::core::ffi::c_void,
+        );
+        i = 0 as size_t;
+        while i < ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() as usize {
+            in_0[i as usize] = i as ::core::ffi::c_uchar;
+            if siphash24(
+                &raw mut in_0 as *mut ::core::ffi::c_uchar as *const ::core::ffi::c_void,
+                i,
+                &raw mut k,
+            ) != (vectors[i as usize][0 as ::core::ffi::c_int as usize] as uint64_t)
+                << 0 as ::core::ffi::c_int
+                | (vectors[i as usize][1 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 8 as ::core::ffi::c_int
+                | (vectors[i as usize][2 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 16 as ::core::ffi::c_int
+                | (vectors[i as usize][3 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 24 as ::core::ffi::c_int
+                | (vectors[i as usize][4 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 32 as ::core::ffi::c_int
+                | (vectors[i as usize][5 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 40 as ::core::ffi::c_int
+                | (vectors[i as usize][6 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 48 as ::core::ffi::c_int
+                | (vectors[i as usize][7 as ::core::ffi::c_int as usize] as uint64_t)
+                    << 56 as ::core::ffi::c_int
+            {
+                return 0 as ::core::ffi::c_int;
+            }
+            i = i.wrapping_add(1);
+        }
+        return 1 as ::core::ffi::c_int;
+    }
+    use super::__stddef_size_t_h::size_t;
+    use super::stdint_uintn_h::uint64_t;
+}
+#[c2rust::header_src = "/usr/include/string.h:102"]
+pub mod string_h {
+    use super::__stddef_size_t_h::size_t;
+    extern "C" {
+        #[c2rust::src_loc = "43:1"]
+        pub fn memcpy(
+            __dest: *mut ::core::ffi::c_void,
+            __src: *const ::core::ffi::c_void,
+            __n: size_t,
+        ) -> *mut ::core::ffi::c_void;
+        #[c2rust::src_loc = "47:1"]
+        pub fn memmove(
+            __dest: *mut ::core::ffi::c_void,
+            __src: *const ::core::ffi::c_void,
+            __n: size_t,
+        ) -> *mut ::core::ffi::c_void;
+        #[c2rust::src_loc = "61:1"]
+        pub fn memset(
+            __s: *mut ::core::ffi::c_void,
+            __c: ::core::ffi::c_int,
+            __n: size_t,
+        ) -> *mut ::core::ffi::c_void;
+        #[c2rust::src_loc = "64:1"]
+        pub fn memcmp(
+            __s1: *const ::core::ffi::c_void,
+            __s2: *const ::core::ffi::c_void,
+            __n: size_t,
+        ) -> ::core::ffi::c_int;
+    }
+}
+#[c2rust::header_src = "/usr/include/stdlib.h:106"]
+pub mod stdlib_h {
+    use super::__stddef_size_t_h::size_t;
+    extern "C" {
+        #[c2rust::src_loc = "219:1"]
+        pub fn strtoul(
+            __nptr: *const ::core::ffi::c_char,
+            __endptr: *mut *mut ::core::ffi::c_char,
+            __base: ::core::ffi::c_int,
+        ) -> ::core::ffi::c_ulong;
+        #[c2rust::src_loc = "672:1"]
+        pub fn malloc(__size: size_t) -> *mut ::core::ffi::c_void;
+        #[c2rust::src_loc = "683:1"]
+        pub fn realloc(__ptr: *mut ::core::ffi::c_void, __size: size_t)
+            -> *mut ::core::ffi::c_void;
+        #[c2rust::src_loc = "687:1"]
+        pub fn free(__ptr: *mut ::core::ffi::c_void);
+        #[c2rust::src_loc = "773:1"]
+        pub fn getenv(__name: *const ::core::ffi::c_char) -> *mut ::core::ffi::c_char;
+    }
+}
+#[c2rust::header_src = "/usr/include/sys/time.h:108"]
+pub mod time_h {
+    use super::struct_timeval_h::timeval;
+    extern "C" {
+        #[c2rust::src_loc = "67:1"]
+        pub fn gettimeofday(
+            __tv: *mut timeval,
+            __tz: *mut ::core::ffi::c_void,
+        ) -> ::core::ffi::c_int;
+    }
+}
+#[c2rust::header_src = "/usr/include/unistd.h:108"]
+pub mod unistd_h {
+    use super::__stddef_size_t_h::size_t;
+    use super::stdio_h::ssize_t;
+    use super::types_h::__pid_t;
+    extern "C" {
+        #[c2rust::src_loc = "358:1"]
+        pub fn close(__fd: ::core::ffi::c_int) -> ::core::ffi::c_int;
+        #[c2rust::src_loc = "371:1"]
+        pub fn read(
+            __fd: ::core::ffi::c_int,
+            __buf: *mut ::core::ffi::c_void,
+            __nbytes: size_t,
+        ) -> ssize_t;
+        #[c2rust::src_loc = "650:1"]
+        pub fn getpid() -> __pid_t;
+    }
+}
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/internal.h:108"]
+pub mod internal_h {
+    #[c2rust::src_loc = "148:9"]
+    pub const EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT:
+        ::core::ffi::c_float = 100.0f32;
+    #[c2rust::src_loc = "150:9"]
+    pub const EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT:
+        ::core::ffi::c_int = 8388608 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "153:9"]
+    pub const EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT: ::core::ffi::c_float = 100.0f32;
+    #[c2rust::src_loc = "154:9"]
+    pub const EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT: ::core::ffi::c_int =
+        67108864 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "159:9"]
+    pub const EXPAT_MALLOC_ALIGNMENT: usize = ::core::mem::size_of::<::core::ffi::c_longlong>();
+    #[c2rust::src_loc = "160:9"]
+    pub const EXPAT_MALLOC_PADDING: usize = (::core::mem::size_of::<::core::ffi::c_longlong>()
+        as usize)
+        .wrapping_sub(::core::mem::size_of::<size_t>() as usize);
+    use super::__stddef_size_t_h::size_t;
+}
+#[c2rust::header_src = "/usr/lib/clang/21/include/limits.h:115"]
+pub mod limits_h {
+    #[c2rust::src_loc = "50:9"]
+    pub const INT_MAX: ::core::ffi::c_int = __INT_MAX__;
+    #[c2rust::src_loc = "64:9"]
+    pub const UINT_MAX: ::core::ffi::c_uint = (__INT_MAX__ as ::core::ffi::c_uint)
+        .wrapping_mul(2 as ::core::ffi::c_uint)
+        .wrapping_add(1 as ::core::ffi::c_uint);
+    use super::internal::__INT_MAX__;
+}
+#[c2rust::header_src = "/usr/include/sys/random.h:108"]
+pub mod random_h {
+    #[c2rust::src_loc = "26:9"]
+    pub const GRND_NONBLOCK: ::core::ffi::c_int = 0x1 as ::core::ffi::c_int;
+    use super::__stddef_size_t_h::size_t;
+    use super::stdio_h::ssize_t;
+    extern "C" {
+        #[c2rust::src_loc = "34:1"]
+        pub fn getrandom(
+            __buffer: *mut ::core::ffi::c_void,
+            __length: size_t,
+            __flags: ::core::ffi::c_uint,
+        ) -> ssize_t;
+    }
+}
+#[c2rust::header_src = "/usr/include/assert.h:103"]
+pub mod assert_h {
+    extern "C" {
+        #[c2rust::src_loc = "67:1"]
+        pub fn __assert_fail(
+            __assertion: *const ::core::ffi::c_char,
+            __file: *const ::core::ffi::c_char,
+            __line: ::core::ffi::c_uint,
+            __function: *const ::core::ffi::c_char,
+        ) -> !;
+    }
+}
+#[c2rust::header_src = "/usr/include/stdint.h:107"]
+pub mod stdint_h {
+    #[c2rust::src_loc = "216:11"]
+    pub const SIZE_MAX: ::core::ffi::c_ulong = 18446744073709551615 as ::core::ffi::c_ulong;
+}
+#[c2rust::header_src = "/usr/include/bits/fcntl-linux.h:108"]
+pub mod fcntl_linux_h {
+    #[c2rust::src_loc = "43:9"]
+    pub const O_RDONLY: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+}
+#[c2rust::header_src = "/usr/include/fcntl.h:108"]
+pub mod fcntl_h {
+    extern "C" {
+        #[c2rust::src_loc = "209:1"]
+        pub fn open(
+            __file: *const ::core::ffi::c_char,
+            __oflag: ::core::ffi::c_int,
+            ...
+        ) -> ::core::ffi::c_int;
+    }
+}
+#[c2rust::header_src = "/usr/include/errno.h:108"]
+pub mod errno_h {
+    extern "C" {
+        #[c2rust::src_loc = "37:1"]
+        pub fn __errno_location() -> *mut ::core::ffi::c_int;
+    }
+}
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/build/expat_config.h:108"]
+pub mod expat_config_h {
+    #[c2rust::src_loc = "95:11"]
+    pub const XML_CONTEXT_BYTES: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
+}
+#[c2rust::header_src = "/usr/lib/clang/21/include/stdbool.h:108"]
+pub mod stdbool_h {
+    #[c2rust::src_loc = "25:9"]
+    pub const true_0: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "26:9"]
+    pub const false_0: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+}
+#[c2rust::header_src = "/usr/lib/clang/21/include/__stddef_null.h:115"]
+pub mod __stddef_null_h {
+    #[c2rust::src_loc = "26:9"]
+    pub const NULL: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
+}
+#[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/ascii.h:116"]
+pub mod ascii_h {
+    #[c2rust::src_loc = "36:9"]
+    pub const ASCII_A: ::core::ffi::c_int = 0x41 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "38:9"]
+    pub const ASCII_C: ::core::ffi::c_int = 0x43 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "39:9"]
+    pub const ASCII_D: ::core::ffi::c_int = 0x44 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "40:9"]
+    pub const ASCII_E: ::core::ffi::c_int = 0x45 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "41:9"]
+    pub const ASCII_F: ::core::ffi::c_int = 0x46 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "44:9"]
+    pub const ASCII_I: ::core::ffi::c_int = 0x49 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "46:9"]
+    pub const ASCII_K: ::core::ffi::c_int = 0x4b as ::core::ffi::c_int;
+    #[c2rust::src_loc = "47:9"]
+    pub const ASCII_L: ::core::ffi::c_int = 0x4c as ::core::ffi::c_int;
+    #[c2rust::src_loc = "48:9"]
+    pub const ASCII_M: ::core::ffi::c_int = 0x4d as ::core::ffi::c_int;
+    #[c2rust::src_loc = "49:9"]
+    pub const ASCII_N: ::core::ffi::c_int = 0x4e as ::core::ffi::c_int;
+    #[c2rust::src_loc = "50:9"]
+    pub const ASCII_O: ::core::ffi::c_int = 0x4f as ::core::ffi::c_int;
+    #[c2rust::src_loc = "53:9"]
+    pub const ASCII_R: ::core::ffi::c_int = 0x52 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "54:9"]
+    pub const ASCII_S: ::core::ffi::c_int = 0x53 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "55:9"]
+    pub const ASCII_T: ::core::ffi::c_int = 0x54 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "59:9"]
+    pub const ASCII_X: ::core::ffi::c_int = 0x58 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "60:9"]
+    pub const ASCII_Y: ::core::ffi::c_int = 0x59 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "63:9"]
+    pub const ASCII_a: ::core::ffi::c_int = 0x61 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "65:9"]
+    pub const ASCII_c: ::core::ffi::c_int = 0x63 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "67:9"]
+    pub const ASCII_e: ::core::ffi::c_int = 0x65 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "69:9"]
+    pub const ASCII_g: ::core::ffi::c_int = 0x67 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "70:9"]
+    pub const ASCII_h: ::core::ffi::c_int = 0x68 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "74:9"]
+    pub const ASCII_l: ::core::ffi::c_int = 0x6c as ::core::ffi::c_int;
+    #[c2rust::src_loc = "75:9"]
+    pub const ASCII_m: ::core::ffi::c_int = 0x6d as ::core::ffi::c_int;
+    #[c2rust::src_loc = "76:9"]
+    pub const ASCII_n: ::core::ffi::c_int = 0x6e as ::core::ffi::c_int;
+    #[c2rust::src_loc = "77:9"]
+    pub const ASCII_o: ::core::ffi::c_int = 0x6f as ::core::ffi::c_int;
+    #[c2rust::src_loc = "78:9"]
+    pub const ASCII_p: ::core::ffi::c_int = 0x70 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "80:9"]
+    pub const ASCII_r: ::core::ffi::c_int = 0x72 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "81:9"]
+    pub const ASCII_s: ::core::ffi::c_int = 0x73 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "82:9"]
+    pub const ASCII_t: ::core::ffi::c_int = 0x74 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "85:9"]
+    pub const ASCII_w: ::core::ffi::c_int = 0x77 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "86:9"]
+    pub const ASCII_x: ::core::ffi::c_int = 0x78 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "90:9"]
+    pub const ASCII_0: ::core::ffi::c_int = 0x30 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "91:9"]
+    pub const ASCII_1: ::core::ffi::c_int = 0x31 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "92:9"]
+    pub const ASCII_2: ::core::ffi::c_int = 0x32 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "93:9"]
+    pub const ASCII_3: ::core::ffi::c_int = 0x33 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "98:9"]
+    pub const ASCII_8: ::core::ffi::c_int = 0x38 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "99:9"]
+    pub const ASCII_9: ::core::ffi::c_int = 0x39 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "103:9"]
+    pub const ASCII_EXCL: ::core::ffi::c_int = 0x21 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "108:9"]
+    pub const ASCII_PERIOD: ::core::ffi::c_int = 0x2e as ::core::ffi::c_int;
+    #[c2rust::src_loc = "109:9"]
+    pub const ASCII_COLON: ::core::ffi::c_int = 0x3a as ::core::ffi::c_int;
+    #[c2rust::src_loc = "112:9"]
+    pub const ASCII_EQUALS: ::core::ffi::c_int = 0x3d as ::core::ffi::c_int;
+    #[c2rust::src_loc = "117:9"]
+    pub const ASCII_LPAREN: ::core::ffi::c_int = 0x28 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "120:9"]
+    pub const ASCII_SLASH: ::core::ffi::c_int = 0x2f as ::core::ffi::c_int;
+    #[c2rust::src_loc = "121:9"]
+    pub const ASCII_HASH: ::core::ffi::c_int = 0x23 as ::core::ffi::c_int;
+    #[c2rust::src_loc = "122:9"]
+    pub const ASCII_PIPE: ::core::ffi::c_int = 0x7c as ::core::ffi::c_int;
+    #[c2rust::src_loc = "123:9"]
+    pub const ASCII_COMMA: ::core::ffi::c_int = 0x2c as ::core::ffi::c_int;
+}
+#[c2rust::header_src = "/usr/include/asm-generic/errno-base.h:116"]
+pub mod errno_base_h {
+    #[c2rust::src_loc = "8:9"]
+    pub const EINTR: ::core::ffi::c_int = 4 as ::core::ffi::c_int;
+}
+#[c2rust::header_src = "internal:0"]
+pub mod internal {
+    #[c2rust::src_loc = "60:9"]
+    pub const __INT_MAX__: ::core::ffi::c_int = 2147483647 as ::core::ffi::c_int;
+}
+pub use self::__stddef_null_h::NULL;
+pub use self::__stddef_ptrdiff_t_h::ptrdiff_t;
+pub use self::__stddef_size_t_h::size_t;
+pub use self::ascii_h::{
+    ASCII_a, ASCII_c, ASCII_e, ASCII_g, ASCII_h, ASCII_l, ASCII_m, ASCII_n, ASCII_o, ASCII_p,
+    ASCII_r, ASCII_s, ASCII_t, ASCII_w, ASCII_x, ASCII_0, ASCII_1, ASCII_2, ASCII_3, ASCII_8,
+    ASCII_9, ASCII_A, ASCII_C, ASCII_COLON, ASCII_COMMA, ASCII_D, ASCII_E, ASCII_EQUALS,
+    ASCII_EXCL, ASCII_F, ASCII_HASH, ASCII_I, ASCII_K, ASCII_L, ASCII_LPAREN, ASCII_M, ASCII_N,
+    ASCII_O, ASCII_PERIOD, ASCII_PIPE, ASCII_R, ASCII_S, ASCII_SLASH, ASCII_T, ASCII_X, ASCII_Y,
+};
+use self::assert_h::__assert_fail;
+pub use self::errno_base_h::EINTR;
+use self::errno_h::__errno_location;
+pub use self::expat_config_h::XML_CONTEXT_BYTES;
+pub use self::expat_external_h::{XML_Char, XML_Index, XML_LChar, XML_Size};
+pub use self::expat_h::{
+    XML_AttlistDeclHandler, XML_Bool, XML_CharacterDataHandler, XML_CommentHandler, XML_Content,
+    XML_Content_Quant, XML_Content_Type, XML_DefaultHandler, XML_ElementDeclHandler, XML_Encoding,
+    XML_EndCdataSectionHandler, XML_EndDoctypeDeclHandler, XML_EndElementHandler,
+    XML_EndNamespaceDeclHandler, XML_EntityDeclHandler, XML_Error, XML_Expat_Version,
+    XML_ExternalEntityRefHandler, XML_Feature, XML_FeatureEnum, XML_Memory_Handling_Suite,
+    XML_NotStandaloneHandler, XML_NotationDeclHandler, XML_ParamEntityParsing, XML_Parser,
+    XML_Parsing, XML_ParsingStatus, XML_ProcessingInstructionHandler, XML_SkippedEntityHandler,
+    XML_StartCdataSectionHandler, XML_StartDoctypeDeclHandler, XML_StartElementHandler,
+    XML_StartNamespaceDeclHandler, XML_Status, XML_UnknownEncodingHandler,
+    XML_UnparsedEntityDeclHandler, XML_XmlDeclHandler, XML_cp, XML_CQUANT_NONE, XML_CQUANT_OPT,
+    XML_CQUANT_PLUS, XML_CQUANT_REP, XML_CTYPE_ANY, XML_CTYPE_CHOICE, XML_CTYPE_EMPTY,
+    XML_CTYPE_MIXED, XML_CTYPE_NAME, XML_CTYPE_SEQ, XML_ERROR_ABORTED,
+    XML_ERROR_AMPLIFICATION_LIMIT_BREACH, XML_ERROR_ASYNC_ENTITY,
+    XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF, XML_ERROR_BAD_CHAR_REF, XML_ERROR_BINARY_ENTITY_REF,
+    XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING, XML_ERROR_DUPLICATE_ATTRIBUTE,
+    XML_ERROR_ENTITY_DECLARED_IN_PE, XML_ERROR_EXTERNAL_ENTITY_HANDLING,
+    XML_ERROR_FEATURE_REQUIRES_XML_DTD, XML_ERROR_FINISHED, XML_ERROR_INCOMPLETE_PE,
+    XML_ERROR_INCORRECT_ENCODING, XML_ERROR_INVALID_ARGUMENT, XML_ERROR_INVALID_TOKEN,
+    XML_ERROR_JUNK_AFTER_DOC_ELEMENT, XML_ERROR_MISPLACED_XML_PI, XML_ERROR_NONE,
+    XML_ERROR_NOT_STANDALONE, XML_ERROR_NOT_STARTED, XML_ERROR_NOT_SUSPENDED, XML_ERROR_NO_BUFFER,
+    XML_ERROR_NO_ELEMENTS, XML_ERROR_NO_MEMORY, XML_ERROR_PARAM_ENTITY_REF, XML_ERROR_PARTIAL_CHAR,
+    XML_ERROR_PUBLICID, XML_ERROR_RECURSIVE_ENTITY_REF, XML_ERROR_RESERVED_NAMESPACE_URI,
+    XML_ERROR_RESERVED_PREFIX_XML, XML_ERROR_RESERVED_PREFIX_XMLNS, XML_ERROR_SUSPENDED,
+    XML_ERROR_SUSPEND_PE, XML_ERROR_SYNTAX, XML_ERROR_TAG_MISMATCH, XML_ERROR_TEXT_DECL,
+    XML_ERROR_UNBOUND_PREFIX, XML_ERROR_UNCLOSED_CDATA_SECTION, XML_ERROR_UNCLOSED_TOKEN,
+    XML_ERROR_UNDECLARING_PREFIX, XML_ERROR_UNDEFINED_ENTITY, XML_ERROR_UNEXPECTED_STATE,
+    XML_ERROR_UNKNOWN_ENCODING, XML_ERROR_XML_DECL, XML_FALSE,
+    XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
+    XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT, XML_FEATURE_ATTR_INFO,
+    XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
+    XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT,
+    XML_FEATURE_CONTEXT_BYTES, XML_FEATURE_DTD, XML_FEATURE_END, XML_FEATURE_GE,
+    XML_FEATURE_LARGE_SIZE, XML_FEATURE_MIN_SIZE, XML_FEATURE_NS, XML_FEATURE_SIZEOF_XML_CHAR,
+    XML_FEATURE_SIZEOF_XML_LCHAR, XML_FEATURE_UNICODE, XML_FEATURE_UNICODE_WCHAR_T, XML_FINISHED,
+    XML_INITIALIZED, XML_MAJOR_VERSION, XML_MICRO_VERSION, XML_MINOR_VERSION,
+    XML_PARAM_ENTITY_PARSING_ALWAYS, XML_PARAM_ENTITY_PARSING_NEVER,
+    XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE, XML_PARSING, XML_STATUS_ERROR, XML_STATUS_OK,
+    XML_STATUS_SUSPENDED, XML_SUSPENDED, XML_TRUE,
+};
+use self::fcntl_h::open;
+pub use self::fcntl_linux_h::O_RDONLY;
+pub use self::internal::__INT_MAX__;
+pub use self::internal_h::{
+    EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
+    EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT,
+    EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
+    EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT, EXPAT_MALLOC_ALIGNMENT,
+    EXPAT_MALLOC_PADDING,
+};
+pub use self::limits_h::{INT_MAX, UINT_MAX};
+pub use self::random_h::{getrandom, GRND_NONBLOCK};
+pub use self::siphash_h::{
+    sip24_final, sip24_init, sip24_update, sip24_valid, sip_round, sip_tokey, siphash, siphash24,
+    sipkey,
+};
+pub use self::stdbool_h::{false_0, true_0};
+pub use self::stdint_h::SIZE_MAX;
+pub use self::stdint_uintn_h::uint64_t;
+pub use self::stdio_h::{fprintf, ssize_t, stderr};
+use self::stdlib_h::{free, getenv, malloc, realloc, strtoul};
+use self::string_h::{memcmp, memcpy, memmove, memset};
+pub use self::struct_FILE_h::{_IO_codecvt, _IO_lock_t, _IO_marker, _IO_wide_data, _IO_FILE};
+pub use self::struct_timeval_h::timeval;
+use self::time_h::gettimeofday;
+pub use self::types_h::{
+    __off64_t, __off_t, __pid_t, __ssize_t, __suseconds_t, __time_t, __uint64_t,
+};
+use self::unistd_h::{close, getpid, read};
+pub use self::xmlrole_h::{
+    prolog_state, C2RustUnnamed_0, XmlPrologStateInit, XmlPrologStateInitExternalEntity,
+    PROLOG_STATE, XML_ROLE_ATTLIST_ELEMENT_NAME, XML_ROLE_ATTLIST_NONE,
+    XML_ROLE_ATTRIBUTE_ENUM_VALUE, XML_ROLE_ATTRIBUTE_NAME, XML_ROLE_ATTRIBUTE_NOTATION_VALUE,
+    XML_ROLE_ATTRIBUTE_TYPE_CDATA, XML_ROLE_ATTRIBUTE_TYPE_ENTITIES,
+    XML_ROLE_ATTRIBUTE_TYPE_ENTITY, XML_ROLE_ATTRIBUTE_TYPE_ID, XML_ROLE_ATTRIBUTE_TYPE_IDREF,
+    XML_ROLE_ATTRIBUTE_TYPE_IDREFS, XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN,
+    XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS, XML_ROLE_COMMENT, XML_ROLE_CONTENT_ANY,
+    XML_ROLE_CONTENT_ELEMENT, XML_ROLE_CONTENT_ELEMENT_OPT, XML_ROLE_CONTENT_ELEMENT_PLUS,
+    XML_ROLE_CONTENT_ELEMENT_REP, XML_ROLE_CONTENT_EMPTY, XML_ROLE_CONTENT_PCDATA,
+    XML_ROLE_DEFAULT_ATTRIBUTE_VALUE, XML_ROLE_DOCTYPE_CLOSE, XML_ROLE_DOCTYPE_INTERNAL_SUBSET,
+    XML_ROLE_DOCTYPE_NAME, XML_ROLE_DOCTYPE_NONE, XML_ROLE_DOCTYPE_PUBLIC_ID,
+    XML_ROLE_DOCTYPE_SYSTEM_ID, XML_ROLE_ELEMENT_NAME, XML_ROLE_ELEMENT_NONE,
+    XML_ROLE_ENTITY_COMPLETE, XML_ROLE_ENTITY_NONE, XML_ROLE_ENTITY_NOTATION_NAME,
+    XML_ROLE_ENTITY_PUBLIC_ID, XML_ROLE_ENTITY_SYSTEM_ID, XML_ROLE_ENTITY_VALUE, XML_ROLE_ERROR,
+    XML_ROLE_FIXED_ATTRIBUTE_VALUE, XML_ROLE_GENERAL_ENTITY_NAME, XML_ROLE_GROUP_CHOICE,
+    XML_ROLE_GROUP_CLOSE, XML_ROLE_GROUP_CLOSE_OPT, XML_ROLE_GROUP_CLOSE_PLUS,
+    XML_ROLE_GROUP_CLOSE_REP, XML_ROLE_GROUP_OPEN, XML_ROLE_GROUP_SEQUENCE, XML_ROLE_IGNORE_SECT,
+    XML_ROLE_IMPLIED_ATTRIBUTE_VALUE, XML_ROLE_INNER_PARAM_ENTITY_REF, XML_ROLE_INSTANCE_START,
+    XML_ROLE_NONE, XML_ROLE_NOTATION_NAME, XML_ROLE_NOTATION_NONE, XML_ROLE_NOTATION_NO_SYSTEM_ID,
+    XML_ROLE_NOTATION_PUBLIC_ID, XML_ROLE_NOTATION_SYSTEM_ID, XML_ROLE_PARAM_ENTITY_NAME,
+    XML_ROLE_PARAM_ENTITY_REF, XML_ROLE_PI, XML_ROLE_REQUIRED_ATTRIBUTE_VALUE, XML_ROLE_TEXT_DECL,
+    XML_ROLE_XML_DECL,
+};
+pub use self::xmltok_h::{
+    encoding, position, XML_Convert_Result, XmlGetUtf8InternalEncoding,
+    XmlGetUtf8InternalEncodingNS, XmlInitEncoding, XmlInitEncodingNS, XmlInitUnknownEncoding,
+    XmlInitUnknownEncodingNS, XmlParseXmlDecl, XmlParseXmlDeclNS, XmlSizeOfUnknownEncoding,
+    XmlUtf8Encode, ATTRIBUTE, CONVERTER, ENCODING, INIT_ENCODING, POSITION, SCANNER,
+    XML_CONVERT_COMPLETED, XML_CONVERT_INPUT_INCOMPLETE, XML_CONVERT_OUTPUT_EXHAUSTED,
+    XML_TOK_ATTRIBUTE_VALUE_S, XML_TOK_BOM, XML_TOK_CDATA_SECT_CLOSE, XML_TOK_CDATA_SECT_OPEN,
+    XML_TOK_CHAR_REF, XML_TOK_COMMENT, XML_TOK_DATA_CHARS, XML_TOK_DATA_NEWLINE,
+    XML_TOK_EMPTY_ELEMENT_NO_ATTS, XML_TOK_EMPTY_ELEMENT_WITH_ATTS, XML_TOK_END_TAG,
+    XML_TOK_ENTITY_REF, XML_TOK_IGNORE_SECT, XML_TOK_INSTANCE_START, XML_TOK_INVALID, XML_TOK_NONE,
+    XML_TOK_PARAM_ENTITY_REF, XML_TOK_PARTIAL, XML_TOK_PARTIAL_CHAR, XML_TOK_PI, XML_TOK_PROLOG_S,
+    XML_TOK_START_TAG_NO_ATTS, XML_TOK_START_TAG_WITH_ATTS, XML_TOK_TRAILING_CR,
+    XML_TOK_TRAILING_RSQB, XML_TOK_XML_DECL,
+};
+pub use self::FILE_h::FILE;
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct _IO_FILE {
-    pub _flags: ::core::ffi::c_int,
-    pub _IO_read_ptr: *mut ::core::ffi::c_char,
-    pub _IO_read_end: *mut ::core::ffi::c_char,
-    pub _IO_read_base: *mut ::core::ffi::c_char,
-    pub _IO_write_base: *mut ::core::ffi::c_char,
-    pub _IO_write_ptr: *mut ::core::ffi::c_char,
-    pub _IO_write_end: *mut ::core::ffi::c_char,
-    pub _IO_buf_base: *mut ::core::ffi::c_char,
-    pub _IO_buf_end: *mut ::core::ffi::c_char,
-    pub _IO_save_base: *mut ::core::ffi::c_char,
-    pub _IO_backup_base: *mut ::core::ffi::c_char,
-    pub _IO_save_end: *mut ::core::ffi::c_char,
-    pub _markers: *mut _IO_marker,
-    pub _chain: *mut _IO_FILE,
-    pub _fileno: ::core::ffi::c_int,
-    pub _flags2: ::core::ffi::c_int,
-    pub _old_offset: __off_t,
-    pub _cur_column: ::core::ffi::c_ushort,
-    pub _vtable_offset: ::core::ffi::c_schar,
-    pub _shortbuf: [::core::ffi::c_char; 1],
-    pub _lock: *mut ::core::ffi::c_void,
-    pub _offset: __off64_t,
-    pub _codecvt: *mut _IO_codecvt,
-    pub _wide_data: *mut _IO_wide_data,
-    pub _freeres_list: *mut _IO_FILE,
-    pub _freeres_buf: *mut ::core::ffi::c_void,
-    pub __pad5: size_t,
-    pub _mode: ::core::ffi::c_int,
-    pub _unused2: [::core::ffi::c_char; 20],
-}
-pub type _IO_lock_t = ();
-pub type FILE = _IO_FILE;
-pub type ssize_t = __ssize_t;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct timeval {
-    pub tv_sec: __time_t,
-    pub tv_usec: __suseconds_t,
-}
-pub type uint64_t = __uint64_t;
-pub type XML_Char = ::core::ffi::c_char;
-pub type XML_LChar = ::core::ffi::c_char;
-pub type XML_Index = ::core::ffi::c_long;
-pub type XML_Size = ::core::ffi::c_ulong;
-#[derive(Copy, Clone)]
-#[repr(C)]
+#[c2rust::src_loc = "663:1"]
 pub struct XML_ParserStruct {
     pub m_userData: *mut ::core::ffi::c_void,
     pub m_handlerArg: *mut ::core::ffi::c_void,
@@ -276,10 +2436,11 @@ pub struct XML_ParserStruct {
     pub m_entity_stats: ENTITY_STATS,
     pub m_reenter: XML_Bool,
 }
-pub type XML_Bool = ::core::ffi::c_uchar;
+#[c2rust::src_loc = "463:1"]
 pub type ENTITY_STATS = entity_stats;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "463:9"]
 pub struct entity_stats {
     pub countEverOpened: ::core::ffi::c_uint,
     pub currentDepth: ::core::ffi::c_uint,
@@ -288,6 +2449,7 @@ pub struct entity_stats {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "455:9"]
 pub struct MALLOC_TRACKER {
     pub bytesAllocated: XmlBigCount,
     pub peakBytesAllocated: XmlBigCount,
@@ -295,10 +2457,13 @@ pub struct MALLOC_TRACKER {
     pub maximumAmplificationFactor: ::core::ffi::c_float,
     pub activationThresholdBytes: XmlBigCount,
 }
+#[c2rust::src_loc = "446:1"]
 pub type XmlBigCount = ::core::ffi::c_ulonglong;
+#[c2rust::src_loc = "447:1"]
 pub type ACCOUNTING = accounting;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "447:9"]
 pub struct accounting {
     pub countBytesDirect: XmlBigCount,
     pub countBytesIndirect: XmlBigCount,
@@ -306,24 +2471,9 @@ pub struct accounting {
     pub maximumAmplificationFactor: ::core::ffi::c_float,
     pub activationThresholdBytes: ::core::ffi::c_ulonglong,
 }
-pub type XML_ParamEntityParsing = ::core::ffi::c_uint;
-pub const XML_PARAM_ENTITY_PARSING_ALWAYS: XML_ParamEntityParsing = 2;
-pub const XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: XML_ParamEntityParsing = 1;
-pub const XML_PARAM_ENTITY_PARSING_NEVER: XML_ParamEntityParsing = 0;
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct XML_ParsingStatus {
-    pub parsing: XML_Parsing,
-    pub finalBuffer: XML_Bool,
-}
-pub type XML_Parsing = ::core::ffi::c_uint;
-pub const XML_SUSPENDED: XML_Parsing = 3;
-pub const XML_FINISHED: XML_Parsing = 2;
-pub const XML_PARSING: XML_Parsing = 1;
-pub const XML_INITIALIZED: XML_Parsing = 0;
-pub type XML_Parser = *mut XML_ParserStruct;
-#[derive(Copy, Clone)]
-#[repr(C)]
+#[c2rust::src_loc = "354:9"]
 pub struct STRING_POOL {
     pub blocks: *mut BLOCK,
     pub freeBlocks: *mut BLOCK,
@@ -332,39 +2482,29 @@ pub struct STRING_POOL {
     pub start: *mut XML_Char,
     pub parser: XML_Parser,
 }
+#[c2rust::src_loc = "348:1"]
 pub type BLOCK = block;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "348:9"]
 pub struct block {
     pub next: *mut block,
     pub size: ::core::ffi::c_int,
     pub s: [XML_Char; 0],
 }
-pub type POSITION = position;
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct position {
-    pub lineNumber: XML_Size,
-    pub columnNumber: XML_Size,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
+#[c2rust::src_loc = "378:9"]
 pub struct NS_ATT {
     pub version: ::core::ffi::c_ulong,
     pub hash: ::core::ffi::c_ulong,
     pub uriName: *const XML_Char,
 }
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct ATTRIBUTE {
-    pub name: *const ::core::ffi::c_char,
-    pub valuePtr: *const ::core::ffi::c_char,
-    pub valueEnd: *const ::core::ffi::c_char,
-    pub normalized: ::core::ffi::c_char,
-}
+#[c2rust::src_loc = "268:1"]
 pub type BINDING = binding;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "268:9"]
 pub struct binding {
     pub prefix: *mut prefix,
     pub nextTagBinding: *mut binding,
@@ -376,39 +2516,46 @@ pub struct binding {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "365:9"]
 pub struct attribute_id {
     pub name: *mut XML_Char,
     pub prefix: *mut PREFIX,
     pub maybeTokenized: XML_Bool,
     pub xmlns: XML_Bool,
 }
+#[c2rust::src_loc = "278:1"]
 pub type PREFIX = prefix;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "278:9"]
 pub struct prefix {
     pub name: *const XML_Char,
     pub binding: *mut BINDING,
 }
+#[c2rust::src_loc = "305:1"]
 pub type TAG = tag;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "305:9"]
 pub struct tag {
     pub parent: *mut tag,
     pub rawName: *const ::core::ffi::c_char,
     pub rawNameLength: ::core::ffi::c_int,
     pub name: TAG_NAME,
-    pub buf: C2RustUnnamed_0,
+    pub buf: C2RustUnnamed,
     pub bufEnd: *mut ::core::ffi::c_char,
     pub bindings: *mut BINDING,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub union C2RustUnnamed_0 {
+#[c2rust::src_loc = "310:3"]
+pub union C2RustUnnamed {
     pub raw: *mut ::core::ffi::c_char,
     pub str_0: *mut XML_Char,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "283:9"]
 pub struct TAG_NAME {
     pub str_0: *const XML_Char,
     pub localPart: *const XML_Char,
@@ -419,6 +2566,7 @@ pub struct TAG_NAME {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "393:9"]
 pub struct DTD {
     pub generalEntities: HASH_TABLE,
     pub elementTypes: HASH_TABLE,
@@ -442,6 +2590,7 @@ pub struct DTD {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "336:9"]
 pub struct CONTENT_SCAFFOLD {
     pub type_0: XML_Content_Type,
     pub quant: XML_Content_Quant,
@@ -451,20 +2600,9 @@ pub struct CONTENT_SCAFFOLD {
     pub childcnt: ::core::ffi::c_int,
     pub nextsib: ::core::ffi::c_int,
 }
-pub type XML_Content_Quant = ::core::ffi::c_uint;
-pub const XML_CQUANT_PLUS: XML_Content_Quant = 3;
-pub const XML_CQUANT_REP: XML_Content_Quant = 2;
-pub const XML_CQUANT_OPT: XML_Content_Quant = 1;
-pub const XML_CQUANT_NONE: XML_Content_Quant = 0;
-pub type XML_Content_Type = ::core::ffi::c_uint;
-pub const XML_CTYPE_SEQ: XML_Content_Type = 6;
-pub const XML_CTYPE_CHOICE: XML_Content_Type = 5;
-pub const XML_CTYPE_NAME: XML_Content_Type = 4;
-pub const XML_CTYPE_MIXED: XML_Content_Type = 3;
-pub const XML_CTYPE_ANY: XML_Content_Type = 2;
-pub const XML_CTYPE_EMPTY: XML_Content_Type = 1;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "229:9"]
 pub struct HASH_TABLE {
     pub v: *mut *mut NAMED,
     pub power: ::core::ffi::c_uchar,
@@ -474,13 +2612,17 @@ pub struct HASH_TABLE {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "225:9"]
 pub struct NAMED {
     pub name: KEY,
 }
+#[c2rust::src_loc = "223:1"]
 pub type KEY = *const XML_Char;
+#[c2rust::src_loc = "365:1"]
 pub type ATTRIBUTE_ID = attribute_id;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "384:9"]
 pub struct ELEMENT_TYPE {
     pub name: *const XML_Char,
     pub prefix: *mut PREFIX,
@@ -491,6 +2633,7 @@ pub struct ELEMENT_TYPE {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "372:9"]
 pub struct DEFAULT_ATTRIBUTE {
     pub id: *const ATTRIBUTE_ID,
     pub isCdata: XML_Bool,
@@ -498,6 +2641,7 @@ pub struct DEFAULT_ATTRIBUTE {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "318:9"]
 pub struct ENTITY {
     pub name: *const XML_Char,
     pub textPtr: *const XML_Char,
@@ -512,9 +2656,11 @@ pub struct ENTITY {
     pub is_param: XML_Bool,
     pub is_internal: XML_Bool,
 }
+#[c2rust::src_loc = "428:1"]
 pub type OPEN_INTERNAL_ENTITY = open_internal_entity;
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[c2rust::src_loc = "428:9"]
 pub struct open_internal_entity {
     pub internalEventPtr: *const ::core::ffi::c_char,
     pub internalEventEndPtr: *const ::core::ffi::c_char,
@@ -524,463 +2670,63 @@ pub struct open_internal_entity {
     pub betweenDecl: XML_Bool,
     pub type_0: EntityType,
 }
+#[c2rust::src_loc = "422:1"]
 pub type EntityType = ::core::ffi::c_uint;
+#[c2rust::src_loc = "425:3"]
 pub const ENTITY_VALUE: EntityType = 2;
+#[c2rust::src_loc = "424:3"]
 pub const ENTITY_ATTRIBUTE: EntityType = 1;
+#[c2rust::src_loc = "423:3"]
 pub const ENTITY_INTERNAL: EntityType = 0;
-pub type XML_Error = ::core::ffi::c_uint;
-pub const XML_ERROR_NOT_STARTED: XML_Error = 44;
-pub const XML_ERROR_AMPLIFICATION_LIMIT_BREACH: XML_Error = 43;
-pub const XML_ERROR_NO_BUFFER: XML_Error = 42;
-pub const XML_ERROR_INVALID_ARGUMENT: XML_Error = 41;
-pub const XML_ERROR_RESERVED_NAMESPACE_URI: XML_Error = 40;
-pub const XML_ERROR_RESERVED_PREFIX_XMLNS: XML_Error = 39;
-pub const XML_ERROR_RESERVED_PREFIX_XML: XML_Error = 38;
-pub const XML_ERROR_SUSPEND_PE: XML_Error = 37;
-pub const XML_ERROR_FINISHED: XML_Error = 36;
-pub const XML_ERROR_ABORTED: XML_Error = 35;
-pub const XML_ERROR_NOT_SUSPENDED: XML_Error = 34;
-pub const XML_ERROR_SUSPENDED: XML_Error = 33;
-pub const XML_ERROR_PUBLICID: XML_Error = 32;
-pub const XML_ERROR_TEXT_DECL: XML_Error = 31;
-pub const XML_ERROR_XML_DECL: XML_Error = 30;
-pub const XML_ERROR_INCOMPLETE_PE: XML_Error = 29;
-pub const XML_ERROR_UNDECLARING_PREFIX: XML_Error = 28;
-pub const XML_ERROR_UNBOUND_PREFIX: XML_Error = 27;
-pub const XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING: XML_Error = 26;
-pub const XML_ERROR_FEATURE_REQUIRES_XML_DTD: XML_Error = 25;
-pub const XML_ERROR_ENTITY_DECLARED_IN_PE: XML_Error = 24;
-pub const XML_ERROR_UNEXPECTED_STATE: XML_Error = 23;
-pub const XML_ERROR_NOT_STANDALONE: XML_Error = 22;
-pub const XML_ERROR_EXTERNAL_ENTITY_HANDLING: XML_Error = 21;
-pub const XML_ERROR_UNCLOSED_CDATA_SECTION: XML_Error = 20;
-pub const XML_ERROR_INCORRECT_ENCODING: XML_Error = 19;
-pub const XML_ERROR_UNKNOWN_ENCODING: XML_Error = 18;
-pub const XML_ERROR_MISPLACED_XML_PI: XML_Error = 17;
-pub const XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF: XML_Error = 16;
-pub const XML_ERROR_BINARY_ENTITY_REF: XML_Error = 15;
-pub const XML_ERROR_BAD_CHAR_REF: XML_Error = 14;
-pub const XML_ERROR_ASYNC_ENTITY: XML_Error = 13;
-pub const XML_ERROR_RECURSIVE_ENTITY_REF: XML_Error = 12;
-pub const XML_ERROR_UNDEFINED_ENTITY: XML_Error = 11;
-pub const XML_ERROR_PARAM_ENTITY_REF: XML_Error = 10;
-pub const XML_ERROR_JUNK_AFTER_DOC_ELEMENT: XML_Error = 9;
-pub const XML_ERROR_DUPLICATE_ATTRIBUTE: XML_Error = 8;
-pub const XML_ERROR_TAG_MISMATCH: XML_Error = 7;
-pub const XML_ERROR_PARTIAL_CHAR: XML_Error = 6;
-pub const XML_ERROR_UNCLOSED_TOKEN: XML_Error = 5;
-pub const XML_ERROR_INVALID_TOKEN: XML_Error = 4;
-pub const XML_ERROR_NO_ELEMENTS: XML_Error = 3;
-pub const XML_ERROR_SYNTAX: XML_Error = 2;
-pub const XML_ERROR_NO_MEMORY: XML_Error = 1;
-pub const XML_ERROR_NONE: XML_Error = 0;
+#[c2rust::src_loc = "471:1"]
 pub type Processor = unsafe extern "C" fn(
     XML_Parser,
     *const ::core::ffi::c_char,
     *const ::core::ffi::c_char,
     *mut *const ::core::ffi::c_char,
 ) -> XML_Error;
-pub type PROLOG_STATE = prolog_state;
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct prolog_state {
-    pub handler: Option<
-        unsafe extern "C" fn(
-            *mut prolog_state,
-            ::core::ffi::c_int,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *const ENCODING,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub level: ::core::ffi::c_uint,
-    pub role_none: ::core::ffi::c_int,
-    pub includeLevel: ::core::ffi::c_uint,
-    pub documentEntity: ::core::ffi::c_int,
-    pub inEntityValue: ::core::ffi::c_int,
-}
-pub type ENCODING = encoding;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct encoding {
-    pub scanners: [SCANNER; 4],
-    pub literalScanners: [SCANNER; 2],
-    pub nameMatchesAscii: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub nameLength: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub skipS: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> *const ::core::ffi::c_char,
-    >,
-    pub getAtts: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            ::core::ffi::c_int,
-            *mut ATTRIBUTE,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub charRefNumber: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub predefinedEntityName: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub updatePosition: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut POSITION,
-        ) -> (),
-    >,
-    pub isPublicId: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub utf8Convert: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *mut *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut *mut ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> XML_Convert_Result,
-    >,
-    pub utf16Convert: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *mut *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut *mut ::core::ffi::c_ushort,
-            *const ::core::ffi::c_ushort,
-        ) -> XML_Convert_Result,
-    >,
-    pub minBytesPerChar: ::core::ffi::c_int,
-    pub isUtf8: ::core::ffi::c_char,
-    pub isUtf16: ::core::ffi::c_char,
-}
-pub type XML_Convert_Result = ::core::ffi::c_uint;
-pub const XML_CONVERT_OUTPUT_EXHAUSTED: XML_Convert_Result = 2;
-pub const XML_CONVERT_INPUT_INCOMPLETE: XML_Convert_Result = 1;
-pub const XML_CONVERT_COMPLETED: XML_Convert_Result = 0;
-pub type SCANNER = Option<
-    unsafe extern "C" fn(
-        *const ENCODING,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-        *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
->;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct INIT_ENCODING {
-    pub initEnc: ENCODING,
-    pub encPtr: *mut *const ENCODING,
-}
-pub type XML_XmlDeclHandler = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const XML_Char,
-        *const XML_Char,
-        ::core::ffi::c_int,
-    ) -> (),
->;
-pub type XML_EntityDeclHandler = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const XML_Char,
-        ::core::ffi::c_int,
-        *const XML_Char,
-        ::core::ffi::c_int,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-    ) -> (),
->;
-pub type XML_AttlistDeclHandler = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-        ::core::ffi::c_int,
-    ) -> (),
->;
-pub type XML_ElementDeclHandler =
-    Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *mut XML_Content) -> ()>;
-pub type XML_Content = XML_cp;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct XML_cp {
-    pub type_0: XML_Content_Type,
-    pub quant: XML_Content_Quant,
-    pub name: *mut XML_Char,
-    pub numchildren: ::core::ffi::c_uint,
-    pub children: *mut XML_Content,
-}
-pub type XML_UnknownEncodingHandler = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const XML_Char,
-        *mut XML_Encoding,
-    ) -> ::core::ffi::c_int,
->;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct XML_Encoding {
-    pub map: [::core::ffi::c_int; 256],
-    pub data: *mut ::core::ffi::c_void,
-    pub convert: Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub release: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
-}
-pub type XML_SkippedEntityHandler = Option<
-    unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int) -> (),
->;
-pub type XML_ExternalEntityRefHandler = Option<
-    unsafe extern "C" fn(
-        XML_Parser,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-    ) -> ::core::ffi::c_int,
->;
-pub type XML_NotStandaloneHandler =
-    Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int>;
-pub type XML_EndNamespaceDeclHandler =
-    Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> ()>;
-pub type XML_StartNamespaceDeclHandler =
-    Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *const XML_Char) -> ()>;
-pub type XML_NotationDeclHandler = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-    ) -> (),
->;
-pub type XML_UnparsedEntityDeclHandler = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-    ) -> (),
->;
-pub type XML_EndDoctypeDeclHandler = Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
-pub type XML_StartDoctypeDeclHandler = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const XML_Char,
-        *const XML_Char,
-        *const XML_Char,
-        ::core::ffi::c_int,
-    ) -> (),
->;
-pub type XML_DefaultHandler = Option<
-    unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int) -> (),
->;
-pub type XML_EndCdataSectionHandler = Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
-pub type XML_StartCdataSectionHandler =
-    Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
-pub type XML_CommentHandler =
-    Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> ()>;
-pub type XML_ProcessingInstructionHandler =
-    Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *const XML_Char) -> ()>;
-pub type XML_CharacterDataHandler = Option<
-    unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int) -> (),
->;
-pub type XML_EndElementHandler =
-    Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> ()>;
-pub type XML_StartElementHandler = Option<
-    unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *mut *const XML_Char) -> (),
->;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct XML_Memory_Handling_Suite {
-    pub malloc_fcn: Option<unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void>,
-    pub realloc_fcn:
-        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void, size_t) -> *mut ::core::ffi::c_void>,
-    pub free_fcn: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
-}
-pub type XML_Status = ::core::ffi::c_uint;
-pub const XML_STATUS_SUSPENDED: XML_Status = 2;
-pub const XML_STATUS_OK: XML_Status = 1;
-pub const XML_STATUS_ERROR: XML_Status = 0;
-#[derive(Copy, Clone)]
-#[repr(C)]
+#[c2rust::src_loc = "254:9"]
 pub struct HASH_TABLE_ITER {
     pub p: *mut *mut NAMED,
     pub end: *mut *mut NAMED,
 }
+#[c2rust::src_loc = "438:1"]
 pub type XML_Account = ::core::ffi::c_uint;
+#[c2rust::src_loc = "442:3"]
 pub const XML_ACCOUNT_NONE: XML_Account = 2;
+#[c2rust::src_loc = "440:3"]
 pub const XML_ACCOUNT_ENTITY_EXPANSION: XML_Account = 1;
+#[c2rust::src_loc = "439:3"]
 pub const XML_ACCOUNT_DIRECT: XML_Account = 0;
+#[c2rust::src_loc = "181:1"]
 pub type ICHAR = ::core::ffi::c_char;
-pub const XML_ROLE_ELEMENT_NONE: C2RustUnnamed_1 = 39;
-pub const XML_ROLE_ATTLIST_NONE: C2RustUnnamed_1 = 33;
-pub const XML_ROLE_NOTATION_NONE: C2RustUnnamed_1 = 17;
-pub const XML_ROLE_ENTITY_NONE: C2RustUnnamed_1 = 11;
-pub const XML_ROLE_DOCTYPE_NONE: C2RustUnnamed_1 = 3;
-pub const XML_ROLE_NONE: C2RustUnnamed_1 = 0;
-pub const XML_ROLE_COMMENT: C2RustUnnamed_1 = 56;
-pub const XML_ROLE_PI: C2RustUnnamed_1 = 55;
-pub const XML_ROLE_GROUP_CLOSE_PLUS: C2RustUnnamed_1 = 48;
-pub const XML_ROLE_GROUP_CLOSE_REP: C2RustUnnamed_1 = 46;
-pub const XML_ROLE_GROUP_CLOSE_OPT: C2RustUnnamed_1 = 47;
-pub const XML_ROLE_GROUP_CLOSE: C2RustUnnamed_1 = 45;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct siphash {
-    pub v0: uint64_t,
-    pub v1: uint64_t,
-    pub v2: uint64_t,
-    pub v3: uint64_t,
-    pub buf: [::core::ffi::c_uchar; 8],
-    pub p: *mut ::core::ffi::c_uchar,
-    pub c: uint64_t,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct sipkey {
-    pub k: [uint64_t; 2],
-}
-pub const XML_ROLE_CONTENT_ELEMENT_PLUS: C2RustUnnamed_1 = 54;
-pub const XML_ROLE_CONTENT_ELEMENT_REP: C2RustUnnamed_1 = 52;
-pub const XML_ROLE_CONTENT_ELEMENT_OPT: C2RustUnnamed_1 = 53;
-pub const XML_ROLE_CONTENT_ELEMENT: C2RustUnnamed_1 = 51;
-pub const XML_ROLE_CONTENT_PCDATA: C2RustUnnamed_1 = 43;
-pub const XML_ROLE_CONTENT_ANY: C2RustUnnamed_1 = 41;
-pub const XML_ROLE_CONTENT_EMPTY: C2RustUnnamed_1 = 42;
-pub const XML_ROLE_ELEMENT_NAME: C2RustUnnamed_1 = 40;
-pub const XML_ROLE_PARAM_ENTITY_REF: C2RustUnnamed_1 = 60;
-pub const XML_ROLE_INNER_PARAM_ENTITY_REF: C2RustUnnamed_1 = 59;
-pub const XML_ROLE_GROUP_CHOICE: C2RustUnnamed_1 = 49;
-pub const XML_ROLE_GROUP_SEQUENCE: C2RustUnnamed_1 = 50;
-pub const XML_ROLE_GROUP_OPEN: C2RustUnnamed_1 = 44;
-pub const XML_ROLE_IGNORE_SECT: C2RustUnnamed_1 = 58;
-pub const XML_ROLE_ERROR: C2RustUnnamed_1 = -1;
-pub const XML_ROLE_NOTATION_NO_SYSTEM_ID: C2RustUnnamed_1 = 20;
-pub const XML_ROLE_NOTATION_SYSTEM_ID: C2RustUnnamed_1 = 19;
-pub const XML_ROLE_NOTATION_PUBLIC_ID: C2RustUnnamed_1 = 21;
-pub const XML_ROLE_NOTATION_NAME: C2RustUnnamed_1 = 18;
-pub const XML_ROLE_PARAM_ENTITY_NAME: C2RustUnnamed_1 = 10;
-pub const XML_ROLE_GENERAL_ENTITY_NAME: C2RustUnnamed_1 = 9;
-pub const XML_ROLE_ENTITY_NOTATION_NAME: C2RustUnnamed_1 = 16;
-pub const XML_ROLE_ENTITY_COMPLETE: C2RustUnnamed_1 = 15;
-pub const XML_ROLE_ENTITY_SYSTEM_ID: C2RustUnnamed_1 = 13;
-pub const XML_ROLE_DOCTYPE_SYSTEM_ID: C2RustUnnamed_1 = 5;
-pub const XML_ROLE_ENTITY_VALUE: C2RustUnnamed_1 = 12;
-pub const XML_ROLE_FIXED_ATTRIBUTE_VALUE: C2RustUnnamed_1 = 38;
-pub const XML_ROLE_DEFAULT_ATTRIBUTE_VALUE: C2RustUnnamed_1 = 37;
-pub const XML_ROLE_REQUIRED_ATTRIBUTE_VALUE: C2RustUnnamed_1 = 36;
-pub const XML_ROLE_IMPLIED_ATTRIBUTE_VALUE: C2RustUnnamed_1 = 35;
-pub const XML_ROLE_ATTRIBUTE_NOTATION_VALUE: C2RustUnnamed_1 = 32;
-pub const XML_ROLE_ATTRIBUTE_ENUM_VALUE: C2RustUnnamed_1 = 31;
-pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS: C2RustUnnamed_1 = 30;
-pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN: C2RustUnnamed_1 = 29;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITIES: C2RustUnnamed_1 = 28;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITY: C2RustUnnamed_1 = 27;
-pub const XML_ROLE_ATTRIBUTE_TYPE_IDREFS: C2RustUnnamed_1 = 26;
-pub const XML_ROLE_ATTRIBUTE_TYPE_IDREF: C2RustUnnamed_1 = 25;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ID: C2RustUnnamed_1 = 24;
-pub const XML_ROLE_ATTRIBUTE_TYPE_CDATA: C2RustUnnamed_1 = 23;
-pub const XML_ROLE_ATTRIBUTE_NAME: C2RustUnnamed_1 = 22;
-pub const XML_ROLE_ATTLIST_ELEMENT_NAME: C2RustUnnamed_1 = 34;
-pub const XML_ROLE_INSTANCE_START: C2RustUnnamed_1 = 2;
-pub const XML_ROLE_DOCTYPE_CLOSE: C2RustUnnamed_1 = 8;
-pub const XML_ROLE_ENTITY_PUBLIC_ID: C2RustUnnamed_1 = 14;
-pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2RustUnnamed_1 = 6;
-pub type CONVERTER = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
->;
-pub const XML_ROLE_TEXT_DECL: C2RustUnnamed_1 = 57;
-pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2RustUnnamed_1 = 7;
-pub const XML_ROLE_DOCTYPE_NAME: C2RustUnnamed_1 = 4;
-pub const XML_ROLE_XML_DECL: C2RustUnnamed_1 = 1;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct XML_Expat_Version {
-    pub major: ::core::ffi::c_int,
-    pub minor: ::core::ffi::c_int,
-    pub micro: ::core::ffi::c_int,
-}
-pub type XML_FeatureEnum = ::core::ffi::c_uint;
-pub const XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT: XML_FeatureEnum = 15;
-pub const XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT: XML_FeatureEnum = 14;
-pub const XML_FEATURE_GE: XML_FeatureEnum = 13;
-pub const XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT:
-    XML_FeatureEnum = 12;
-pub const XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT:
-    XML_FeatureEnum = 11;
-pub const XML_FEATURE_ATTR_INFO: XML_FeatureEnum = 10;
-pub const XML_FEATURE_LARGE_SIZE: XML_FeatureEnum = 9;
-pub const XML_FEATURE_NS: XML_FeatureEnum = 8;
-pub const XML_FEATURE_SIZEOF_XML_LCHAR: XML_FeatureEnum = 7;
-pub const XML_FEATURE_SIZEOF_XML_CHAR: XML_FeatureEnum = 6;
-pub const XML_FEATURE_MIN_SIZE: XML_FeatureEnum = 5;
-pub const XML_FEATURE_CONTEXT_BYTES: XML_FeatureEnum = 4;
-pub const XML_FEATURE_DTD: XML_FeatureEnum = 3;
-pub const XML_FEATURE_UNICODE_WCHAR_T: XML_FeatureEnum = 2;
-pub const XML_FEATURE_UNICODE: XML_FeatureEnum = 1;
-pub const XML_FEATURE_END: XML_FeatureEnum = 0;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct XML_Feature {
-    pub feature: XML_FeatureEnum,
-    pub name: *const XML_LChar,
-    pub value: ::core::ffi::c_long,
-}
-pub type C2RustUnnamed_1 = ::core::ffi::c_int;
 static mut xmlLen: ::core::ffi::c_int = 0;
 static mut xmlnsLen: ::core::ffi::c_int = 0;
-pub const SIZE_MAX: ::core::ffi::c_ulong = 18446744073709551615 as ::core::ffi::c_ulong;
-pub const O_RDONLY: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+#[c2rust::src_loc = "259:9"]
 pub const INIT_TAG_BUF_SIZE: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
+#[c2rust::src_loc = "260:9"]
 pub const INIT_DATA_BUF_SIZE: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
+#[c2rust::src_loc = "261:9"]
 pub const INIT_ATTS_SIZE: ::core::ffi::c_int = 16 as ::core::ffi::c_int;
+#[c2rust::src_loc = "262:9"]
 pub const INIT_ATTS_VERSION: ::core::ffi::c_uint = 0xffffffff as ::core::ffi::c_uint;
+#[c2rust::src_loc = "263:9"]
 pub const INIT_BLOCK_SIZE: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
+#[c2rust::src_loc = "264:9"]
 pub const INIT_BUFFER_SIZE: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
+#[c2rust::src_loc = "266:9"]
 pub const EXPAND_SPARE: ::core::ffi::c_int = 24 as ::core::ffi::c_int;
+#[c2rust::src_loc = "346:9"]
 pub const INIT_SCAFFOLD_ELEMENTS: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 #[no_mangle]
+#[c2rust::src_loc = "657:5"]
 pub static mut g_reparseDeferralEnabledDefault: XML_Bool = XML_TRUE;
 #[no_mangle]
+#[c2rust::src_loc = "660:1"]
 pub static mut g_bytesScanned: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
+#[c2rust::src_loc = "798:1"]
 unsafe extern "C" fn expat_heap_stat(
     mut rootParser: XML_Parser,
     mut operator: ::core::ffi::c_char,
@@ -1005,6 +2751,7 @@ unsafe extern "C" fn expat_heap_stat(
         sourceLine,
     );
 }
+#[c2rust::src_loc = "812:1"]
 unsafe extern "C" fn expat_heap_increase_tolerable(
     mut rootParser: XML_Parser,
     mut increase: XmlBigCount,
@@ -1014,7 +2761,7 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
     } else {
         __assert_fail(
             b"rootParser != NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             815 as ::core::ffi::c_uint,
             b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0" as *const u8
@@ -1025,7 +2772,7 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
     } else {
         __assert_fail(
             b"increase > 0\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             816 as ::core::ffi::c_uint,
             b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0" as *const u8
@@ -1049,8 +2796,8 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
             } else {
                 __assert_fail(
                     b"newTotal > 0\0" as *const u8 as *const ::core::ffi::c_char,
-                    b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                        as *const ::core::ffi::c_char,
+                    b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                        as *const u8 as *const ::core::ffi::c_char,
                     828 as ::core::ffi::c_uint,
                     b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0"
                         as *const u8 as *const ::core::ffi::c_char,
@@ -1076,6 +2823,7 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
     return tolerable;
 }
 #[no_mangle]
+#[c2rust::src_loc = "847:1"]
 pub unsafe extern "C" fn expat_malloc(
     mut parser: XML_Parser,
     mut size: size_t,
@@ -1092,7 +2840,7 @@ pub unsafe extern "C" fn expat_malloc(
     } else {
         __assert_fail(
             b"rootParser->m_parentParser == NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             858 as ::core::ffi::c_uint,
             b"void *expat_malloc(XML_Parser, size_t, int)\0" as *const u8
@@ -1146,6 +2894,7 @@ pub unsafe extern "C" fn expat_malloc(
         .offset(EXPAT_MALLOC_PADDING as isize) as *mut ::core::ffi::c_void;
 }
 #[no_mangle]
+#[c2rust::src_loc = "901:1"]
 pub unsafe extern "C" fn expat_free(
     mut parser: XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
@@ -1155,7 +2904,7 @@ pub unsafe extern "C" fn expat_free(
     } else {
         __assert_fail(
             b"parser != NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             906 as ::core::ffi::c_uint,
             b"void expat_free(XML_Parser, void *, int)\0" as *const u8
@@ -1171,7 +2920,7 @@ pub unsafe extern "C" fn expat_free(
     } else {
         __assert_fail(
             b"rootParser->m_parentParser == NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             913 as ::core::ffi::c_uint,
             b"void expat_free(XML_Parser, void *, int)\0" as *const u8
@@ -1190,7 +2939,7 @@ pub unsafe extern "C" fn expat_free(
         __assert_fail(
             b"rootParser->m_alloc_tracker.bytesAllocated >= bytesAllocated\0" as *const u8
                 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             922 as ::core::ffi::c_uint,
             b"void expat_free(XML_Parser, void *, int)\0" as *const u8
@@ -1214,6 +2963,7 @@ pub unsafe extern "C" fn expat_free(
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(mallocedPtr);
 }
 #[no_mangle]
+#[c2rust::src_loc = "937:1"]
 pub unsafe extern "C" fn expat_realloc(
     mut parser: XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
@@ -1224,7 +2974,7 @@ pub unsafe extern "C" fn expat_realloc(
     } else {
         __assert_fail(
             b"parser != NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             942 as ::core::ffi::c_uint,
             b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8
@@ -1244,7 +2994,7 @@ pub unsafe extern "C" fn expat_realloc(
     } else {
         __assert_fail(
             b"rootParser->m_parentParser == NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             954 as ::core::ffi::c_uint,
             b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8
@@ -1279,7 +3029,7 @@ pub unsafe extern "C" fn expat_realloc(
         __assert_fail(
             b"SIZE_MAX - sizeof(size_t) - EXPAT_MALLOC_PADDING >= size\0" as *const u8
                 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             975 as ::core::ffi::c_uint,
             b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8
@@ -1307,8 +3057,8 @@ pub unsafe extern "C" fn expat_realloc(
             __assert_fail(
                 b"(XmlBigCount)-1 - rootParser->m_alloc_tracker.bytesAllocated >= absDiff\0"
                     as *const u8 as *const ::core::ffi::c_char,
-                b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                    as *const ::core::ffi::c_char,
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                    as *const u8 as *const ::core::ffi::c_char,
                 988 as ::core::ffi::c_uint,
                 b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8
                     as *const ::core::ffi::c_char,
@@ -1324,8 +3074,8 @@ pub unsafe extern "C" fn expat_realloc(
             __assert_fail(
                 b"rootParser->m_alloc_tracker.bytesAllocated >= absDiff\0" as *const u8
                     as *const ::core::ffi::c_char,
-                b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                    as *const ::core::ffi::c_char,
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                    as *const u8 as *const ::core::ffi::c_char,
                 991 as ::core::ffi::c_uint,
                 b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8
                     as *const ::core::ffi::c_char,
@@ -1362,6 +3112,7 @@ pub unsafe extern "C" fn expat_realloc(
         .offset(EXPAT_MALLOC_PADDING as isize) as *mut ::core::ffi::c_void;
 }
 #[no_mangle]
+#[c2rust::src_loc = "1014:1"]
 pub unsafe extern "C" fn XML_ParserCreate(mut encodingName: *const XML_Char) -> XML_Parser {
     return XML_ParserCreate_MM(
         encodingName,
@@ -1370,6 +3121,7 @@ pub unsafe extern "C" fn XML_ParserCreate(mut encodingName: *const XML_Char) -> 
     );
 }
 #[no_mangle]
+#[c2rust::src_loc = "1019:1"]
 pub unsafe extern "C" fn XML_ParserCreateNS(
     mut encodingName: *const XML_Char,
     mut nsSep: XML_Char,
@@ -1381,6 +3133,7 @@ pub unsafe extern "C" fn XML_ParserCreateNS(
         &raw mut tmp as *mut XML_Char,
     );
 }
+#[c2rust::src_loc = "1026:1"]
 static mut implicitContext: [XML_Char; 41] = [
     ASCII_x as XML_Char,
     ASCII_m as XML_Char,
@@ -1424,6 +3177,7 @@ static mut implicitContext: [XML_Char; 41] = [
     ASCII_e as XML_Char,
     '\0' as i32 as XML_Char,
 ];
+#[c2rust::src_loc = "1043:1"]
 unsafe extern "C" fn writeRandomBytes_getrandom_nonblock(
     mut target: *mut ::core::ffi::c_void,
     mut count: size_t,
@@ -1440,8 +3194,8 @@ unsafe extern "C" fn writeRandomBytes_getrandom_nonblock(
         } else {
             __assert_fail(
                 b"bytesToWrite <= INT_MAX\0" as *const u8 as *const ::core::ffi::c_char,
-                b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                    as *const ::core::ffi::c_char,
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                    as *const u8 as *const ::core::ffi::c_char,
                 1053 as ::core::ffi::c_uint,
                 b"int writeRandomBytes_getrandom_nonblock(void *, size_t)\0" as *const u8
                     as *const ::core::ffi::c_char,
@@ -1461,6 +3215,7 @@ unsafe extern "C" fn writeRandomBytes_getrandom_nonblock(
     }
     return success;
 }
+#[c2rust::src_loc = "1078:1"]
 unsafe extern "C" fn writeRandomBytes_dev_urandom(
     mut target: *mut ::core::ffi::c_void,
     mut count: size_t,
@@ -1493,6 +3248,7 @@ unsafe extern "C" fn writeRandomBytes_dev_urandom(
     close(fd);
     return success;
 }
+#[c2rust::src_loc = "1168:1"]
 unsafe extern "C" fn gather_time_entropy() -> ::core::ffi::c_ulong {
     let mut tv: timeval = timeval {
         tv_sec: 0,
@@ -1504,7 +3260,7 @@ unsafe extern "C" fn gather_time_entropy() -> ::core::ffi::c_ulong {
     } else {
         __assert_fail(
             b"gettimeofday_res == 0\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             1183 as ::core::ffi::c_uint,
             b"unsigned long gather_time_entropy(void)\0" as *const u8 as *const ::core::ffi::c_char,
@@ -1512,6 +3268,7 @@ unsafe extern "C" fn gather_time_entropy() -> ::core::ffi::c_ulong {
     };
     return tv.tv_usec as ::core::ffi::c_ulong;
 }
+#[c2rust::src_loc = "1193:1"]
 unsafe extern "C" fn ENTROPY_DEBUG(
     mut label: *const ::core::ffi::c_char,
     mut entropy: ::core::ffi::c_ulong,
@@ -1534,6 +3291,7 @@ unsafe extern "C" fn ENTROPY_DEBUG(
     }
     return entropy;
 }
+#[c2rust::src_loc = "1202:1"]
 unsafe extern "C" fn generate_hash_secret_salt(mut _parser: XML_Parser) -> ::core::ffi::c_ulong {
     let mut entropy: ::core::ffi::c_ulong = 0;
     if writeRandomBytes_getrandom_nonblock(
@@ -1572,6 +3330,7 @@ unsafe extern "C" fn generate_hash_secret_salt(mut _parser: XML_Parser) -> ::cor
         );
     };
 }
+#[c2rust::src_loc = "1248:1"]
 unsafe extern "C" fn get_hash_secret_salt(mut parser: XML_Parser) -> ::core::ffi::c_ulong {
     let rootParser: XML_Parser =
         getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()) as XML_Parser;
@@ -1579,7 +3338,7 @@ unsafe extern "C" fn get_hash_secret_salt(mut parser: XML_Parser) -> ::core::ffi
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             1251 as ::core::ffi::c_uint,
             b"unsigned long get_hash_secret_salt(XML_Parser)\0" as *const u8
@@ -1588,6 +3347,7 @@ unsafe extern "C" fn get_hash_secret_salt(mut parser: XML_Parser) -> ::core::ffi
     };
     return (*rootParser).m_hash_secret_salt;
 }
+#[c2rust::src_loc = "1256:1"]
 unsafe extern "C" fn callProcessor(
     mut parser: XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -1657,6 +3417,7 @@ unsafe extern "C" fn callProcessor(
     }
     return ret;
 }
+#[c2rust::src_loc = "1321:1"]
 unsafe extern "C" fn startParsing(mut parser: XML_Parser) -> XML_Bool {
     if (*parser).m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
         (*parser).m_hash_secret_salt = generate_hash_secret_salt(parser);
@@ -1667,6 +3428,7 @@ unsafe extern "C" fn startParsing(mut parser: XML_Parser) -> XML_Bool {
     return XML_TRUE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "1335:1"]
 pub unsafe extern "C" fn XML_ParserCreate_MM(
     mut encodingName: *const XML_Char,
     mut memsuite: *const XML_Memory_Handling_Suite,
@@ -1680,6 +3442,7 @@ pub unsafe extern "C" fn XML_ParserCreate_MM(
         ::core::ptr::null_mut::<XML_ParserStruct>(),
     );
 }
+#[c2rust::src_loc = "1342:1"]
 unsafe extern "C" fn parserCreate(
     mut encodingName: *const XML_Char,
     mut memsuite: *const XML_Memory_Handling_Suite,
@@ -1787,8 +3550,8 @@ unsafe extern "C" fn parserCreate(
         __assert_fail(
             b"rootParser->m_parentParser == NULL\0" as *const u8
                 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const ::core::ffi::c_char,
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                as *const u8 as *const ::core::ffi::c_char,
             1425 as ::core::ffi::c_uint,
             b"XML_Parser parserCreate(const XML_Char *, const XML_Memory_Handling_Suite *, const XML_Char *, DTD *, XML_Parser)\0"
                 as *const u8 as *const ::core::ffi::c_char,
@@ -1802,8 +3565,8 @@ unsafe extern "C" fn parserCreate(
         __assert_fail(
             b"SIZE_MAX - rootParser->m_alloc_tracker.bytesAllocated >= increase\0"
                 as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const ::core::ffi::c_char,
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                as *const u8 as *const ::core::ffi::c_char,
             1426 as ::core::ffi::c_uint,
             b"XML_Parser parserCreate(const XML_Char *, const XML_Memory_Handling_Suite *, const XML_Char *, DTD *, XML_Parser)\0"
                 as *const u8 as *const ::core::ffi::c_char,
@@ -1923,6 +3686,7 @@ unsafe extern "C" fn parserCreate(
     }
     return parser;
 }
+#[c2rust::src_loc = "1538:1"]
 unsafe extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const XML_Char) {
     (*parser).m_processor = Some(
         prologInitProcessor
@@ -2035,6 +3799,7 @@ unsafe extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const
         0 as ::core::ffi::c_ulong,
     );
 }
+#[c2rust::src_loc = "1629:1"]
 unsafe extern "C" fn moveToFreeBindingList(mut parser: XML_Parser, mut bindings: *mut BINDING) {
     while !bindings.is_null() {
         let mut b: *mut BINDING = bindings;
@@ -2044,6 +3809,7 @@ unsafe extern "C" fn moveToFreeBindingList(mut parser: XML_Parser, mut bindings:
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "1639:1"]
 pub unsafe extern "C" fn XML_ParserReset(
     mut parser: XML_Parser,
     mut encodingName: *const XML_Char,
@@ -2110,6 +3876,7 @@ pub unsafe extern "C" fn XML_ParserReset(
     dtdReset((*parser).m_dtd, parser);
     return XML_TRUE;
 }
+#[c2rust::src_loc = "1698:1"]
 unsafe extern "C" fn parserBusy(mut parser: XML_Parser) -> XML_Bool {
     match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
         1 | 3 => return XML_TRUE,
@@ -2117,6 +3884,7 @@ unsafe extern "C" fn parserBusy(mut parser: XML_Parser) -> XML_Bool {
     };
 }
 #[no_mangle]
+#[c2rust::src_loc = "1711:1"]
 pub unsafe extern "C" fn XML_SetEncoding(
     mut parser: XML_Parser,
     mut encodingName: *const XML_Char,
@@ -2143,6 +3911,7 @@ pub unsafe extern "C" fn XML_SetEncoding(
     return XML_STATUS_OK;
 }
 #[no_mangle]
+#[c2rust::src_loc = "1737:1"]
 pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     mut oldParser: XML_Parser,
     mut context: *const XML_Char,
@@ -2316,6 +4085,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     }
     return parser;
 }
+#[c2rust::src_loc = "1912:1"]
 unsafe extern "C" fn destroyBindings(mut bindings: *mut BINDING, mut parser: XML_Parser) {
     loop {
         let mut b: *mut BINDING = bindings;
@@ -2336,6 +4106,7 @@ unsafe extern "C" fn destroyBindings(mut bindings: *mut BINDING, mut parser: XML
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "1924:1"]
 pub unsafe extern "C" fn XML_ParserFree(mut parser: XML_Parser) {
     let mut tagList: *mut TAG = ::core::ptr::null_mut::<TAG>();
     let mut entityList: *mut OPEN_INTERNAL_ENTITY = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
@@ -2479,12 +4250,14 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: XML_Parser) {
     );
 }
 #[no_mangle]
+#[c2rust::src_loc = "2019:1"]
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg(mut parser: XML_Parser) {
     if !parser.is_null() {
         (*parser).m_handlerArg = parser as *mut ::core::ffi::c_void;
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2025:1"]
 pub unsafe extern "C" fn XML_UseForeignDTD(
     mut parser: XML_Parser,
     mut useDTD: XML_Bool,
@@ -2499,6 +4272,7 @@ pub unsafe extern "C" fn XML_UseForeignDTD(
     return XML_ERROR_NONE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2041:1"]
 pub unsafe extern "C" fn XML_SetReturnNSTriplet(
     mut parser: XML_Parser,
     mut do_nst: ::core::ffi::c_int,
@@ -2516,6 +4290,7 @@ pub unsafe extern "C" fn XML_SetReturnNSTriplet(
     }) as XML_Bool;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2051:1"]
 pub unsafe extern "C" fn XML_SetUserData(mut parser: XML_Parser, mut p: *mut ::core::ffi::c_void) {
     if parser.is_null() {
         return;
@@ -2528,6 +4303,7 @@ pub unsafe extern "C" fn XML_SetUserData(mut parser: XML_Parser, mut p: *mut ::c
     };
 }
 #[no_mangle]
+#[c2rust::src_loc = "2061:1"]
 pub unsafe extern "C" fn XML_SetBase(mut parser: XML_Parser, mut p: *const XML_Char) -> XML_Status {
     if parser.is_null() {
         return XML_STATUS_ERROR;
@@ -2544,6 +4320,7 @@ pub unsafe extern "C" fn XML_SetBase(mut parser: XML_Parser, mut p: *const XML_C
     return XML_STATUS_OK;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2075:1"]
 pub unsafe extern "C" fn XML_GetBase(mut parser: XML_Parser) -> *const XML_Char {
     if parser.is_null() {
         return ::core::ptr::null::<XML_Char>();
@@ -2551,6 +4328,7 @@ pub unsafe extern "C" fn XML_GetBase(mut parser: XML_Parser) -> *const XML_Char 
     return (*parser).m_curBase;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2082:1"]
 pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount(
     mut parser: XML_Parser,
 ) -> ::core::ffi::c_int {
@@ -2560,6 +4338,7 @@ pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount(
     return (*parser).m_nSpecifiedAtts;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2089:1"]
 pub unsafe extern "C" fn XML_GetIdAttributeIndex(mut parser: XML_Parser) -> ::core::ffi::c_int {
     if parser.is_null() {
         return -(1 as ::core::ffi::c_int);
@@ -2567,6 +4346,7 @@ pub unsafe extern "C" fn XML_GetIdAttributeIndex(mut parser: XML_Parser) -> ::co
     return (*parser).m_idAttIndex;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2105:1"]
 pub unsafe extern "C" fn XML_SetElementHandler(
     mut parser: XML_Parser,
     mut start: XML_StartElementHandler,
@@ -2579,6 +4359,7 @@ pub unsafe extern "C" fn XML_SetElementHandler(
     (*parser).m_endElementHandler = end;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2114:1"]
 pub unsafe extern "C" fn XML_SetStartElementHandler(
     mut parser: XML_Parser,
     mut start: XML_StartElementHandler,
@@ -2588,6 +4369,7 @@ pub unsafe extern "C" fn XML_SetStartElementHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2120:1"]
 pub unsafe extern "C" fn XML_SetEndElementHandler(
     mut parser: XML_Parser,
     mut end: XML_EndElementHandler,
@@ -2597,6 +4379,7 @@ pub unsafe extern "C" fn XML_SetEndElementHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2126:1"]
 pub unsafe extern "C" fn XML_SetCharacterDataHandler(
     mut parser: XML_Parser,
     mut handler: XML_CharacterDataHandler,
@@ -2606,6 +4389,7 @@ pub unsafe extern "C" fn XML_SetCharacterDataHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2133:1"]
 pub unsafe extern "C" fn XML_SetProcessingInstructionHandler(
     mut parser: XML_Parser,
     mut handler: XML_ProcessingInstructionHandler,
@@ -2615,6 +4399,7 @@ pub unsafe extern "C" fn XML_SetProcessingInstructionHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2140:1"]
 pub unsafe extern "C" fn XML_SetCommentHandler(
     mut parser: XML_Parser,
     mut handler: XML_CommentHandler,
@@ -2624,6 +4409,7 @@ pub unsafe extern "C" fn XML_SetCommentHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2146:1"]
 pub unsafe extern "C" fn XML_SetCdataSectionHandler(
     mut parser: XML_Parser,
     mut start: XML_StartCdataSectionHandler,
@@ -2636,6 +4422,7 @@ pub unsafe extern "C" fn XML_SetCdataSectionHandler(
     (*parser).m_endCdataSectionHandler = end;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2156:1"]
 pub unsafe extern "C" fn XML_SetStartCdataSectionHandler(
     mut parser: XML_Parser,
     mut start: XML_StartCdataSectionHandler,
@@ -2645,6 +4432,7 @@ pub unsafe extern "C" fn XML_SetStartCdataSectionHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2163:1"]
 pub unsafe extern "C" fn XML_SetEndCdataSectionHandler(
     mut parser: XML_Parser,
     mut end: XML_EndCdataSectionHandler,
@@ -2654,6 +4442,7 @@ pub unsafe extern "C" fn XML_SetEndCdataSectionHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2170:1"]
 pub unsafe extern "C" fn XML_SetDefaultHandler(
     mut parser: XML_Parser,
     mut handler: XML_DefaultHandler,
@@ -2665,6 +4454,7 @@ pub unsafe extern "C" fn XML_SetDefaultHandler(
     (*parser).m_defaultExpandInternalEntities = XML_FALSE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2178:1"]
 pub unsafe extern "C" fn XML_SetDefaultHandlerExpand(
     mut parser: XML_Parser,
     mut handler: XML_DefaultHandler,
@@ -2676,6 +4466,7 @@ pub unsafe extern "C" fn XML_SetDefaultHandlerExpand(
     (*parser).m_defaultExpandInternalEntities = XML_TRUE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2186:1"]
 pub unsafe extern "C" fn XML_SetDoctypeDeclHandler(
     mut parser: XML_Parser,
     mut start: XML_StartDoctypeDeclHandler,
@@ -2688,6 +4479,7 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler(
     (*parser).m_endDoctypeDeclHandler = end;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2195:1"]
 pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler(
     mut parser: XML_Parser,
     mut start: XML_StartDoctypeDeclHandler,
@@ -2697,6 +4489,7 @@ pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2202:1"]
 pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler(
     mut parser: XML_Parser,
     mut end: XML_EndDoctypeDeclHandler,
@@ -2706,6 +4499,7 @@ pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2208:1"]
 pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler(
     mut parser: XML_Parser,
     mut handler: XML_UnparsedEntityDeclHandler,
@@ -2715,6 +4509,7 @@ pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2215:1"]
 pub unsafe extern "C" fn XML_SetNotationDeclHandler(
     mut parser: XML_Parser,
     mut handler: XML_NotationDeclHandler,
@@ -2724,6 +4519,7 @@ pub unsafe extern "C" fn XML_SetNotationDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2221:1"]
 pub unsafe extern "C" fn XML_SetNamespaceDeclHandler(
     mut parser: XML_Parser,
     mut start: XML_StartNamespaceDeclHandler,
@@ -2736,6 +4532,7 @@ pub unsafe extern "C" fn XML_SetNamespaceDeclHandler(
     (*parser).m_endNamespaceDeclHandler = end;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2231:1"]
 pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler(
     mut parser: XML_Parser,
     mut start: XML_StartNamespaceDeclHandler,
@@ -2745,6 +4542,7 @@ pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2238:1"]
 pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler(
     mut parser: XML_Parser,
     mut end: XML_EndNamespaceDeclHandler,
@@ -2754,6 +4552,7 @@ pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2245:1"]
 pub unsafe extern "C" fn XML_SetNotStandaloneHandler(
     mut parser: XML_Parser,
     mut handler: XML_NotStandaloneHandler,
@@ -2763,6 +4562,7 @@ pub unsafe extern "C" fn XML_SetNotStandaloneHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2252:1"]
 pub unsafe extern "C" fn XML_SetExternalEntityRefHandler(
     mut parser: XML_Parser,
     mut handler: XML_ExternalEntityRefHandler,
@@ -2772,6 +4572,7 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2259:1"]
 pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg(
     mut parser: XML_Parser,
     mut arg: *mut ::core::ffi::c_void,
@@ -2786,6 +4587,7 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg(
     };
 }
 #[no_mangle]
+#[c2rust::src_loc = "2269:1"]
 pub unsafe extern "C" fn XML_SetSkippedEntityHandler(
     mut parser: XML_Parser,
     mut handler: XML_SkippedEntityHandler,
@@ -2795,6 +4597,7 @@ pub unsafe extern "C" fn XML_SetSkippedEntityHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2276:1"]
 pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
     mut parser: XML_Parser,
     mut handler: XML_UnknownEncodingHandler,
@@ -2807,6 +4610,7 @@ pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
     (*parser).m_unknownEncodingHandlerData = data;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2285:1"]
 pub unsafe extern "C" fn XML_SetElementDeclHandler(
     mut parser: XML_Parser,
     mut eldecl: XML_ElementDeclHandler,
@@ -2816,6 +4620,7 @@ pub unsafe extern "C" fn XML_SetElementDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2291:1"]
 pub unsafe extern "C" fn XML_SetAttlistDeclHandler(
     mut parser: XML_Parser,
     mut attdecl: XML_AttlistDeclHandler,
@@ -2825,6 +4630,7 @@ pub unsafe extern "C" fn XML_SetAttlistDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2297:1"]
 pub unsafe extern "C" fn XML_SetEntityDeclHandler(
     mut parser: XML_Parser,
     mut handler: XML_EntityDeclHandler,
@@ -2834,6 +4640,7 @@ pub unsafe extern "C" fn XML_SetEntityDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2303:1"]
 pub unsafe extern "C" fn XML_SetXmlDeclHandler(
     mut parser: XML_Parser,
     mut handler: XML_XmlDeclHandler,
@@ -2843,6 +4650,7 @@ pub unsafe extern "C" fn XML_SetXmlDeclHandler(
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2309:1"]
 pub unsafe extern "C" fn XML_SetParamEntityParsing(
     mut parser: XML_Parser,
     mut peParsing: XML_ParamEntityParsing,
@@ -2857,6 +4665,7 @@ pub unsafe extern "C" fn XML_SetParamEntityParsing(
     return 1 as ::core::ffi::c_int;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2325:1"]
 pub unsafe extern "C" fn XML_SetHashSalt(
     mut parser: XML_Parser,
     mut hash_salt: ::core::ffi::c_ulong,
@@ -2870,7 +4679,7 @@ pub unsafe extern "C" fn XML_SetHashSalt(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             2331 as ::core::ffi::c_uint,
             b"int XML_SetHashSalt(XML_Parser, unsigned long)\0" as *const u8
@@ -2884,6 +4693,7 @@ pub unsafe extern "C" fn XML_SetHashSalt(
     return 1 as ::core::ffi::c_int;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2340:1"]
 pub unsafe extern "C" fn XML_Parse(
     mut parser: XML_Parser,
     mut s: *const ::core::ffi::c_char,
@@ -2926,8 +4736,8 @@ pub unsafe extern "C" fn XML_Parse(
         } else {
             __assert_fail(
                 b"s != NULL\0" as *const u8 as *const ::core::ffi::c_char,
-                b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                    as *const ::core::ffi::c_char,
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                    as *const u8 as *const ::core::ffi::c_char,
                 2445 as ::core::ffi::c_uint,
                 b"enum XML_Status XML_Parse(XML_Parser, const char *, int, int)\0" as *const u8
                     as *const ::core::ffi::c_char,
@@ -2938,6 +4748,7 @@ pub unsafe extern "C" fn XML_Parse(
     return XML_ParseBuffer(parser, len, isFinal);
 }
 #[no_mangle]
+#[c2rust::src_loc = "2451:1"]
 pub unsafe extern "C" fn XML_ParseBuffer(
     mut parser: XML_Parser,
     mut len: ::core::ffi::c_int,
@@ -3026,6 +4837,7 @@ pub unsafe extern "C" fn XML_ParseBuffer(
     return result;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2522:1"]
 pub unsafe extern "C" fn XML_GetBuffer(
     mut parser: XML_Parser,
     mut len: ::core::ffi::c_int,
@@ -3190,10 +5002,12 @@ pub unsafe extern "C" fn XML_GetBuffer(
     }
     return (*parser).m_bufferEnd as *mut ::core::ffi::c_void;
 }
+#[c2rust::src_loc = "2656:1"]
 unsafe extern "C" fn triggerReenter(mut parser: XML_Parser) {
     (*parser).m_reenter = XML_TRUE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2661:1"]
 pub unsafe extern "C" fn XML_StopParser(
     mut parser: XML_Parser,
     mut resumable: XML_Bool,
@@ -3233,8 +5047,8 @@ pub unsafe extern "C" fn XML_StopParser(
             } else {
                 __assert_fail(
                     b"0\0" as *const u8 as *const ::core::ffi::c_char,
-                    b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                        as *const ::core::ffi::c_char,
+                    b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                        as *const u8 as *const ::core::ffi::c_char,
                     2692 as ::core::ffi::c_uint,
                     b"enum XML_Status XML_StopParser(XML_Parser, XML_Bool)\0" as *const u8
                         as *const ::core::ffi::c_char,
@@ -3245,6 +5059,7 @@ pub unsafe extern "C" fn XML_StopParser(
     return XML_STATUS_OK;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2697:1"]
 pub unsafe extern "C" fn XML_ResumeParser(mut parser: XML_Parser) -> XML_Status {
     let mut result: XML_Status = XML_STATUS_OK;
     if parser.is_null() {
@@ -3303,6 +5118,7 @@ pub unsafe extern "C" fn XML_ResumeParser(mut parser: XML_Parser) -> XML_Status 
     return result;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2737:1"]
 pub unsafe extern "C" fn XML_GetParsingStatus(
     mut parser: XML_Parser,
     mut status: *mut XML_ParsingStatus,
@@ -3314,7 +5130,7 @@ pub unsafe extern "C" fn XML_GetParsingStatus(
     } else {
         __assert_fail(
             b"status != NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             2741 as ::core::ffi::c_uint,
             b"void XML_GetParsingStatus(XML_Parser, XML_ParsingStatus *)\0" as *const u8
@@ -3324,6 +5140,7 @@ pub unsafe extern "C" fn XML_GetParsingStatus(
     *status = (*parser).m_parsingStatus;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2745:1"]
 pub unsafe extern "C" fn XML_GetErrorCode(mut parser: XML_Parser) -> XML_Error {
     if parser.is_null() {
         return XML_ERROR_INVALID_ARGUMENT;
@@ -3331,6 +5148,7 @@ pub unsafe extern "C" fn XML_GetErrorCode(mut parser: XML_Parser) -> XML_Error {
     return (*parser).m_errorCode;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2752:1"]
 pub unsafe extern "C" fn XML_GetCurrentByteIndex(mut parser: XML_Parser) -> XML_Index {
     if parser.is_null() {
         return -(1 as ::core::ffi::c_int) as XML_Index;
@@ -3342,6 +5160,7 @@ pub unsafe extern "C" fn XML_GetCurrentByteIndex(mut parser: XML_Parser) -> XML_
     return -(1 as ::core::ffi::c_int) as XML_Index;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2762:1"]
 pub unsafe extern "C" fn XML_GetCurrentByteCount(mut parser: XML_Parser) -> ::core::ffi::c_int {
     if parser.is_null() {
         return 0 as ::core::ffi::c_int;
@@ -3353,6 +5172,7 @@ pub unsafe extern "C" fn XML_GetCurrentByteCount(mut parser: XML_Parser) -> ::co
     return 0 as ::core::ffi::c_int;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2771:1"]
 pub unsafe extern "C" fn XML_GetInputContext(
     mut parser: XML_Parser,
     mut offset: *mut ::core::ffi::c_int,
@@ -3375,6 +5195,7 @@ pub unsafe extern "C" fn XML_GetInputContext(
     return ::core::ptr::null::<::core::ffi::c_char>();
 }
 #[no_mangle]
+#[c2rust::src_loc = "2791:1"]
 pub unsafe extern "C" fn XML_GetCurrentLineNumber(mut parser: XML_Parser) -> XML_Size {
     if parser.is_null() {
         return 0 as XML_Size;
@@ -3393,6 +5214,7 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber(mut parser: XML_Parser) -> XML
     return (*parser).m_position.lineNumber.wrapping_add(1 as XML_Size);
 }
 #[no_mangle]
+#[c2rust::src_loc = "2803:1"]
 pub unsafe extern "C" fn XML_GetCurrentColumnNumber(mut parser: XML_Parser) -> XML_Size {
     if parser.is_null() {
         return 0 as XML_Size;
@@ -3411,6 +5233,7 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber(mut parser: XML_Parser) -> X
     return (*parser).m_position.columnNumber;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2815:1"]
 pub unsafe extern "C" fn XML_FreeContentModel(mut parser: XML_Parser, mut model: *mut XML_Content) {
     if parser.is_null() {
         return;
@@ -3418,6 +5241,7 @@ pub unsafe extern "C" fn XML_FreeContentModel(mut parser: XML_Parser, mut model:
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(model as *mut ::core::ffi::c_void);
 }
 #[no_mangle]
+#[c2rust::src_loc = "2825:1"]
 pub unsafe extern "C" fn XML_MemMalloc(
     mut parser: XML_Parser,
     mut size: size_t,
@@ -3431,6 +5255,7 @@ pub unsafe extern "C" fn XML_MemMalloc(
         .expect("non-null function pointer")(size);
 }
 #[no_mangle]
+#[c2rust::src_loc = "2835:1"]
 pub unsafe extern "C" fn XML_MemRealloc(
     mut parser: XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
@@ -3445,6 +5270,7 @@ pub unsafe extern "C" fn XML_MemRealloc(
         .expect("non-null function pointer")(ptr, size);
 }
 #[no_mangle]
+#[c2rust::src_loc = "2845:1"]
 pub unsafe extern "C" fn XML_MemFree(mut parser: XML_Parser, mut ptr: *mut ::core::ffi::c_void) {
     if parser.is_null() {
         return;
@@ -3452,6 +5278,7 @@ pub unsafe extern "C" fn XML_MemFree(mut parser: XML_Parser, mut ptr: *mut ::cor
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(ptr);
 }
 #[no_mangle]
+#[c2rust::src_loc = "2856:1"]
 pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: XML_Parser) {
     if parser.is_null() {
         return;
@@ -3475,6 +5302,7 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: XML_Parser) {
     }
 }
 #[no_mangle]
+#[c2rust::src_loc = "2871:1"]
 pub unsafe extern "C" fn XML_ErrorString(mut code: XML_Error) -> *const XML_LChar {
     match code as ::core::ffi::c_uint {
         0 => return ::core::ptr::null::<XML_LChar>(),
@@ -3579,10 +5407,12 @@ pub unsafe extern "C" fn XML_ErrorString(mut code: XML_Error) -> *const XML_LCha
     return ::core::ptr::null::<XML_LChar>();
 }
 #[no_mangle]
+#[c2rust::src_loc = "2979:1"]
 pub unsafe extern "C" fn XML_ExpatVersion() -> *const XML_LChar {
     return b"expat_2.7.4\0" as *const u8 as *const XML_LChar;
 }
 #[no_mangle]
+#[c2rust::src_loc = "2998:1"]
 pub unsafe extern "C" fn XML_ExpatVersionInfo() -> XML_Expat_Version {
     let mut version: XML_Expat_Version = XML_Expat_Version {
         major: 0,
@@ -3595,6 +5425,7 @@ pub unsafe extern "C" fn XML_ExpatVersionInfo() -> XML_Expat_Version {
     return version;
 }
 #[no_mangle]
+#[c2rust::src_loc = "3009:1"]
 pub unsafe extern "C" fn XML_GetFeatureList() -> *const XML_Feature {
     static mut features: [XML_Feature; 11] = [
         XML_Feature {
@@ -3658,6 +5489,7 @@ pub unsafe extern "C" fn XML_GetFeatureList() -> *const XML_Feature {
     return &raw const features as *const XML_Feature;
 }
 #[no_mangle]
+#[c2rust::src_loc = "3067:1"]
 pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
     mut parser: XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
@@ -3673,6 +5505,7 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplificatio
     return XML_TRUE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "3079:1"]
 pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
     mut parser: XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
@@ -3684,6 +5517,7 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold
     return XML_TRUE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "3089:1"]
 pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification(
     mut parser: XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
@@ -3699,6 +5533,7 @@ pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification(
     return XML_TRUE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "3102:1"]
 pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold(
     mut parser: XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
@@ -3710,6 +5545,7 @@ pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold(
     return XML_TRUE;
 }
 #[no_mangle]
+#[c2rust::src_loc = "3113:1"]
 pub unsafe extern "C" fn XML_SetReparseDeferralEnabled(
     mut parser: XML_Parser,
     mut enabled: XML_Bool,
@@ -3723,6 +5559,7 @@ pub unsafe extern "C" fn XML_SetReparseDeferralEnabled(
     }
     return XML_FALSE;
 }
+#[c2rust::src_loc = "3127:1"]
 unsafe extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
     let mut tag: *mut TAG = (*parser).m_tagStack;
     while !tag.is_null() {
@@ -3774,6 +5611,7 @@ unsafe extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
     }
     return XML_TRUE;
 }
+#[c2rust::src_loc = "3176:1"]
 unsafe extern "C" fn contentProcessor(
     mut parser: XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -3802,6 +5640,7 @@ unsafe extern "C" fn contentProcessor(
     }
     return result;
 }
+#[c2rust::src_loc = "3190:1"]
 unsafe extern "C" fn externalEntityInitProcessor(
     mut parser: XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -3824,6 +5663,7 @@ unsafe extern "C" fn externalEntityInitProcessor(
     );
     return externalEntityInitProcessor2(parser, start, end, endPtr);
 }
+#[c2rust::src_loc = "3200:1"]
 unsafe extern "C" fn externalEntityInitProcessor2(
     mut parser: XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -3885,6 +5725,7 @@ unsafe extern "C" fn externalEntityInitProcessor2(
     );
     return externalEntityInitProcessor3(parser, start, end, endPtr);
 }
+#[c2rust::src_loc = "3245:1"]
 unsafe extern "C" fn externalEntityInitProcessor3(
     mut parser: XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -3951,6 +5792,7 @@ unsafe extern "C" fn externalEntityInitProcessor3(
     (*parser).m_tagLevel = 1 as ::core::ffi::c_int;
     return externalEntityContentProcessor(parser, start, end, endPtr);
 }
+#[c2rust::src_loc = "3297:1"]
 unsafe extern "C" fn externalEntityContentProcessor(
     mut parser: XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -3975,6 +5817,7 @@ unsafe extern "C" fn externalEntityContentProcessor(
     }
     return result;
 }
+#[c2rust::src_loc = "3311:1"]
 unsafe extern "C" fn doContent(
     mut parser: XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
@@ -4745,6 +6588,7 @@ unsafe extern "C" fn doContent(
         *eventPP = s;
     }
 }
+#[c2rust::src_loc = "3798:1"]
 unsafe extern "C" fn freeBindings(mut parser: XML_Parser, mut bindings: *mut BINDING) {
     while !bindings.is_null() {
         let mut b: *mut BINDING = bindings;
@@ -4761,6 +6605,7 @@ unsafe extern "C" fn freeBindings(mut parser: XML_Parser, mut bindings: *mut BIN
         (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
     }
 }
+#[c2rust::src_loc = "3826:1"]
 unsafe extern "C" fn storeAtts(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -5341,6 +7186,7 @@ unsafe extern "C" fn storeAtts(
     (*tagNamePtr).str_0 = (*binding).uri;
     return XML_ERROR_NONE;
 }
+#[c2rust::src_loc = "4294:1"]
 unsafe extern "C" fn is_rfc3986_uri_char(mut candidate: XML_Char) -> XML_Bool {
     match candidate as ::core::ffi::c_int {
         65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73 | 74 | 75 | 76 | 77 | 78 | 79 | 80 | 81 | 82
@@ -5352,6 +7198,7 @@ unsafe extern "C" fn is_rfc3986_uri_char(mut candidate: XML_Char) -> XML_Bool {
         _ => return XML_FALSE,
     };
 }
+#[c2rust::src_loc = "4408:1"]
 unsafe extern "C" fn addBinding(
     mut parser: XML_Parser,
     mut prefix: *mut PREFIX,
@@ -5587,6 +7434,7 @@ unsafe extern "C" fn addBinding(
     }
     return XML_ERROR_NONE;
 }
+#[c2rust::src_loc = "4574:1"]
 unsafe extern "C" fn cdataSectionProcessor(
     mut parser: XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -5633,6 +7481,7 @@ unsafe extern "C" fn cdataSectionProcessor(
     }
     return result;
 }
+#[c2rust::src_loc = "4597:1"]
 unsafe extern "C" fn doCdataSection(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -5803,6 +7652,7 @@ unsafe extern "C" fn doCdataSection(
         *eventPP = s;
     }
 }
+#[c2rust::src_loc = "4728:1"]
 unsafe extern "C" fn ignoreSectionProcessor(
     mut parser: XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -5835,6 +7685,7 @@ unsafe extern "C" fn ignoreSectionProcessor(
     }
     return result;
 }
+#[c2rust::src_loc = "4746:1"]
 unsafe extern "C" fn doIgnoreSection(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -5918,6 +7769,7 @@ unsafe extern "C" fn doIgnoreSection(
         }
     };
 }
+#[c2rust::src_loc = "4828:1"]
 unsafe extern "C" fn initializeEncoding(mut parser: XML_Parser) -> XML_Error {
     let mut s: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     s = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
@@ -5950,6 +7802,7 @@ unsafe extern "C" fn initializeEncoding(mut parser: XML_Parser) -> XML_Error {
     }
     return handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
 }
+#[c2rust::src_loc = "4858:1"]
 unsafe extern "C" fn processXmlDecl(
     mut parser: XML_Parser,
     mut isGeneralTextEntity: ::core::ffi::c_int,
@@ -6117,6 +7970,7 @@ unsafe extern "C" fn processXmlDecl(
     }
     return XML_ERROR_NONE;
 }
+#[c2rust::src_loc = "4950:1"]
 unsafe extern "C" fn handleUnknownEncoding(
     mut parser: XML_Parser,
     mut encodingName: *const XML_Char,
@@ -6197,6 +8051,7 @@ unsafe extern "C" fn handleUnknownEncoding(
     }
     return XML_ERROR_UNKNOWN_ENCODING;
 }
+#[c2rust::src_loc = "4984:1"]
 unsafe extern "C" fn prologInitProcessor(
     mut parser: XML_Parser,
     mut s: *const ::core::ffi::c_char,
@@ -6219,6 +8074,7 @@ unsafe extern "C" fn prologInitProcessor(
     );
     return prologProcessor(parser, s, end, nextPtr);
 }
+#[c2rust::src_loc = "4996:1"]
 unsafe extern "C" fn externalParEntInitProcessor(
     mut parser: XML_Parser,
     mut s: *const ::core::ffi::c_char,
@@ -6255,6 +8111,7 @@ unsafe extern "C" fn externalParEntInitProcessor(
         return externalParEntProcessor(parser, s, end, nextPtr);
     };
 }
+#[c2rust::src_loc = "5016:1"]
 unsafe extern "C" fn entityValueInitProcessor(
     mut parser: XML_Parser,
     mut s: *const ::core::ffi::c_char,
@@ -6337,6 +8194,7 @@ unsafe extern "C" fn entityValueInitProcessor(
         (*parser).m_eventPtr = start;
     }
 }
+#[c2rust::src_loc = "5100:1"]
 unsafe extern "C" fn externalParEntProcessor(
     mut parser: XML_Parser,
     mut s: *const ::core::ffi::c_char,
@@ -6399,6 +8257,7 @@ unsafe extern "C" fn externalParEntProcessor(
         XML_ACCOUNT_DIRECT,
     );
 }
+#[c2rust::src_loc = "5146:1"]
 unsafe extern "C" fn entityValueProcessor(
     mut parser: XML_Parser,
     mut s: *const ::core::ffi::c_char,
@@ -6439,6 +8298,7 @@ unsafe extern "C" fn entityValueProcessor(
         start = next;
     }
 }
+#[c2rust::src_loc = "5184:1"]
 unsafe extern "C" fn prologProcessor(
     mut parser: XML_Parser,
     mut s: *const ::core::ffi::c_char,
@@ -6464,6 +8324,7 @@ unsafe extern "C" fn prologProcessor(
         XML_ACCOUNT_DIRECT,
     );
 }
+#[c2rust::src_loc = "5194:1"]
 unsafe extern "C" fn doProlog(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -6746,13 +8607,13 @@ unsafe extern "C" fn doProlog(
                     (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
                     (*parser).m_doctypePubid = pubId;
                     handleDefault = XML_FALSE;
-                    current_block = 15364602371057088250;
+                    current_block = 13941306361429013238;
                 } else {
-                    current_block = 11010276459331751112;
+                    current_block = 6873921596653269498;
                 }
             }
             14 => {
-                current_block = 11010276459331751112;
+                current_block = 6873921596653269498;
             }
             8 => {
                 if allowClosingDoctype as ::core::ffi::c_int != XML_TRUE as ::core::ffi::c_int {
@@ -6893,7 +8754,7 @@ unsafe extern "C" fn doProlog(
                 if (*parser).m_declElementType.is_null() {
                     return XML_ERROR_NO_MEMORY;
                 }
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             22 => {
                 (*parser).m_declAttributeId = getAttributeId(parser, enc, s, next);
@@ -6903,41 +8764,41 @@ unsafe extern "C" fn doProlog(
                 (*parser).m_declAttributeIsCdata = XML_FALSE;
                 (*parser).m_declAttributeType = ::core::ptr::null::<XML_Char>();
                 (*parser).m_declAttributeIsId = XML_FALSE;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             23 => {
                 (*parser).m_declAttributeIsCdata = XML_TRUE;
                 (*parser).m_declAttributeType = &raw const atypeCDATA as *const XML_Char;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             24 => {
                 (*parser).m_declAttributeIsId = XML_TRUE;
                 (*parser).m_declAttributeType = &raw const atypeID as *const XML_Char;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             25 => {
                 (*parser).m_declAttributeType = &raw const atypeIDREF as *const XML_Char;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             26 => {
                 (*parser).m_declAttributeType = &raw const atypeIDREFS as *const XML_Char;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             27 => {
                 (*parser).m_declAttributeType = &raw const atypeENTITY as *const XML_Char;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             28 => {
                 (*parser).m_declAttributeType = &raw const atypeENTITIES as *const XML_Char;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             29 => {
                 (*parser).m_declAttributeType = &raw const atypeNMTOKEN as *const XML_Char;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             30 => {
                 (*parser).m_declAttributeType = &raw const atypeNMTOKENS as *const XML_Char;
-                current_block = 17040587619052366004;
+                current_block = 14779040008015901923;
             }
             31 | 32 => {
                 if (*dtd).keepProcessing as ::core::ffi::c_int != 0
@@ -7211,10 +9072,10 @@ unsafe extern "C" fn doProlog(
                     }
                     (*(*parser).m_declEntity).publicId = ::core::ptr::null::<XML_Char>();
                 }
-                current_block = 9660573413098958209;
+                current_block = 14343490084333691418;
             }
             13 => {
-                current_block = 9660573413098958209;
+                current_block = 14343490084333691418;
             }
             15 => {
                 if (*dtd).keepProcessing as ::core::ffi::c_int != 0
@@ -7543,7 +9404,7 @@ unsafe extern "C" fn doProlog(
                         __assert_fail(
                             b"dtd->scaffIndex != NULL\0" as *const u8
                                 as *const ::core::ffi::c_char,
-                            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0"
+                            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
                                 as *const u8 as *const ::core::ffi::c_char,
                             5956 as ::core::ffi::c_uint,
                             b"enum XML_Error doProlog(XML_Parser, const ENCODING *, const char *, const char *, int, const char *, const char **, XML_Bool, XML_Bool, enum XML_Account)\0"
@@ -7818,35 +9679,35 @@ unsafe extern "C" fn doProlog(
             }
             51 => {
                 quant = XML_CQUANT_NONE;
-                current_block = 3425017059962418942;
+                current_block = 403054792318898984;
             }
             53 => {
                 quant = XML_CQUANT_OPT;
-                current_block = 3425017059962418942;
+                current_block = 403054792318898984;
             }
             52 => {
                 quant = XML_CQUANT_REP;
-                current_block = 3425017059962418942;
+                current_block = 403054792318898984;
             }
             54 => {
                 quant = XML_CQUANT_PLUS;
-                current_block = 3425017059962418942;
+                current_block = 403054792318898984;
             }
             45 => {
                 quant = XML_CQUANT_NONE;
-                current_block = 17385780565933595264;
+                current_block = 16394788973656955466;
             }
             47 => {
                 quant = XML_CQUANT_OPT;
-                current_block = 17385780565933595264;
+                current_block = 16394788973656955466;
             }
             46 => {
                 quant = XML_CQUANT_REP;
-                current_block = 17385780565933595264;
+                current_block = 16394788973656955466;
             }
             48 => {
                 quant = XML_CQUANT_PLUS;
-                current_block = 17385780565933595264;
+                current_block = 16394788973656955466;
             }
             55 => {
                 if reportProcessingInstruction(parser, enc, s, next) == 0 {
@@ -7910,14 +9771,14 @@ unsafe extern "C" fn doProlog(
             }
         }
         match current_block {
-            11010276459331751112 => {
+            6873921596653269498 => {
                 if (*enc).isPublicId.expect("non-null function pointer")(enc, s, next, eventPP) == 0
                 {
                     return XML_ERROR_PUBLICID;
                 }
-                current_block = 15364602371057088250;
+                current_block = 13941306361429013238;
             }
-            9660573413098958209 => {
+            14343490084333691418 => {
                 if (*dtd).keepProcessing as ::core::ffi::c_int != 0
                     && !(*parser).m_declEntity.is_null()
                 {
@@ -7940,7 +9801,7 @@ unsafe extern "C" fn doProlog(
                 }
                 current_block = 8258632986558375165;
             }
-            17040587619052366004 => {
+            14779040008015901923 => {
                 if (*dtd).keepProcessing as ::core::ffi::c_int != 0
                     && (*parser).m_attlistDeclHandler.is_some()
                 {
@@ -7948,7 +9809,7 @@ unsafe extern "C" fn doProlog(
                 }
                 current_block = 8258632986558375165;
             }
-            3425017059962418942 => {
+            403054792318898984 => {
                 if (*dtd).in_eldecl != 0 {
                     let mut el: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
                     let mut name_2: *const XML_Char = ::core::ptr::null::<XML_Char>();
@@ -7993,7 +9854,7 @@ unsafe extern "C" fn doProlog(
                 }
                 current_block = 8258632986558375165;
             }
-            17385780565933595264 => {
+            16394788973656955466 => {
                 if (*dtd).in_eldecl != 0 {
                     if (*parser).m_elementDeclHandler.is_some() {
                         handleDefault = XML_FALSE;
@@ -8027,7 +9888,7 @@ unsafe extern "C" fn doProlog(
             _ => {}
         }
         match current_block {
-            15364602371057088250 => {
+            13941306361429013238 => {
                 if (*dtd).keepProcessing as ::core::ffi::c_int != 0
                     && !(*parser).m_declEntity.is_null()
                 {
@@ -8078,6 +9939,7 @@ unsafe extern "C" fn doProlog(
         );
     }
 }
+#[c2rust::src_loc = "6270:1"]
 unsafe extern "C" fn epilogProcessor(
     mut parser: XML_Parser,
     mut s: *const ::core::ffi::c_char,
@@ -8187,6 +10049,7 @@ unsafe extern "C" fn epilogProcessor(
         (*parser).m_eventPtr = s;
     }
 }
+#[c2rust::src_loc = "6348:1"]
 unsafe extern "C" fn processEntity(
     mut parser: XML_Parser,
     mut entity: *mut ENTITY,
@@ -8225,8 +10088,8 @@ unsafe extern "C" fn processEntity(
             } else {
                 __assert_fail(
                     b"0\0" as *const u8 as *const ::core::ffi::c_char,
-                    b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                        as *const ::core::ffi::c_char,
+                    b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                        as *const u8 as *const ::core::ffi::c_char,
                     6374 as ::core::ffi::c_uint,
                     b"enum XML_Error processEntity(XML_Parser, ENTITY *, XML_Bool, enum EntityType)\0"
                         as *const u8 as *const ::core::ffi::c_char,
@@ -8265,6 +10128,7 @@ unsafe extern "C" fn processEntity(
     }
     return XML_ERROR_NONE;
 }
+#[c2rust::src_loc = "6409:1"]
 unsafe extern "C" fn internalEntityProcessor(
     mut parser: XML_Parser,
     mut _s: *const ::core::ffi::c_char,
@@ -8349,8 +10213,8 @@ unsafe extern "C" fn internalEntityProcessor(
         __assert_fail(
             b"parser->m_openInternalEntities == openEntity\0" as *const u8
                 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const ::core::ffi::c_char,
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                as *const u8 as *const ::core::ffi::c_char,
             6476 as ::core::ffi::c_uint,
             b"enum XML_Error internalEntityProcessor(XML_Parser, const char *, const char *, const char **)\0"
                 as *const u8 as *const ::core::ffi::c_char,
@@ -8387,6 +10251,7 @@ unsafe extern "C" fn internalEntityProcessor(
     triggerReenter(parser);
     return XML_ERROR_NONE;
 }
+#[c2rust::src_loc = "6491:1"]
 unsafe extern "C" fn errorProcessor(
     mut parser: XML_Parser,
     mut _s: *const ::core::ffi::c_char,
@@ -8395,6 +10260,7 @@ unsafe extern "C" fn errorProcessor(
 ) -> XML_Error {
     return (*parser).m_errorCode;
 }
+#[c2rust::src_loc = "6500:1"]
 unsafe extern "C" fn storeAttributeValue(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -8462,8 +10328,8 @@ unsafe extern "C" fn storeAttributeValue(
                     __assert_fail(
                         b"parser->m_openAttributeEntities == openEntity\0" as *const u8
                             as *const ::core::ffi::c_char,
-                        b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                            as *const ::core::ffi::c_char,
+                        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                            as *const u8 as *const ::core::ffi::c_char,
                         6553 as ::core::ffi::c_uint,
                         b"enum XML_Error storeAttributeValue(XML_Parser, const ENCODING *, XML_Bool, const char *, const char *, STRING_POOL *, enum XML_Account)\0"
                             as *const u8 as *const ::core::ffi::c_char,
@@ -8505,6 +10371,7 @@ unsafe extern "C" fn storeAttributeValue(
     }
     return XML_ERROR_NONE;
 }
+#[c2rust::src_loc = "6577:1"]
 unsafe extern "C" fn appendAttributeValue(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -8594,10 +10461,10 @@ unsafe extern "C" fn appendAttributeValue(
             }
             XML_TOK_TRAILING_CR => {
                 next = ptr.offset((*enc).minBytesPerChar as isize);
-                current_block_70 = 15032547745824597750;
+                current_block_70 = 1987954931741999833;
             }
             XML_TOK_ATTRIBUTE_VALUE_S | XML_TOK_DATA_NEWLINE => {
-                current_block_70 = 15032547745824597750;
+                current_block_70 = 1987954931741999833;
             }
             XML_TOK_ENTITY_REF => {
                 let mut name: *const XML_Char = ::core::ptr::null::<XML_Char>();
@@ -8718,7 +10585,7 @@ unsafe extern "C" fn appendAttributeValue(
             }
         }
         match current_block_70 {
-            15032547745824597750 => {
+            1987954931741999833 => {
                 if !(isCdata == 0
                     && ((*pool).ptr.offset_from((*pool).start) as ::core::ffi::c_long
                         == 0 as ::core::ffi::c_long
@@ -8744,6 +10611,7 @@ unsafe extern "C" fn appendAttributeValue(
         ptr = next;
     }
 }
+#[c2rust::src_loc = "6771:1"]
 unsafe extern "C" fn storeEntityValue(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -8885,10 +10753,10 @@ unsafe extern "C" fn storeEntityValue(
                 }
                 XML_TOK_TRAILING_CR => {
                     next = entityTextPtr.offset((*enc).minBytesPerChar as isize);
-                    current_block = 8419051217557989728;
+                    current_block = 14913579936405700701;
                 }
                 XML_TOK_DATA_NEWLINE => {
-                    current_block = 8419051217557989728;
+                    current_block = 14913579936405700701;
                 }
                 XML_TOK_CHAR_REF => {
                     let mut buf: [XML_Char; 4] = [0; 4];
@@ -8948,7 +10816,7 @@ unsafe extern "C" fn storeEntityValue(
                 }
             }
             match current_block {
-                8419051217557989728 => {
+                14913579936405700701 => {
                     if (*pool).end == (*pool).ptr as *const XML_Char && poolGrow(pool) == 0 {
                         result = XML_ERROR_NO_MEMORY;
                         break;
@@ -8969,6 +10837,7 @@ unsafe extern "C" fn storeEntityValue(
     }
     return result;
 }
+#[c2rust::src_loc = "6952:1"]
 unsafe extern "C" fn callStoreEntityValue(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -9023,8 +10892,8 @@ unsafe extern "C" fn callStoreEntityValue(
                     __assert_fail(
                         b"parser->m_openValueEntities == openEntity\0" as *const u8
                             as *const ::core::ffi::c_char,
-                        b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                            as *const ::core::ffi::c_char,
+                        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                            as *const u8 as *const ::core::ffi::c_char,
                         7004 as ::core::ffi::c_uint,
                         b"enum XML_Error callStoreEntityValue(XML_Parser, const ENCODING *, const char *, const char *, enum XML_Account)\0"
                             as *const u8 as *const ::core::ffi::c_char,
@@ -9045,6 +10914,7 @@ unsafe extern "C" fn callStoreEntityValue(
     }
     return result;
 }
+#[c2rust::src_loc = "7049:1"]
 unsafe extern "C" fn normalizeLines(mut s: *mut XML_Char) {
     let mut p: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
     loop {
@@ -9079,6 +10949,7 @@ unsafe extern "C" fn normalizeLines(mut s: *mut XML_Char) {
     }
     *p = '\0' as i32 as XML_Char;
 }
+#[c2rust::src_loc = "7070:1"]
 unsafe extern "C" fn reportProcessingInstruction(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -9117,6 +10988,7 @@ unsafe extern "C" fn reportProcessingInstruction(
     poolClear(&raw mut (*parser).m_tempPool);
     return 1 as ::core::ffi::c_int;
 }
+#[c2rust::src_loc = "7097:1"]
 unsafe extern "C" fn reportComment(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -9146,6 +11018,7 @@ unsafe extern "C" fn reportComment(
     poolClear(&raw mut (*parser).m_tempPool);
     return 1 as ::core::ffi::c_int;
 }
+#[c2rust::src_loc = "7117:1"]
 unsafe extern "C" fn reportDefault(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -9203,6 +11076,7 @@ unsafe extern "C" fn reportDefault(
         );
     };
 }
+#[c2rust::src_loc = "7164:1"]
 unsafe extern "C" fn defineAttribute(
     mut type_0: *mut ELEMENT_TYPE,
     mut attId: *mut ATTRIBUTE_ID,
@@ -9271,6 +11145,7 @@ unsafe extern "C" fn defineAttribute(
     (*type_0).nDefaultAtts += 1 as ::core::ffi::c_int;
     return 1 as ::core::ffi::c_int;
 }
+#[c2rust::src_loc = "7225:1"]
 unsafe extern "C" fn setElementTypePrefix(
     mut parser: XML_Parser,
     mut elementType: *mut ELEMENT_TYPE,
@@ -9334,6 +11209,7 @@ unsafe extern "C" fn setElementTypePrefix(
     }
     return 1 as ::core::ffi::c_int;
 }
+#[c2rust::src_loc = "7254:1"]
 unsafe extern "C" fn getAttributeId(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -9463,6 +11339,7 @@ unsafe extern "C" fn getAttributeId(
     }
     return id;
 }
+#[c2rust::src_loc = "7317:1"]
 unsafe extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
@@ -9646,6 +11523,7 @@ unsafe extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
     }
     return (*parser).m_tempPool.start;
 }
+#[c2rust::src_loc = "7413:1"]
 unsafe extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -> XML_Bool {
     if context.is_null() {
         return XML_FALSE;
@@ -9791,6 +11669,7 @@ unsafe extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_
     }
     return XML_TRUE;
 }
+#[c2rust::src_loc = "7477:1"]
 unsafe extern "C" fn normalizePublicId(mut publicId: *mut XML_Char) {
     let mut p: *mut XML_Char = publicId;
     let mut s: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
@@ -9823,6 +11702,7 @@ unsafe extern "C" fn normalizePublicId(mut publicId: *mut XML_Char) {
     }
     *p = '\0' as i32 as XML_Char;
 }
+#[c2rust::src_loc = "7498:1"]
 unsafe extern "C" fn dtdCreate(mut parser: XML_Parser) -> *mut DTD {
     let mut p: *mut DTD = expat_malloc(
         parser,
@@ -9854,6 +11734,7 @@ unsafe extern "C" fn dtdCreate(mut parser: XML_Parser) -> *mut DTD {
     (*p).standalone = XML_FALSE;
     return p;
 }
+#[c2rust::src_loc = "7530:1"]
 unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: XML_Parser) {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         p: ::core::ptr::null_mut::<*mut NAMED>(),
@@ -9904,6 +11785,7 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: XML_Parser) {
     (*p).hasParamEntityRefs = XML_FALSE;
     (*p).standalone = XML_FALSE;
 }
+#[c2rust::src_loc = "7571:1"]
 unsafe extern "C" fn dtdDestroy(
     mut p: *mut DTD,
     mut isDocEntity: XML_Bool,
@@ -9952,6 +11834,7 @@ unsafe extern "C" fn dtdDestroy(
         7595 as ::core::ffi::c_int,
     );
 }
+#[c2rust::src_loc = "7601:1"]
 unsafe extern "C" fn dtdCopy(
     mut oldParser: XML_Parser,
     mut newDtd: *mut DTD,
@@ -10142,6 +12025,7 @@ unsafe extern "C" fn dtdCopy(
     (*newDtd).scaffIndex = (*oldDtd).scaffIndex;
     return 1 as ::core::ffi::c_int;
 }
+#[c2rust::src_loc = "7736:1"]
 unsafe extern "C" fn copyEntityTable(
     mut oldParser: XML_Parser,
     mut newTable: *mut HASH_TABLE,
@@ -10222,7 +12106,9 @@ unsafe extern "C" fn copyEntityTable(
     }
     return 1 as ::core::ffi::c_int;
 }
+#[c2rust::src_loc = "7799:9"]
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
+#[c2rust::src_loc = "7801:1"]
 unsafe extern "C" fn keyeq(mut s1: KEY, mut s2: KEY) -> XML_Bool {
     while *s1 as ::core::ffi::c_int == *s2 as ::core::ffi::c_int {
         if *s1 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
@@ -10233,6 +12119,7 @@ unsafe extern "C" fn keyeq(mut s1: KEY, mut s2: KEY) -> XML_Bool {
     }
     return XML_FALSE;
 }
+#[c2rust::src_loc = "7809:1"]
 unsafe extern "C" fn keylen(mut s: KEY) -> size_t {
     let mut len: size_t = 0 as size_t;
     while *s != 0 {
@@ -10241,10 +12128,12 @@ unsafe extern "C" fn keylen(mut s: KEY) -> size_t {
     }
     return len;
 }
+#[c2rust::src_loc = "7817:1"]
 unsafe extern "C" fn copy_salt_to_sipkey(mut parser: XML_Parser, mut key: *mut sipkey) {
     (*key).k[0 as ::core::ffi::c_int as usize] = 0 as uint64_t;
     (*key).k[1 as ::core::ffi::c_int as usize] = get_hash_secret_salt(parser) as uint64_t;
 }
+#[c2rust::src_loc = "7823:1"]
 unsafe extern "C" fn hash(mut parser: XML_Parser, mut s: KEY) -> ::core::ffi::c_ulong {
     let mut state: siphash = siphash {
         v0: 0,
@@ -10265,6 +12154,7 @@ unsafe extern "C" fn hash(mut parser: XML_Parser, mut s: KEY) -> ::core::ffi::c_
     );
     return sip24_final(&raw mut state) as ::core::ffi::c_ulong;
 }
+#[c2rust::src_loc = "7834:1"]
 unsafe extern "C" fn lookup(
     mut parser: XML_Parser,
     mut table: *mut HASH_TABLE,
@@ -10420,6 +12310,7 @@ unsafe extern "C" fn lookup(
     (*table).used = (*table).used.wrapping_add(1);
     return *(*table).v.offset(i as isize);
 }
+#[c2rust::src_loc = "7923:1"]
 unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
     let mut i: size_t = 0;
     i = 0 as size_t;
@@ -10435,6 +12326,7 @@ unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
     }
     (*table).used = 0 as size_t;
 }
+#[c2rust::src_loc = "7933:1"]
 unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
     let mut i: size_t = 0;
     i = 0 as size_t;
@@ -10452,6 +12344,7 @@ unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
         7938 as ::core::ffi::c_int,
     );
 }
+#[c2rust::src_loc = "7941:1"]
 unsafe extern "C" fn hashTableInit(mut p: *mut HASH_TABLE, mut parser: XML_Parser) {
     (*p).power = 0 as ::core::ffi::c_uchar;
     (*p).size = 0 as size_t;
@@ -10459,6 +12352,7 @@ unsafe extern "C" fn hashTableInit(mut p: *mut HASH_TABLE, mut parser: XML_Parse
     (*p).v = ::core::ptr::null_mut::<*mut NAMED>();
     (*p).parser = parser;
 }
+#[c2rust::src_loc = "7950:1"]
 unsafe extern "C" fn hashTableIterInit(
     mut iter: *mut HASH_TABLE_ITER,
     mut table: *const HASH_TABLE,
@@ -10470,6 +12364,7 @@ unsafe extern "C" fn hashTableIterInit(
         ::core::ptr::null_mut::<*mut NAMED>()
     };
 }
+#[c2rust::src_loc = "7956:1"]
 unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut NAMED {
     while (*iter).p != (*iter).end {
         let fresh0 = (*iter).p;
@@ -10481,6 +12376,7 @@ unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut N
     }
     return ::core::ptr::null_mut::<NAMED>();
 }
+#[c2rust::src_loc = "7966:1"]
 unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: XML_Parser) {
     (*pool).blocks = ::core::ptr::null_mut::<BLOCK>();
     (*pool).freeBlocks = ::core::ptr::null_mut::<BLOCK>();
@@ -10489,6 +12385,7 @@ unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: XML_Parser
     (*pool).end = ::core::ptr::null::<XML_Char>();
     (*pool).parser = parser;
 }
+#[c2rust::src_loc = "7976:1"]
 unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
     if (*pool).freeBlocks.is_null() {
         (*pool).freeBlocks = (*pool).blocks;
@@ -10506,6 +12403,7 @@ unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
     (*pool).ptr = ::core::ptr::null_mut::<XML_Char>();
     (*pool).end = ::core::ptr::null::<XML_Char>();
 }
+#[c2rust::src_loc = "7995:1"]
 unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
     let mut p: *mut BLOCK = (*pool).blocks;
     while !p.is_null() {
@@ -10528,6 +12426,7 @@ unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
         p = tem_0;
     }
 }
+#[c2rust::src_loc = "8011:1"]
 unsafe extern "C" fn poolAppend(
     mut pool: *mut STRING_POOL,
     mut enc: *const ENCODING,
@@ -10558,6 +12457,7 @@ unsafe extern "C" fn poolAppend(
     }
     return (*pool).start;
 }
+#[c2rust::src_loc = "8028:1"]
 unsafe extern "C" fn poolCopyString(
     mut pool: *mut STRING_POOL,
     mut s: *const XML_Char,
@@ -10584,6 +12484,7 @@ unsafe extern "C" fn poolCopyString(
     (*pool).start = (*pool).ptr;
     return s;
 }
+#[c2rust::src_loc = "8039:1"]
 unsafe extern "C" fn poolCopyStringN(
     mut pool: *mut STRING_POOL,
     mut s: *const XML_Char,
@@ -10611,6 +12512,7 @@ unsafe extern "C" fn poolCopyStringN(
     (*pool).start = (*pool).ptr;
     return s;
 }
+#[c2rust::src_loc = "8064:1"]
 unsafe extern "C" fn poolAppendString(
     mut pool: *mut STRING_POOL,
     mut s: *const XML_Char,
@@ -10631,6 +12533,7 @@ unsafe extern "C" fn poolAppendString(
     }
     return (*pool).start;
 }
+#[c2rust::src_loc = "8074:1"]
 unsafe extern "C" fn poolStoreString(
     mut pool: *mut STRING_POOL,
     mut enc: *const ENCODING,
@@ -10648,6 +12551,7 @@ unsafe extern "C" fn poolStoreString(
     *fresh10 = 0 as XML_Char;
     return (*pool).start;
 }
+#[c2rust::src_loc = "8085:1"]
 unsafe extern "C" fn poolBytesToAllocateFor(mut blockSize: ::core::ffi::c_int) -> size_t {
     let stretch: size_t = ::core::mem::size_of::<XML_Char>() as size_t;
     if blockSize <= 0 as ::core::ffi::c_int {
@@ -10665,6 +12569,7 @@ unsafe extern "C" fn poolBytesToAllocateFor(mut blockSize: ::core::ffi::c_int) -
     }
     return bytesToAllocate as size_t;
 }
+#[c2rust::src_loc = "8113:1"]
 unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> XML_Bool {
     if !(*pool).freeBlocks.is_null() {
         if (*pool).start.is_null() {
@@ -10774,6 +12679,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> XML_Bool {
     }
     return XML_TRUE;
 }
+#[c2rust::src_loc = "8216:1"]
 unsafe extern "C" fn nextScaffoldPart(mut parser: XML_Parser) -> ::core::ffi::c_int {
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut me: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
@@ -10849,6 +12755,7 @@ unsafe extern "C" fn nextScaffoldPart(mut parser: XML_Parser) -> ::core::ffi::c_
     (*me).firstchild = (*me).lastchild;
     return next;
 }
+#[c2rust::src_loc = "8290:1"]
 unsafe extern "C" fn build_model(mut parser: XML_Parser) -> *mut XML_Content {
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut ret: *mut XML_Content = ::core::ptr::null_mut::<XML_Content>();
@@ -10923,6 +12830,7 @@ unsafe extern "C" fn build_model(mut parser: XML_Parser) -> *mut XML_Content {
     }
     return ret;
 }
+#[c2rust::src_loc = "8420:1"]
 unsafe extern "C" fn getElementType(
     mut parser: XML_Parser,
     mut enc: *const ENCODING,
@@ -10954,6 +12862,7 @@ unsafe extern "C" fn getElementType(
     }
     return ret;
 }
+#[c2rust::src_loc = "8443:1"]
 unsafe extern "C" fn copyString(mut s: *const XML_Char, mut parser: XML_Parser) -> *mut XML_Char {
     let mut charsRequired: size_t = 0 as size_t;
     let mut result: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
@@ -10976,6 +12885,7 @@ unsafe extern "C" fn copyString(mut s: *const XML_Char, mut parser: XML_Parser) 
     );
     return result;
 }
+#[c2rust::src_loc = "8466:1"]
 unsafe extern "C" fn accountingGetCurrentAmplification(
     mut rootParser: XML_Parser,
 ) -> ::core::ffi::c_float {
@@ -10999,7 +12909,7 @@ unsafe extern "C" fn accountingGetCurrentAmplification(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             8480 as ::core::ffi::c_uint,
             b"float accountingGetCurrentAmplification(XML_Parser)\0" as *const u8
@@ -11008,6 +12918,7 @@ unsafe extern "C" fn accountingGetCurrentAmplification(
     };
     return amplificationFactor;
 }
+#[c2rust::src_loc = "8484:1"]
 unsafe extern "C" fn accountingReportStats(
     mut originParser: XML_Parser,
     mut epilog: *const ::core::ffi::c_char,
@@ -11018,7 +12929,7 @@ unsafe extern "C" fn accountingReportStats(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             8487 as ::core::ffi::c_uint,
             b"void accountingReportStats(XML_Parser, const char *)\0" as *const u8
@@ -11041,12 +12952,14 @@ unsafe extern "C" fn accountingReportStats(
         epilog,
     );
 }
+#[c2rust::src_loc = "8503:1"]
 unsafe extern "C" fn accountingOnAbort(mut originParser: XML_Parser) {
     accountingReportStats(
         originParser,
         b" ABORTING\n\0" as *const u8 as *const ::core::ffi::c_char,
     );
 }
+#[c2rust::src_loc = "8508:1"]
 unsafe extern "C" fn accountingReportDiff(
     mut rootParser: XML_Parser,
     mut levelsAwayFromRootParser: ::core::ffi::c_uint,
@@ -11060,8 +12973,8 @@ unsafe extern "C" fn accountingReportDiff(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const ::core::ffi::c_char,
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                as *const u8 as *const ::core::ffi::c_char,
             8513 as ::core::ffi::c_uint,
             b"void accountingReportDiff(XML_Parser, unsigned int, const char *, const char *, ptrdiff_t, int, enum XML_Account)\0"
                 as *const u8 as *const ::core::ffi::c_char,
@@ -11131,6 +13044,7 @@ unsafe extern "C" fn accountingReportDiff(
     }
     fprintf(stderr, b"\"\n\0" as *const u8 as *const ::core::ffi::c_char);
 }
+#[c2rust::src_loc = "8545:1"]
 unsafe extern "C" fn accountingDiffTolerated(
     mut originParser: XML_Parser,
     mut tok: ::core::ffi::c_int,
@@ -11157,8 +13071,8 @@ unsafe extern "C" fn accountingDiffTolerated(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const ::core::ffi::c_char,
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                as *const u8 as *const ::core::ffi::c_char,
             8566 as ::core::ffi::c_uint,
             b"XML_Bool accountingDiffTolerated(XML_Parser, int, const char *, const char *, int, enum XML_Account)\0"
                 as *const u8 as *const ::core::ffi::c_char,
@@ -11204,6 +13118,7 @@ unsafe extern "C" fn accountingDiffTolerated(
     return tolerated;
 }
 #[no_mangle]
+#[c2rust::src_loc = "8600:1"]
 pub unsafe extern "C" fn testingAccountingGetCountBytesDirect(
     mut parser: XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
@@ -11213,6 +13128,7 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesDirect(
     return (*parser).m_accounting.countBytesDirect as ::core::ffi::c_ulonglong;
 }
 #[no_mangle]
+#[c2rust::src_loc = "8607:1"]
 pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect(
     mut parser: XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
@@ -11221,6 +13137,7 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect(
     }
     return (*parser).m_accounting.countBytesIndirect as ::core::ffi::c_ulonglong;
 }
+#[c2rust::src_loc = "8614:1"]
 unsafe extern "C" fn entityTrackingReportStats(
     mut rootParser: XML_Parser,
     mut entity: *mut ENTITY,
@@ -11231,7 +13148,7 @@ unsafe extern "C" fn entityTrackingReportStats(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             8617 as ::core::ffi::c_uint,
             b"void entityTrackingReportStats(XML_Parser, ENTITY *, const char *, int)\0"
@@ -11264,6 +13181,7 @@ unsafe extern "C" fn entityTrackingReportStats(
         sourceLine,
     );
 }
+#[c2rust::src_loc = "8638:1"]
 unsafe extern "C" fn entityTrackingOnOpen(
     mut originParser: XML_Parser,
     mut entity: *mut ENTITY,
@@ -11275,7 +13193,7 @@ unsafe extern "C" fn entityTrackingOnOpen(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             8641 as ::core::ffi::c_uint,
             b"void entityTrackingOnOpen(XML_Parser, ENTITY *, int)\0" as *const u8
@@ -11299,6 +13217,7 @@ unsafe extern "C" fn entityTrackingOnOpen(
         sourceLine,
     );
 }
+#[c2rust::src_loc = "8653:1"]
 unsafe extern "C" fn entityTrackingOnClose(
     mut originParser: XML_Parser,
     mut entity: *mut ENTITY,
@@ -11310,7 +13229,7 @@ unsafe extern "C" fn entityTrackingOnClose(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             8656 as ::core::ffi::c_uint,
             b"void entityTrackingOnClose(XML_Parser, ENTITY *, int)\0" as *const u8
@@ -11326,6 +13245,7 @@ unsafe extern "C" fn entityTrackingOnClose(
     (*rootParser).m_entity_stats.currentDepth =
         (*rootParser).m_entity_stats.currentDepth.wrapping_sub(1);
 }
+#[c2rust::src_loc = "8664:1"]
 unsafe extern "C" fn getRootParserOf(
     mut parser: XML_Parser,
     mut outLevelDiff: *mut ::core::ffi::c_uint,
@@ -11340,7 +13260,7 @@ unsafe extern "C" fn getRootParserOf(
     } else {
         __assert_fail(
             b"! rootParser->m_parentParser\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
                 as *const ::core::ffi::c_char,
             8672 as ::core::ffi::c_uint,
             b"XML_Parser getRootParserOf(XML_Parser, unsigned int *)\0" as *const u8
@@ -11353,6 +13273,7 @@ unsafe extern "C" fn getRootParserOf(
     return rootParser;
 }
 #[no_mangle]
+#[c2rust::src_loc = "8681:1"]
 pub unsafe extern "C" fn unsignedCharToPrintable(
     mut c: ::core::ffi::c_uchar,
 ) -> *const ::core::ffi::c_char {
@@ -11618,8 +13539,8 @@ pub unsafe extern "C" fn unsignedCharToPrintable(
             } else {
                 __assert_fail(
                     b"0\0" as *const u8 as *const ::core::ffi::c_char,
-                    b"/home/perl/Work/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                        as *const ::core::ffi::c_char,
+                    b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
+                        as *const u8 as *const ::core::ffi::c_char,
                     9198 as ::core::ffi::c_uint,
                     b"const char *unsignedCharToPrintable(unsigned char)\0" as *const u8
                         as *const ::core::ffi::c_char,
@@ -11629,6 +13550,7 @@ pub unsafe extern "C" fn unsignedCharToPrintable(
         }
     };
 }
+#[c2rust::src_loc = "9207:1"]
 unsafe extern "C" fn getDebugLevel(
     mut variableName: *const ::core::ffi::c_char,
     mut defaultDebugLevel: ::core::ffi::c_ulong,
@@ -11651,1059 +13573,6 @@ unsafe extern "C" fn getDebugLevel(
     }
     return debugLevel;
 }
-pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
-pub const XML_FALSE: XML_Bool = 0 as ::core::ffi::c_int as XML_Bool;
-pub const XML_MAJOR_VERSION: ::core::ffi::c_int = 2 as ::core::ffi::c_int;
-pub const XML_MINOR_VERSION: ::core::ffi::c_int = 7 as ::core::ffi::c_int;
-pub const XML_MICRO_VERSION: ::core::ffi::c_int = 4 as ::core::ffi::c_int;
-pub const XML_TOK_TRAILING_RSQB: ::core::ffi::c_int = -5;
-pub const XML_TOK_NONE: ::core::ffi::c_int = -4;
-pub const XML_TOK_TRAILING_CR: ::core::ffi::c_int = -3;
-pub const XML_TOK_PARTIAL_CHAR: ::core::ffi::c_int = -2;
-pub const XML_TOK_PARTIAL: ::core::ffi::c_int = -1;
-pub const XML_TOK_INVALID: ::core::ffi::c_int = 0;
-pub const XML_TOK_START_TAG_WITH_ATTS: ::core::ffi::c_int = 1;
-pub const XML_TOK_START_TAG_NO_ATTS: ::core::ffi::c_int = 2;
-pub const XML_TOK_EMPTY_ELEMENT_WITH_ATTS: ::core::ffi::c_int = 3;
-pub const XML_TOK_EMPTY_ELEMENT_NO_ATTS: ::core::ffi::c_int = 4;
-pub const XML_TOK_END_TAG: ::core::ffi::c_int = 5;
-pub const XML_TOK_DATA_CHARS: ::core::ffi::c_int = 6;
-pub const XML_TOK_DATA_NEWLINE: ::core::ffi::c_int = 7;
-pub const XML_TOK_CDATA_SECT_OPEN: ::core::ffi::c_int = 8;
-pub const XML_TOK_ENTITY_REF: ::core::ffi::c_int = 9;
-pub const XML_TOK_CHAR_REF: ::core::ffi::c_int = 10;
-pub const XML_TOK_PI: ::core::ffi::c_int = 11;
-pub const XML_TOK_XML_DECL: ::core::ffi::c_int = 12;
-pub const XML_TOK_COMMENT: ::core::ffi::c_int = 13;
-pub const XML_TOK_BOM: ::core::ffi::c_int = 14;
-pub const XML_TOK_PROLOG_S: ::core::ffi::c_int = 15;
-pub const XML_TOK_PARAM_ENTITY_REF: ::core::ffi::c_int = 28;
-pub const XML_TOK_INSTANCE_START: ::core::ffi::c_int = 29 as ::core::ffi::c_int;
-pub const XML_TOK_ATTRIBUTE_VALUE_S: ::core::ffi::c_int = 39;
-pub const XML_TOK_CDATA_SECT_CLOSE: ::core::ffi::c_int = 40;
-pub const XML_TOK_IGNORE_SECT: ::core::ffi::c_int = 42;
-pub const GRND_NONBLOCK: ::core::ffi::c_int = 0x1 as ::core::ffi::c_int;
-pub const EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT:
-    ::core::ffi::c_float = 100.0f32;
-pub const EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT: ::core::ffi::c_int =
-    8388608 as ::core::ffi::c_int;
-pub const EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT: ::core::ffi::c_float = 100.0f32;
-pub const EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT: ::core::ffi::c_int =
-    67108864 as ::core::ffi::c_int;
-pub const EXPAT_MALLOC_ALIGNMENT: usize = ::core::mem::size_of::<::core::ffi::c_longlong>();
-pub const EXPAT_MALLOC_PADDING: usize = (::core::mem::size_of::<::core::ffi::c_longlong>()
-    as usize)
-    .wrapping_sub(::core::mem::size_of::<size_t>() as usize);
-pub const XML_CONTEXT_BYTES: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
-unsafe extern "C" fn sip_tokey(
-    mut key: *mut sipkey,
-    mut src: *const ::core::ffi::c_void,
-) -> *mut sipkey {
-    (*key).k[0 as ::core::ffi::c_int as usize] = (*(src as *const ::core::ffi::c_uchar)
-        .offset(0 as ::core::ffi::c_int as isize)
-        as uint64_t)
-        << 0 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 8 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 16 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar).offset(3 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 24 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar).offset(4 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 32 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar).offset(5 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 40 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar).offset(6 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 48 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar).offset(7 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 56 as ::core::ffi::c_int;
-    (*key).k[1 as ::core::ffi::c_int as usize] = (*(src as *const ::core::ffi::c_uchar)
-        .offset(8 as ::core::ffi::c_int as isize)
-        .offset(0 as ::core::ffi::c_int as isize)
-        as uint64_t)
-        << 0 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(1 as ::core::ffi::c_int as isize) as uint64_t)
-            << 8 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(2 as ::core::ffi::c_int as isize) as uint64_t)
-            << 16 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(3 as ::core::ffi::c_int as isize) as uint64_t)
-            << 24 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(4 as ::core::ffi::c_int as isize) as uint64_t)
-            << 32 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(5 as ::core::ffi::c_int as isize) as uint64_t)
-            << 40 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(6 as ::core::ffi::c_int as isize) as uint64_t)
-            << 48 as ::core::ffi::c_int
-        | (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(7 as ::core::ffi::c_int as isize) as uint64_t)
-            << 56 as ::core::ffi::c_int;
-    return key;
-}
-unsafe extern "C" fn sip_round(mut H: *mut siphash, rounds: ::core::ffi::c_int) {
-    let mut i: ::core::ffi::c_int = 0;
-    i = 0 as ::core::ffi::c_int;
-    while i < rounds {
-        (*H).v0 = (*H).v0.wrapping_add((*H).v1);
-        (*H).v1 = (*H).v1 << 13 as ::core::ffi::c_int
-            | (*H).v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
-        (*H).v1 ^= (*H).v0;
-        (*H).v0 = (*H).v0 << 32 as ::core::ffi::c_int
-            | (*H).v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
-        (*H).v2 = (*H).v2.wrapping_add((*H).v3);
-        (*H).v3 = (*H).v3 << 16 as ::core::ffi::c_int
-            | (*H).v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
-        (*H).v3 ^= (*H).v2;
-        (*H).v0 = (*H).v0.wrapping_add((*H).v3);
-        (*H).v3 = (*H).v3 << 21 as ::core::ffi::c_int
-            | (*H).v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
-        (*H).v3 ^= (*H).v0;
-        (*H).v2 = (*H).v2.wrapping_add((*H).v1);
-        (*H).v1 = (*H).v1 << 17 as ::core::ffi::c_int
-            | (*H).v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
-        (*H).v1 ^= (*H).v2;
-        (*H).v2 = (*H).v2 << 32 as ::core::ffi::c_int
-            | (*H).v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
-        i += 1;
-    }
-}
-unsafe extern "C" fn sip24_init(mut H: *mut siphash, mut key: *const sipkey) -> *mut siphash {
-    (*H).v0 = ((0x736f6d65 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-        | 0x70736575 as uint64_t)
-        ^ (*key).k[0 as ::core::ffi::c_int as usize];
-    (*H).v1 = ((0x646f7261 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-        | 0x6e646f6d as uint64_t)
-        ^ (*key).k[1 as ::core::ffi::c_int as usize];
-    (*H).v2 = ((0x6c796765 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-        | 0x6e657261 as uint64_t)
-        ^ (*key).k[0 as ::core::ffi::c_int as usize];
-    (*H).v3 = ((0x74656462 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-        | 0x79746573 as uint64_t)
-        ^ (*key).k[1 as ::core::ffi::c_int as usize];
-    (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
-    (*H).c = 0 as uint64_t;
-    return H;
-}
-unsafe extern "C" fn sip24_update(
-    mut H: *mut siphash,
-    mut src: *const ::core::ffi::c_void,
-    mut len: size_t,
-) -> *mut siphash {
-    let mut p: *const ::core::ffi::c_uchar = src as *const ::core::ffi::c_uchar;
-    let mut pe: *const ::core::ffi::c_uchar = p.offset(len as isize);
-    let mut m: uint64_t = 0;
-    loop {
-        while p < pe
-            && (*H).p
-                < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
-                    (::core::mem::size_of::<[::core::ffi::c_uchar; 8]>() as usize)
-                        .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>() as usize)
-                        as isize,
-                ) as *mut ::core::ffi::c_uchar
-        {
-            let fresh20 = p;
-            p = p.offset(1);
-            let fresh21 = (*H).p;
-            (*H).p = (*H).p.offset(1);
-            *fresh21 = *fresh20;
-        }
-        if (*H).p
-            < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
-                (::core::mem::size_of::<[::core::ffi::c_uchar; 8]>() as usize)
-                    .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>() as usize)
-                    as isize,
-            ) as *mut ::core::ffi::c_uchar
-        {
-            break;
-        }
-        m = ((*H).buf[0 as ::core::ffi::c_int as usize] as uint64_t) << 0 as ::core::ffi::c_int
-            | ((*H).buf[1 as ::core::ffi::c_int as usize] as uint64_t) << 8 as ::core::ffi::c_int
-            | ((*H).buf[2 as ::core::ffi::c_int as usize] as uint64_t) << 16 as ::core::ffi::c_int
-            | ((*H).buf[3 as ::core::ffi::c_int as usize] as uint64_t) << 24 as ::core::ffi::c_int
-            | ((*H).buf[4 as ::core::ffi::c_int as usize] as uint64_t) << 32 as ::core::ffi::c_int
-            | ((*H).buf[5 as ::core::ffi::c_int as usize] as uint64_t) << 40 as ::core::ffi::c_int
-            | ((*H).buf[6 as ::core::ffi::c_int as usize] as uint64_t) << 48 as ::core::ffi::c_int
-            | ((*H).buf[7 as ::core::ffi::c_int as usize] as uint64_t) << 56 as ::core::ffi::c_int;
-        (*H).v3 ^= m;
-        sip_round(H, 2 as ::core::ffi::c_int);
-        (*H).v0 ^= m;
-        (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
-        (*H).c = (*H).c.wrapping_add(8 as uint64_t);
-        if !(p < pe) {
-            break;
-        }
-    }
-    return H;
-}
-unsafe extern "C" fn sip24_final(mut H: *mut siphash) -> uint64_t {
-    let left: ::core::ffi::c_char = (*H)
-        .p
-        .offset_from(&raw mut (*H).buf as *mut ::core::ffi::c_uchar)
-        as ::core::ffi::c_long as ::core::ffi::c_char;
-    let mut b: uint64_t = (*H).c.wrapping_add(left as uint64_t) << 56 as ::core::ffi::c_int;
-    let mut current_block_6: u64;
-    match left as ::core::ffi::c_int {
-        7 => {
-            b |= ((*H).buf[6 as ::core::ffi::c_int as usize] as uint64_t)
-                << 48 as ::core::ffi::c_int;
-            current_block_6 = 17291604759319280473;
-        }
-        6 => {
-            current_block_6 = 17291604759319280473;
-        }
-        5 => {
-            current_block_6 = 11165904375027611982;
-        }
-        4 => {
-            current_block_6 = 8942798874272285748;
-        }
-        3 => {
-            current_block_6 = 10088105032280129918;
-        }
-        2 => {
-            current_block_6 = 7451595412324576926;
-        }
-        1 => {
-            current_block_6 = 5835963018531992539;
-        }
-        0 | _ => {
-            current_block_6 = 5720623009719927633;
-        }
-    }
-    match current_block_6 {
-        17291604759319280473 => {
-            b |= ((*H).buf[5 as ::core::ffi::c_int as usize] as uint64_t)
-                << 40 as ::core::ffi::c_int;
-            current_block_6 = 11165904375027611982;
-        }
-        _ => {}
-    }
-    match current_block_6 {
-        11165904375027611982 => {
-            b |= ((*H).buf[4 as ::core::ffi::c_int as usize] as uint64_t)
-                << 32 as ::core::ffi::c_int;
-            current_block_6 = 8942798874272285748;
-        }
-        _ => {}
-    }
-    match current_block_6 {
-        8942798874272285748 => {
-            b |= ((*H).buf[3 as ::core::ffi::c_int as usize] as uint64_t)
-                << 24 as ::core::ffi::c_int;
-            current_block_6 = 10088105032280129918;
-        }
-        _ => {}
-    }
-    match current_block_6 {
-        10088105032280129918 => {
-            b |= ((*H).buf[2 as ::core::ffi::c_int as usize] as uint64_t)
-                << 16 as ::core::ffi::c_int;
-            current_block_6 = 7451595412324576926;
-        }
-        _ => {}
-    }
-    match current_block_6 {
-        7451595412324576926 => {
-            b |=
-                ((*H).buf[1 as ::core::ffi::c_int as usize] as uint64_t) << 8 as ::core::ffi::c_int;
-            current_block_6 = 5835963018531992539;
-        }
-        _ => {}
-    }
-    match current_block_6 {
-        5835963018531992539 => {
-            b |=
-                ((*H).buf[0 as ::core::ffi::c_int as usize] as uint64_t) << 0 as ::core::ffi::c_int;
-        }
-        _ => {}
-    }
-    (*H).v3 ^= b;
-    sip_round(H, 2 as ::core::ffi::c_int);
-    (*H).v0 ^= b;
-    (*H).v2 ^= 0xff as uint64_t;
-    sip_round(H, 4 as ::core::ffi::c_int);
-    return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
-}
-unsafe extern "C" fn siphash24(
-    mut src: *const ::core::ffi::c_void,
-    mut len: size_t,
-    mut key: *const sipkey,
-) -> uint64_t {
-    let mut state: siphash = siphash {
-        v0: 0 as uint64_t,
-        v1: 0 as uint64_t,
-        v2: 0 as uint64_t,
-        v3: 0 as uint64_t,
-        buf: [
-            0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-        ],
-        p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
-        c: 0 as uint64_t,
-    };
-    return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
-}
-unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
-    static mut vectors: [[::core::ffi::c_uchar; 8]; 64] = [
-        [
-            0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xdd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x47 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xfd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xdc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x39 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x74 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x4f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x80 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x2d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x7e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xfb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x85 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xb7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x99 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x64 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x55 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x18 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xfe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x58 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x37 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xab as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xdf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x82 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xdd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x7a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x22 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xfb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x86 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x84 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x56 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x14 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x7a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x29 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x7f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x47 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x69 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x9c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x4b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xbd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x98 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xc7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x88 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xc8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x85 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xde as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x35 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x17 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x63 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xa5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xac as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xaa as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xde as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x65 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x28 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xef as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x42 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x41 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xfa as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x7c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x51 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x78 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x59 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x38 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xae as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x97 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x34 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xb4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xff as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x81 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x39 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x29 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xdc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x73 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x33 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x59 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x58 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xfc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x42 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x73 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x18 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x35 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x19 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x10 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xdf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xeb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x98 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x51 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xfc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xfe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x52 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x97 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x43 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x64 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x16 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x74 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x6f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x20 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x81 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xec as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x22 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x7f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x99 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xc1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xbd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x83 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x3a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x65 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x13 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x60 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x2b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x28 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xd7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xe1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x91 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xb1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xec as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x25 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x9f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x5f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x60 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x38 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x1b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-        [
-            0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0xeb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x4c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x8a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-        ],
-    ];
-    let mut in_0: [::core::ffi::c_uchar; 64] = [0; 64];
-    let mut k: sipkey = sipkey { k: [0; 2] };
-    let mut i: size_t = 0;
-    sip_tokey(
-        &raw mut k,
-        b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\0" as *const u8
-            as *const ::core::ffi::c_char as *const ::core::ffi::c_void,
-    );
-    i = 0 as size_t;
-    while i < ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() as usize {
-        in_0[i as usize] = i as ::core::ffi::c_uchar;
-        if siphash24(
-            &raw mut in_0 as *mut ::core::ffi::c_uchar as *const ::core::ffi::c_void,
-            i,
-            &raw mut k,
-        ) != (vectors[i as usize][0 as ::core::ffi::c_int as usize] as uint64_t)
-            << 0 as ::core::ffi::c_int
-            | (vectors[i as usize][1 as ::core::ffi::c_int as usize] as uint64_t)
-                << 8 as ::core::ffi::c_int
-            | (vectors[i as usize][2 as ::core::ffi::c_int as usize] as uint64_t)
-                << 16 as ::core::ffi::c_int
-            | (vectors[i as usize][3 as ::core::ffi::c_int as usize] as uint64_t)
-                << 24 as ::core::ffi::c_int
-            | (vectors[i as usize][4 as ::core::ffi::c_int as usize] as uint64_t)
-                << 32 as ::core::ffi::c_int
-            | (vectors[i as usize][5 as ::core::ffi::c_int as usize] as uint64_t)
-                << 40 as ::core::ffi::c_int
-            | (vectors[i as usize][6 as ::core::ffi::c_int as usize] as uint64_t)
-                << 48 as ::core::ffi::c_int
-            | (vectors[i as usize][7 as ::core::ffi::c_int as usize] as uint64_t)
-                << 56 as ::core::ffi::c_int
-        {
-            return 0 as ::core::ffi::c_int;
-        }
-        i = i.wrapping_add(1);
-    }
-    return 1 as ::core::ffi::c_int;
-}
-pub const INT_MAX: ::core::ffi::c_int = __INT_MAX__;
-pub const UINT_MAX: ::core::ffi::c_uint = (__INT_MAX__ as ::core::ffi::c_uint)
-    .wrapping_mul(2 as ::core::ffi::c_uint)
-    .wrapping_add(1 as ::core::ffi::c_uint);
-pub const true_0: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
-pub const false_0: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-pub const EINTR: ::core::ffi::c_int = 4 as ::core::ffi::c_int;
-pub const NULL: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-pub const ASCII_A: ::core::ffi::c_int = 0x41 as ::core::ffi::c_int;
-pub const ASCII_C: ::core::ffi::c_int = 0x43 as ::core::ffi::c_int;
-pub const ASCII_D: ::core::ffi::c_int = 0x44 as ::core::ffi::c_int;
-pub const ASCII_E: ::core::ffi::c_int = 0x45 as ::core::ffi::c_int;
-pub const ASCII_F: ::core::ffi::c_int = 0x46 as ::core::ffi::c_int;
-pub const ASCII_I: ::core::ffi::c_int = 0x49 as ::core::ffi::c_int;
-pub const ASCII_K: ::core::ffi::c_int = 0x4b as ::core::ffi::c_int;
-pub const ASCII_L: ::core::ffi::c_int = 0x4c as ::core::ffi::c_int;
-pub const ASCII_M: ::core::ffi::c_int = 0x4d as ::core::ffi::c_int;
-pub const ASCII_N: ::core::ffi::c_int = 0x4e as ::core::ffi::c_int;
-pub const ASCII_O: ::core::ffi::c_int = 0x4f as ::core::ffi::c_int;
-pub const ASCII_R: ::core::ffi::c_int = 0x52 as ::core::ffi::c_int;
-pub const ASCII_S: ::core::ffi::c_int = 0x53 as ::core::ffi::c_int;
-pub const ASCII_T: ::core::ffi::c_int = 0x54 as ::core::ffi::c_int;
-pub const ASCII_X: ::core::ffi::c_int = 0x58 as ::core::ffi::c_int;
-pub const ASCII_Y: ::core::ffi::c_int = 0x59 as ::core::ffi::c_int;
-pub const ASCII_a: ::core::ffi::c_int = 0x61 as ::core::ffi::c_int;
-pub const ASCII_c: ::core::ffi::c_int = 0x63 as ::core::ffi::c_int;
-pub const ASCII_e: ::core::ffi::c_int = 0x65 as ::core::ffi::c_int;
-pub const ASCII_g: ::core::ffi::c_int = 0x67 as ::core::ffi::c_int;
-pub const ASCII_h: ::core::ffi::c_int = 0x68 as ::core::ffi::c_int;
-pub const ASCII_l: ::core::ffi::c_int = 0x6c as ::core::ffi::c_int;
-pub const ASCII_m: ::core::ffi::c_int = 0x6d as ::core::ffi::c_int;
-pub const ASCII_n: ::core::ffi::c_int = 0x6e as ::core::ffi::c_int;
-pub const ASCII_o: ::core::ffi::c_int = 0x6f as ::core::ffi::c_int;
-pub const ASCII_p: ::core::ffi::c_int = 0x70 as ::core::ffi::c_int;
-pub const ASCII_r: ::core::ffi::c_int = 0x72 as ::core::ffi::c_int;
-pub const ASCII_s: ::core::ffi::c_int = 0x73 as ::core::ffi::c_int;
-pub const ASCII_t: ::core::ffi::c_int = 0x74 as ::core::ffi::c_int;
-pub const ASCII_w: ::core::ffi::c_int = 0x77 as ::core::ffi::c_int;
-pub const ASCII_x: ::core::ffi::c_int = 0x78 as ::core::ffi::c_int;
-pub const ASCII_0: ::core::ffi::c_int = 0x30 as ::core::ffi::c_int;
-pub const ASCII_1: ::core::ffi::c_int = 0x31 as ::core::ffi::c_int;
-pub const ASCII_2: ::core::ffi::c_int = 0x32 as ::core::ffi::c_int;
-pub const ASCII_3: ::core::ffi::c_int = 0x33 as ::core::ffi::c_int;
-pub const ASCII_8: ::core::ffi::c_int = 0x38 as ::core::ffi::c_int;
-pub const ASCII_9: ::core::ffi::c_int = 0x39 as ::core::ffi::c_int;
-pub const ASCII_EXCL: ::core::ffi::c_int = 0x21 as ::core::ffi::c_int;
-pub const ASCII_PERIOD: ::core::ffi::c_int = 0x2e as ::core::ffi::c_int;
-pub const ASCII_COLON: ::core::ffi::c_int = 0x3a as ::core::ffi::c_int;
-pub const ASCII_EQUALS: ::core::ffi::c_int = 0x3d as ::core::ffi::c_int;
-pub const ASCII_LPAREN: ::core::ffi::c_int = 0x28 as ::core::ffi::c_int;
-pub const ASCII_SLASH: ::core::ffi::c_int = 0x2f as ::core::ffi::c_int;
-pub const ASCII_HASH: ::core::ffi::c_int = 0x23 as ::core::ffi::c_int;
-pub const ASCII_PIPE: ::core::ffi::c_int = 0x7c as ::core::ffi::c_int;
-pub const ASCII_COMMA: ::core::ffi::c_int = 0x2c as ::core::ffi::c_int;
-pub const __INT_MAX__: ::core::ffi::c_int = 2147483647 as ::core::ffi::c_int;
 unsafe extern "C" fn run_static_initializers() {
     xmlLen = (::core::mem::size_of::<[XML_Char; 37]>() as ::core::ffi::c_int as usize)
         .wrapping_div(::core::mem::size_of::<XML_Char>() as usize)
