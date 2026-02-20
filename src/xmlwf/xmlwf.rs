@@ -68,7 +68,9 @@ pub mod struct_FILE_h {
     }
     #[c2rust::src_loc = "45:1"]
     pub type _IO_lock_t = ();
-    use super::types_h::{__off64_t, __off_t, __uint64_t};
+    use super::types_h::__off64_t;
+    use super::types_h::__off_t;
+    use super::types_h::__uint64_t;
     extern "C" {
         #[c2rust::src_loc = "40:1"]
         pub type _IO_wide_data;
@@ -291,7 +293,10 @@ pub mod expat_h {
     pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
     #[c2rust::src_loc = "60:11"]
     pub const XML_FALSE: XML_Bool = 0 as ::core::ffi::c_int as XML_Bool;
-    use super::expat_external_h::{XML_Char, XML_Index, XML_LChar, XML_Size};
+    use super::expat_external_h::XML_Char;
+    use super::expat_external_h::XML_Index;
+    use super::expat_external_h::XML_LChar;
+    use super::expat_external_h::XML_Size;
     extern "C" {
         #[c2rust::src_loc = "55:1"]
         pub type XML_ParserStruct;
@@ -567,53 +572,137 @@ pub mod internal {
     pub const __INT_MAX__: ::core::ffi::c_int = 2147483647 as ::core::ffi::c_int;
 }
 pub use self::__stddef_size_t_h::size_t;
-pub use self::assert_h::{__assert_fail, __ASSERT_FUNCTION};
-use self::codepage_h::{codepageConvert, codepageMap};
+
+pub use self::assert_h::__assert_fail;
+pub use self::assert_h::__ASSERT_FUNCTION;
+use self::codepage_h::codepageConvert;
+use self::codepage_h::codepageMap;
 use self::errno_h::__errno_location;
-pub use self::expat_external_h::{XML_Char, XML_Index, XML_LChar, XML_Size};
-pub use self::expat_h::{
-    XML_Bool, XML_CharacterDataHandler, XML_CommentHandler, XML_DefaultCurrent, XML_DefaultHandler,
-    XML_Encoding, XML_EndCdataSectionHandler, XML_EndDoctypeDeclHandler, XML_EndElementHandler,
-    XML_EndNamespaceDeclHandler, XML_EntityDeclHandler, XML_ExpatVersion, XML_Feature,
-    XML_FeatureEnum, XML_GetBase, XML_GetCurrentByteCount, XML_GetCurrentByteIndex,
-    XML_GetCurrentColumnNumber, XML_GetCurrentLineNumber, XML_GetFeatureList,
-    XML_GetIdAttributeIndex, XML_GetSpecifiedAttributeCount, XML_NotStandaloneHandler,
-    XML_NotationDeclHandler, XML_ParamEntityParsing, XML_Parser, XML_ParserCreate,
-    XML_ParserCreateNS, XML_ParserFree, XML_ParserStruct, XML_ProcessingInstructionHandler,
-    XML_SetAllocTrackerActivationThreshold, XML_SetAllocTrackerMaximumAmplification,
-    XML_SetBillionLaughsAttackProtectionActivationThreshold,
-    XML_SetBillionLaughsAttackProtectionMaximumAmplification, XML_SetCdataSectionHandler,
-    XML_SetCharacterDataHandler, XML_SetCommentHandler, XML_SetDefaultHandler,
-    XML_SetDoctypeDeclHandler, XML_SetElementHandler, XML_SetEntityDeclHandler,
-    XML_SetNamespaceDeclHandler, XML_SetNotStandaloneHandler, XML_SetNotationDeclHandler,
-    XML_SetParamEntityParsing, XML_SetProcessingInstructionHandler, XML_SetReparseDeferralEnabled,
-    XML_SetUnknownEncodingHandler, XML_SetUserData, XML_StartCdataSectionHandler,
-    XML_StartDoctypeDeclHandler, XML_StartElementHandler, XML_StartNamespaceDeclHandler,
-    XML_UnknownEncodingHandler, XML_UseParserAsHandlerArg, XML_FALSE,
-    XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
-    XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT, XML_FEATURE_ATTR_INFO,
-    XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
-    XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT,
-    XML_FEATURE_CONTEXT_BYTES, XML_FEATURE_DTD, XML_FEATURE_END, XML_FEATURE_GE,
-    XML_FEATURE_LARGE_SIZE, XML_FEATURE_MIN_SIZE, XML_FEATURE_NS, XML_FEATURE_SIZEOF_XML_CHAR,
-    XML_FEATURE_SIZEOF_XML_LCHAR, XML_FEATURE_UNICODE, XML_FEATURE_UNICODE_WCHAR_T,
-    XML_PARAM_ENTITY_PARSING_ALWAYS, XML_PARAM_ENTITY_PARSING_NEVER,
-    XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE, XML_TRUE,
-};
+
+pub use self::expat_external_h::XML_Char;
+pub use self::expat_external_h::XML_Index;
+pub use self::expat_external_h::XML_LChar;
+pub use self::expat_external_h::XML_Size;
+pub use self::expat_h::XML_Bool;
+pub use self::expat_h::XML_CharacterDataHandler;
+pub use self::expat_h::XML_CommentHandler;
+pub use self::expat_h::XML_DefaultCurrent;
+pub use self::expat_h::XML_DefaultHandler;
+pub use self::expat_h::XML_Encoding;
+pub use self::expat_h::XML_EndCdataSectionHandler;
+pub use self::expat_h::XML_EndDoctypeDeclHandler;
+pub use self::expat_h::XML_EndElementHandler;
+pub use self::expat_h::XML_EndNamespaceDeclHandler;
+pub use self::expat_h::XML_EntityDeclHandler;
+pub use self::expat_h::XML_ExpatVersion;
+pub use self::expat_h::XML_Feature;
+pub use self::expat_h::XML_FeatureEnum;
+pub use self::expat_h::XML_GetBase;
+pub use self::expat_h::XML_GetCurrentByteCount;
+pub use self::expat_h::XML_GetCurrentByteIndex;
+pub use self::expat_h::XML_GetCurrentColumnNumber;
+pub use self::expat_h::XML_GetCurrentLineNumber;
+pub use self::expat_h::XML_GetFeatureList;
+pub use self::expat_h::XML_GetIdAttributeIndex;
+pub use self::expat_h::XML_GetSpecifiedAttributeCount;
+pub use self::expat_h::XML_NotStandaloneHandler;
+pub use self::expat_h::XML_NotationDeclHandler;
+pub use self::expat_h::XML_ParamEntityParsing;
+pub use self::expat_h::XML_Parser;
+pub use self::expat_h::XML_ParserCreate;
+pub use self::expat_h::XML_ParserCreateNS;
+pub use self::expat_h::XML_ParserFree;
+pub use self::expat_h::XML_ParserStruct;
+pub use self::expat_h::XML_ProcessingInstructionHandler;
+pub use self::expat_h::XML_SetAllocTrackerActivationThreshold;
+pub use self::expat_h::XML_SetAllocTrackerMaximumAmplification;
+pub use self::expat_h::XML_SetBillionLaughsAttackProtectionActivationThreshold;
+pub use self::expat_h::XML_SetBillionLaughsAttackProtectionMaximumAmplification;
+pub use self::expat_h::XML_SetCdataSectionHandler;
+pub use self::expat_h::XML_SetCharacterDataHandler;
+pub use self::expat_h::XML_SetCommentHandler;
+pub use self::expat_h::XML_SetDefaultHandler;
+pub use self::expat_h::XML_SetDoctypeDeclHandler;
+pub use self::expat_h::XML_SetElementHandler;
+pub use self::expat_h::XML_SetEntityDeclHandler;
+pub use self::expat_h::XML_SetNamespaceDeclHandler;
+pub use self::expat_h::XML_SetNotStandaloneHandler;
+pub use self::expat_h::XML_SetNotationDeclHandler;
+pub use self::expat_h::XML_SetParamEntityParsing;
+pub use self::expat_h::XML_SetProcessingInstructionHandler;
+pub use self::expat_h::XML_SetReparseDeferralEnabled;
+pub use self::expat_h::XML_SetUnknownEncodingHandler;
+pub use self::expat_h::XML_SetUserData;
+pub use self::expat_h::XML_StartCdataSectionHandler;
+pub use self::expat_h::XML_StartDoctypeDeclHandler;
+pub use self::expat_h::XML_StartElementHandler;
+pub use self::expat_h::XML_StartNamespaceDeclHandler;
+pub use self::expat_h::XML_UnknownEncodingHandler;
+pub use self::expat_h::XML_UseParserAsHandlerArg;
+pub use self::expat_h::XML_FALSE;
+pub use self::expat_h::XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
+pub use self::expat_h::XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use self::expat_h::XML_FEATURE_ATTR_INFO;
+pub use self::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
+pub use self::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use self::expat_h::XML_FEATURE_CONTEXT_BYTES;
+pub use self::expat_h::XML_FEATURE_DTD;
+pub use self::expat_h::XML_FEATURE_END;
+pub use self::expat_h::XML_FEATURE_GE;
+pub use self::expat_h::XML_FEATURE_LARGE_SIZE;
+pub use self::expat_h::XML_FEATURE_MIN_SIZE;
+pub use self::expat_h::XML_FEATURE_NS;
+pub use self::expat_h::XML_FEATURE_SIZEOF_XML_CHAR;
+pub use self::expat_h::XML_FEATURE_SIZEOF_XML_LCHAR;
+pub use self::expat_h::XML_FEATURE_UNICODE;
+pub use self::expat_h::XML_FEATURE_UNICODE_WCHAR_T;
+pub use self::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS;
+pub use self::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
+pub use self::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE;
+pub use self::expat_h::XML_TRUE;
 pub use self::limits_h::INT_MAX;
-pub use self::stdio_h::{
-    fclose, fopen, fprintf, fputs, perror, putc, remove, setvbuf, stderr, stdout, _IOFBF,
-};
-pub use self::stdlib_h::{__compar_fn_t, exit, free, malloc, qsort, strtof, strtoull};
-use self::string_h::{memcpy, strcat, strchr, strcmp, strcpy, strlen, strrchr};
-pub use self::struct_FILE_h::{_IO_codecvt, _IO_lock_t, _IO_marker, _IO_wide_data, _IO_FILE};
-pub use self::types_h::{__off64_t, __off_t, __uint64_t};
-pub use self::xmlfile_h::{
-    g_read_size_bytes, XML_ProcessFile, XML_EXTERNAL_ENTITIES, XML_MAP_FILE,
-};
+
+pub use self::stdio_h::fclose;
+pub use self::stdio_h::fopen;
+pub use self::stdio_h::fprintf;
+pub use self::stdio_h::fputs;
+pub use self::stdio_h::perror;
+pub use self::stdio_h::putc;
+pub use self::stdio_h::remove;
+pub use self::stdio_h::setvbuf;
+pub use self::stdio_h::stderr;
+pub use self::stdio_h::stdout;
+pub use self::stdio_h::_IOFBF;
+pub use self::stdlib_h::__compar_fn_t;
+pub use self::stdlib_h::exit;
+pub use self::stdlib_h::free;
+pub use self::stdlib_h::malloc;
+pub use self::stdlib_h::qsort;
+pub use self::stdlib_h::strtof;
+pub use self::stdlib_h::strtoull;
+use self::string_h::memcpy;
+use self::string_h::strcat;
+use self::string_h::strchr;
+use self::string_h::strcmp;
+use self::string_h::strcpy;
+use self::string_h::strlen;
+use self::string_h::strrchr;
+pub use self::struct_FILE_h::_IO_codecvt;
+pub use self::struct_FILE_h::_IO_lock_t;
+pub use self::struct_FILE_h::_IO_marker;
+pub use self::struct_FILE_h::_IO_wide_data;
+pub use self::struct_FILE_h::_IO_FILE;
+pub use self::types_h::__off64_t;
+pub use self::types_h::__off_t;
+pub use self::types_h::__uint64_t;
+pub use self::xmlfile_h::g_read_size_bytes;
+pub use self::xmlfile_h::XML_ProcessFile;
+pub use self::xmlfile_h::XML_EXTERNAL_ENTITIES;
+pub use self::xmlfile_h::XML_MAP_FILE;
 pub use self::FILE_h::FILE;
 pub use self::__stddef_null_h::NULL;
-pub use self::errno_base_h::{EINVAL, ERANGE};
+pub use self::errno_base_h::EINVAL;
+pub use self::errno_base_h::ERANGE;
 pub use self::internal::__INT_MAX__;
 #[c2rust::src_loc = "69:1"]
 pub type ExitCode = ::core::ffi::c_uint;

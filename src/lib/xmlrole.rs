@@ -186,131 +186,131 @@ pub mod xmltok_h {
 #[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlrole.h:51"]
 pub mod xmlrole_h {
     #[c2rust::src_loc = "45:1"]
-    pub type C2RustUnnamed = ::core::ffi::c_int;
+    pub type C2RustUnnamed_2 = ::core::ffi::c_int;
     #[c2rust::src_loc = "109:3"]
-    pub const XML_ROLE_PARAM_ENTITY_REF: C2RustUnnamed = 60;
+    pub const XML_ROLE_PARAM_ENTITY_REF: C2RustUnnamed_2 = 60;
     #[c2rust::src_loc = "107:3"]
-    pub const XML_ROLE_INNER_PARAM_ENTITY_REF: C2RustUnnamed = 59;
+    pub const XML_ROLE_INNER_PARAM_ENTITY_REF: C2RustUnnamed_2 = 59;
     #[c2rust::src_loc = "106:3"]
-    pub const XML_ROLE_IGNORE_SECT: C2RustUnnamed = 58;
+    pub const XML_ROLE_IGNORE_SECT: C2RustUnnamed_2 = 58;
     #[c2rust::src_loc = "105:3"]
-    pub const XML_ROLE_TEXT_DECL: C2RustUnnamed = 57;
+    pub const XML_ROLE_TEXT_DECL: C2RustUnnamed_2 = 57;
     #[c2rust::src_loc = "103:3"]
-    pub const XML_ROLE_COMMENT: C2RustUnnamed = 56;
+    pub const XML_ROLE_COMMENT: C2RustUnnamed_2 = 56;
     #[c2rust::src_loc = "102:3"]
-    pub const XML_ROLE_PI: C2RustUnnamed = 55;
+    pub const XML_ROLE_PI: C2RustUnnamed_2 = 55;
     #[c2rust::src_loc = "101:3"]
-    pub const XML_ROLE_CONTENT_ELEMENT_PLUS: C2RustUnnamed = 54;
+    pub const XML_ROLE_CONTENT_ELEMENT_PLUS: C2RustUnnamed_2 = 54;
     #[c2rust::src_loc = "100:3"]
-    pub const XML_ROLE_CONTENT_ELEMENT_OPT: C2RustUnnamed = 53;
+    pub const XML_ROLE_CONTENT_ELEMENT_OPT: C2RustUnnamed_2 = 53;
     #[c2rust::src_loc = "99:3"]
-    pub const XML_ROLE_CONTENT_ELEMENT_REP: C2RustUnnamed = 52;
+    pub const XML_ROLE_CONTENT_ELEMENT_REP: C2RustUnnamed_2 = 52;
     #[c2rust::src_loc = "98:3"]
-    pub const XML_ROLE_CONTENT_ELEMENT: C2RustUnnamed = 51;
+    pub const XML_ROLE_CONTENT_ELEMENT: C2RustUnnamed_2 = 51;
     #[c2rust::src_loc = "97:3"]
-    pub const XML_ROLE_GROUP_SEQUENCE: C2RustUnnamed = 50;
+    pub const XML_ROLE_GROUP_SEQUENCE: C2RustUnnamed_2 = 50;
     #[c2rust::src_loc = "96:3"]
-    pub const XML_ROLE_GROUP_CHOICE: C2RustUnnamed = 49;
+    pub const XML_ROLE_GROUP_CHOICE: C2RustUnnamed_2 = 49;
     #[c2rust::src_loc = "95:3"]
-    pub const XML_ROLE_GROUP_CLOSE_PLUS: C2RustUnnamed = 48;
+    pub const XML_ROLE_GROUP_CLOSE_PLUS: C2RustUnnamed_2 = 48;
     #[c2rust::src_loc = "94:3"]
-    pub const XML_ROLE_GROUP_CLOSE_OPT: C2RustUnnamed = 47;
+    pub const XML_ROLE_GROUP_CLOSE_OPT: C2RustUnnamed_2 = 47;
     #[c2rust::src_loc = "93:3"]
-    pub const XML_ROLE_GROUP_CLOSE_REP: C2RustUnnamed = 46;
+    pub const XML_ROLE_GROUP_CLOSE_REP: C2RustUnnamed_2 = 46;
     #[c2rust::src_loc = "92:3"]
-    pub const XML_ROLE_GROUP_CLOSE: C2RustUnnamed = 45;
+    pub const XML_ROLE_GROUP_CLOSE: C2RustUnnamed_2 = 45;
     #[c2rust::src_loc = "91:3"]
-    pub const XML_ROLE_GROUP_OPEN: C2RustUnnamed = 44;
+    pub const XML_ROLE_GROUP_OPEN: C2RustUnnamed_2 = 44;
     #[c2rust::src_loc = "90:3"]
-    pub const XML_ROLE_CONTENT_PCDATA: C2RustUnnamed = 43;
+    pub const XML_ROLE_CONTENT_PCDATA: C2RustUnnamed_2 = 43;
     #[c2rust::src_loc = "89:3"]
-    pub const XML_ROLE_CONTENT_EMPTY: C2RustUnnamed = 42;
+    pub const XML_ROLE_CONTENT_EMPTY: C2RustUnnamed_2 = 42;
     #[c2rust::src_loc = "88:3"]
-    pub const XML_ROLE_CONTENT_ANY: C2RustUnnamed = 41;
+    pub const XML_ROLE_CONTENT_ANY: C2RustUnnamed_2 = 41;
     #[c2rust::src_loc = "87:3"]
-    pub const XML_ROLE_ELEMENT_NAME: C2RustUnnamed = 40;
+    pub const XML_ROLE_ELEMENT_NAME: C2RustUnnamed_2 = 40;
     #[c2rust::src_loc = "86:3"]
-    pub const XML_ROLE_ELEMENT_NONE: C2RustUnnamed = 39;
+    pub const XML_ROLE_ELEMENT_NONE: C2RustUnnamed_2 = 39;
     #[c2rust::src_loc = "85:3"]
-    pub const XML_ROLE_FIXED_ATTRIBUTE_VALUE: C2RustUnnamed = 38;
+    pub const XML_ROLE_FIXED_ATTRIBUTE_VALUE: C2RustUnnamed_2 = 38;
     #[c2rust::src_loc = "84:3"]
-    pub const XML_ROLE_DEFAULT_ATTRIBUTE_VALUE: C2RustUnnamed = 37;
+    pub const XML_ROLE_DEFAULT_ATTRIBUTE_VALUE: C2RustUnnamed_2 = 37;
     #[c2rust::src_loc = "83:3"]
-    pub const XML_ROLE_REQUIRED_ATTRIBUTE_VALUE: C2RustUnnamed = 36;
+    pub const XML_ROLE_REQUIRED_ATTRIBUTE_VALUE: C2RustUnnamed_2 = 36;
     #[c2rust::src_loc = "82:3"]
-    pub const XML_ROLE_IMPLIED_ATTRIBUTE_VALUE: C2RustUnnamed = 35;
+    pub const XML_ROLE_IMPLIED_ATTRIBUTE_VALUE: C2RustUnnamed_2 = 35;
     #[c2rust::src_loc = "81:3"]
-    pub const XML_ROLE_ATTLIST_ELEMENT_NAME: C2RustUnnamed = 34;
+    pub const XML_ROLE_ATTLIST_ELEMENT_NAME: C2RustUnnamed_2 = 34;
     #[c2rust::src_loc = "80:3"]
-    pub const XML_ROLE_ATTLIST_NONE: C2RustUnnamed = 33;
+    pub const XML_ROLE_ATTLIST_NONE: C2RustUnnamed_2 = 33;
     #[c2rust::src_loc = "79:3"]
-    pub const XML_ROLE_ATTRIBUTE_NOTATION_VALUE: C2RustUnnamed = 32;
+    pub const XML_ROLE_ATTRIBUTE_NOTATION_VALUE: C2RustUnnamed_2 = 32;
     #[c2rust::src_loc = "78:3"]
-    pub const XML_ROLE_ATTRIBUTE_ENUM_VALUE: C2RustUnnamed = 31;
+    pub const XML_ROLE_ATTRIBUTE_ENUM_VALUE: C2RustUnnamed_2 = 31;
     #[c2rust::src_loc = "77:3"]
-    pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS: C2RustUnnamed = 30;
+    pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS: C2RustUnnamed_2 = 30;
     #[c2rust::src_loc = "76:3"]
-    pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN: C2RustUnnamed = 29;
+    pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN: C2RustUnnamed_2 = 29;
     #[c2rust::src_loc = "75:3"]
-    pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITIES: C2RustUnnamed = 28;
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITIES: C2RustUnnamed_2 = 28;
     #[c2rust::src_loc = "74:3"]
-    pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITY: C2RustUnnamed = 27;
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITY: C2RustUnnamed_2 = 27;
     #[c2rust::src_loc = "73:3"]
-    pub const XML_ROLE_ATTRIBUTE_TYPE_IDREFS: C2RustUnnamed = 26;
+    pub const XML_ROLE_ATTRIBUTE_TYPE_IDREFS: C2RustUnnamed_2 = 26;
     #[c2rust::src_loc = "72:3"]
-    pub const XML_ROLE_ATTRIBUTE_TYPE_IDREF: C2RustUnnamed = 25;
+    pub const XML_ROLE_ATTRIBUTE_TYPE_IDREF: C2RustUnnamed_2 = 25;
     #[c2rust::src_loc = "71:3"]
-    pub const XML_ROLE_ATTRIBUTE_TYPE_ID: C2RustUnnamed = 24;
+    pub const XML_ROLE_ATTRIBUTE_TYPE_ID: C2RustUnnamed_2 = 24;
     #[c2rust::src_loc = "70:3"]
-    pub const XML_ROLE_ATTRIBUTE_TYPE_CDATA: C2RustUnnamed = 23;
+    pub const XML_ROLE_ATTRIBUTE_TYPE_CDATA: C2RustUnnamed_2 = 23;
     #[c2rust::src_loc = "69:3"]
-    pub const XML_ROLE_ATTRIBUTE_NAME: C2RustUnnamed = 22;
+    pub const XML_ROLE_ATTRIBUTE_NAME: C2RustUnnamed_2 = 22;
     #[c2rust::src_loc = "68:3"]
-    pub const XML_ROLE_NOTATION_PUBLIC_ID: C2RustUnnamed = 21;
+    pub const XML_ROLE_NOTATION_PUBLIC_ID: C2RustUnnamed_2 = 21;
     #[c2rust::src_loc = "67:3"]
-    pub const XML_ROLE_NOTATION_NO_SYSTEM_ID: C2RustUnnamed = 20;
+    pub const XML_ROLE_NOTATION_NO_SYSTEM_ID: C2RustUnnamed_2 = 20;
     #[c2rust::src_loc = "66:3"]
-    pub const XML_ROLE_NOTATION_SYSTEM_ID: C2RustUnnamed = 19;
+    pub const XML_ROLE_NOTATION_SYSTEM_ID: C2RustUnnamed_2 = 19;
     #[c2rust::src_loc = "65:3"]
-    pub const XML_ROLE_NOTATION_NAME: C2RustUnnamed = 18;
+    pub const XML_ROLE_NOTATION_NAME: C2RustUnnamed_2 = 18;
     #[c2rust::src_loc = "64:3"]
-    pub const XML_ROLE_NOTATION_NONE: C2RustUnnamed = 17;
+    pub const XML_ROLE_NOTATION_NONE: C2RustUnnamed_2 = 17;
     #[c2rust::src_loc = "63:3"]
-    pub const XML_ROLE_ENTITY_NOTATION_NAME: C2RustUnnamed = 16;
+    pub const XML_ROLE_ENTITY_NOTATION_NAME: C2RustUnnamed_2 = 16;
     #[c2rust::src_loc = "62:3"]
-    pub const XML_ROLE_ENTITY_COMPLETE: C2RustUnnamed = 15;
+    pub const XML_ROLE_ENTITY_COMPLETE: C2RustUnnamed_2 = 15;
     #[c2rust::src_loc = "61:3"]
-    pub const XML_ROLE_ENTITY_PUBLIC_ID: C2RustUnnamed = 14;
+    pub const XML_ROLE_ENTITY_PUBLIC_ID: C2RustUnnamed_2 = 14;
     #[c2rust::src_loc = "60:3"]
-    pub const XML_ROLE_ENTITY_SYSTEM_ID: C2RustUnnamed = 13;
+    pub const XML_ROLE_ENTITY_SYSTEM_ID: C2RustUnnamed_2 = 13;
     #[c2rust::src_loc = "59:3"]
-    pub const XML_ROLE_ENTITY_VALUE: C2RustUnnamed = 12;
+    pub const XML_ROLE_ENTITY_VALUE: C2RustUnnamed_2 = 12;
     #[c2rust::src_loc = "58:3"]
-    pub const XML_ROLE_ENTITY_NONE: C2RustUnnamed = 11;
+    pub const XML_ROLE_ENTITY_NONE: C2RustUnnamed_2 = 11;
     #[c2rust::src_loc = "57:3"]
-    pub const XML_ROLE_PARAM_ENTITY_NAME: C2RustUnnamed = 10;
+    pub const XML_ROLE_PARAM_ENTITY_NAME: C2RustUnnamed_2 = 10;
     #[c2rust::src_loc = "56:3"]
-    pub const XML_ROLE_GENERAL_ENTITY_NAME: C2RustUnnamed = 9;
+    pub const XML_ROLE_GENERAL_ENTITY_NAME: C2RustUnnamed_2 = 9;
     #[c2rust::src_loc = "55:3"]
-    pub const XML_ROLE_DOCTYPE_CLOSE: C2RustUnnamed = 8;
+    pub const XML_ROLE_DOCTYPE_CLOSE: C2RustUnnamed_2 = 8;
     #[c2rust::src_loc = "54:3"]
-    pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2RustUnnamed = 7;
+    pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2RustUnnamed_2 = 7;
     #[c2rust::src_loc = "53:3"]
-    pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2RustUnnamed = 6;
+    pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2RustUnnamed_2 = 6;
     #[c2rust::src_loc = "52:3"]
-    pub const XML_ROLE_DOCTYPE_SYSTEM_ID: C2RustUnnamed = 5;
+    pub const XML_ROLE_DOCTYPE_SYSTEM_ID: C2RustUnnamed_2 = 5;
     #[c2rust::src_loc = "51:3"]
-    pub const XML_ROLE_DOCTYPE_NAME: C2RustUnnamed = 4;
+    pub const XML_ROLE_DOCTYPE_NAME: C2RustUnnamed_2 = 4;
     #[c2rust::src_loc = "50:3"]
-    pub const XML_ROLE_DOCTYPE_NONE: C2RustUnnamed = 3;
+    pub const XML_ROLE_DOCTYPE_NONE: C2RustUnnamed_2 = 3;
     #[c2rust::src_loc = "49:3"]
-    pub const XML_ROLE_INSTANCE_START: C2RustUnnamed = 2;
+    pub const XML_ROLE_INSTANCE_START: C2RustUnnamed_2 = 2;
     #[c2rust::src_loc = "48:3"]
-    pub const XML_ROLE_XML_DECL: C2RustUnnamed = 1;
+    pub const XML_ROLE_XML_DECL: C2RustUnnamed_2 = 1;
     #[c2rust::src_loc = "47:3"]
-    pub const XML_ROLE_NONE: C2RustUnnamed = 0;
+    pub const XML_ROLE_NONE: C2RustUnnamed_2 = 0;
     #[c2rust::src_loc = "46:3"]
-    pub const XML_ROLE_ERROR: C2RustUnnamed = -1;
+    pub const XML_ROLE_ERROR: C2RustUnnamed_2 = -1;
     #[derive(Copy, Clone)]
     #[repr(C)]
     #[c2rust::src_loc = "112:9"]
@@ -379,46 +379,134 @@ pub mod ascii_h {
     #[c2rust::src_loc = "60:9"]
     pub const ASCII_Y: ::core::ffi::c_int = 0x59 as ::core::ffi::c_int;
 }
-pub use self::ascii_h::{
-    ASCII_A, ASCII_B, ASCII_C, ASCII_D, ASCII_E, ASCII_F, ASCII_G, ASCII_I, ASCII_K, ASCII_L,
-    ASCII_M, ASCII_N, ASCII_O, ASCII_P, ASCII_Q, ASCII_R, ASCII_S, ASCII_T, ASCII_U, ASCII_X,
-    ASCII_Y,
-};
+pub use self::ascii_h::ASCII_A;
+pub use self::ascii_h::ASCII_B;
+pub use self::ascii_h::ASCII_C;
+pub use self::ascii_h::ASCII_D;
+pub use self::ascii_h::ASCII_E;
+pub use self::ascii_h::ASCII_F;
+pub use self::ascii_h::ASCII_G;
+pub use self::ascii_h::ASCII_I;
+pub use self::ascii_h::ASCII_K;
+pub use self::ascii_h::ASCII_L;
+pub use self::ascii_h::ASCII_M;
+pub use self::ascii_h::ASCII_N;
+pub use self::ascii_h::ASCII_O;
+pub use self::ascii_h::ASCII_P;
+pub use self::ascii_h::ASCII_Q;
+pub use self::ascii_h::ASCII_R;
+pub use self::ascii_h::ASCII_S;
+pub use self::ascii_h::ASCII_T;
+pub use self::ascii_h::ASCII_U;
+pub use self::ascii_h::ASCII_X;
+pub use self::ascii_h::ASCII_Y;
 pub use self::expat_external_h::XML_Size;
-pub use self::xmlrole_h::{
-    prolog_state, C2RustUnnamed, PROLOG_STATE, XML_ROLE_ATTLIST_ELEMENT_NAME,
-    XML_ROLE_ATTLIST_NONE, XML_ROLE_ATTRIBUTE_ENUM_VALUE, XML_ROLE_ATTRIBUTE_NAME,
-    XML_ROLE_ATTRIBUTE_NOTATION_VALUE, XML_ROLE_ATTRIBUTE_TYPE_CDATA,
-    XML_ROLE_ATTRIBUTE_TYPE_ENTITIES, XML_ROLE_ATTRIBUTE_TYPE_ENTITY, XML_ROLE_ATTRIBUTE_TYPE_ID,
-    XML_ROLE_ATTRIBUTE_TYPE_IDREF, XML_ROLE_ATTRIBUTE_TYPE_IDREFS, XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN,
-    XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS, XML_ROLE_COMMENT, XML_ROLE_CONTENT_ANY,
-    XML_ROLE_CONTENT_ELEMENT, XML_ROLE_CONTENT_ELEMENT_OPT, XML_ROLE_CONTENT_ELEMENT_PLUS,
-    XML_ROLE_CONTENT_ELEMENT_REP, XML_ROLE_CONTENT_EMPTY, XML_ROLE_CONTENT_PCDATA,
-    XML_ROLE_DEFAULT_ATTRIBUTE_VALUE, XML_ROLE_DOCTYPE_CLOSE, XML_ROLE_DOCTYPE_INTERNAL_SUBSET,
-    XML_ROLE_DOCTYPE_NAME, XML_ROLE_DOCTYPE_NONE, XML_ROLE_DOCTYPE_PUBLIC_ID,
-    XML_ROLE_DOCTYPE_SYSTEM_ID, XML_ROLE_ELEMENT_NAME, XML_ROLE_ELEMENT_NONE,
-    XML_ROLE_ENTITY_COMPLETE, XML_ROLE_ENTITY_NONE, XML_ROLE_ENTITY_NOTATION_NAME,
-    XML_ROLE_ENTITY_PUBLIC_ID, XML_ROLE_ENTITY_SYSTEM_ID, XML_ROLE_ENTITY_VALUE, XML_ROLE_ERROR,
-    XML_ROLE_FIXED_ATTRIBUTE_VALUE, XML_ROLE_GENERAL_ENTITY_NAME, XML_ROLE_GROUP_CHOICE,
-    XML_ROLE_GROUP_CLOSE, XML_ROLE_GROUP_CLOSE_OPT, XML_ROLE_GROUP_CLOSE_PLUS,
-    XML_ROLE_GROUP_CLOSE_REP, XML_ROLE_GROUP_OPEN, XML_ROLE_GROUP_SEQUENCE, XML_ROLE_IGNORE_SECT,
-    XML_ROLE_IMPLIED_ATTRIBUTE_VALUE, XML_ROLE_INNER_PARAM_ENTITY_REF, XML_ROLE_INSTANCE_START,
-    XML_ROLE_NONE, XML_ROLE_NOTATION_NAME, XML_ROLE_NOTATION_NONE, XML_ROLE_NOTATION_NO_SYSTEM_ID,
-    XML_ROLE_NOTATION_PUBLIC_ID, XML_ROLE_NOTATION_SYSTEM_ID, XML_ROLE_PARAM_ENTITY_NAME,
-    XML_ROLE_PARAM_ENTITY_REF, XML_ROLE_PI, XML_ROLE_REQUIRED_ATTRIBUTE_VALUE, XML_ROLE_TEXT_DECL,
-    XML_ROLE_XML_DECL,
-};
-pub use self::xmltok_h::{
-    encoding, position, XML_Convert_Result, ATTRIBUTE, ENCODING, POSITION, SCANNER,
-    XML_CONVERT_COMPLETED, XML_CONVERT_INPUT_INCOMPLETE, XML_CONVERT_OUTPUT_EXHAUSTED, XML_TOK_BOM,
-    XML_TOK_CLOSE_BRACKET, XML_TOK_CLOSE_PAREN, XML_TOK_CLOSE_PAREN_ASTERISK,
-    XML_TOK_CLOSE_PAREN_PLUS, XML_TOK_CLOSE_PAREN_QUESTION, XML_TOK_COMMA, XML_TOK_COMMENT,
-    XML_TOK_COND_SECT_CLOSE, XML_TOK_COND_SECT_OPEN, XML_TOK_DECL_CLOSE, XML_TOK_DECL_OPEN,
-    XML_TOK_INSTANCE_START, XML_TOK_LITERAL, XML_TOK_NAME, XML_TOK_NAME_ASTERISK,
-    XML_TOK_NAME_PLUS, XML_TOK_NAME_QUESTION, XML_TOK_NMTOKEN, XML_TOK_NONE, XML_TOK_OPEN_BRACKET,
-    XML_TOK_OPEN_PAREN, XML_TOK_OR, XML_TOK_PARAM_ENTITY_REF, XML_TOK_PERCENT, XML_TOK_PI,
-    XML_TOK_POUND_NAME, XML_TOK_PREFIXED_NAME, XML_TOK_PROLOG_S, XML_TOK_XML_DECL,
-};
+
+pub use self::xmlrole_h::prolog_state;
+pub use self::xmlrole_h::C2RustUnnamed_2;
+pub use self::xmlrole_h::PROLOG_STATE;
+pub use self::xmlrole_h::XML_ROLE_ATTLIST_ELEMENT_NAME;
+pub use self::xmlrole_h::XML_ROLE_ATTLIST_NONE;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_ENUM_VALUE;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_NAME;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_NOTATION_VALUE;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_CDATA;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_ENTITIES;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_ENTITY;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_ID;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_IDREF;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_IDREFS;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS;
+pub use self::xmlrole_h::XML_ROLE_COMMENT;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ANY;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ELEMENT;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ELEMENT_OPT;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ELEMENT_PLUS;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ELEMENT_REP;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_EMPTY;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_PCDATA;
+pub use self::xmlrole_h::XML_ROLE_DEFAULT_ATTRIBUTE_VALUE;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_CLOSE;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_INTERNAL_SUBSET;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_NAME;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_NONE;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_PUBLIC_ID;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_SYSTEM_ID;
+pub use self::xmlrole_h::XML_ROLE_ELEMENT_NAME;
+pub use self::xmlrole_h::XML_ROLE_ELEMENT_NONE;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_COMPLETE;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_NONE;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_NOTATION_NAME;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_PUBLIC_ID;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_SYSTEM_ID;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_VALUE;
+pub use self::xmlrole_h::XML_ROLE_ERROR;
+pub use self::xmlrole_h::XML_ROLE_FIXED_ATTRIBUTE_VALUE;
+pub use self::xmlrole_h::XML_ROLE_GENERAL_ENTITY_NAME;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CHOICE;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CLOSE;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CLOSE_OPT;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CLOSE_PLUS;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CLOSE_REP;
+pub use self::xmlrole_h::XML_ROLE_GROUP_OPEN;
+pub use self::xmlrole_h::XML_ROLE_GROUP_SEQUENCE;
+pub use self::xmlrole_h::XML_ROLE_IGNORE_SECT;
+pub use self::xmlrole_h::XML_ROLE_IMPLIED_ATTRIBUTE_VALUE;
+pub use self::xmlrole_h::XML_ROLE_INNER_PARAM_ENTITY_REF;
+pub use self::xmlrole_h::XML_ROLE_INSTANCE_START;
+pub use self::xmlrole_h::XML_ROLE_NONE;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_NAME;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_NONE;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_NO_SYSTEM_ID;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_PUBLIC_ID;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_SYSTEM_ID;
+pub use self::xmlrole_h::XML_ROLE_PARAM_ENTITY_NAME;
+pub use self::xmlrole_h::XML_ROLE_PARAM_ENTITY_REF;
+pub use self::xmlrole_h::XML_ROLE_PI;
+pub use self::xmlrole_h::XML_ROLE_REQUIRED_ATTRIBUTE_VALUE;
+pub use self::xmlrole_h::XML_ROLE_TEXT_DECL;
+pub use self::xmlrole_h::XML_ROLE_XML_DECL;
+pub use self::xmltok_h::encoding;
+pub use self::xmltok_h::position;
+pub use self::xmltok_h::XML_Convert_Result;
+pub use self::xmltok_h::ATTRIBUTE;
+pub use self::xmltok_h::ENCODING;
+pub use self::xmltok_h::POSITION;
+pub use self::xmltok_h::SCANNER;
+pub use self::xmltok_h::XML_CONVERT_COMPLETED;
+pub use self::xmltok_h::XML_CONVERT_INPUT_INCOMPLETE;
+pub use self::xmltok_h::XML_CONVERT_OUTPUT_EXHAUSTED;
+pub use self::xmltok_h::XML_TOK_BOM;
+pub use self::xmltok_h::XML_TOK_CLOSE_BRACKET;
+pub use self::xmltok_h::XML_TOK_CLOSE_PAREN;
+pub use self::xmltok_h::XML_TOK_CLOSE_PAREN_ASTERISK;
+pub use self::xmltok_h::XML_TOK_CLOSE_PAREN_PLUS;
+pub use self::xmltok_h::XML_TOK_CLOSE_PAREN_QUESTION;
+pub use self::xmltok_h::XML_TOK_COMMA;
+pub use self::xmltok_h::XML_TOK_COMMENT;
+pub use self::xmltok_h::XML_TOK_COND_SECT_CLOSE;
+pub use self::xmltok_h::XML_TOK_COND_SECT_OPEN;
+pub use self::xmltok_h::XML_TOK_DECL_CLOSE;
+pub use self::xmltok_h::XML_TOK_DECL_OPEN;
+pub use self::xmltok_h::XML_TOK_INSTANCE_START;
+pub use self::xmltok_h::XML_TOK_LITERAL;
+pub use self::xmltok_h::XML_TOK_NAME;
+pub use self::xmltok_h::XML_TOK_NAME_ASTERISK;
+pub use self::xmltok_h::XML_TOK_NAME_PLUS;
+pub use self::xmltok_h::XML_TOK_NAME_QUESTION;
+pub use self::xmltok_h::XML_TOK_NMTOKEN;
+pub use self::xmltok_h::XML_TOK_NONE;
+pub use self::xmltok_h::XML_TOK_OPEN_BRACKET;
+pub use self::xmltok_h::XML_TOK_OPEN_PAREN;
+pub use self::xmltok_h::XML_TOK_OR;
+pub use self::xmltok_h::XML_TOK_PARAM_ENTITY_REF;
+pub use self::xmltok_h::XML_TOK_PERCENT;
+pub use self::xmltok_h::XML_TOK_PI;
+pub use self::xmltok_h::XML_TOK_POUND_NAME;
+pub use self::xmltok_h::XML_TOK_PREFIXED_NAME;
+pub use self::xmltok_h::XML_TOK_PROLOG_S;
+pub use self::xmltok_h::XML_TOK_XML_DECL;
 #[c2rust::src_loc = "122:1"]
 pub type PROLOG_HANDLER = unsafe extern "C" fn(
     *mut PROLOG_STATE,

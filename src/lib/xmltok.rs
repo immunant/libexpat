@@ -329,29 +329,29 @@ pub mod xmltok_impl_h {
 #[c2rust::header_src = "/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmltok_impl.c:232"]
 pub mod xmltok_impl_c {
     #[c2rust::src_loc = "1511:25"]
-    pub const inValue: C2RustUnnamed = 2;
+    pub const inValue: C2RustUnnamed_4 = 2;
     #[c2rust::src_loc = "1511:3"]
-    pub type C2RustUnnamed = ::core::ffi::c_uint;
+    pub type C2RustUnnamed_4 = ::core::ffi::c_uint;
     #[c2rust::src_loc = "1511:17"]
-    pub const inName: C2RustUnnamed = 1;
+    pub const inName: C2RustUnnamed_4 = 1;
     #[c2rust::src_loc = "1511:10"]
-    pub const other: C2RustUnnamed = 0;
+    pub const other: C2RustUnnamed_4 = 0;
     #[c2rust::src_loc = "1511:25"]
-    pub const inValue_0: C2RustUnnamed_0 = 2;
+    pub const inValue_0: C2RustUnnamed_5 = 2;
     #[c2rust::src_loc = "1511:3"]
-    pub type C2RustUnnamed_0 = ::core::ffi::c_uint;
+    pub type C2RustUnnamed_5 = ::core::ffi::c_uint;
     #[c2rust::src_loc = "1511:17"]
-    pub const inName_0: C2RustUnnamed_0 = 1;
+    pub const inName_0: C2RustUnnamed_5 = 1;
     #[c2rust::src_loc = "1511:10"]
-    pub const other_0: C2RustUnnamed_0 = 0;
+    pub const other_0: C2RustUnnamed_5 = 0;
     #[c2rust::src_loc = "1511:25"]
-    pub const inValue_1: C2RustUnnamed_1 = 2;
+    pub const inValue_1: C2RustUnnamed_6 = 2;
     #[c2rust::src_loc = "1511:3"]
-    pub type C2RustUnnamed_1 = ::core::ffi::c_uint;
+    pub type C2RustUnnamed_6 = ::core::ffi::c_uint;
     #[c2rust::src_loc = "1511:17"]
-    pub const inName_1: C2RustUnnamed_1 = 1;
+    pub const inName_1: C2RustUnnamed_6 = 1;
     #[c2rust::src_loc = "1511:10"]
-    pub const other_1: C2RustUnnamed_1 = 0;
+    pub const other_1: C2RustUnnamed_6 = 0;
     #[c2rust::src_loc = "144:1"]
     pub unsafe extern "C" fn normal_scanComment(
         mut enc: *const ENCODING,
@@ -4220,7 +4220,7 @@ pub mod xmltok_impl_c {
         mut attsMax: ::core::ffi::c_int,
         mut atts: *mut ATTRIBUTE,
     ) -> ::core::ffi::c_int {
-        let mut state: C2RustUnnamed = inName;
+        let mut state: C2RustUnnamed_4 = inName;
         let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
@@ -8586,7 +8586,7 @@ pub mod xmltok_impl_c {
         mut attsMax: ::core::ffi::c_int,
         mut atts: *mut ATTRIBUTE,
     ) -> ::core::ffi::c_int {
-        let mut state: C2RustUnnamed_0 = inName_0;
+        let mut state: C2RustUnnamed_5 = inName_0;
         let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
@@ -13178,7 +13178,7 @@ pub mod xmltok_impl_c {
         mut attsMax: ::core::ffi::c_int,
         mut atts: *mut ATTRIBUTE,
     ) -> ::core::ffi::c_int {
-        let mut state: C2RustUnnamed_1 = inName_1;
+        let mut state: C2RustUnnamed_6 = inName_1;
         let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
@@ -13717,32 +13717,106 @@ pub mod xmltok_impl_c {
         }
     }
     use super::__stddef_size_t_h::size_t;
-    use super::ascii_h::{
-        ASCII_a, ASCII_b, ASCII_c, ASCII_d, ASCII_e, ASCII_f, ASCII_g, ASCII_l, ASCII_m, ASCII_q,
-        ASCII_x, ASCII_0, ASCII_1, ASCII_2, ASCII_3, ASCII_4, ASCII_5, ASCII_6, ASCII_7, ASCII_8,
-        ASCII_9, ASCII_A, ASCII_AMP, ASCII_APOS, ASCII_B, ASCII_C, ASCII_D, ASCII_E, ASCII_F,
-        ASCII_GT, ASCII_L, ASCII_LSQB, ASCII_LT, ASCII_M, ASCII_QUOT, ASCII_SPACE, ASCII_T,
-        ASCII_X,
-    };
+    use super::ascii_h::ASCII_a;
+    use super::ascii_h::ASCII_b;
+    use super::ascii_h::ASCII_c;
+    use super::ascii_h::ASCII_d;
+    use super::ascii_h::ASCII_e;
+    use super::ascii_h::ASCII_f;
+    use super::ascii_h::ASCII_g;
+    use super::ascii_h::ASCII_l;
+    use super::ascii_h::ASCII_m;
+    use super::ascii_h::ASCII_q;
+    use super::ascii_h::ASCII_x;
+    use super::ascii_h::ASCII_0;
+    use super::ascii_h::ASCII_1;
+    use super::ascii_h::ASCII_2;
+    use super::ascii_h::ASCII_3;
+    use super::ascii_h::ASCII_4;
+    use super::ascii_h::ASCII_5;
+    use super::ascii_h::ASCII_6;
+    use super::ascii_h::ASCII_7;
+    use super::ascii_h::ASCII_8;
+    use super::ascii_h::ASCII_9;
+    use super::ascii_h::ASCII_A;
+    use super::ascii_h::ASCII_AMP;
+    use super::ascii_h::ASCII_APOS;
+    use super::ascii_h::ASCII_B;
+    use super::ascii_h::ASCII_C;
+    use super::ascii_h::ASCII_D;
+    use super::ascii_h::ASCII_E;
+    use super::ascii_h::ASCII_F;
+    use super::ascii_h::ASCII_GT;
+    use super::ascii_h::ASCII_L;
+    use super::ascii_h::ASCII_LSQB;
+    use super::ascii_h::ASCII_LT;
+    use super::ascii_h::ASCII_M;
+    use super::ascii_h::ASCII_QUOT;
+    use super::ascii_h::ASCII_SPACE;
+    use super::ascii_h::ASCII_T;
+    use super::ascii_h::ASCII_X;
     use super::expat_external_h::XML_Size;
-    use super::nametab_h::{namePages, namingBitmap, nmstrtPages};
-    use super::xmltok_h::{
-        ATTRIBUTE, ENCODING, POSITION, XML_TOK_ATTRIBUTE_VALUE_S, XML_TOK_CDATA_SECT_CLOSE,
-        XML_TOK_CDATA_SECT_OPEN, XML_TOK_CHAR_REF, XML_TOK_CLOSE_BRACKET, XML_TOK_CLOSE_PAREN,
-        XML_TOK_CLOSE_PAREN_ASTERISK, XML_TOK_CLOSE_PAREN_PLUS, XML_TOK_CLOSE_PAREN_QUESTION,
-        XML_TOK_COMMA, XML_TOK_COMMENT, XML_TOK_COND_SECT_CLOSE, XML_TOK_COND_SECT_OPEN,
-        XML_TOK_DATA_CHARS, XML_TOK_DATA_NEWLINE, XML_TOK_DECL_CLOSE, XML_TOK_DECL_OPEN,
-        XML_TOK_EMPTY_ELEMENT_NO_ATTS, XML_TOK_EMPTY_ELEMENT_WITH_ATTS, XML_TOK_END_TAG,
-        XML_TOK_ENTITY_REF, XML_TOK_IGNORE_SECT, XML_TOK_INSTANCE_START, XML_TOK_INVALID,
-        XML_TOK_LITERAL, XML_TOK_NAME, XML_TOK_NAME_ASTERISK, XML_TOK_NAME_PLUS,
-        XML_TOK_NAME_QUESTION, XML_TOK_NMTOKEN, XML_TOK_NONE, XML_TOK_OPEN_BRACKET,
-        XML_TOK_OPEN_PAREN, XML_TOK_OR, XML_TOK_PARAM_ENTITY_REF, XML_TOK_PARTIAL,
-        XML_TOK_PARTIAL_CHAR, XML_TOK_PERCENT, XML_TOK_PI, XML_TOK_POUND_NAME,
-        XML_TOK_PREFIXED_NAME, XML_TOK_PROLOG_S, XML_TOK_START_TAG_NO_ATTS,
-        XML_TOK_START_TAG_WITH_ATTS, XML_TOK_TRAILING_CR, XML_TOK_TRAILING_RSQB, XML_TOK_XML_DECL,
-    };
-    use super::xmltok_impl_h::{BT_APOS, BT_EQUALS, BT_LF, BT_QUOT};
-    use super::{checkCharRefNumber, normal_encoding, unicode_byte_type};
+
+    use super::checkCharRefNumber;
+    use super::nametab_h::namePages;
+    use super::nametab_h::namingBitmap;
+    use super::nametab_h::nmstrtPages;
+    use super::normal_encoding;
+    use super::unicode_byte_type;
+    use super::xmltok_h::ATTRIBUTE;
+    use super::xmltok_h::ENCODING;
+    use super::xmltok_h::POSITION;
+    use super::xmltok_h::XML_TOK_ATTRIBUTE_VALUE_S;
+    use super::xmltok_h::XML_TOK_CDATA_SECT_CLOSE;
+    use super::xmltok_h::XML_TOK_CDATA_SECT_OPEN;
+    use super::xmltok_h::XML_TOK_CHAR_REF;
+    use super::xmltok_h::XML_TOK_CLOSE_BRACKET;
+    use super::xmltok_h::XML_TOK_CLOSE_PAREN;
+    use super::xmltok_h::XML_TOK_CLOSE_PAREN_ASTERISK;
+    use super::xmltok_h::XML_TOK_CLOSE_PAREN_PLUS;
+    use super::xmltok_h::XML_TOK_CLOSE_PAREN_QUESTION;
+    use super::xmltok_h::XML_TOK_COMMA;
+    use super::xmltok_h::XML_TOK_COMMENT;
+    use super::xmltok_h::XML_TOK_COND_SECT_CLOSE;
+    use super::xmltok_h::XML_TOK_COND_SECT_OPEN;
+    use super::xmltok_h::XML_TOK_DATA_CHARS;
+    use super::xmltok_h::XML_TOK_DATA_NEWLINE;
+    use super::xmltok_h::XML_TOK_DECL_CLOSE;
+    use super::xmltok_h::XML_TOK_DECL_OPEN;
+    use super::xmltok_h::XML_TOK_EMPTY_ELEMENT_NO_ATTS;
+    use super::xmltok_h::XML_TOK_EMPTY_ELEMENT_WITH_ATTS;
+    use super::xmltok_h::XML_TOK_END_TAG;
+    use super::xmltok_h::XML_TOK_ENTITY_REF;
+    use super::xmltok_h::XML_TOK_IGNORE_SECT;
+    use super::xmltok_h::XML_TOK_INSTANCE_START;
+    use super::xmltok_h::XML_TOK_INVALID;
+    use super::xmltok_h::XML_TOK_LITERAL;
+    use super::xmltok_h::XML_TOK_NAME;
+    use super::xmltok_h::XML_TOK_NAME_ASTERISK;
+    use super::xmltok_h::XML_TOK_NAME_PLUS;
+    use super::xmltok_h::XML_TOK_NAME_QUESTION;
+    use super::xmltok_h::XML_TOK_NMTOKEN;
+    use super::xmltok_h::XML_TOK_NONE;
+    use super::xmltok_h::XML_TOK_OPEN_BRACKET;
+    use super::xmltok_h::XML_TOK_OPEN_PAREN;
+    use super::xmltok_h::XML_TOK_OR;
+    use super::xmltok_h::XML_TOK_PARAM_ENTITY_REF;
+    use super::xmltok_h::XML_TOK_PARTIAL;
+    use super::xmltok_h::XML_TOK_PARTIAL_CHAR;
+    use super::xmltok_h::XML_TOK_PERCENT;
+    use super::xmltok_h::XML_TOK_PI;
+    use super::xmltok_h::XML_TOK_POUND_NAME;
+    use super::xmltok_h::XML_TOK_PREFIXED_NAME;
+    use super::xmltok_h::XML_TOK_PROLOG_S;
+    use super::xmltok_h::XML_TOK_START_TAG_NO_ATTS;
+    use super::xmltok_h::XML_TOK_START_TAG_WITH_ATTS;
+    use super::xmltok_h::XML_TOK_TRAILING_CR;
+    use super::xmltok_h::XML_TOK_TRAILING_RSQB;
+    use super::xmltok_h::XML_TOK_XML_DECL;
+    use super::xmltok_impl_h::BT_APOS;
+    use super::xmltok_impl_h::BT_EQUALS;
+    use super::xmltok_impl_h::BT_LF;
+    use super::xmltok_impl_h::BT_QUOT;
 }
 #[c2rust::header_src = "/usr/include/string.h:53"]
 pub mod string_h {
@@ -14099,14 +14173,23 @@ pub mod xmltok_ns_c {
         );
     }
 
-    use super::xmltok_h::{
-        ENCODING, INIT_ENCODING, POSITION, SCANNER, XML_CONTENT_STATE, XML_PROLOG_STATE,
-    };
-    use super::{
-        doParseXmlDecl, getEncodingIndex, initScan, initUpdatePosition, internal_little2_encoding,
-        internal_little2_encoding_ns, internal_utf8_encoding, internal_utf8_encoding_ns, streqci,
-        KW_UTF_16, UNKNOWN_ENC,
-    };
+    use super::doParseXmlDecl;
+    use super::getEncodingIndex;
+    use super::initScan;
+    use super::initUpdatePosition;
+    use super::internal_little2_encoding;
+    use super::internal_little2_encoding_ns;
+    use super::internal_utf8_encoding;
+    use super::internal_utf8_encoding_ns;
+    use super::streqci;
+    use super::xmltok_h::ENCODING;
+    use super::xmltok_h::INIT_ENCODING;
+    use super::xmltok_h::POSITION;
+    use super::xmltok_h::SCANNER;
+    use super::xmltok_h::XML_CONTENT_STATE;
+    use super::xmltok_h::XML_PROLOG_STATE;
+    use super::KW_UTF_16;
+    use super::UNKNOWN_ENC;
 }
 #[c2rust::header_src = "/usr/lib/clang/21/include/stdbool.h:477"]
 pub mod stdbool_h {
@@ -15084,71 +15167,284 @@ pub mod nametab_h {
 pub use self::__stddef_null_h::NULL;
 pub use self::__stddef_ptrdiff_t_h::ptrdiff_t;
 pub use self::__stddef_size_t_h::size_t;
-pub use self::ascii_h::{
-    ASCII_a, ASCII_b, ASCII_c, ASCII_d, ASCII_e, ASCII_f, ASCII_g, ASCII_i, ASCII_l, ASCII_m,
-    ASCII_n, ASCII_o, ASCII_q, ASCII_r, ASCII_s, ASCII_t, ASCII_v, ASCII_x, ASCII_y, ASCII_z,
-    ASCII_0, ASCII_1, ASCII_2, ASCII_3, ASCII_4, ASCII_5, ASCII_6, ASCII_7, ASCII_8, ASCII_9,
-    ASCII_A, ASCII_AMP, ASCII_APOS, ASCII_B, ASCII_C, ASCII_COLON, ASCII_D, ASCII_E, ASCII_EQUALS,
-    ASCII_F, ASCII_GT, ASCII_I, ASCII_L, ASCII_LSQB, ASCII_LT, ASCII_M, ASCII_MINUS, ASCII_O,
-    ASCII_PERIOD, ASCII_QUOT, ASCII_S, ASCII_SPACE, ASCII_T, ASCII_U, ASCII_UNDERSCORE, ASCII_X,
-    ASCII_Z,
-};
+pub use self::ascii_h::ASCII_a;
+pub use self::ascii_h::ASCII_b;
+pub use self::ascii_h::ASCII_c;
+pub use self::ascii_h::ASCII_d;
+pub use self::ascii_h::ASCII_e;
+pub use self::ascii_h::ASCII_f;
+pub use self::ascii_h::ASCII_g;
+pub use self::ascii_h::ASCII_i;
+pub use self::ascii_h::ASCII_l;
+pub use self::ascii_h::ASCII_m;
+pub use self::ascii_h::ASCII_n;
+pub use self::ascii_h::ASCII_o;
+pub use self::ascii_h::ASCII_q;
+pub use self::ascii_h::ASCII_r;
+pub use self::ascii_h::ASCII_s;
+pub use self::ascii_h::ASCII_t;
+pub use self::ascii_h::ASCII_v;
+pub use self::ascii_h::ASCII_x;
+pub use self::ascii_h::ASCII_y;
+pub use self::ascii_h::ASCII_z;
+pub use self::ascii_h::ASCII_0;
+pub use self::ascii_h::ASCII_1;
+pub use self::ascii_h::ASCII_2;
+pub use self::ascii_h::ASCII_3;
+pub use self::ascii_h::ASCII_4;
+pub use self::ascii_h::ASCII_5;
+pub use self::ascii_h::ASCII_6;
+pub use self::ascii_h::ASCII_7;
+pub use self::ascii_h::ASCII_8;
+pub use self::ascii_h::ASCII_9;
+pub use self::ascii_h::ASCII_A;
+pub use self::ascii_h::ASCII_AMP;
+pub use self::ascii_h::ASCII_APOS;
+pub use self::ascii_h::ASCII_B;
+pub use self::ascii_h::ASCII_C;
+pub use self::ascii_h::ASCII_COLON;
+pub use self::ascii_h::ASCII_D;
+pub use self::ascii_h::ASCII_E;
+pub use self::ascii_h::ASCII_EQUALS;
+pub use self::ascii_h::ASCII_F;
+pub use self::ascii_h::ASCII_GT;
+pub use self::ascii_h::ASCII_I;
+pub use self::ascii_h::ASCII_L;
+pub use self::ascii_h::ASCII_LSQB;
+pub use self::ascii_h::ASCII_LT;
+pub use self::ascii_h::ASCII_M;
+pub use self::ascii_h::ASCII_MINUS;
+pub use self::ascii_h::ASCII_O;
+pub use self::ascii_h::ASCII_PERIOD;
+pub use self::ascii_h::ASCII_QUOT;
+pub use self::ascii_h::ASCII_S;
+pub use self::ascii_h::ASCII_SPACE;
+pub use self::ascii_h::ASCII_T;
+pub use self::ascii_h::ASCII_U;
+pub use self::ascii_h::ASCII_UNDERSCORE;
+pub use self::ascii_h::ASCII_X;
+pub use self::ascii_h::ASCII_Z;
 pub use self::expat_external_h::XML_Size;
-pub use self::nametab_h::{namePages, namingBitmap, nmstrtPages};
-pub use self::stdbool_h::{false_0, true_0};
+
+pub use self::nametab_h::namePages;
+pub use self::nametab_h::namingBitmap;
+pub use self::nametab_h::nmstrtPages;
+pub use self::stdbool_h::false_0;
+pub use self::stdbool_h::true_0;
 use self::string_h::memcpy;
-pub use self::xmltok_h::{
-    encoding, position, XML_Convert_Result, ATTRIBUTE, CONVERTER, ENCODING, INIT_ENCODING,
-    POSITION, SCANNER, XML_CONTENT_STATE, XML_CONVERT_COMPLETED, XML_CONVERT_INPUT_INCOMPLETE,
-    XML_CONVERT_OUTPUT_EXHAUSTED, XML_PROLOG_STATE, XML_TOK_ATTRIBUTE_VALUE_S, XML_TOK_BOM,
-    XML_TOK_CDATA_SECT_CLOSE, XML_TOK_CDATA_SECT_OPEN, XML_TOK_CHAR_REF, XML_TOK_CLOSE_BRACKET,
-    XML_TOK_CLOSE_PAREN, XML_TOK_CLOSE_PAREN_ASTERISK, XML_TOK_CLOSE_PAREN_PLUS,
-    XML_TOK_CLOSE_PAREN_QUESTION, XML_TOK_COMMA, XML_TOK_COMMENT, XML_TOK_COND_SECT_CLOSE,
-    XML_TOK_COND_SECT_OPEN, XML_TOK_DATA_CHARS, XML_TOK_DATA_NEWLINE, XML_TOK_DECL_CLOSE,
-    XML_TOK_DECL_OPEN, XML_TOK_EMPTY_ELEMENT_NO_ATTS, XML_TOK_EMPTY_ELEMENT_WITH_ATTS,
-    XML_TOK_END_TAG, XML_TOK_ENTITY_REF, XML_TOK_IGNORE_SECT, XML_TOK_INSTANCE_START,
-    XML_TOK_INVALID, XML_TOK_LITERAL, XML_TOK_NAME, XML_TOK_NAME_ASTERISK, XML_TOK_NAME_PLUS,
-    XML_TOK_NAME_QUESTION, XML_TOK_NMTOKEN, XML_TOK_NONE, XML_TOK_OPEN_BRACKET, XML_TOK_OPEN_PAREN,
-    XML_TOK_OR, XML_TOK_PARAM_ENTITY_REF, XML_TOK_PARTIAL, XML_TOK_PARTIAL_CHAR, XML_TOK_PERCENT,
-    XML_TOK_PI, XML_TOK_POUND_NAME, XML_TOK_PREFIXED_NAME, XML_TOK_PROLOG_S,
-    XML_TOK_START_TAG_NO_ATTS, XML_TOK_START_TAG_WITH_ATTS, XML_TOK_TRAILING_CR,
-    XML_TOK_TRAILING_RSQB, XML_TOK_XML_DECL,
-};
-pub use self::xmltok_impl_c::{
-    big2_attributeValueTok, big2_cdataSectionTok, big2_charRefNumber, big2_checkPiTarget,
-    big2_contentTok, big2_entityValueTok, big2_getAtts, big2_ignoreSectionTok, big2_isPublicId,
-    big2_nameLength, big2_nameMatchesAscii, big2_predefinedEntityName, big2_prologTok,
-    big2_scanAtts, big2_scanCdataSection, big2_scanCharRef, big2_scanComment, big2_scanDecl,
-    big2_scanEndTag, big2_scanHexCharRef, big2_scanLit, big2_scanLt, big2_scanPercent, big2_scanPi,
-    big2_scanPoundName, big2_scanRef, big2_skipS, big2_updatePosition, inName, inName_0, inName_1,
-    inValue, inValue_0, inValue_1, little2_attributeValueTok, little2_cdataSectionTok,
-    little2_charRefNumber, little2_checkPiTarget, little2_contentTok, little2_entityValueTok,
-    little2_getAtts, little2_ignoreSectionTok, little2_isPublicId, little2_nameLength,
-    little2_nameMatchesAscii, little2_predefinedEntityName, little2_prologTok, little2_scanAtts,
-    little2_scanCdataSection, little2_scanCharRef, little2_scanComment, little2_scanDecl,
-    little2_scanEndTag, little2_scanHexCharRef, little2_scanLit, little2_scanLt,
-    little2_scanPercent, little2_scanPi, little2_scanPoundName, little2_scanRef, little2_skipS,
-    little2_updatePosition, normal_attributeValueTok, normal_cdataSectionTok, normal_charRefNumber,
-    normal_checkPiTarget, normal_contentTok, normal_entityValueTok, normal_getAtts,
-    normal_ignoreSectionTok, normal_isPublicId, normal_nameLength, normal_nameMatchesAscii,
-    normal_predefinedEntityName, normal_prologTok, normal_scanAtts, normal_scanCdataSection,
-    normal_scanCharRef, normal_scanComment, normal_scanDecl, normal_scanEndTag,
-    normal_scanHexCharRef, normal_scanLit, normal_scanLt, normal_scanPercent, normal_scanPi,
-    normal_scanPoundName, normal_scanRef, normal_skipS, normal_updatePosition, other, other_0,
-    other_1, C2RustUnnamed, C2RustUnnamed_0, C2RustUnnamed_1,
-};
-pub use self::xmltok_impl_h::{
-    C2RustUnnamed_3, BT_AMP, BT_APOS, BT_AST, BT_COLON_0, BT_COMMA, BT_CR, BT_DIGIT, BT_EQUALS,
-    BT_EXCL, BT_GT, BT_HEX, BT_LEAD2, BT_LEAD3, BT_LEAD4, BT_LF, BT_LPAR, BT_LSQB, BT_LT,
-    BT_MALFORM, BT_MINUS, BT_NAME, BT_NMSTRT, BT_NONASCII, BT_NONXML, BT_NUM, BT_OTHER, BT_PERCNT,
-    BT_PLUS, BT_QUEST, BT_QUOT, BT_RPAR, BT_RSQB, BT_S, BT_SEMI, BT_SOL, BT_TRAIL, BT_VERBAR,
-};
-pub use self::xmltok_ns_c::{
-    encodings, encodingsNS, findEncoding, findEncodingNS, initScanContent, initScanContentNS,
-    initScanProlog, initScanPrologNS, XmlGetUtf16InternalEncoding, XmlGetUtf16InternalEncodingNS,
-    XmlGetUtf8InternalEncoding, XmlGetUtf8InternalEncodingNS, XmlInitEncoding, XmlInitEncodingNS,
-    XmlParseXmlDecl, XmlParseXmlDeclNS,
-};
+
+pub use self::xmltok_h::encoding;
+pub use self::xmltok_h::position;
+pub use self::xmltok_h::XML_Convert_Result;
+pub use self::xmltok_h::ATTRIBUTE;
+pub use self::xmltok_h::CONVERTER;
+pub use self::xmltok_h::ENCODING;
+pub use self::xmltok_h::INIT_ENCODING;
+pub use self::xmltok_h::POSITION;
+pub use self::xmltok_h::SCANNER;
+pub use self::xmltok_h::XML_CONTENT_STATE;
+pub use self::xmltok_h::XML_CONVERT_COMPLETED;
+pub use self::xmltok_h::XML_CONVERT_INPUT_INCOMPLETE;
+pub use self::xmltok_h::XML_CONVERT_OUTPUT_EXHAUSTED;
+pub use self::xmltok_h::XML_PROLOG_STATE;
+pub use self::xmltok_h::XML_TOK_ATTRIBUTE_VALUE_S;
+pub use self::xmltok_h::XML_TOK_BOM;
+pub use self::xmltok_h::XML_TOK_CDATA_SECT_CLOSE;
+pub use self::xmltok_h::XML_TOK_CDATA_SECT_OPEN;
+pub use self::xmltok_h::XML_TOK_CHAR_REF;
+pub use self::xmltok_h::XML_TOK_CLOSE_BRACKET;
+pub use self::xmltok_h::XML_TOK_CLOSE_PAREN;
+pub use self::xmltok_h::XML_TOK_CLOSE_PAREN_ASTERISK;
+pub use self::xmltok_h::XML_TOK_CLOSE_PAREN_PLUS;
+pub use self::xmltok_h::XML_TOK_CLOSE_PAREN_QUESTION;
+pub use self::xmltok_h::XML_TOK_COMMA;
+pub use self::xmltok_h::XML_TOK_COMMENT;
+pub use self::xmltok_h::XML_TOK_COND_SECT_CLOSE;
+pub use self::xmltok_h::XML_TOK_COND_SECT_OPEN;
+pub use self::xmltok_h::XML_TOK_DATA_CHARS;
+pub use self::xmltok_h::XML_TOK_DATA_NEWLINE;
+pub use self::xmltok_h::XML_TOK_DECL_CLOSE;
+pub use self::xmltok_h::XML_TOK_DECL_OPEN;
+pub use self::xmltok_h::XML_TOK_EMPTY_ELEMENT_NO_ATTS;
+pub use self::xmltok_h::XML_TOK_EMPTY_ELEMENT_WITH_ATTS;
+pub use self::xmltok_h::XML_TOK_END_TAG;
+pub use self::xmltok_h::XML_TOK_ENTITY_REF;
+pub use self::xmltok_h::XML_TOK_IGNORE_SECT;
+pub use self::xmltok_h::XML_TOK_INSTANCE_START;
+pub use self::xmltok_h::XML_TOK_INVALID;
+pub use self::xmltok_h::XML_TOK_LITERAL;
+pub use self::xmltok_h::XML_TOK_NAME;
+pub use self::xmltok_h::XML_TOK_NAME_ASTERISK;
+pub use self::xmltok_h::XML_TOK_NAME_PLUS;
+pub use self::xmltok_h::XML_TOK_NAME_QUESTION;
+pub use self::xmltok_h::XML_TOK_NMTOKEN;
+pub use self::xmltok_h::XML_TOK_NONE;
+pub use self::xmltok_h::XML_TOK_OPEN_BRACKET;
+pub use self::xmltok_h::XML_TOK_OPEN_PAREN;
+pub use self::xmltok_h::XML_TOK_OR;
+pub use self::xmltok_h::XML_TOK_PARAM_ENTITY_REF;
+pub use self::xmltok_h::XML_TOK_PARTIAL;
+pub use self::xmltok_h::XML_TOK_PARTIAL_CHAR;
+pub use self::xmltok_h::XML_TOK_PERCENT;
+pub use self::xmltok_h::XML_TOK_PI;
+pub use self::xmltok_h::XML_TOK_POUND_NAME;
+pub use self::xmltok_h::XML_TOK_PREFIXED_NAME;
+pub use self::xmltok_h::XML_TOK_PROLOG_S;
+pub use self::xmltok_h::XML_TOK_START_TAG_NO_ATTS;
+pub use self::xmltok_h::XML_TOK_START_TAG_WITH_ATTS;
+pub use self::xmltok_h::XML_TOK_TRAILING_CR;
+pub use self::xmltok_h::XML_TOK_TRAILING_RSQB;
+pub use self::xmltok_h::XML_TOK_XML_DECL;
+pub use self::xmltok_impl_c::big2_attributeValueTok;
+pub use self::xmltok_impl_c::big2_cdataSectionTok;
+pub use self::xmltok_impl_c::big2_charRefNumber;
+pub use self::xmltok_impl_c::big2_checkPiTarget;
+pub use self::xmltok_impl_c::big2_contentTok;
+pub use self::xmltok_impl_c::big2_entityValueTok;
+pub use self::xmltok_impl_c::big2_getAtts;
+pub use self::xmltok_impl_c::big2_ignoreSectionTok;
+pub use self::xmltok_impl_c::big2_isPublicId;
+pub use self::xmltok_impl_c::big2_nameLength;
+pub use self::xmltok_impl_c::big2_nameMatchesAscii;
+pub use self::xmltok_impl_c::big2_predefinedEntityName;
+pub use self::xmltok_impl_c::big2_prologTok;
+pub use self::xmltok_impl_c::big2_scanAtts;
+pub use self::xmltok_impl_c::big2_scanCdataSection;
+pub use self::xmltok_impl_c::big2_scanCharRef;
+pub use self::xmltok_impl_c::big2_scanComment;
+pub use self::xmltok_impl_c::big2_scanDecl;
+pub use self::xmltok_impl_c::big2_scanEndTag;
+pub use self::xmltok_impl_c::big2_scanHexCharRef;
+pub use self::xmltok_impl_c::big2_scanLit;
+pub use self::xmltok_impl_c::big2_scanLt;
+pub use self::xmltok_impl_c::big2_scanPercent;
+pub use self::xmltok_impl_c::big2_scanPi;
+pub use self::xmltok_impl_c::big2_scanPoundName;
+pub use self::xmltok_impl_c::big2_scanRef;
+pub use self::xmltok_impl_c::big2_skipS;
+pub use self::xmltok_impl_c::big2_updatePosition;
+pub use self::xmltok_impl_c::inName;
+pub use self::xmltok_impl_c::inName_0;
+pub use self::xmltok_impl_c::inName_1;
+pub use self::xmltok_impl_c::inValue;
+pub use self::xmltok_impl_c::inValue_0;
+pub use self::xmltok_impl_c::inValue_1;
+pub use self::xmltok_impl_c::little2_attributeValueTok;
+pub use self::xmltok_impl_c::little2_cdataSectionTok;
+pub use self::xmltok_impl_c::little2_charRefNumber;
+pub use self::xmltok_impl_c::little2_checkPiTarget;
+pub use self::xmltok_impl_c::little2_contentTok;
+pub use self::xmltok_impl_c::little2_entityValueTok;
+pub use self::xmltok_impl_c::little2_getAtts;
+pub use self::xmltok_impl_c::little2_ignoreSectionTok;
+pub use self::xmltok_impl_c::little2_isPublicId;
+pub use self::xmltok_impl_c::little2_nameLength;
+pub use self::xmltok_impl_c::little2_nameMatchesAscii;
+pub use self::xmltok_impl_c::little2_predefinedEntityName;
+pub use self::xmltok_impl_c::little2_prologTok;
+pub use self::xmltok_impl_c::little2_scanAtts;
+pub use self::xmltok_impl_c::little2_scanCdataSection;
+pub use self::xmltok_impl_c::little2_scanCharRef;
+pub use self::xmltok_impl_c::little2_scanComment;
+pub use self::xmltok_impl_c::little2_scanDecl;
+pub use self::xmltok_impl_c::little2_scanEndTag;
+pub use self::xmltok_impl_c::little2_scanHexCharRef;
+pub use self::xmltok_impl_c::little2_scanLit;
+pub use self::xmltok_impl_c::little2_scanLt;
+pub use self::xmltok_impl_c::little2_scanPercent;
+pub use self::xmltok_impl_c::little2_scanPi;
+pub use self::xmltok_impl_c::little2_scanPoundName;
+pub use self::xmltok_impl_c::little2_scanRef;
+pub use self::xmltok_impl_c::little2_skipS;
+pub use self::xmltok_impl_c::little2_updatePosition;
+pub use self::xmltok_impl_c::normal_attributeValueTok;
+pub use self::xmltok_impl_c::normal_cdataSectionTok;
+pub use self::xmltok_impl_c::normal_charRefNumber;
+pub use self::xmltok_impl_c::normal_checkPiTarget;
+pub use self::xmltok_impl_c::normal_contentTok;
+pub use self::xmltok_impl_c::normal_entityValueTok;
+pub use self::xmltok_impl_c::normal_getAtts;
+pub use self::xmltok_impl_c::normal_ignoreSectionTok;
+pub use self::xmltok_impl_c::normal_isPublicId;
+pub use self::xmltok_impl_c::normal_nameLength;
+pub use self::xmltok_impl_c::normal_nameMatchesAscii;
+pub use self::xmltok_impl_c::normal_predefinedEntityName;
+pub use self::xmltok_impl_c::normal_prologTok;
+pub use self::xmltok_impl_c::normal_scanAtts;
+pub use self::xmltok_impl_c::normal_scanCdataSection;
+pub use self::xmltok_impl_c::normal_scanCharRef;
+pub use self::xmltok_impl_c::normal_scanComment;
+pub use self::xmltok_impl_c::normal_scanDecl;
+pub use self::xmltok_impl_c::normal_scanEndTag;
+pub use self::xmltok_impl_c::normal_scanHexCharRef;
+pub use self::xmltok_impl_c::normal_scanLit;
+pub use self::xmltok_impl_c::normal_scanLt;
+pub use self::xmltok_impl_c::normal_scanPercent;
+pub use self::xmltok_impl_c::normal_scanPi;
+pub use self::xmltok_impl_c::normal_scanPoundName;
+pub use self::xmltok_impl_c::normal_scanRef;
+pub use self::xmltok_impl_c::normal_skipS;
+pub use self::xmltok_impl_c::normal_updatePosition;
+pub use self::xmltok_impl_c::other;
+pub use self::xmltok_impl_c::other_0;
+pub use self::xmltok_impl_c::other_1;
+pub use self::xmltok_impl_c::C2RustUnnamed_4;
+pub use self::xmltok_impl_c::C2RustUnnamed_5;
+pub use self::xmltok_impl_c::C2RustUnnamed_6;
+pub use self::xmltok_impl_h::C2RustUnnamed_3;
+pub use self::xmltok_impl_h::BT_AMP;
+pub use self::xmltok_impl_h::BT_APOS;
+pub use self::xmltok_impl_h::BT_AST;
+pub use self::xmltok_impl_h::BT_COLON_0;
+pub use self::xmltok_impl_h::BT_COMMA;
+pub use self::xmltok_impl_h::BT_CR;
+pub use self::xmltok_impl_h::BT_DIGIT;
+pub use self::xmltok_impl_h::BT_EQUALS;
+pub use self::xmltok_impl_h::BT_EXCL;
+pub use self::xmltok_impl_h::BT_GT;
+pub use self::xmltok_impl_h::BT_HEX;
+pub use self::xmltok_impl_h::BT_LEAD2;
+pub use self::xmltok_impl_h::BT_LEAD3;
+pub use self::xmltok_impl_h::BT_LEAD4;
+pub use self::xmltok_impl_h::BT_LF;
+pub use self::xmltok_impl_h::BT_LPAR;
+pub use self::xmltok_impl_h::BT_LSQB;
+pub use self::xmltok_impl_h::BT_LT;
+pub use self::xmltok_impl_h::BT_MALFORM;
+pub use self::xmltok_impl_h::BT_MINUS;
+pub use self::xmltok_impl_h::BT_NAME;
+pub use self::xmltok_impl_h::BT_NMSTRT;
+pub use self::xmltok_impl_h::BT_NONASCII;
+pub use self::xmltok_impl_h::BT_NONXML;
+pub use self::xmltok_impl_h::BT_NUM;
+pub use self::xmltok_impl_h::BT_OTHER;
+pub use self::xmltok_impl_h::BT_PERCNT;
+pub use self::xmltok_impl_h::BT_PLUS;
+pub use self::xmltok_impl_h::BT_QUEST;
+pub use self::xmltok_impl_h::BT_QUOT;
+pub use self::xmltok_impl_h::BT_RPAR;
+pub use self::xmltok_impl_h::BT_RSQB;
+pub use self::xmltok_impl_h::BT_S;
+pub use self::xmltok_impl_h::BT_SEMI;
+pub use self::xmltok_impl_h::BT_SOL;
+pub use self::xmltok_impl_h::BT_TRAIL;
+pub use self::xmltok_impl_h::BT_VERBAR;
+pub use self::xmltok_ns_c::encodings;
+pub use self::xmltok_ns_c::encodingsNS;
+pub use self::xmltok_ns_c::findEncoding;
+pub use self::xmltok_ns_c::findEncodingNS;
+pub use self::xmltok_ns_c::initScanContent;
+pub use self::xmltok_ns_c::initScanContentNS;
+pub use self::xmltok_ns_c::initScanProlog;
+pub use self::xmltok_ns_c::initScanPrologNS;
+pub use self::xmltok_ns_c::XmlGetUtf16InternalEncoding;
+pub use self::xmltok_ns_c::XmlGetUtf16InternalEncodingNS;
+pub use self::xmltok_ns_c::XmlGetUtf8InternalEncoding;
+pub use self::xmltok_ns_c::XmlGetUtf8InternalEncodingNS;
+pub use self::xmltok_ns_c::XmlInitEncoding;
+pub use self::xmltok_ns_c::XmlInitEncodingNS;
+pub use self::xmltok_ns_c::XmlParseXmlDecl;
+pub use self::xmltok_ns_c::XmlParseXmlDeclNS;
 #[derive(Copy, Clone)]
 #[repr(C)]
 #[c2rust::src_loc = "187:1"]
@@ -15184,35 +15480,35 @@ pub struct normal_encoding {
     >,
 }
 #[c2rust::src_loc = "322:8"]
-pub const UTF8_cval2: C2RustUnnamed_4 = 192;
+pub const UTF8_cval2: C2RustUnnamed_8 = 192;
 #[c2rust::src_loc = "324:8"]
-pub const UTF8_cval4: C2RustUnnamed_4 = 240;
+pub const UTF8_cval4: C2RustUnnamed_8 = 240;
 #[c2rust::src_loc = "323:8"]
-pub const UTF8_cval3: C2RustUnnamed_4 = 224;
+pub const UTF8_cval3: C2RustUnnamed_8 = 224;
 #[c2rust::src_loc = "1475:3"]
-pub const UNKNOWN_ENC: C2RustUnnamed_5 = -1;
+pub const UNKNOWN_ENC: C2RustUnnamed_9 = -1;
 #[c2rust::src_loc = "1483:3"]
-pub const NO_ENC: C2RustUnnamed_5 = 6;
+pub const NO_ENC: C2RustUnnamed_9 = 6;
 #[c2rust::src_loc = "1481:3"]
-pub const UTF_16LE_ENC: C2RustUnnamed_5 = 5;
+pub const UTF_16LE_ENC: C2RustUnnamed_9 = 5;
 #[c2rust::src_loc = "1480:3"]
-pub const UTF_16BE_ENC: C2RustUnnamed_5 = 4;
+pub const UTF_16BE_ENC: C2RustUnnamed_9 = 4;
 #[c2rust::src_loc = "1478:3"]
-pub const UTF_8_ENC: C2RustUnnamed_5 = 2;
+pub const UTF_8_ENC: C2RustUnnamed_9 = 2;
 #[c2rust::src_loc = "1479:3"]
-pub const UTF_16_ENC: C2RustUnnamed_5 = 3;
+pub const UTF_16_ENC: C2RustUnnamed_9 = 3;
 #[c2rust::src_loc = "1476:3"]
-pub const ISO_8859_1_ENC: C2RustUnnamed_5 = 0;
+pub const ISO_8859_1_ENC: C2RustUnnamed_9 = 0;
 #[c2rust::src_loc = "1262:5"]
-pub const min4: C2RustUnnamed_2 = 65536;
+pub const min4: C2RustUnnamed_7 = 65536;
 #[c2rust::src_loc = "1261:5"]
-pub const min3: C2RustUnnamed_2 = 2048;
+pub const min3: C2RustUnnamed_7 = 2048;
 #[c2rust::src_loc = "321:8"]
-pub const UTF8_cval1: C2RustUnnamed_4 = 0;
+pub const UTF8_cval1: C2RustUnnamed_8 = 0;
 #[c2rust::src_loc = "1260:5"]
-pub const min2: C2RustUnnamed_2 = 128;
+pub const min2: C2RustUnnamed_7 = 128;
 #[c2rust::src_loc = "1258:3"]
-pub type C2RustUnnamed_2 = ::core::ffi::c_uint;
+pub type C2RustUnnamed_7 = ::core::ffi::c_uint;
 #[derive(Copy, Clone)]
 #[repr(C)]
 #[c2rust::src_loc = "1309:1"]
@@ -15224,11 +15520,11 @@ pub struct unknown_encoding {
     pub utf8: [[::core::ffi::c_char; 4]; 256],
 }
 #[c2rust::src_loc = "320:1"]
-pub type C2RustUnnamed_4 = ::core::ffi::c_uint;
+pub type C2RustUnnamed_8 = ::core::ffi::c_uint;
 #[c2rust::src_loc = "1474:1"]
-pub type C2RustUnnamed_5 = ::core::ffi::c_int;
+pub type C2RustUnnamed_9 = ::core::ffi::c_int;
 #[c2rust::src_loc = "1477:3"]
-pub const US_ASCII_ENC: C2RustUnnamed_5 = 1;
+pub const US_ASCII_ENC: C2RustUnnamed_9 = 1;
 #[c2rust::src_loc = "134:1"]
 unsafe extern "C" fn isNever(
     mut _enc: *const ENCODING,

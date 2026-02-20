@@ -67,7 +67,9 @@ pub mod struct_FILE_h {
     }
     #[c2rust::src_loc = "45:1"]
     pub type _IO_lock_t = ();
-    use super::types_h::{__off64_t, __off_t, __uint64_t};
+    use super::types_h::__off64_t;
+    use super::types_h::__off_t;
+    use super::types_h::__uint64_t;
     extern "C" {
         #[c2rust::src_loc = "40:1"]
         pub type _IO_wide_data;
@@ -109,7 +111,8 @@ pub mod struct_timeval_h {
         pub tv_sec: __time_t,
         pub tv_usec: __suseconds_t,
     }
-    use super::types_h::{__suseconds_t, __time_t};
+    use super::types_h::__suseconds_t;
+    use super::types_h::__time_t;
 }
 #[c2rust::header_src = "/usr/include/bits/stdint-uintn.h:107"]
 pub mod stdint_uintn_h {
@@ -513,7 +516,8 @@ pub mod expat_h {
     pub const XML_MINOR_VERSION: ::core::ffi::c_int = 7 as ::core::ffi::c_int;
     #[c2rust::src_loc = "1085:11"]
     pub const XML_MICRO_VERSION: ::core::ffi::c_int = 4 as ::core::ffi::c_int;
-    use super::expat_external_h::{XML_Char, XML_LChar};
+    use super::expat_external_h::XML_Char;
+    use super::expat_external_h::XML_LChar;
     use super::XML_ParserStruct;
     use super::__stddef_size_t_h::size_t;
 }
@@ -2210,125 +2214,358 @@ pub mod internal {
 pub use self::__stddef_null_h::NULL;
 pub use self::__stddef_ptrdiff_t_h::ptrdiff_t;
 pub use self::__stddef_size_t_h::size_t;
-pub use self::ascii_h::{
-    ASCII_a, ASCII_c, ASCII_e, ASCII_g, ASCII_h, ASCII_l, ASCII_m, ASCII_n, ASCII_o, ASCII_p,
-    ASCII_r, ASCII_s, ASCII_t, ASCII_w, ASCII_x, ASCII_0, ASCII_1, ASCII_2, ASCII_3, ASCII_8,
-    ASCII_9, ASCII_A, ASCII_C, ASCII_COLON, ASCII_COMMA, ASCII_D, ASCII_E, ASCII_EQUALS,
-    ASCII_EXCL, ASCII_F, ASCII_HASH, ASCII_I, ASCII_K, ASCII_L, ASCII_LPAREN, ASCII_M, ASCII_N,
-    ASCII_O, ASCII_PERIOD, ASCII_PIPE, ASCII_R, ASCII_S, ASCII_SLASH, ASCII_T, ASCII_X, ASCII_Y,
-};
+pub use self::ascii_h::ASCII_a;
+pub use self::ascii_h::ASCII_c;
+pub use self::ascii_h::ASCII_e;
+pub use self::ascii_h::ASCII_g;
+pub use self::ascii_h::ASCII_h;
+pub use self::ascii_h::ASCII_l;
+pub use self::ascii_h::ASCII_m;
+pub use self::ascii_h::ASCII_n;
+pub use self::ascii_h::ASCII_o;
+pub use self::ascii_h::ASCII_p;
+pub use self::ascii_h::ASCII_r;
+pub use self::ascii_h::ASCII_s;
+pub use self::ascii_h::ASCII_t;
+pub use self::ascii_h::ASCII_w;
+pub use self::ascii_h::ASCII_x;
+pub use self::ascii_h::ASCII_0;
+pub use self::ascii_h::ASCII_1;
+pub use self::ascii_h::ASCII_2;
+pub use self::ascii_h::ASCII_3;
+pub use self::ascii_h::ASCII_8;
+pub use self::ascii_h::ASCII_9;
+pub use self::ascii_h::ASCII_A;
+pub use self::ascii_h::ASCII_C;
+pub use self::ascii_h::ASCII_COLON;
+pub use self::ascii_h::ASCII_COMMA;
+pub use self::ascii_h::ASCII_D;
+pub use self::ascii_h::ASCII_E;
+pub use self::ascii_h::ASCII_EQUALS;
+pub use self::ascii_h::ASCII_EXCL;
+pub use self::ascii_h::ASCII_F;
+pub use self::ascii_h::ASCII_HASH;
+pub use self::ascii_h::ASCII_I;
+pub use self::ascii_h::ASCII_K;
+pub use self::ascii_h::ASCII_L;
+pub use self::ascii_h::ASCII_LPAREN;
+pub use self::ascii_h::ASCII_M;
+pub use self::ascii_h::ASCII_N;
+pub use self::ascii_h::ASCII_O;
+pub use self::ascii_h::ASCII_PERIOD;
+pub use self::ascii_h::ASCII_PIPE;
+pub use self::ascii_h::ASCII_R;
+pub use self::ascii_h::ASCII_S;
+pub use self::ascii_h::ASCII_SLASH;
+pub use self::ascii_h::ASCII_T;
+pub use self::ascii_h::ASCII_X;
+pub use self::ascii_h::ASCII_Y;
 use self::assert_h::__assert_fail;
 pub use self::errno_base_h::EINTR;
 use self::errno_h::__errno_location;
 pub use self::expat_config_h::XML_CONTEXT_BYTES;
-pub use self::expat_external_h::{XML_Char, XML_Index, XML_LChar, XML_Size};
-pub use self::expat_h::{
-    XML_AttlistDeclHandler, XML_Bool, XML_CharacterDataHandler, XML_CommentHandler, XML_Content,
-    XML_Content_Quant, XML_Content_Type, XML_DefaultHandler, XML_ElementDeclHandler, XML_Encoding,
-    XML_EndCdataSectionHandler, XML_EndDoctypeDeclHandler, XML_EndElementHandler,
-    XML_EndNamespaceDeclHandler, XML_EntityDeclHandler, XML_Error, XML_Expat_Version,
-    XML_ExternalEntityRefHandler, XML_Feature, XML_FeatureEnum, XML_Memory_Handling_Suite,
-    XML_NotStandaloneHandler, XML_NotationDeclHandler, XML_ParamEntityParsing, XML_Parser,
-    XML_Parsing, XML_ParsingStatus, XML_ProcessingInstructionHandler, XML_SkippedEntityHandler,
-    XML_StartCdataSectionHandler, XML_StartDoctypeDeclHandler, XML_StartElementHandler,
-    XML_StartNamespaceDeclHandler, XML_Status, XML_UnknownEncodingHandler,
-    XML_UnparsedEntityDeclHandler, XML_XmlDeclHandler, XML_cp, XML_CQUANT_NONE, XML_CQUANT_OPT,
-    XML_CQUANT_PLUS, XML_CQUANT_REP, XML_CTYPE_ANY, XML_CTYPE_CHOICE, XML_CTYPE_EMPTY,
-    XML_CTYPE_MIXED, XML_CTYPE_NAME, XML_CTYPE_SEQ, XML_ERROR_ABORTED,
-    XML_ERROR_AMPLIFICATION_LIMIT_BREACH, XML_ERROR_ASYNC_ENTITY,
-    XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF, XML_ERROR_BAD_CHAR_REF, XML_ERROR_BINARY_ENTITY_REF,
-    XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING, XML_ERROR_DUPLICATE_ATTRIBUTE,
-    XML_ERROR_ENTITY_DECLARED_IN_PE, XML_ERROR_EXTERNAL_ENTITY_HANDLING,
-    XML_ERROR_FEATURE_REQUIRES_XML_DTD, XML_ERROR_FINISHED, XML_ERROR_INCOMPLETE_PE,
-    XML_ERROR_INCORRECT_ENCODING, XML_ERROR_INVALID_ARGUMENT, XML_ERROR_INVALID_TOKEN,
-    XML_ERROR_JUNK_AFTER_DOC_ELEMENT, XML_ERROR_MISPLACED_XML_PI, XML_ERROR_NONE,
-    XML_ERROR_NOT_STANDALONE, XML_ERROR_NOT_STARTED, XML_ERROR_NOT_SUSPENDED, XML_ERROR_NO_BUFFER,
-    XML_ERROR_NO_ELEMENTS, XML_ERROR_NO_MEMORY, XML_ERROR_PARAM_ENTITY_REF, XML_ERROR_PARTIAL_CHAR,
-    XML_ERROR_PUBLICID, XML_ERROR_RECURSIVE_ENTITY_REF, XML_ERROR_RESERVED_NAMESPACE_URI,
-    XML_ERROR_RESERVED_PREFIX_XML, XML_ERROR_RESERVED_PREFIX_XMLNS, XML_ERROR_SUSPENDED,
-    XML_ERROR_SUSPEND_PE, XML_ERROR_SYNTAX, XML_ERROR_TAG_MISMATCH, XML_ERROR_TEXT_DECL,
-    XML_ERROR_UNBOUND_PREFIX, XML_ERROR_UNCLOSED_CDATA_SECTION, XML_ERROR_UNCLOSED_TOKEN,
-    XML_ERROR_UNDECLARING_PREFIX, XML_ERROR_UNDEFINED_ENTITY, XML_ERROR_UNEXPECTED_STATE,
-    XML_ERROR_UNKNOWN_ENCODING, XML_ERROR_XML_DECL, XML_FALSE,
-    XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
-    XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT, XML_FEATURE_ATTR_INFO,
-    XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
-    XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT,
-    XML_FEATURE_CONTEXT_BYTES, XML_FEATURE_DTD, XML_FEATURE_END, XML_FEATURE_GE,
-    XML_FEATURE_LARGE_SIZE, XML_FEATURE_MIN_SIZE, XML_FEATURE_NS, XML_FEATURE_SIZEOF_XML_CHAR,
-    XML_FEATURE_SIZEOF_XML_LCHAR, XML_FEATURE_UNICODE, XML_FEATURE_UNICODE_WCHAR_T, XML_FINISHED,
-    XML_INITIALIZED, XML_MAJOR_VERSION, XML_MICRO_VERSION, XML_MINOR_VERSION,
-    XML_PARAM_ENTITY_PARSING_ALWAYS, XML_PARAM_ENTITY_PARSING_NEVER,
-    XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE, XML_PARSING, XML_STATUS_ERROR, XML_STATUS_OK,
-    XML_STATUS_SUSPENDED, XML_SUSPENDED, XML_TRUE,
-};
+
+pub use self::expat_external_h::XML_Char;
+pub use self::expat_external_h::XML_Index;
+pub use self::expat_external_h::XML_LChar;
+pub use self::expat_external_h::XML_Size;
+pub use self::expat_h::XML_AttlistDeclHandler;
+pub use self::expat_h::XML_Bool;
+pub use self::expat_h::XML_CharacterDataHandler;
+pub use self::expat_h::XML_CommentHandler;
+pub use self::expat_h::XML_Content;
+pub use self::expat_h::XML_Content_Quant;
+pub use self::expat_h::XML_Content_Type;
+pub use self::expat_h::XML_DefaultHandler;
+pub use self::expat_h::XML_ElementDeclHandler;
+pub use self::expat_h::XML_Encoding;
+pub use self::expat_h::XML_EndCdataSectionHandler;
+pub use self::expat_h::XML_EndDoctypeDeclHandler;
+pub use self::expat_h::XML_EndElementHandler;
+pub use self::expat_h::XML_EndNamespaceDeclHandler;
+pub use self::expat_h::XML_EntityDeclHandler;
+pub use self::expat_h::XML_Error;
+pub use self::expat_h::XML_Expat_Version;
+pub use self::expat_h::XML_ExternalEntityRefHandler;
+pub use self::expat_h::XML_Feature;
+pub use self::expat_h::XML_FeatureEnum;
+pub use self::expat_h::XML_Memory_Handling_Suite;
+pub use self::expat_h::XML_NotStandaloneHandler;
+pub use self::expat_h::XML_NotationDeclHandler;
+pub use self::expat_h::XML_ParamEntityParsing;
+pub use self::expat_h::XML_Parser;
+pub use self::expat_h::XML_Parsing;
+pub use self::expat_h::XML_ParsingStatus;
+pub use self::expat_h::XML_ProcessingInstructionHandler;
+pub use self::expat_h::XML_SkippedEntityHandler;
+pub use self::expat_h::XML_StartCdataSectionHandler;
+pub use self::expat_h::XML_StartDoctypeDeclHandler;
+pub use self::expat_h::XML_StartElementHandler;
+pub use self::expat_h::XML_StartNamespaceDeclHandler;
+pub use self::expat_h::XML_Status;
+pub use self::expat_h::XML_UnknownEncodingHandler;
+pub use self::expat_h::XML_UnparsedEntityDeclHandler;
+pub use self::expat_h::XML_XmlDeclHandler;
+pub use self::expat_h::XML_cp;
+pub use self::expat_h::XML_CQUANT_NONE;
+pub use self::expat_h::XML_CQUANT_OPT;
+pub use self::expat_h::XML_CQUANT_PLUS;
+pub use self::expat_h::XML_CQUANT_REP;
+pub use self::expat_h::XML_CTYPE_ANY;
+pub use self::expat_h::XML_CTYPE_CHOICE;
+pub use self::expat_h::XML_CTYPE_EMPTY;
+pub use self::expat_h::XML_CTYPE_MIXED;
+pub use self::expat_h::XML_CTYPE_NAME;
+pub use self::expat_h::XML_CTYPE_SEQ;
+pub use self::expat_h::XML_ERROR_ABORTED;
+pub use self::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+pub use self::expat_h::XML_ERROR_ASYNC_ENTITY;
+pub use self::expat_h::XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF;
+pub use self::expat_h::XML_ERROR_BAD_CHAR_REF;
+pub use self::expat_h::XML_ERROR_BINARY_ENTITY_REF;
+pub use self::expat_h::XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
+pub use self::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
+pub use self::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
+pub use self::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+pub use self::expat_h::XML_ERROR_FEATURE_REQUIRES_XML_DTD;
+pub use self::expat_h::XML_ERROR_FINISHED;
+pub use self::expat_h::XML_ERROR_INCOMPLETE_PE;
+pub use self::expat_h::XML_ERROR_INCORRECT_ENCODING;
+pub use self::expat_h::XML_ERROR_INVALID_ARGUMENT;
+pub use self::expat_h::XML_ERROR_INVALID_TOKEN;
+pub use self::expat_h::XML_ERROR_JUNK_AFTER_DOC_ELEMENT;
+pub use self::expat_h::XML_ERROR_MISPLACED_XML_PI;
+pub use self::expat_h::XML_ERROR_NONE;
+pub use self::expat_h::XML_ERROR_NOT_STANDALONE;
+pub use self::expat_h::XML_ERROR_NOT_STARTED;
+pub use self::expat_h::XML_ERROR_NOT_SUSPENDED;
+pub use self::expat_h::XML_ERROR_NO_BUFFER;
+pub use self::expat_h::XML_ERROR_NO_ELEMENTS;
+pub use self::expat_h::XML_ERROR_NO_MEMORY;
+pub use self::expat_h::XML_ERROR_PARAM_ENTITY_REF;
+pub use self::expat_h::XML_ERROR_PARTIAL_CHAR;
+pub use self::expat_h::XML_ERROR_PUBLICID;
+pub use self::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
+pub use self::expat_h::XML_ERROR_RESERVED_NAMESPACE_URI;
+pub use self::expat_h::XML_ERROR_RESERVED_PREFIX_XML;
+pub use self::expat_h::XML_ERROR_RESERVED_PREFIX_XMLNS;
+pub use self::expat_h::XML_ERROR_SUSPENDED;
+pub use self::expat_h::XML_ERROR_SUSPEND_PE;
+pub use self::expat_h::XML_ERROR_SYNTAX;
+pub use self::expat_h::XML_ERROR_TAG_MISMATCH;
+pub use self::expat_h::XML_ERROR_TEXT_DECL;
+pub use self::expat_h::XML_ERROR_UNBOUND_PREFIX;
+pub use self::expat_h::XML_ERROR_UNCLOSED_CDATA_SECTION;
+pub use self::expat_h::XML_ERROR_UNCLOSED_TOKEN;
+pub use self::expat_h::XML_ERROR_UNDECLARING_PREFIX;
+pub use self::expat_h::XML_ERROR_UNDEFINED_ENTITY;
+pub use self::expat_h::XML_ERROR_UNEXPECTED_STATE;
+pub use self::expat_h::XML_ERROR_UNKNOWN_ENCODING;
+pub use self::expat_h::XML_ERROR_XML_DECL;
+pub use self::expat_h::XML_FALSE;
+pub use self::expat_h::XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
+pub use self::expat_h::XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use self::expat_h::XML_FEATURE_ATTR_INFO;
+pub use self::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
+pub use self::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use self::expat_h::XML_FEATURE_CONTEXT_BYTES;
+pub use self::expat_h::XML_FEATURE_DTD;
+pub use self::expat_h::XML_FEATURE_END;
+pub use self::expat_h::XML_FEATURE_GE;
+pub use self::expat_h::XML_FEATURE_LARGE_SIZE;
+pub use self::expat_h::XML_FEATURE_MIN_SIZE;
+pub use self::expat_h::XML_FEATURE_NS;
+pub use self::expat_h::XML_FEATURE_SIZEOF_XML_CHAR;
+pub use self::expat_h::XML_FEATURE_SIZEOF_XML_LCHAR;
+pub use self::expat_h::XML_FEATURE_UNICODE;
+pub use self::expat_h::XML_FEATURE_UNICODE_WCHAR_T;
+pub use self::expat_h::XML_FINISHED;
+pub use self::expat_h::XML_INITIALIZED;
+pub use self::expat_h::XML_MAJOR_VERSION;
+pub use self::expat_h::XML_MICRO_VERSION;
+pub use self::expat_h::XML_MINOR_VERSION;
+pub use self::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS;
+pub use self::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
+pub use self::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE;
+pub use self::expat_h::XML_PARSING;
+pub use self::expat_h::XML_STATUS_ERROR;
+pub use self::expat_h::XML_STATUS_OK;
+pub use self::expat_h::XML_STATUS_SUSPENDED;
+pub use self::expat_h::XML_SUSPENDED;
+pub use self::expat_h::XML_TRUE;
 use self::fcntl_h::open;
 pub use self::fcntl_linux_h::O_RDONLY;
 pub use self::internal::__INT_MAX__;
-pub use self::internal_h::{
-    EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
-    EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT,
-    EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
-    EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT, EXPAT_MALLOC_ALIGNMENT,
-    EXPAT_MALLOC_PADDING,
-};
-pub use self::limits_h::{INT_MAX, UINT_MAX};
-pub use self::random_h::{getrandom, GRND_NONBLOCK};
-pub use self::siphash_h::{
-    sip24_final, sip24_init, sip24_update, sip24_valid, sip_round, sip_tokey, siphash, siphash24,
-    sipkey,
-};
-pub use self::stdbool_h::{false_0, true_0};
+
+pub use self::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
+pub use self::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use self::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
+pub use self::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use self::internal_h::EXPAT_MALLOC_ALIGNMENT;
+pub use self::internal_h::EXPAT_MALLOC_PADDING;
+pub use self::limits_h::INT_MAX;
+pub use self::limits_h::UINT_MAX;
+pub use self::random_h::getrandom;
+pub use self::random_h::GRND_NONBLOCK;
+pub use self::siphash_h::sip24_final;
+pub use self::siphash_h::sip24_init;
+pub use self::siphash_h::sip24_update;
+pub use self::siphash_h::sip24_valid;
+pub use self::siphash_h::sip_round;
+pub use self::siphash_h::sip_tokey;
+pub use self::siphash_h::siphash;
+pub use self::siphash_h::siphash24;
+pub use self::siphash_h::sipkey;
+pub use self::stdbool_h::false_0;
+pub use self::stdbool_h::true_0;
 pub use self::stdint_h::SIZE_MAX;
 pub use self::stdint_uintn_h::uint64_t;
-pub use self::stdio_h::{fprintf, ssize_t, stderr};
-use self::stdlib_h::{free, getenv, malloc, realloc, strtoul};
-use self::string_h::{memcmp, memcpy, memmove, memset};
-pub use self::struct_FILE_h::{_IO_codecvt, _IO_lock_t, _IO_marker, _IO_wide_data, _IO_FILE};
+
+pub use self::stdio_h::fprintf;
+pub use self::stdio_h::ssize_t;
+pub use self::stdio_h::stderr;
+use self::stdlib_h::free;
+use self::stdlib_h::getenv;
+use self::stdlib_h::malloc;
+use self::stdlib_h::realloc;
+use self::stdlib_h::strtoul;
+use self::string_h::memcmp;
+use self::string_h::memcpy;
+use self::string_h::memmove;
+use self::string_h::memset;
+pub use self::struct_FILE_h::_IO_codecvt;
+pub use self::struct_FILE_h::_IO_lock_t;
+pub use self::struct_FILE_h::_IO_marker;
+pub use self::struct_FILE_h::_IO_wide_data;
+pub use self::struct_FILE_h::_IO_FILE;
 pub use self::struct_timeval_h::timeval;
 use self::time_h::gettimeofday;
-pub use self::types_h::{
-    __off64_t, __off_t, __pid_t, __ssize_t, __suseconds_t, __time_t, __uint64_t,
-};
-use self::unistd_h::{close, getpid, read};
-pub use self::xmlrole_h::{
-    prolog_state, C2RustUnnamed_0, XmlPrologStateInit, XmlPrologStateInitExternalEntity,
-    PROLOG_STATE, XML_ROLE_ATTLIST_ELEMENT_NAME, XML_ROLE_ATTLIST_NONE,
-    XML_ROLE_ATTRIBUTE_ENUM_VALUE, XML_ROLE_ATTRIBUTE_NAME, XML_ROLE_ATTRIBUTE_NOTATION_VALUE,
-    XML_ROLE_ATTRIBUTE_TYPE_CDATA, XML_ROLE_ATTRIBUTE_TYPE_ENTITIES,
-    XML_ROLE_ATTRIBUTE_TYPE_ENTITY, XML_ROLE_ATTRIBUTE_TYPE_ID, XML_ROLE_ATTRIBUTE_TYPE_IDREF,
-    XML_ROLE_ATTRIBUTE_TYPE_IDREFS, XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN,
-    XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS, XML_ROLE_COMMENT, XML_ROLE_CONTENT_ANY,
-    XML_ROLE_CONTENT_ELEMENT, XML_ROLE_CONTENT_ELEMENT_OPT, XML_ROLE_CONTENT_ELEMENT_PLUS,
-    XML_ROLE_CONTENT_ELEMENT_REP, XML_ROLE_CONTENT_EMPTY, XML_ROLE_CONTENT_PCDATA,
-    XML_ROLE_DEFAULT_ATTRIBUTE_VALUE, XML_ROLE_DOCTYPE_CLOSE, XML_ROLE_DOCTYPE_INTERNAL_SUBSET,
-    XML_ROLE_DOCTYPE_NAME, XML_ROLE_DOCTYPE_NONE, XML_ROLE_DOCTYPE_PUBLIC_ID,
-    XML_ROLE_DOCTYPE_SYSTEM_ID, XML_ROLE_ELEMENT_NAME, XML_ROLE_ELEMENT_NONE,
-    XML_ROLE_ENTITY_COMPLETE, XML_ROLE_ENTITY_NONE, XML_ROLE_ENTITY_NOTATION_NAME,
-    XML_ROLE_ENTITY_PUBLIC_ID, XML_ROLE_ENTITY_SYSTEM_ID, XML_ROLE_ENTITY_VALUE, XML_ROLE_ERROR,
-    XML_ROLE_FIXED_ATTRIBUTE_VALUE, XML_ROLE_GENERAL_ENTITY_NAME, XML_ROLE_GROUP_CHOICE,
-    XML_ROLE_GROUP_CLOSE, XML_ROLE_GROUP_CLOSE_OPT, XML_ROLE_GROUP_CLOSE_PLUS,
-    XML_ROLE_GROUP_CLOSE_REP, XML_ROLE_GROUP_OPEN, XML_ROLE_GROUP_SEQUENCE, XML_ROLE_IGNORE_SECT,
-    XML_ROLE_IMPLIED_ATTRIBUTE_VALUE, XML_ROLE_INNER_PARAM_ENTITY_REF, XML_ROLE_INSTANCE_START,
-    XML_ROLE_NONE, XML_ROLE_NOTATION_NAME, XML_ROLE_NOTATION_NONE, XML_ROLE_NOTATION_NO_SYSTEM_ID,
-    XML_ROLE_NOTATION_PUBLIC_ID, XML_ROLE_NOTATION_SYSTEM_ID, XML_ROLE_PARAM_ENTITY_NAME,
-    XML_ROLE_PARAM_ENTITY_REF, XML_ROLE_PI, XML_ROLE_REQUIRED_ATTRIBUTE_VALUE, XML_ROLE_TEXT_DECL,
-    XML_ROLE_XML_DECL,
-};
-pub use self::xmltok_h::{
-    encoding, position, XML_Convert_Result, XmlGetUtf8InternalEncoding,
-    XmlGetUtf8InternalEncodingNS, XmlInitEncoding, XmlInitEncodingNS, XmlInitUnknownEncoding,
-    XmlInitUnknownEncodingNS, XmlParseXmlDecl, XmlParseXmlDeclNS, XmlSizeOfUnknownEncoding,
-    XmlUtf8Encode, ATTRIBUTE, CONVERTER, ENCODING, INIT_ENCODING, POSITION, SCANNER,
-    XML_CONVERT_COMPLETED, XML_CONVERT_INPUT_INCOMPLETE, XML_CONVERT_OUTPUT_EXHAUSTED,
-    XML_TOK_ATTRIBUTE_VALUE_S, XML_TOK_BOM, XML_TOK_CDATA_SECT_CLOSE, XML_TOK_CDATA_SECT_OPEN,
-    XML_TOK_CHAR_REF, XML_TOK_COMMENT, XML_TOK_DATA_CHARS, XML_TOK_DATA_NEWLINE,
-    XML_TOK_EMPTY_ELEMENT_NO_ATTS, XML_TOK_EMPTY_ELEMENT_WITH_ATTS, XML_TOK_END_TAG,
-    XML_TOK_ENTITY_REF, XML_TOK_IGNORE_SECT, XML_TOK_INSTANCE_START, XML_TOK_INVALID, XML_TOK_NONE,
-    XML_TOK_PARAM_ENTITY_REF, XML_TOK_PARTIAL, XML_TOK_PARTIAL_CHAR, XML_TOK_PI, XML_TOK_PROLOG_S,
-    XML_TOK_START_TAG_NO_ATTS, XML_TOK_START_TAG_WITH_ATTS, XML_TOK_TRAILING_CR,
-    XML_TOK_TRAILING_RSQB, XML_TOK_XML_DECL,
-};
+
+pub use self::types_h::__off64_t;
+pub use self::types_h::__off_t;
+pub use self::types_h::__pid_t;
+pub use self::types_h::__ssize_t;
+pub use self::types_h::__suseconds_t;
+pub use self::types_h::__time_t;
+pub use self::types_h::__uint64_t;
+use self::unistd_h::close;
+use self::unistd_h::getpid;
+use self::unistd_h::read;
+pub use self::xmlrole_h::prolog_state;
+pub use self::xmlrole_h::C2RustUnnamed_0;
+pub use self::xmlrole_h::XmlPrologStateInit;
+pub use self::xmlrole_h::XmlPrologStateInitExternalEntity;
+pub use self::xmlrole_h::PROLOG_STATE;
+pub use self::xmlrole_h::XML_ROLE_ATTLIST_ELEMENT_NAME;
+pub use self::xmlrole_h::XML_ROLE_ATTLIST_NONE;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_ENUM_VALUE;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_NAME;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_NOTATION_VALUE;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_CDATA;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_ENTITIES;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_ENTITY;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_ID;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_IDREF;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_IDREFS;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN;
+pub use self::xmlrole_h::XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS;
+pub use self::xmlrole_h::XML_ROLE_COMMENT;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ANY;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ELEMENT;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ELEMENT_OPT;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ELEMENT_PLUS;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_ELEMENT_REP;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_EMPTY;
+pub use self::xmlrole_h::XML_ROLE_CONTENT_PCDATA;
+pub use self::xmlrole_h::XML_ROLE_DEFAULT_ATTRIBUTE_VALUE;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_CLOSE;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_INTERNAL_SUBSET;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_NAME;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_NONE;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_PUBLIC_ID;
+pub use self::xmlrole_h::XML_ROLE_DOCTYPE_SYSTEM_ID;
+pub use self::xmlrole_h::XML_ROLE_ELEMENT_NAME;
+pub use self::xmlrole_h::XML_ROLE_ELEMENT_NONE;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_COMPLETE;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_NONE;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_NOTATION_NAME;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_PUBLIC_ID;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_SYSTEM_ID;
+pub use self::xmlrole_h::XML_ROLE_ENTITY_VALUE;
+pub use self::xmlrole_h::XML_ROLE_ERROR;
+pub use self::xmlrole_h::XML_ROLE_FIXED_ATTRIBUTE_VALUE;
+pub use self::xmlrole_h::XML_ROLE_GENERAL_ENTITY_NAME;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CHOICE;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CLOSE;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CLOSE_OPT;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CLOSE_PLUS;
+pub use self::xmlrole_h::XML_ROLE_GROUP_CLOSE_REP;
+pub use self::xmlrole_h::XML_ROLE_GROUP_OPEN;
+pub use self::xmlrole_h::XML_ROLE_GROUP_SEQUENCE;
+pub use self::xmlrole_h::XML_ROLE_IGNORE_SECT;
+pub use self::xmlrole_h::XML_ROLE_IMPLIED_ATTRIBUTE_VALUE;
+pub use self::xmlrole_h::XML_ROLE_INNER_PARAM_ENTITY_REF;
+pub use self::xmlrole_h::XML_ROLE_INSTANCE_START;
+pub use self::xmlrole_h::XML_ROLE_NONE;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_NAME;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_NONE;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_NO_SYSTEM_ID;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_PUBLIC_ID;
+pub use self::xmlrole_h::XML_ROLE_NOTATION_SYSTEM_ID;
+pub use self::xmlrole_h::XML_ROLE_PARAM_ENTITY_NAME;
+pub use self::xmlrole_h::XML_ROLE_PARAM_ENTITY_REF;
+pub use self::xmlrole_h::XML_ROLE_PI;
+pub use self::xmlrole_h::XML_ROLE_REQUIRED_ATTRIBUTE_VALUE;
+pub use self::xmlrole_h::XML_ROLE_TEXT_DECL;
+pub use self::xmlrole_h::XML_ROLE_XML_DECL;
+pub use self::xmltok_h::encoding;
+pub use self::xmltok_h::position;
+pub use self::xmltok_h::XML_Convert_Result;
+pub use self::xmltok_h::XmlGetUtf8InternalEncoding;
+pub use self::xmltok_h::XmlGetUtf8InternalEncodingNS;
+pub use self::xmltok_h::XmlInitEncoding;
+pub use self::xmltok_h::XmlInitEncodingNS;
+pub use self::xmltok_h::XmlInitUnknownEncoding;
+pub use self::xmltok_h::XmlInitUnknownEncodingNS;
+pub use self::xmltok_h::XmlParseXmlDecl;
+pub use self::xmltok_h::XmlParseXmlDeclNS;
+pub use self::xmltok_h::XmlSizeOfUnknownEncoding;
+pub use self::xmltok_h::XmlUtf8Encode;
+pub use self::xmltok_h::ATTRIBUTE;
+pub use self::xmltok_h::CONVERTER;
+pub use self::xmltok_h::ENCODING;
+pub use self::xmltok_h::INIT_ENCODING;
+pub use self::xmltok_h::POSITION;
+pub use self::xmltok_h::SCANNER;
+pub use self::xmltok_h::XML_CONVERT_COMPLETED;
+pub use self::xmltok_h::XML_CONVERT_INPUT_INCOMPLETE;
+pub use self::xmltok_h::XML_CONVERT_OUTPUT_EXHAUSTED;
+pub use self::xmltok_h::XML_TOK_ATTRIBUTE_VALUE_S;
+pub use self::xmltok_h::XML_TOK_BOM;
+pub use self::xmltok_h::XML_TOK_CDATA_SECT_CLOSE;
+pub use self::xmltok_h::XML_TOK_CDATA_SECT_OPEN;
+pub use self::xmltok_h::XML_TOK_CHAR_REF;
+pub use self::xmltok_h::XML_TOK_COMMENT;
+pub use self::xmltok_h::XML_TOK_DATA_CHARS;
+pub use self::xmltok_h::XML_TOK_DATA_NEWLINE;
+pub use self::xmltok_h::XML_TOK_EMPTY_ELEMENT_NO_ATTS;
+pub use self::xmltok_h::XML_TOK_EMPTY_ELEMENT_WITH_ATTS;
+pub use self::xmltok_h::XML_TOK_END_TAG;
+pub use self::xmltok_h::XML_TOK_ENTITY_REF;
+pub use self::xmltok_h::XML_TOK_IGNORE_SECT;
+pub use self::xmltok_h::XML_TOK_INSTANCE_START;
+pub use self::xmltok_h::XML_TOK_INVALID;
+pub use self::xmltok_h::XML_TOK_NONE;
+pub use self::xmltok_h::XML_TOK_PARAM_ENTITY_REF;
+pub use self::xmltok_h::XML_TOK_PARTIAL;
+pub use self::xmltok_h::XML_TOK_PARTIAL_CHAR;
+pub use self::xmltok_h::XML_TOK_PI;
+pub use self::xmltok_h::XML_TOK_PROLOG_S;
+pub use self::xmltok_h::XML_TOK_START_TAG_NO_ATTS;
+pub use self::xmltok_h::XML_TOK_START_TAG_WITH_ATTS;
+pub use self::xmltok_h::XML_TOK_TRAILING_CR;
+pub use self::xmltok_h::XML_TOK_TRAILING_RSQB;
+pub use self::xmltok_h::XML_TOK_XML_DECL;
 pub use self::FILE_h::FILE;
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -2542,14 +2779,14 @@ pub struct tag {
     pub rawName: *const ::core::ffi::c_char,
     pub rawNameLength: ::core::ffi::c_int,
     pub name: TAG_NAME,
-    pub buf: C2RustUnnamed,
+    pub buf: C2RustUnnamed_1,
     pub bufEnd: *mut ::core::ffi::c_char,
     pub bindings: *mut BINDING,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
 #[c2rust::src_loc = "310:3"]
-pub union C2RustUnnamed {
+pub union C2RustUnnamed_1 {
     pub raw: *mut ::core::ffi::c_char,
     pub str_0: *mut XML_Char,
 }

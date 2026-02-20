@@ -56,7 +56,9 @@ pub mod struct_FILE_h {
     }
     #[c2rust::src_loc = "45:1"]
     pub type _IO_lock_t = ();
-    use super::types_h::{__off64_t, __off_t, __uint64_t};
+    use super::types_h::__off64_t;
+    use super::types_h::__off_t;
+    use super::types_h::__uint64_t;
     extern "C" {
         #[c2rust::src_loc = "40:1"]
         pub type _IO_wide_data;
@@ -195,7 +197,9 @@ pub mod expat_h {
             *const XML_Char,
         ) -> ::core::ffi::c_int,
     >;
-    use super::expat_external_h::{XML_Char, XML_LChar, XML_Size};
+    use super::expat_external_h::XML_Char;
+    use super::expat_external_h::XML_LChar;
+    use super::expat_external_h::XML_Size;
     extern "C" {
         #[c2rust::src_loc = "55:1"]
         pub type XML_ParserStruct;
@@ -355,39 +359,102 @@ pub mod __stddef_null_h {
     pub const NULL: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
 }
 pub use self::__stddef_size_t_h::size_t;
-pub use self::expat_external_h::{XML_Char, XML_LChar, XML_Size};
-pub use self::expat_h::{
-    XML_Error, XML_ErrorString, XML_ExternalEntityParserCreate, XML_ExternalEntityRefHandler,
-    XML_GetBuffer, XML_GetCurrentColumnNumber, XML_GetCurrentLineNumber, XML_GetErrorCode,
-    XML_Parse, XML_ParseBuffer, XML_Parser, XML_ParserFree, XML_ParserStruct, XML_SetBase,
-    XML_SetExternalEntityRefHandler, XML_Status, XML_ERROR_ABORTED,
-    XML_ERROR_AMPLIFICATION_LIMIT_BREACH, XML_ERROR_ASYNC_ENTITY,
-    XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF, XML_ERROR_BAD_CHAR_REF, XML_ERROR_BINARY_ENTITY_REF,
-    XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING, XML_ERROR_DUPLICATE_ATTRIBUTE,
-    XML_ERROR_ENTITY_DECLARED_IN_PE, XML_ERROR_EXTERNAL_ENTITY_HANDLING,
-    XML_ERROR_FEATURE_REQUIRES_XML_DTD, XML_ERROR_FINISHED, XML_ERROR_INCOMPLETE_PE,
-    XML_ERROR_INCORRECT_ENCODING, XML_ERROR_INVALID_ARGUMENT, XML_ERROR_INVALID_TOKEN,
-    XML_ERROR_JUNK_AFTER_DOC_ELEMENT, XML_ERROR_MISPLACED_XML_PI, XML_ERROR_NONE,
-    XML_ERROR_NOT_STANDALONE, XML_ERROR_NOT_STARTED, XML_ERROR_NOT_SUSPENDED, XML_ERROR_NO_BUFFER,
-    XML_ERROR_NO_ELEMENTS, XML_ERROR_NO_MEMORY, XML_ERROR_PARAM_ENTITY_REF, XML_ERROR_PARTIAL_CHAR,
-    XML_ERROR_PUBLICID, XML_ERROR_RECURSIVE_ENTITY_REF, XML_ERROR_RESERVED_NAMESPACE_URI,
-    XML_ERROR_RESERVED_PREFIX_XML, XML_ERROR_RESERVED_PREFIX_XMLNS, XML_ERROR_SUSPENDED,
-    XML_ERROR_SUSPEND_PE, XML_ERROR_SYNTAX, XML_ERROR_TAG_MISMATCH, XML_ERROR_TEXT_DECL,
-    XML_ERROR_UNBOUND_PREFIX, XML_ERROR_UNCLOSED_CDATA_SECTION, XML_ERROR_UNCLOSED_TOKEN,
-    XML_ERROR_UNDECLARING_PREFIX, XML_ERROR_UNDEFINED_ENTITY, XML_ERROR_UNEXPECTED_STATE,
-    XML_ERROR_UNKNOWN_ENCODING, XML_ERROR_XML_DECL, XML_STATUS_ERROR, XML_STATUS_OK,
-    XML_STATUS_SUSPENDED,
-};
+
+pub use self::expat_external_h::XML_Char;
+pub use self::expat_external_h::XML_LChar;
+pub use self::expat_external_h::XML_Size;
+pub use self::expat_h::XML_Error;
+pub use self::expat_h::XML_ErrorString;
+pub use self::expat_h::XML_ExternalEntityParserCreate;
+pub use self::expat_h::XML_ExternalEntityRefHandler;
+pub use self::expat_h::XML_GetBuffer;
+pub use self::expat_h::XML_GetCurrentColumnNumber;
+pub use self::expat_h::XML_GetCurrentLineNumber;
+pub use self::expat_h::XML_GetErrorCode;
+pub use self::expat_h::XML_Parse;
+pub use self::expat_h::XML_ParseBuffer;
+pub use self::expat_h::XML_Parser;
+pub use self::expat_h::XML_ParserFree;
+pub use self::expat_h::XML_ParserStruct;
+pub use self::expat_h::XML_SetBase;
+pub use self::expat_h::XML_SetExternalEntityRefHandler;
+pub use self::expat_h::XML_Status;
+pub use self::expat_h::XML_ERROR_ABORTED;
+pub use self::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+pub use self::expat_h::XML_ERROR_ASYNC_ENTITY;
+pub use self::expat_h::XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF;
+pub use self::expat_h::XML_ERROR_BAD_CHAR_REF;
+pub use self::expat_h::XML_ERROR_BINARY_ENTITY_REF;
+pub use self::expat_h::XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
+pub use self::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
+pub use self::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
+pub use self::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+pub use self::expat_h::XML_ERROR_FEATURE_REQUIRES_XML_DTD;
+pub use self::expat_h::XML_ERROR_FINISHED;
+pub use self::expat_h::XML_ERROR_INCOMPLETE_PE;
+pub use self::expat_h::XML_ERROR_INCORRECT_ENCODING;
+pub use self::expat_h::XML_ERROR_INVALID_ARGUMENT;
+pub use self::expat_h::XML_ERROR_INVALID_TOKEN;
+pub use self::expat_h::XML_ERROR_JUNK_AFTER_DOC_ELEMENT;
+pub use self::expat_h::XML_ERROR_MISPLACED_XML_PI;
+pub use self::expat_h::XML_ERROR_NONE;
+pub use self::expat_h::XML_ERROR_NOT_STANDALONE;
+pub use self::expat_h::XML_ERROR_NOT_STARTED;
+pub use self::expat_h::XML_ERROR_NOT_SUSPENDED;
+pub use self::expat_h::XML_ERROR_NO_BUFFER;
+pub use self::expat_h::XML_ERROR_NO_ELEMENTS;
+pub use self::expat_h::XML_ERROR_NO_MEMORY;
+pub use self::expat_h::XML_ERROR_PARAM_ENTITY_REF;
+pub use self::expat_h::XML_ERROR_PARTIAL_CHAR;
+pub use self::expat_h::XML_ERROR_PUBLICID;
+pub use self::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
+pub use self::expat_h::XML_ERROR_RESERVED_NAMESPACE_URI;
+pub use self::expat_h::XML_ERROR_RESERVED_PREFIX_XML;
+pub use self::expat_h::XML_ERROR_RESERVED_PREFIX_XMLNS;
+pub use self::expat_h::XML_ERROR_SUSPENDED;
+pub use self::expat_h::XML_ERROR_SUSPEND_PE;
+pub use self::expat_h::XML_ERROR_SYNTAX;
+pub use self::expat_h::XML_ERROR_TAG_MISMATCH;
+pub use self::expat_h::XML_ERROR_TEXT_DECL;
+pub use self::expat_h::XML_ERROR_UNBOUND_PREFIX;
+pub use self::expat_h::XML_ERROR_UNCLOSED_CDATA_SECTION;
+pub use self::expat_h::XML_ERROR_UNCLOSED_TOKEN;
+pub use self::expat_h::XML_ERROR_UNDECLARING_PREFIX;
+pub use self::expat_h::XML_ERROR_UNDEFINED_ENTITY;
+pub use self::expat_h::XML_ERROR_UNEXPECTED_STATE;
+pub use self::expat_h::XML_ERROR_UNKNOWN_ENCODING;
+pub use self::expat_h::XML_ERROR_XML_DECL;
+pub use self::expat_h::XML_STATUS_ERROR;
+pub use self::expat_h::XML_STATUS_OK;
+pub use self::expat_h::XML_STATUS_SUSPENDED;
 use self::fcntl_h::open;
 pub use self::fcntl_linux_h::O_RDONLY;
 use self::filemap_h::filemap;
-use self::stdio_h::{fprintf, perror, stderr, stdout};
-use self::stdlib_h::{exit, free, malloc};
-use self::string_h::{strcpy, strlen, strrchr};
-pub use self::struct_FILE_h::{_IO_codecvt, _IO_lock_t, _IO_marker, _IO_wide_data, _IO_FILE};
-pub use self::types_h::{__off64_t, __off_t, __ssize_t, __uint64_t};
-pub use self::unistd_h::{close, read, ssize_t};
-pub use self::xmlfile_h::{XML_EXTERNAL_ENTITIES, XML_MAP_FILE};
+
+use self::stdio_h::fprintf;
+use self::stdio_h::perror;
+use self::stdio_h::stderr;
+use self::stdio_h::stdout;
+use self::stdlib_h::exit;
+use self::stdlib_h::free;
+use self::stdlib_h::malloc;
+use self::string_h::strcpy;
+use self::string_h::strlen;
+use self::string_h::strrchr;
+pub use self::struct_FILE_h::_IO_codecvt;
+pub use self::struct_FILE_h::_IO_lock_t;
+pub use self::struct_FILE_h::_IO_marker;
+pub use self::struct_FILE_h::_IO_wide_data;
+pub use self::struct_FILE_h::_IO_FILE;
+pub use self::types_h::__off64_t;
+pub use self::types_h::__off_t;
+pub use self::types_h::__ssize_t;
+pub use self::types_h::__uint64_t;
+pub use self::unistd_h::close;
+pub use self::unistd_h::read;
+pub use self::unistd_h::ssize_t;
+pub use self::xmlfile_h::XML_EXTERNAL_ENTITIES;
+pub use self::xmlfile_h::XML_MAP_FILE;
 pub use self::FILE_h::FILE;
 pub use self::__stddef_null_h::NULL;
 #[derive(Copy, Clone)]

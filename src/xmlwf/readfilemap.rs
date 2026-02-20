@@ -64,10 +64,18 @@ pub mod struct_stat_h {
         pub st_ctimensec: __syscall_ulong_t,
         pub __glibc_reserved: [__syscall_slong_t; 3],
     }
-    use super::types_h::{
-        __blkcnt_t, __blksize_t, __dev_t, __gid_t, __ino_t, __mode_t, __nlink_t, __off_t,
-        __syscall_slong_t, __syscall_ulong_t, __time_t, __uid_t,
-    };
+    use super::types_h::__blkcnt_t;
+    use super::types_h::__blksize_t;
+    use super::types_h::__dev_t;
+    use super::types_h::__gid_t;
+    use super::types_h::__ino_t;
+    use super::types_h::__mode_t;
+    use super::types_h::__nlink_t;
+    use super::types_h::__off_t;
+    use super::types_h::__syscall_slong_t;
+    use super::types_h::__syscall_ulong_t;
+    use super::types_h::__time_t;
+    use super::types_h::__uid_t;
 }
 #[c2rust::header_src = "/usr/include/bits/types/struct_FILE.h:44"]
 pub mod struct_FILE_h {
@@ -111,7 +119,9 @@ pub mod struct_FILE_h {
     }
     #[c2rust::src_loc = "45:1"]
     pub type _IO_lock_t = ();
-    use super::types_h::{__off64_t, __off_t, __uint64_t};
+    use super::types_h::__off64_t;
+    use super::types_h::__off_t;
+    use super::types_h::__uint64_t;
     extern "C" {
         #[c2rust::src_loc = "40:1"]
         pub type _IO_wide_data;
@@ -223,16 +233,36 @@ pub use self::filemap_h::XML_MAX_CHUNK_LEN;
 pub use self::internal::__INT_MAX__;
 pub use self::limits_h::INT_MAX;
 use self::stat_h::fstat;
-use self::stdio_h::{fprintf, perror, stderr};
-use self::stdlib_h::{free, malloc};
-pub use self::struct_FILE_h::{_IO_codecvt, _IO_lock_t, _IO_marker, _IO_wide_data, _IO_FILE};
+
+use self::stdio_h::fprintf;
+use self::stdio_h::perror;
+use self::stdio_h::stderr;
+use self::stdlib_h::free;
+use self::stdlib_h::malloc;
+pub use self::struct_FILE_h::_IO_codecvt;
+pub use self::struct_FILE_h::_IO_lock_t;
+pub use self::struct_FILE_h::_IO_marker;
+pub use self::struct_FILE_h::_IO_wide_data;
+pub use self::struct_FILE_h::_IO_FILE;
 pub use self::struct_stat_h::stat;
 pub use self::sys_types_h::ssize_t;
-pub use self::types_h::{
-    __blkcnt_t, __blksize_t, __dev_t, __gid_t, __ino_t, __mode_t, __nlink_t, __off64_t, __off_t,
-    __syscall_slong_t, __syscall_ulong_t, __time_t, __uid_t, __uint64_t,
-};
-use self::unistd_h::{close, read};
+
+pub use self::types_h::__blkcnt_t;
+pub use self::types_h::__blksize_t;
+pub use self::types_h::__dev_t;
+pub use self::types_h::__gid_t;
+pub use self::types_h::__ino_t;
+pub use self::types_h::__mode_t;
+pub use self::types_h::__nlink_t;
+pub use self::types_h::__off64_t;
+pub use self::types_h::__off_t;
+pub use self::types_h::__syscall_slong_t;
+pub use self::types_h::__syscall_ulong_t;
+pub use self::types_h::__time_t;
+pub use self::types_h::__uid_t;
+pub use self::types_h::__uint64_t;
+use self::unistd_h::close;
+use self::unistd_h::read;
 pub use self::FILE_h::FILE;
 #[c2rust::src_loc = "79:13"]
 pub const O_BINARY: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
