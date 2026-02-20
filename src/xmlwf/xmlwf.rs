@@ -223,10 +223,10 @@ pub mod stdlib {
             *b"void attributeValue(FILE *, const XML_Char *)\0",
         )
     };
-    pub const EINVAL: ::core::ffi::c_int = 22 as ::core::ffi::c_int;
+    pub const EINVAL: ::core::ffi::c_int = 22i32;
 
-    pub const ERANGE: ::core::ffi::c_int = 34 as ::core::ffi::c_int;
-    pub const _IOFBF: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    pub const ERANGE: ::core::ffi::c_int = 34i32;
+    pub const _IOFBF: ::core::ffi::c_int = 0i32;
     pub type __compar_fn_t = Option<
         unsafe extern "C" fn(
             *const ::core::ffi::c_void,
@@ -410,7 +410,7 @@ unsafe extern "C" fn characterData(
     mut len: ::core::ffi::c_int,
 ) {
     let mut fp: *mut FILE = (*(userData as *mut XmlwfUserData)).fp;
-    while len > 0 as ::core::ffi::c_int {
+    while len > 0i32 {
         match *s as ::core::ffi::c_int {
             38 => {
                 fputs(b"&amp;\0" as *const u8 as *const ::core::ffi::c_char, fp);
@@ -426,7 +426,7 @@ unsafe extern "C" fn characterData(
             }
             9 | 10 | 13 => {
                 fprintf(
-                    fp as *mut _IO_FILE,
+                    fp,
                     b"&#%d;\0" as *const u8 as *const ::core::ffi::c_char,
                     *s as ::core::ffi::c_int,
                 );
@@ -440,10 +440,7 @@ unsafe extern "C" fn characterData(
     }
 }
 
-unsafe extern "C" fn attributeValue(
-    mut fp: *mut FILE,
-    mut s: *const XML_Char,
-) {
+unsafe extern "C" fn attributeValue(mut fp: *mut FILE, mut s: *const XML_Char) {
     putc('=' as i32, fp);
     putc('"' as i32, fp);
     if !s.is_null() {
@@ -452,7 +449,7 @@ unsafe extern "C" fn attributeValue(
             b"s\0" as *const u8 as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/xmlwf/xmlwf.c\0" as *const u8
                 as *const ::core::ffi::c_char,
-            134 as ::core::ffi::c_uint,
+            134u32,
             __ASSERT_FUNCTION.as_ptr(),
         );
     };
@@ -476,7 +473,7 @@ unsafe extern "C" fn attributeValue(
             }
             9 | 10 | 13 => {
                 fprintf(
-                    fp as *mut _IO_FILE,
+                    fp,
                     b"&#%d;\0" as *const u8 as *const ::core::ffi::c_char,
                     *s as ::core::ffi::c_int,
                 );
@@ -505,24 +502,20 @@ unsafe extern "C" fn startElement(
     mut atts: *mut *const XML_Char,
 ) {
     let mut nAtts: ::core::ffi::c_int = 0;
-    let mut p: *mut *const XML_Char =
-        ::core::ptr::null_mut::<*const XML_Char>();
+    let mut p: *mut *const XML_Char = ::core::ptr::null_mut::<*const XML_Char>();
     let mut fp: *mut FILE = (*(userData as *mut XmlwfUserData)).fp;
     putc('<' as i32, fp);
-    fputs(name as *const ::core::ffi::c_char, fp);
+    fputs(name, fp);
     p = atts;
     while !(*p).is_null() {
         p = p.offset(1);
     }
-    nAtts = (p.offset_from(atts) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
-        as ::core::ffi::c_int;
-    if nAtts > 1 as ::core::ffi::c_int {
+    nAtts = (p.offset_from(atts) as ::core::ffi::c_long >> 1i32) as ::core::ffi::c_int;
+    if nAtts > 1i32 {
         qsort(
             atts as *mut ::core::ffi::c_void,
             nAtts as size_t,
-            (::core::mem::size_of::<*mut XML_Char>()
-                as size_t)
-                .wrapping_mul(2 as size_t),
+            (::core::mem::size_of::<*mut XML_Char>()).wrapping_mul(2usize),
             Some(
                 attcmp
                     as unsafe extern "C" fn(
@@ -543,14 +536,11 @@ unsafe extern "C" fn startElement(
     putc('>' as i32, fp);
 }
 
-unsafe extern "C" fn endElement(
-    mut userData: *mut ::core::ffi::c_void,
-    mut name: *const XML_Char,
-) {
+unsafe extern "C" fn endElement(mut userData: *mut ::core::ffi::c_void, mut name: *const XML_Char) {
     let mut fp: *mut FILE = (*(userData as *mut XmlwfUserData)).fp;
     putc('<' as i32, fp);
     putc('/' as i32, fp);
-    fputs(name as *const ::core::ffi::c_char, fp);
+    fputs(name, fp);
     putc('>' as i32, fp);
 }
 
@@ -558,23 +548,18 @@ unsafe extern "C" fn nsattcmp(
     mut p1: *const ::core::ffi::c_void,
     mut p2: *const ::core::ffi::c_void,
 ) -> ::core::ffi::c_int {
-    let mut att1: *const XML_Char =
-        *(p1 as *const *const XML_Char);
-    let mut att2: *const XML_Char =
-        *(p2 as *const *const XML_Char);
-    let mut sep1: ::core::ffi::c_int =
-        (::libexpat::stdlib::strrchr(att1 as *const ::core::ffi::c_char, '\u{1}' as i32)
-            != ::core::ptr::null_mut::<::core::ffi::c_char>()) as ::core::ffi::c_int;
-    let mut sep2: ::core::ffi::c_int =
-        (::libexpat::stdlib::strrchr(att2 as *const ::core::ffi::c_char, '\u{1}' as i32)
-            != ::core::ptr::null_mut::<::core::ffi::c_char>()) as ::core::ffi::c_int;
+    let mut att1: *const XML_Char = *(p1 as *const *const XML_Char);
+    let mut att2: *const XML_Char = *(p2 as *const *const XML_Char);
+    let mut sep1: ::core::ffi::c_int = (::libexpat::stdlib::strrchr(att1, '\u{1}' as i32)
+        != ::core::ptr::null_mut::<::core::ffi::c_char>())
+        as ::core::ffi::c_int;
+    let mut sep2: ::core::ffi::c_int = (::libexpat::stdlib::strrchr(att2, '\u{1}' as i32)
+        != ::core::ptr::null_mut::<::core::ffi::c_char>())
+        as ::core::ffi::c_int;
     if sep1 != sep2 {
         return sep1 - sep2;
     }
-    return crate::stdlib::strcmp(
-        att1 as *const ::core::ffi::c_char,
-        att2 as *const ::core::ffi::c_char,
-    );
+    return crate::stdlib::strcmp(att1, att2);
 }
 
 unsafe extern "C" fn startElementNS(
@@ -584,39 +569,34 @@ unsafe extern "C" fn startElementNS(
 ) {
     let mut nAtts: ::core::ffi::c_int = 0;
     let mut nsi: ::core::ffi::c_int = 0;
-    let mut p: *mut *const XML_Char =
-        ::core::ptr::null_mut::<*const XML_Char>();
+    let mut p: *mut *const XML_Char = ::core::ptr::null_mut::<*const XML_Char>();
     let mut fp: *mut FILE = (*(userData as *mut XmlwfUserData)).fp;
-    let mut sep: *const XML_Char =
-        ::core::ptr::null::<XML_Char>();
+    let mut sep: *const XML_Char = ::core::ptr::null::<XML_Char>();
     putc('<' as i32, fp);
-    sep = ::libexpat::stdlib::strrchr(name as *const ::core::ffi::c_char, '\u{1}' as i32);
+    sep = ::libexpat::stdlib::strrchr(name, '\u{1}' as i32);
     if !sep.is_null() {
         fputs(b"n1:\0" as *const u8 as *const ::core::ffi::c_char, fp);
-        fputs(sep.offset(1 as ::core::ffi::c_int as isize), fp);
+        fputs(sep.offset(1isize), fp);
         fputs(
             b" xmlns:n1\0" as *const u8 as *const ::core::ffi::c_char,
             fp,
         );
         attributeValue(fp, name);
-        nsi = 2 as ::core::ffi::c_int;
+        nsi = 2i32;
     } else {
-        fputs(name as *const ::core::ffi::c_char, fp);
-        nsi = 1 as ::core::ffi::c_int;
+        fputs(name, fp);
+        nsi = 1i32;
     }
     p = atts;
     while !(*p).is_null() {
         p = p.offset(1);
     }
-    nAtts = (p.offset_from(atts) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
-        as ::core::ffi::c_int;
-    if nAtts > 1 as ::core::ffi::c_int {
+    nAtts = (p.offset_from(atts) as ::core::ffi::c_long >> 1i32) as ::core::ffi::c_int;
+    if nAtts > 1i32 {
         qsort(
             atts as *mut ::core::ffi::c_void,
             nAtts as size_t,
-            (::core::mem::size_of::<*mut XML_Char>()
-                as size_t)
-                .wrapping_mul(2 as size_t),
+            (::core::mem::size_of::<*mut XML_Char>()).wrapping_mul(2usize),
             Some(
                 nsattcmp
                     as unsafe extern "C" fn(
@@ -630,24 +610,24 @@ unsafe extern "C" fn startElementNS(
         let fresh1 = atts;
         atts = atts.offset(1);
         name = *fresh1;
-        sep = ::libexpat::stdlib::strrchr(name as *const ::core::ffi::c_char, '\u{1}' as i32);
+        sep = ::libexpat::stdlib::strrchr(name, '\u{1}' as i32);
         putc(' ' as i32, fp);
         if !sep.is_null() {
             fprintf(
-                fp as *mut _IO_FILE,
+                fp,
                 b"n%d:\0" as *const u8 as *const ::core::ffi::c_char,
                 nsi,
             );
-            fputs(sep.offset(1 as ::core::ffi::c_int as isize), fp);
+            fputs(sep.offset(1isize), fp);
         } else {
-            fputs(name as *const ::core::ffi::c_char, fp);
+            fputs(name, fp);
         }
         attributeValue(fp, *atts);
         if !sep.is_null() {
             let fresh2 = nsi;
             nsi = nsi + 1;
             fprintf(
-                fp as *mut _IO_FILE,
+                fp,
                 b" xmlns:n%d\0" as *const u8 as *const ::core::ffi::c_char,
                 fresh2,
             );
@@ -663,16 +643,15 @@ unsafe extern "C" fn endElementNS(
     mut name: *const XML_Char,
 ) {
     let mut fp: *mut FILE = (*(userData as *mut XmlwfUserData)).fp;
-    let mut sep: *const XML_Char =
-        ::core::ptr::null::<XML_Char>();
+    let mut sep: *const XML_Char = ::core::ptr::null::<XML_Char>();
     putc('<' as i32, fp);
     putc('/' as i32, fp);
-    sep = ::libexpat::stdlib::strrchr(name as *const ::core::ffi::c_char, '\u{1}' as i32);
+    sep = ::libexpat::stdlib::strrchr(name, '\u{1}' as i32);
     if !sep.is_null() {
         fputs(b"n1:\0" as *const u8 as *const ::core::ffi::c_char, fp);
-        fputs(sep.offset(1 as ::core::ffi::c_int as isize), fp);
+        fputs(sep.offset(1isize), fp);
     } else {
-        fputs(name as *const ::core::ffi::c_char, fp);
+        fputs(name, fp);
     }
     putc('>' as i32, fp);
 }
@@ -685,30 +664,25 @@ unsafe extern "C" fn processingInstruction(
     let mut fp: *mut FILE = (*(userData as *mut XmlwfUserData)).fp;
     putc('<' as i32, fp);
     putc('?' as i32, fp);
-    fputs(target as *const ::core::ffi::c_char, fp);
+    fputs(target, fp);
     putc(' ' as i32, fp);
-    fputs(data as *const ::core::ffi::c_char, fp);
+    fputs(data, fp);
     putc('?' as i32, fp);
     putc('>' as i32, fp);
 }
 
-unsafe extern "C" fn xcsdup(
-    mut s: *const XML_Char,
-) -> *mut XML_Char {
-    let mut result: *mut XML_Char =
-        ::core::ptr::null_mut::<XML_Char>();
-    let mut count: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+unsafe extern "C" fn xcsdup(mut s: *const XML_Char) -> *mut XML_Char {
+    let mut result: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
+    let mut count: ::core::ffi::c_int = 0i32;
     let mut numBytes: size_t = 0;
     loop {
         let fresh3 = count;
         count = count + 1;
-        if !(*s.offset(fresh3 as isize) as ::core::ffi::c_int != 0 as ::core::ffi::c_int) {
+        if !(*s.offset(fresh3 as isize) as ::core::ffi::c_int != 0i32) {
             break;
         }
     }
-    numBytes = (count as usize)
-        .wrapping_mul(::core::mem::size_of::<XML_Char>() as usize)
-        as size_t;
+    numBytes = (count as usize).wrapping_mul(::core::mem::size_of::<XML_Char>());
     result = malloc(numBytes) as *mut XML_Char;
     if result.is_null() {
         return ::core::ptr::null_mut::<XML_Char>();
@@ -735,7 +709,7 @@ unsafe extern "C" fn startDoctypeDecl(
 unsafe extern "C" fn freeNotations(mut data: *mut XmlwfUserData) {
     let mut notationListHead: *mut NotationList = (*data).notationListHead;
     while !notationListHead.is_null() {
-        let mut next: *mut NotationList = (*notationListHead).next as *mut NotationList;
+        let mut next: *mut NotationList = (*notationListHead).next;
         free((*notationListHead).notationName as *mut ::core::ffi::c_void);
         free((*notationListHead).systemId as *mut ::core::ffi::c_void);
         free((*notationListHead).publicId as *mut ::core::ffi::c_void);
@@ -755,25 +729,23 @@ unsafe extern "C" fn xcscmp(
     mut xs: *const XML_Char,
     mut xt: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    while *xs as ::core::ffi::c_int != 0 as ::core::ffi::c_int
-        && *xt as ::core::ffi::c_int != 0 as ::core::ffi::c_int
-    {
+    while *xs as ::core::ffi::c_int != 0i32 && *xt as ::core::ffi::c_int != 0i32 {
         if (*xs as ::core::ffi::c_int) < *xt as ::core::ffi::c_int {
-            return -(1 as ::core::ffi::c_int);
+            return -(1i32);
         }
         if *xs as ::core::ffi::c_int > *xt as ::core::ffi::c_int {
-            return 1 as ::core::ffi::c_int;
+            return 1i32;
         }
         xs = xs.offset(1);
         xt = xt.offset(1);
     }
     if (*xs as ::core::ffi::c_int) < *xt as ::core::ffi::c_int {
-        return -(1 as ::core::ffi::c_int);
+        return -(1i32);
     }
     if *xs as ::core::ffi::c_int > *xt as ::core::ffi::c_int {
-        return 1 as ::core::ffi::c_int;
+        return 1i32;
     }
-    return 0 as ::core::ffi::c_int;
+    return 0i32;
 }
 
 unsafe extern "C" fn notationCmp(
@@ -788,38 +760,36 @@ unsafe extern "C" fn notationCmp(
 unsafe extern "C" fn endDoctypeDecl(mut userData: *mut ::core::ffi::c_void) {
     let mut data: *mut XmlwfUserData = userData as *mut XmlwfUserData;
     let mut notations: *mut *mut NotationList = ::core::ptr::null_mut::<*mut NotationList>();
-    let mut notationCount: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    let mut notationCount: ::core::ffi::c_int = 0i32;
     let mut p: *mut NotationList = ::core::ptr::null_mut::<NotationList>();
     let mut i: ::core::ffi::c_int = 0;
     p = (*data).notationListHead;
     while !p.is_null() {
         notationCount += 1;
-        p = (*p).next as *mut NotationList;
+        p = (*p).next;
     }
-    if !(notationCount == 0 as ::core::ffi::c_int) {
+    if !(notationCount == 0i32) {
         notations = malloc(
-            (notationCount as size_t).wrapping_mul(
-                ::core::mem::size_of::<*mut NotationList>() as size_t,
-            ),
+            (notationCount as size_t).wrapping_mul(::core::mem::size_of::<*mut NotationList>()),
         ) as *mut *mut NotationList;
         if notations.is_null() {
             fprintf(
-                stderr as *mut _IO_FILE,
+                stderr,
                 b"Unable to sort notations\0" as *const u8 as *const ::core::ffi::c_char,
             );
         } else {
             p = (*data).notationListHead;
-            i = 0 as ::core::ffi::c_int;
+            i = 0i32;
             while i < notationCount {
                 let ref mut fresh4 = *notations.offset(i as isize);
                 *fresh4 = p;
-                p = (*p).next as *mut NotationList;
+                p = (*p).next;
                 i += 1;
             }
             qsort(
                 notations as *mut ::core::ffi::c_void,
                 notationCount as size_t,
-                ::core::mem::size_of::<*mut NotationList>() as size_t,
+                ::core::mem::size_of::<*mut NotationList>(),
                 Some(
                     notationCmp
                         as unsafe extern "C" fn(
@@ -832,41 +802,29 @@ unsafe extern "C" fn endDoctypeDecl(mut userData: *mut ::core::ffi::c_void) {
                 b"<!DOCTYPE \0" as *const u8 as *const ::core::ffi::c_char,
                 (*data).fp,
             );
-            fputs(
-                (*data).currentDoctypeName as *const ::core::ffi::c_char,
-                (*data).fp,
-            );
+            fputs((*data).currentDoctypeName, (*data).fp);
             fputs(
                 b" [\n\0" as *const u8 as *const ::core::ffi::c_char,
                 (*data).fp,
             );
-            i = 0 as ::core::ffi::c_int;
+            i = 0i32;
             while i < notationCount {
                 fputs(
                     b"<!NOTATION \0" as *const u8 as *const ::core::ffi::c_char,
                     (*data).fp,
                 );
-                fputs(
-                    (**notations.offset(i as isize)).notationName as *const ::core::ffi::c_char,
-                    (*data).fp,
-                );
+                fputs((**notations.offset(i as isize)).notationName, (*data).fp);
                 if !(**notations.offset(i as isize)).publicId.is_null() {
                     fputs(
                         b" PUBLIC '\0" as *const u8 as *const ::core::ffi::c_char,
                         (*data).fp,
                     );
-                    fputs(
-                        (**notations.offset(i as isize)).publicId as *const ::core::ffi::c_char,
-                        (*data).fp,
-                    );
+                    fputs((**notations.offset(i as isize)).publicId, (*data).fp);
                     putc('\'' as i32, (*data).fp);
                     if !(**notations.offset(i as isize)).systemId.is_null() {
                         putc(' ' as i32, (*data).fp);
                         putc('\'' as i32, (*data).fp);
-                        fputs(
-                            (**notations.offset(i as isize)).systemId as *const ::core::ffi::c_char,
-                            (*data).fp,
-                        );
+                        fputs((**notations.offset(i as isize)).systemId, (*data).fp);
                         putc('\'' as i32, (*data).fp);
                     }
                 } else if !(**notations.offset(i as isize)).systemId.is_null() {
@@ -874,10 +832,7 @@ unsafe extern "C" fn endDoctypeDecl(mut userData: *mut ::core::ffi::c_void) {
                         b" SYSTEM '\0" as *const u8 as *const ::core::ffi::c_char,
                         (*data).fp,
                     );
-                    fputs(
-                        (**notations.offset(i as isize)).systemId as *const ::core::ffi::c_char,
-                        (*data).fp,
-                    );
+                    fputs((**notations.offset(i as isize)).systemId, (*data).fp);
                     putc('\'' as i32, (*data).fp);
                 }
                 putc('>' as i32, (*data).fp);
@@ -904,9 +859,8 @@ unsafe extern "C" fn notationDecl(
     mut publicId: *const XML_Char,
 ) {
     let mut data: *mut XmlwfUserData = userData as *mut XmlwfUserData;
-    let mut entry: *mut NotationList = malloc(
-        ::core::mem::size_of::<NotationList>() as size_t,
-    ) as *mut NotationList;
+    let mut entry: *mut NotationList =
+        malloc(::core::mem::size_of::<NotationList>()) as *mut NotationList;
     let mut errorMessage: *const ::core::ffi::c_char =
         b"Unable to store NOTATION for output\n\0" as *const u8 as *const ::core::ffi::c_char;
     if entry.is_null() {
@@ -942,7 +896,7 @@ unsafe extern "C" fn notationDecl(
     } else {
         (*entry).publicId = ::core::ptr::null::<XML_Char>();
     }
-    (*entry).next = (*data).notationListHead as *mut NotationList;
+    (*entry).next = (*data).notationListHead;
     (*data).notationListHead = entry;
 }
 
@@ -1009,11 +963,9 @@ unsafe extern "C" fn markup(
     mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
-    let mut fp: *mut FILE = (*(*(userData as XML_Parser
-        as *mut *mut ::core::ffi::c_void)
-        as *mut XmlwfUserData))
-        .fp;
-    while len > 0 as ::core::ffi::c_int {
+    let mut fp: *mut FILE =
+        (*(*(userData as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData)).fp;
+    while len > 0i32 {
         putc(*s as ::core::ffi::c_int, fp);
         len -= 1;
         s = s.offset(1);
@@ -1021,19 +973,18 @@ unsafe extern "C" fn markup(
 }
 
 unsafe extern "C" fn metaLocation(mut parser: XML_Parser) {
-    let mut uri: *const XML_Char =
-        XML_GetBase(parser);
+    let mut uri: *const XML_Char = XML_GetBase(parser);
     let mut fp: *mut FILE =
         (*(*(parser as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData)).fp;
     if !uri.is_null() {
         fprintf(
-            fp as *mut _IO_FILE,
+            fp,
             b" uri=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
             uri,
         );
     }
     fprintf(
-        fp as *mut _IO_FILE,
+        fp,
         b" byte=\"%ld\" nbytes=\"%d\" line=\"%lu\" col=\"%lu\"\0" as *const u8
             as *const ::core::ffi::c_char,
         XML_GetCurrentByteIndex(parser),
@@ -1046,18 +997,14 @@ unsafe extern "C" fn metaLocation(mut parser: XML_Parser) {
 unsafe extern "C" fn metaStartDocument(mut userData: *mut ::core::ffi::c_void) {
     fputs(
         b"<document>\n\0" as *const u8 as *const ::core::ffi::c_char,
-        (*(*(userData as XML_Parser as *mut *mut ::core::ffi::c_void)
-            as *mut XmlwfUserData))
-            .fp,
+        (*(*(userData as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData)).fp,
     );
 }
 
 unsafe extern "C" fn metaEndDocument(mut userData: *mut ::core::ffi::c_void) {
     fputs(
         b"</document>\n\0" as *const u8 as *const ::core::ffi::c_char,
-        (*(*(userData as XML_Parser as *mut *mut ::core::ffi::c_void)
-            as *mut XmlwfUserData))
-            .fp,
+        (*(*(userData as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData)).fp,
     );
 }
 
@@ -1070,19 +1017,17 @@ unsafe extern "C" fn metaStartElement(
     let mut data: *mut XmlwfUserData =
         *(parser as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData;
     let mut fp: *mut FILE = (*data).fp;
-    let mut specifiedAttsEnd: *mut *const XML_Char = atts
-        .offset(XML_GetSpecifiedAttributeCount(parser) as isize);
-    let mut idAttPtr: *mut *const XML_Char =
-        ::core::ptr::null_mut::<*const XML_Char>();
-    let mut idAttIndex: ::core::ffi::c_int =
-        XML_GetIdAttributeIndex(parser);
-    if idAttIndex < 0 as ::core::ffi::c_int {
+    let mut specifiedAttsEnd: *mut *const XML_Char =
+        atts.offset(XML_GetSpecifiedAttributeCount(parser) as isize);
+    let mut idAttPtr: *mut *const XML_Char = ::core::ptr::null_mut::<*const XML_Char>();
+    let mut idAttIndex: ::core::ffi::c_int = XML_GetIdAttributeIndex(parser);
+    if idAttIndex < 0i32 {
         idAttPtr = ::core::ptr::null_mut::<*const XML_Char>();
     } else {
         idAttPtr = atts.offset(idAttIndex as isize);
     }
     fprintf(
-        fp as *mut _IO_FILE,
+        fp,
         b"<starttag name=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
         name,
     );
@@ -1091,16 +1036,14 @@ unsafe extern "C" fn metaStartElement(
         fputs(b">\n\0" as *const u8 as *const ::core::ffi::c_char, fp);
         loop {
             fprintf(
-                fp as *mut _IO_FILE,
+                fp,
                 b"<attribute name=\"%s\" value=\"\0" as *const u8 as *const ::core::ffi::c_char,
-                *atts.offset(0 as ::core::ffi::c_int as isize),
+                *atts.offset(0isize),
             );
             characterData(
                 data as *mut ::core::ffi::c_void,
-                *atts.offset(1 as ::core::ffi::c_int as isize),
-                ::libexpat::stdlib::strlen(
-                    *atts.offset(1 as ::core::ffi::c_int as isize) as *const ::core::ffi::c_char
-                ) as ::core::ffi::c_int,
+                *atts.offset(1isize),
+                ::libexpat::stdlib::strlen(*atts.offset(1isize)) as ::core::ffi::c_int,
             );
             if atts >= specifiedAttsEnd {
                 fputs(
@@ -1115,7 +1058,7 @@ unsafe extern "C" fn metaStartElement(
             } else {
                 fputs(b"\"/>\n\0" as *const u8 as *const ::core::ffi::c_char, fp);
             }
-            atts = atts.offset(2 as ::core::ffi::c_int as isize);
+            atts = atts.offset(2isize);
             if (*atts).is_null() {
                 break;
             }
@@ -1138,7 +1081,7 @@ unsafe extern "C" fn metaEndElement(
         *(parser as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData;
     let mut fp: *mut FILE = (*data).fp;
     fprintf(
-        fp as *mut _IO_FILE,
+        fp,
         b"<endtag name=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
         name,
     );
@@ -1156,14 +1099,14 @@ unsafe extern "C" fn metaProcessingInstruction(
         *(parser as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData;
     let mut fp: *mut FILE = (*usrData).fp;
     fprintf(
-        fp as *mut _IO_FILE,
+        fp,
         b"<pi target=\"%s\" data=\"\0" as *const u8 as *const ::core::ffi::c_char,
         target,
     );
     characterData(
         usrData as *mut ::core::ffi::c_void,
         data,
-        ::libexpat::stdlib::strlen(data as *const ::core::ffi::c_char) as ::core::ffi::c_int,
+        ::libexpat::stdlib::strlen(data) as ::core::ffi::c_int,
     );
     putc('"' as i32, fp);
     metaLocation(parser);
@@ -1185,7 +1128,7 @@ unsafe extern "C" fn metaComment(
     characterData(
         usrData as *mut ::core::ffi::c_void,
         data,
-        ::libexpat::stdlib::strlen(data as *const ::core::ffi::c_char) as ::core::ffi::c_int,
+        ::libexpat::stdlib::strlen(data) as ::core::ffi::c_int,
     );
     putc('"' as i32, fp);
     metaLocation(parser);
@@ -1249,7 +1192,7 @@ unsafe extern "C" fn metaStartDoctypeDecl(
         *(parser as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData;
     let mut fp: *mut FILE = (*data).fp;
     fprintf(
-        fp as *mut _IO_FILE,
+        fp,
         b"<startdoctype name=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
         doctypeName,
     );
@@ -1282,13 +1225,13 @@ unsafe extern "C" fn metaNotationDecl(
         *(parser as *mut *mut ::core::ffi::c_void) as *mut XmlwfUserData;
     let mut fp: *mut FILE = (*data).fp;
     fprintf(
-        fp as *mut _IO_FILE,
+        fp,
         b"<notation name=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
         notationName,
     );
     if !publicId.is_null() {
         fprintf(
-            fp as *mut _IO_FILE,
+            fp,
             b" public=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
             publicId,
         );
@@ -1301,8 +1244,7 @@ unsafe extern "C" fn metaNotationDecl(
         characterData(
             data as *mut ::core::ffi::c_void,
             systemId,
-            ::libexpat::stdlib::strlen(systemId as *const ::core::ffi::c_char)
-                as ::core::ffi::c_int,
+            ::libexpat::stdlib::strlen(systemId) as ::core::ffi::c_int,
         );
         putc('"' as i32, fp);
     }
@@ -1327,7 +1269,7 @@ unsafe extern "C" fn metaEntityDecl(
     let mut fp: *mut FILE = (*data).fp;
     if !value.is_null() {
         fprintf(
-            fp as *mut _IO_FILE,
+            fp,
             b"<entity name=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
             entityName,
         );
@@ -1340,13 +1282,13 @@ unsafe extern "C" fn metaEntityDecl(
         );
     } else if !notationName.is_null() {
         fprintf(
-            fp as *mut _IO_FILE,
+            fp,
             b"<entity name=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
             entityName,
         );
         if !publicId.is_null() {
             fprintf(
-                fp as *mut _IO_FILE,
+                fp,
                 b" public=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
                 publicId,
             );
@@ -1358,12 +1300,11 @@ unsafe extern "C" fn metaEntityDecl(
         characterData(
             data as *mut ::core::ffi::c_void,
             systemId,
-            ::libexpat::stdlib::strlen(systemId as *const ::core::ffi::c_char)
-                as ::core::ffi::c_int,
+            ::libexpat::stdlib::strlen(systemId) as ::core::ffi::c_int,
         );
         putc('"' as i32, fp);
         fprintf(
-            fp as *mut _IO_FILE,
+            fp,
             b" notation=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
             notationName,
         );
@@ -1371,13 +1312,13 @@ unsafe extern "C" fn metaEntityDecl(
         fputs(b"/>\n\0" as *const u8 as *const ::core::ffi::c_char, fp);
     } else {
         fprintf(
-            fp as *mut _IO_FILE,
+            fp,
             b"<entity name=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
             entityName,
         );
         if !publicId.is_null() {
             fprintf(
-                fp as *mut _IO_FILE,
+                fp,
                 b" public=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
                 publicId,
             );
@@ -1389,8 +1330,7 @@ unsafe extern "C" fn metaEntityDecl(
         characterData(
             data as *mut ::core::ffi::c_void,
             systemId,
-            ::libexpat::stdlib::strlen(systemId as *const ::core::ffi::c_char)
-                as ::core::ffi::c_int,
+            ::libexpat::stdlib::strlen(systemId) as ::core::ffi::c_int,
         );
         putc('"' as i32, fp);
         metaLocation(parser);
@@ -1410,7 +1350,7 @@ unsafe extern "C" fn metaStartNamespaceDecl(
     fputs(b"<startns\0" as *const u8 as *const ::core::ffi::c_char, fp);
     if !prefix.is_null() {
         fprintf(
-            fp as *mut _IO_FILE,
+            fp,
             b" prefix=\"%s\"\0" as *const u8 as *const ::core::ffi::c_char,
             prefix,
         );
@@ -1420,7 +1360,7 @@ unsafe extern "C" fn metaStartNamespaceDecl(
         characterData(
             data as *mut ::core::ffi::c_void,
             uri,
-            ::libexpat::stdlib::strlen(uri as *const ::core::ffi::c_char) as ::core::ffi::c_int,
+            ::libexpat::stdlib::strlen(uri) as ::core::ffi::c_int,
         );
         fputs(b"\"/>\n\0" as *const u8 as *const ::core::ffi::c_char, fp);
     } else {
@@ -1443,7 +1383,7 @@ unsafe extern "C" fn metaEndNamespaceDecl(
         );
     } else {
         fprintf(
-            fp as *mut _IO_FILE,
+            fp,
             b"<endns prefix=\"%s\"/>\n\0" as *const u8 as *const ::core::ffi::c_char,
             prefix,
         );
@@ -1466,43 +1406,37 @@ unsafe extern "C" fn unknownEncoding(
     mut info: *mut XML_Encoding,
 ) -> ::core::ffi::c_int {
     let mut cp: ::core::ffi::c_int = 0;
-    static mut prefixL: [XML_Char; 9] = unsafe {
-        ::core::mem::transmute::<[u8; 9], [XML_Char; 9]>(*b"windows-\0")
-    };
-    static mut prefixU: [XML_Char; 9] = unsafe {
-        ::core::mem::transmute::<[u8; 9], [XML_Char; 9]>(*b"WINDOWS-\0")
-    };
+    static mut prefixL: [XML_Char; 9] =
+        unsafe { ::core::mem::transmute::<[u8; 9], [XML_Char; 9]>(*b"windows-\0") };
+    static mut prefixU: [XML_Char; 9] =
+        unsafe { ::core::mem::transmute::<[u8; 9], [XML_Char; 9]>(*b"WINDOWS-\0") };
     let mut i: ::core::ffi::c_int = 0;
-    i = 0 as ::core::ffi::c_int;
+    i = 0i32;
     while prefixU[i as usize] != 0 {
         if *name.offset(i as isize) as ::core::ffi::c_int
             != prefixU[i as usize] as ::core::ffi::c_int
             && *name.offset(i as isize) as ::core::ffi::c_int
                 != prefixL[i as usize] as ::core::ffi::c_int
         {
-            return 0 as ::core::ffi::c_int;
+            return 0i32;
         }
         i += 1;
     }
-    cp = 0 as ::core::ffi::c_int;
+    cp = 0i32;
     while *name.offset(i as isize) != 0 {
-        static mut digits: [XML_Char; 11] = unsafe {
-            ::core::mem::transmute::<[u8; 11], [XML_Char; 11]>(
-                *b"0123456789\0",
-            )
-        };
+        static mut digits: [XML_Char; 11] =
+            unsafe { ::core::mem::transmute::<[u8; 11], [XML_Char; 11]>(*b"0123456789\0") };
         let mut s: *const XML_Char = crate::stdlib::strchr(
             &raw const digits as *const ::core::ffi::c_char,
             *name.offset(i as isize) as ::core::ffi::c_int,
         );
         if s.is_null() {
-            return 0 as ::core::ffi::c_int;
+            return 0i32;
         }
-        cp *= 10 as ::core::ffi::c_int;
-        cp += s.offset_from(&raw const digits as *const XML_Char)
-            as ::core::ffi::c_long as ::core::ffi::c_int;
-        if cp >= 0x10000 as ::core::ffi::c_int {
-            return 0 as ::core::ffi::c_int;
+        cp *= 10i32;
+        cp += s.offset_from(&raw const digits as *const XML_Char) as ::core::ffi::c_int;
+        if cp >= 0x10000i32 {
+            return 0i32;
         }
         i += 1;
     }
@@ -1511,7 +1445,7 @@ unsafe extern "C" fn unknownEncoding(
         &raw mut (*info).map as *mut ::core::ffi::c_int,
     ) == 0
     {
-        return 0 as ::core::ffi::c_int;
+        return 0i32;
     }
     (*info).convert = Some(
         unknownEncodingConvert
@@ -1519,100 +1453,79 @@ unsafe extern "C" fn unknownEncoding(
                 *mut ::core::ffi::c_void,
                 *const ::core::ffi::c_char,
             ) -> ::core::ffi::c_int,
-    )
-        as Option<
-            unsafe extern "C" fn(
-                *mut ::core::ffi::c_void,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-        >;
-    (*info).release =
-        Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ())
-            as Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
-    (*info).data = malloc(
-        ::core::mem::size_of::<::core::ffi::c_int>() as size_t
     );
+    (*info).release = Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ());
+    (*info).data = malloc(::core::mem::size_of::<::core::ffi::c_int>());
     if (*info).data.is_null() {
-        return 0 as ::core::ffi::c_int;
+        return 0i32;
     }
     *((*info).data as *mut ::core::ffi::c_int) = cp;
-    return 1 as ::core::ffi::c_int;
+    return 1i32;
 }
 
 unsafe extern "C" fn notStandalone(mut _userData: *mut ::core::ffi::c_void) -> ::core::ffi::c_int {
-    return 0 as ::core::ffi::c_int;
+    return 0i32;
 }
 
 unsafe extern "C" fn showVersion(mut prog: *mut XML_Char) {
     let mut s: *mut XML_Char = prog;
     let mut ch: XML_Char = 0;
-    let mut features: *const XML_Feature =
-        XML_GetFeatureList()
-            as *const XML_Feature;
+    let mut features: *const XML_Feature = XML_GetFeatureList();
     loop {
         ch = *s;
-        if !(ch as ::core::ffi::c_int != 0 as ::core::ffi::c_int) {
+        if !(ch as ::core::ffi::c_int != 0i32) {
             break;
         }
         if ch as ::core::ffi::c_int == '/' as i32 {
-            prog = s.offset(1 as ::core::ffi::c_int as isize);
+            prog = s.offset(1isize);
         }
         s = s.offset(1);
     }
     fprintf(
-        stdout as *mut _IO_FILE,
+        stdout,
         b"%s using %s\n\0" as *const u8 as *const ::core::ffi::c_char,
         prog,
         XML_ExpatVersion(),
     );
-    if !features.is_null()
-        && (*features.offset(0 as ::core::ffi::c_int as isize)).feature as ::core::ffi::c_uint
-            != XML_FEATURE_END as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        let mut i: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
+    if !features.is_null() && (*features.offset(0isize)).feature != XML_FEATURE_END {
+        let mut i: ::core::ffi::c_int = 1i32;
         fprintf(
-            stdout as *mut _IO_FILE,
+            stdout,
             b"%s\0" as *const u8 as *const ::core::ffi::c_char,
-            (*features.offset(0 as ::core::ffi::c_int as isize)).name,
+            (*features.offset(0isize)).name,
         );
-        if (*features.offset(0 as ::core::ffi::c_int as isize)).value != 0 {
+        if (*features.offset(0isize)).value != 0 {
             fprintf(
-                stdout as *mut _IO_FILE,
+                stdout,
                 b"=%ld\0" as *const u8 as *const ::core::ffi::c_char,
-                (*features.offset(0 as ::core::ffi::c_int as isize)).value,
+                (*features.offset(0isize)).value,
             );
         }
-        while (*features.offset(i as isize)).feature as ::core::ffi::c_uint
-            != XML_FEATURE_END as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
+        while (*features.offset(i as isize)).feature != XML_FEATURE_END {
             fprintf(
-                stdout as *mut _IO_FILE,
+                stdout,
                 b", %s\0" as *const u8 as *const ::core::ffi::c_char,
                 (*features.offset(i as isize)).name,
             );
             if (*features.offset(i as isize)).value != 0 {
                 fprintf(
-                    stdout as *mut _IO_FILE,
+                    stdout,
                     b"=%ld\0" as *const u8 as *const ::core::ffi::c_char,
                     (*features.offset(i as isize)).value,
                 );
             }
             i += 1;
         }
-        fprintf(
-            stdout as *mut _IO_FILE,
-            b"\n\0" as *const u8 as *const ::core::ffi::c_char,
-        );
+        fprintf(stdout, b"\n\0" as *const u8 as *const ::core::ffi::c_char);
     }
 }
 
-unsafe extern "C" fn usage(
-    mut prog: *const XML_Char,
-    mut rc: ::core::ffi::c_int,
-) -> ! {
+unsafe extern "C" fn usage(mut prog: *const XML_Char, mut rc: ::core::ffi::c_int) -> ! {
     fprintf(
         
-        stderr as *mut _IO_FILE,
+        
+        
+        stderr,
         b"usage:\n  %s [OPTIONS] [FILE ...]\n  %s -h|--help\n  %s -v|--version\n\nxmlwf - Determines if an XML document is well-formed\n\npositional arguments:\n  FILE           file to process (default: STDIN)\n\ninput control arguments:\n  -s             print an error if the document is not [s]tandalone\n  -n             enable [n]amespace processing\n  -p             enable processing of external DTDs and [p]arameter entities\n  -x             enable processing of e[x]ternal entities\n                 (CAREFUL! This makes xmlwf vulnerable to external entity attacks (XXE).)\n  -e ENCODING    override any in-document [e]ncoding declaration\n  -w             enable support for [W]indows code pages\n  -r             disable memory-mapping and use [r]ead calls instead\n  -g BYTES       buffer size to request per call pair to XML_[G]etBuffer and read (default: 8 KiB)\n  -k             when processing multiple files, [k]eep processing after first file with error\n\noutput control arguments:\n  -d DIRECTORY   output [d]estination directory\n  -c             write a [c]opy of input XML, not canonical XML\n  -m             write [m]eta XML, not canonical XML\n  -t             write no XML output for [t]iming of plain parsing\n  -N             enable adding doctype and [n]otation declarations\n\namplification attack protection (e.g. billion laughs):\n  NOTE: If you ever need to increase these values for non-attack payload, please file a bug report.\n\n  -a FACTOR      set maximum tolerated [a]mplification factor (default: 100.0)\n  -b BYTES       set number of output [b]ytes needed to activate (default: 8 MiB/64 MiB)\n\nreparse deferral:\n  -q             disable reparse deferral, and allow [q]uadratic parse runtime with large tokens\n\ninfo arguments:\n  -h, --help     show this [h]elp message and exit\n  -v, --version  show program's [v]ersion number and exit\n\nenvironment variables:\n  EXPAT_ACCOUNTING_DEBUG=(0|1|2|3)\n                 Control verbosity of accounting debugging (default: 0)\n  EXPAT_ENTITY_DEBUG=(0|1)\n                 Control verbosity of entity debugging (default: 0)\n  EXPAT_ENTROPY_DEBUG=(0|1)\n                 Control verbosity of entropy debugging (default: 0)\n  EXPAT_MALLOC_DEBUG=(0|1|2)\n                 Control verbosity of allocation tracker (default: 0)\n\nexit status:\n  0              the input files are well-formed and the output (if requested) was written successfully\n  1              could not allocate data structures, signals a serious problem with execution environment\n  2              one or more input files were not well-formed\n  3              could not create an output file\n  4              command-line argument error\n\nxmlwf of libexpat is software libre, licensed under the MIT license.\nPlease report bugs at https://github.com/libexpat/libexpat/issues -- thank you!\n\0"
             as *const u8 as *const ::core::ffi::c_char,
         prog,
@@ -1622,72 +1535,56 @@ unsafe extern "C" fn usage(
     exit(rc);
 }
 
-unsafe fn main_0(
-    mut argc: ::core::ffi::c_int,
-    mut argv: *mut *mut XML_Char,
-) -> ::core::ffi::c_int {
+unsafe fn main_0(mut argc: ::core::ffi::c_int, mut argv: *mut *mut XML_Char) -> ::core::ffi::c_int {
     let mut i: ::core::ffi::c_int = 0;
     let mut j: ::core::ffi::c_int = 0;
-    let mut outputDir: *const XML_Char =
-        ::core::ptr::null::<XML_Char>();
-    let mut encoding: *const XML_Char =
-        ::core::ptr::null::<XML_Char>();
-    let mut processFlags: ::core::ffi::c_uint =
-        XML_MAP_FILE as ::core::ffi::c_uint;
-    let mut windowsCodePages: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    let mut outputType: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    let mut useNamespaces: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    let mut requireStandalone: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    let mut requiresNotations: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    let mut continueOnError: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    let mut outputDir: *const XML_Char = ::core::ptr::null::<XML_Char>();
+    let mut encoding: *const XML_Char = ::core::ptr::null::<XML_Char>();
+    let mut processFlags: ::core::ffi::c_uint = XML_MAP_FILE as ::core::ffi::c_uint;
+    let mut windowsCodePages: ::core::ffi::c_int = 0i32;
+    let mut outputType: ::core::ffi::c_int = 0i32;
+    let mut useNamespaces: ::core::ffi::c_int = 0i32;
+    let mut requireStandalone: ::core::ffi::c_int = 0i32;
+    let mut requiresNotations: ::core::ffi::c_int = 0i32;
+    let mut continueOnError: ::core::ffi::c_int = 0i32;
     let mut attackMaximumAmplification: ::core::ffi::c_float = -1.0f32;
-    let mut attackThresholdBytes: ::core::ffi::c_ulonglong = 0 as ::core::ffi::c_ulonglong;
+    let mut attackThresholdBytes: ::core::ffi::c_ulonglong = 0u64;
     let mut attackThresholdGiven: XML_Bool = XML_FALSE;
     let mut disableDeferral: XML_Bool = XML_FALSE;
     let mut exitCode: ::core::ffi::c_int = XMLWF_EXIT_SUCCESS as ::core::ffi::c_int;
-    let mut paramEntityParsing: XML_ParamEntityParsing =
-        XML_PARAM_ENTITY_PARSING_NEVER;
-    let mut useStdin: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    let mut paramEntityParsing: XML_ParamEntityParsing = XML_PARAM_ENTITY_PARSING_NEVER;
+    let mut useStdin: ::core::ffi::c_int = 0i32;
     let mut userData: XmlwfUserData = xmlwfUserData {
         fp: ::core::ptr::null_mut::<FILE>(),
         notationListHead: ::core::ptr::null_mut::<NotationList>(),
         currentDoctypeName: ::core::ptr::null::<XML_Char>(),
     };
-    i = 1 as ::core::ffi::c_int;
-    j = 0 as ::core::ffi::c_int;
+    i = 1i32;
+    j = 0i32;
     while i < argc {
-        if j == 0 as ::core::ffi::c_int {
-            if *(*argv.offset(i as isize)).offset(0 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                != '-' as i32
-            {
+        if j == 0i32 {
+            if *(*argv.offset(i as isize)).offset(0isize) as ::core::ffi::c_int != '-' as i32 {
                 break;
             }
-            if *(*argv.offset(i as isize)).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                == '-' as i32
-            {
-                if *(*argv.offset(i as isize)).offset(2 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    == '\0' as i32
-                {
+            if *(*argv.offset(i as isize)).offset(1isize) as ::core::ffi::c_int == '-' as i32 {
+                if *(*argv.offset(i as isize)).offset(2isize) as ::core::ffi::c_int == '\0' as i32 {
                     i += 1;
                     break;
                 } else if crate::stdlib::strcmp(
-                    (*argv.offset(i as isize)).offset(2 as ::core::ffi::c_int as isize),
+                    (*argv.offset(i as isize)).offset(2isize),
                     b"help\0" as *const u8 as *const ::core::ffi::c_char,
-                ) == 0 as ::core::ffi::c_int
+                ) == 0i32
                 {
                     usage(
-                        *argv.offset(0 as ::core::ffi::c_int as isize),
+                        *argv.offset(0isize),
                         XMLWF_EXIT_SUCCESS as ::core::ffi::c_int,
                     );
                 } else if crate::stdlib::strcmp(
-                    (*argv.offset(i as isize)).offset(2 as ::core::ffi::c_int as isize),
+                    (*argv.offset(i as isize)).offset(2isize),
                     b"version\0" as *const u8 as *const ::core::ffi::c_char,
-                ) == 0 as ::core::ffi::c_int
+                ) == 0i32
                 {
-                    showVersion(*argv.offset(0 as ::core::ffi::c_int as isize));
+                    showVersion(*argv.offset(0isize));
                     return XMLWF_EXIT_SUCCESS as ::core::ffi::c_int;
                 }
             }
@@ -1696,18 +1593,17 @@ unsafe fn main_0(
         let mut current_block_122: u64;
         match *(*argv.offset(i as isize)).offset(j as isize) as ::core::ffi::c_int {
             114 => {
-                processFlags &=
-                    !XML_MAP_FILE as ::core::ffi::c_uint;
+                processFlags &= !XML_MAP_FILE as ::core::ffi::c_uint;
                 j += 1;
                 current_block_122 = 8602574157404971894;
             }
             115 => {
-                requireStandalone = 1 as ::core::ffi::c_int;
+                requireStandalone = 1i32;
                 j += 1;
                 current_block_122 = 8602574157404971894;
             }
             110 => {
-                useNamespaces = 1 as ::core::ffi::c_int;
+                useNamespaces = 1i32;
                 j += 1;
                 current_block_122 = 8602574157404971894;
             }
@@ -1719,7 +1615,7 @@ unsafe fn main_0(
                 current_block_122 = 12538682772167414182;
             }
             119 => {
-                windowsCodePages = 1 as ::core::ffi::c_int;
+                windowsCodePages = 1i32;
                 j += 1;
                 current_block_122 = 8602574157404971894;
             }
@@ -1730,7 +1626,7 @@ unsafe fn main_0(
             }
             99 => {
                 outputType = 'c' as i32;
-                useNamespaces = 0 as ::core::ffi::c_int;
+                useNamespaces = 0i32;
                 j += 1;
                 current_block_122 = 8602574157404971894;
             }
@@ -1740,104 +1636,85 @@ unsafe fn main_0(
                 current_block_122 = 8602574157404971894;
             }
             78 => {
-                requiresNotations = 1 as ::core::ffi::c_int;
+                requiresNotations = 1i32;
                 j += 1;
                 current_block_122 = 8602574157404971894;
             }
             100 => {
-                if *(*argv.offset(i as isize)).offset((j + 1 as ::core::ffi::c_int) as isize)
-                    as ::core::ffi::c_int
+                if *(*argv.offset(i as isize)).offset((j + 1i32) as isize) as ::core::ffi::c_int
                     == '\0' as i32
                 {
                     i += 1;
                     if i == argc {
                         usage(
-                            *argv.offset(0 as ::core::ffi::c_int as isize),
+                            *argv.offset(0isize),
                             XMLWF_EXIT_USAGE_ERROR as ::core::ffi::c_int,
                         );
                     }
                     outputDir = *argv.offset(i as isize);
                 } else {
-                    outputDir = (*argv.offset(i as isize))
-                        .offset(j as isize)
-                        .offset(1 as ::core::ffi::c_int as isize);
+                    outputDir = (*argv.offset(i as isize)).offset(j as isize).offset(1isize);
                 }
                 i += 1;
-                j = 0 as ::core::ffi::c_int;
+                j = 0i32;
                 current_block_122 = 8602574157404971894;
             }
             101 => {
-                if *(*argv.offset(i as isize)).offset((j + 1 as ::core::ffi::c_int) as isize)
-                    as ::core::ffi::c_int
+                if *(*argv.offset(i as isize)).offset((j + 1i32) as isize) as ::core::ffi::c_int
                     == '\0' as i32
                 {
                     i += 1;
                     if i == argc {
                         usage(
-                            *argv.offset(0 as ::core::ffi::c_int as isize),
+                            *argv.offset(0isize),
                             XMLWF_EXIT_USAGE_ERROR as ::core::ffi::c_int,
                         );
                     }
                     encoding = *argv.offset(i as isize);
                 } else {
-                    encoding = (*argv.offset(i as isize))
-                        .offset(j as isize)
-                        .offset(1 as ::core::ffi::c_int as isize);
+                    encoding = (*argv.offset(i as isize)).offset(j as isize).offset(1isize);
                 }
                 i += 1;
-                j = 0 as ::core::ffi::c_int;
+                j = 0i32;
                 current_block_122 = 8602574157404971894;
             }
             104 => {
                 usage(
-                    *argv.offset(0 as ::core::ffi::c_int as isize),
+                    *argv.offset(0isize),
                     XMLWF_EXIT_SUCCESS as ::core::ffi::c_int,
                 );
             }
             118 => {
-                showVersion(*argv.offset(0 as ::core::ffi::c_int as isize));
+                showVersion(*argv.offset(0isize));
                 return XMLWF_EXIT_SUCCESS as ::core::ffi::c_int;
             }
             103 => {
-                let mut valueText: *const XML_Char =
-                    ::core::ptr::null::<XML_Char>();
-                if *(*argv.offset(i as isize)).offset((j + 1 as ::core::ffi::c_int) as isize)
-                    as ::core::ffi::c_int
+                let mut valueText: *const XML_Char = ::core::ptr::null::<XML_Char>();
+                if *(*argv.offset(i as isize)).offset((j + 1i32) as isize) as ::core::ffi::c_int
                     == '\0' as i32
                 {
                     i += 1;
                     if i == argc {
                         usage(
-                            *argv.offset(0 as ::core::ffi::c_int as isize),
+                            *argv.offset(0isize),
                             XMLWF_EXIT_USAGE_ERROR as ::core::ffi::c_int,
                         );
                     }
                     valueText = *argv.offset(i as isize);
                 } else {
-                    valueText = (*argv.offset(i as isize))
-                        .offset(j as isize)
-                        .offset(1 as ::core::ffi::c_int as isize);
+                    valueText = (*argv.offset(i as isize)).offset(j as isize).offset(1isize);
                 }
                 i += 1;
-                j = 0 as ::core::ffi::c_int;
-                *::libexpat::stdlib::__errno_location() = 0 as ::core::ffi::c_int;
-                let mut afterValueText: *mut XML_Char =
-                    valueText as *mut XML_Char;
-                let read_size_bytes_candidate: ::core::ffi::c_longlong = strtoull(
-                    valueText as *const ::core::ffi::c_char,
-                    &raw mut afterValueText,
-                    10 as ::core::ffi::c_int,
-                )
-                    as ::core::ffi::c_longlong;
-                if *::libexpat::stdlib::__errno_location() != 0 as ::core::ffi::c_int
-                    || *afterValueText.offset(0 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        != '\0' as i32
-                    || read_size_bytes_candidate < 1 as ::core::ffi::c_longlong
+                j = 0i32;
+                *::libexpat::stdlib::__errno_location() = 0i32;
+                let mut afterValueText: *mut XML_Char = valueText as *mut XML_Char;
+                let read_size_bytes_candidate: ::core::ffi::c_longlong =
+                    strtoull(valueText, &raw mut afterValueText, 10i32) as ::core::ffi::c_longlong;
+                if *::libexpat::stdlib::__errno_location() != 0i32
+                    || *afterValueText.offset(0isize) as ::core::ffi::c_int != '\0' as i32
+                    || read_size_bytes_candidate < 1i64
                     || read_size_bytes_candidate
-                        > (INT_MAX / 2 as ::core::ffi::c_int
-                            + 1 as ::core::ffi::c_int)
-                            as ::core::ffi::c_longlong
+                        > (INT_MAX / 2i32 + 1i32) as ::core::ffi::c_longlong
                 {
                     *::libexpat::stdlib::__errno_location() = ERANGE;
                     perror(
@@ -1846,48 +1723,37 @@ unsafe fn main_0(
                     );
                     exit(XMLWF_EXIT_USAGE_ERROR as ::core::ffi::c_int);
                 }
-                g_read_size_bytes =
-                    read_size_bytes_candidate as ::core::ffi::c_int;
+                g_read_size_bytes = read_size_bytes_candidate as ::core::ffi::c_int;
                 current_block_122 = 8602574157404971894;
             }
             107 => {
-                continueOnError = 1 as ::core::ffi::c_int;
+                continueOnError = 1i32;
                 j += 1;
                 current_block_122 = 8602574157404971894;
             }
             97 => {
-                let mut valueText_0: *const XML_Char =
-                    ::core::ptr::null::<XML_Char>();
-                if *(*argv.offset(i as isize)).offset((j + 1 as ::core::ffi::c_int) as isize)
-                    as ::core::ffi::c_int
+                let mut valueText_0: *const XML_Char = ::core::ptr::null::<XML_Char>();
+                if *(*argv.offset(i as isize)).offset((j + 1i32) as isize) as ::core::ffi::c_int
                     == '\0' as i32
                 {
                     i += 1;
                     if i == argc {
                         usage(
-                            *argv.offset(0 as ::core::ffi::c_int as isize),
+                            *argv.offset(0isize),
                             XMLWF_EXIT_USAGE_ERROR as ::core::ffi::c_int,
                         );
                     }
                     valueText_0 = *argv.offset(i as isize);
                 } else {
-                    valueText_0 = (*argv.offset(i as isize))
-                        .offset(j as isize)
-                        .offset(1 as ::core::ffi::c_int as isize);
+                    valueText_0 = (*argv.offset(i as isize)).offset(j as isize).offset(1isize);
                 }
                 i += 1;
-                j = 0 as ::core::ffi::c_int;
-                *::libexpat::stdlib::__errno_location() = 0 as ::core::ffi::c_int;
-                let mut afterValueText_0: *mut XML_Char =
-                    ::core::ptr::null_mut::<XML_Char>();
-                attackMaximumAmplification = strtof(
-                    valueText_0 as *const ::core::ffi::c_char,
-                    &raw mut afterValueText_0,
-                );
-                if *::libexpat::stdlib::__errno_location() != 0 as ::core::ffi::c_int
-                    || *afterValueText_0.offset(0 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        != '\0' as i32
+                j = 0i32;
+                *::libexpat::stdlib::__errno_location() = 0i32;
+                let mut afterValueText_0: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
+                attackMaximumAmplification = strtof(valueText_0, &raw mut afterValueText_0);
+                if *::libexpat::stdlib::__errno_location() != 0i32
+                    || *afterValueText_0.offset(0isize) as ::core::ffi::c_int != '\0' as i32
                     || attackMaximumAmplification.is_nan() as i32 != 0
                     || attackMaximumAmplification < 1.0f32
                 {
@@ -1901,39 +1767,28 @@ unsafe fn main_0(
                 current_block_122 = 8602574157404971894;
             }
             98 => {
-                let mut valueText_1: *const XML_Char =
-                    ::core::ptr::null::<XML_Char>();
-                if *(*argv.offset(i as isize)).offset((j + 1 as ::core::ffi::c_int) as isize)
-                    as ::core::ffi::c_int
+                let mut valueText_1: *const XML_Char = ::core::ptr::null::<XML_Char>();
+                if *(*argv.offset(i as isize)).offset((j + 1i32) as isize) as ::core::ffi::c_int
                     == '\0' as i32
                 {
                     i += 1;
                     if i == argc {
                         usage(
-                            *argv.offset(0 as ::core::ffi::c_int as isize),
+                            *argv.offset(0isize),
                             XMLWF_EXIT_USAGE_ERROR as ::core::ffi::c_int,
                         );
                     }
                     valueText_1 = *argv.offset(i as isize);
                 } else {
-                    valueText_1 = (*argv.offset(i as isize))
-                        .offset(j as isize)
-                        .offset(1 as ::core::ffi::c_int as isize);
+                    valueText_1 = (*argv.offset(i as isize)).offset(j as isize).offset(1isize);
                 }
                 i += 1;
-                j = 0 as ::core::ffi::c_int;
-                *::libexpat::stdlib::__errno_location() = 0 as ::core::ffi::c_int;
-                let mut afterValueText_1: *mut XML_Char =
-                    valueText_1 as *mut XML_Char;
-                attackThresholdBytes = strtoull(
-                    valueText_1 as *const ::core::ffi::c_char,
-                    &raw mut afterValueText_1,
-                    10 as ::core::ffi::c_int,
-                );
-                if *::libexpat::stdlib::__errno_location() != 0 as ::core::ffi::c_int
-                    || *afterValueText_1.offset(0 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        != '\0' as i32
+                j = 0i32;
+                *::libexpat::stdlib::__errno_location() = 0i32;
+                let mut afterValueText_1: *mut XML_Char = valueText_1 as *mut XML_Char;
+                attackThresholdBytes = strtoull(valueText_1, &raw mut afterValueText_1, 10i32);
+                if *::libexpat::stdlib::__errno_location() != 0i32
+                    || *afterValueText_1.offset(0isize) as ::core::ffi::c_int != '\0' as i32
                 {
                     *::libexpat::stdlib::__errno_location() = ERANGE;
                     perror(
@@ -1951,9 +1806,9 @@ unsafe fn main_0(
                 current_block_122 = 8602574157404971894;
             }
             0 => {
-                if j > 1 as ::core::ffi::c_int {
+                if j > 1i32 {
                     i += 1;
-                    j = 0 as ::core::ffi::c_int;
+                    j = 0i32;
                     current_block_122 = 8602574157404971894;
                 } else {
                     current_block_122 = 15955764443707486316;
@@ -1965,13 +1820,12 @@ unsafe fn main_0(
         }
         match current_block_122 {
             12538682772167414182 => {
-                processFlags |=
-                    XML_EXTERNAL_ENTITIES as ::core::ffi::c_uint;
+                processFlags |= XML_EXTERNAL_ENTITIES as ::core::ffi::c_uint;
                 j += 1;
             }
             15955764443707486316 => {
                 usage(
-                    *argv.offset(0 as ::core::ffi::c_int as isize),
+                    *argv.offset(0isize),
                     XMLWF_EXIT_USAGE_ERROR as ::core::ffi::c_int,
                 );
             }
@@ -1979,29 +1833,22 @@ unsafe fn main_0(
         }
     }
     if i == argc {
-        useStdin = 1 as ::core::ffi::c_int;
+        useStdin = 1i32;
         processFlags &= !XML_MAP_FILE as ::core::ffi::c_uint;
         i -= 1;
     }
     let mut current_block_219: u64;
     while i < argc {
-        let mut outName: *mut XML_Char =
-            ::core::ptr::null_mut::<XML_Char>();
+        let mut outName: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
         let mut result: ::core::ffi::c_int = 0;
-        let mut parser: XML_Parser =
-            ::core::ptr::null_mut::<XML_ParserStruct>();
+        let mut parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
         if useNamespaces != 0 {
-            parser = XML_ParserCreateNS(
-                encoding,
-                '\u{1}' as i32 as XML_Char,
-            );
+            parser = XML_ParserCreateNS(encoding, '\u{1}' as XML_Char);
         } else {
             parser = XML_ParserCreate(encoding);
         }
         if parser.is_null() {
-            perror(
-                b"Could not instantiate parser\0" as *const u8 as *const ::core::ffi::c_char,
-            );
+            perror(b"Could not instantiate parser\0" as *const u8 as *const ::core::ffi::c_char);
             exit(XMLWF_EXIT_INTERNAL_ERROR as ::core::ffi::c_int);
         }
         if attackMaximumAmplification != -1.0f32 {
@@ -2009,27 +1856,14 @@ unsafe fn main_0(
                 parser,
                 attackMaximumAmplification,
             );
-            XML_SetAllocTrackerMaximumAmplification(
-                parser,
-                attackMaximumAmplification,
-            );
+            XML_SetAllocTrackerMaximumAmplification(parser, attackMaximumAmplification);
         }
         if attackThresholdGiven != 0 {
-            XML_SetBillionLaughsAttackProtectionActivationThreshold(
-                parser,
-                attackThresholdBytes,
-            );
-            XML_SetAllocTrackerActivationThreshold(
-                parser,
-                attackThresholdBytes,
-            );
+            XML_SetBillionLaughsAttackProtectionActivationThreshold(parser, attackThresholdBytes);
+            XML_SetAllocTrackerActivationThreshold(parser, attackThresholdBytes);
         }
         if disableDeferral != 0 {
-            let success: XML_Bool =
-                XML_SetReparseDeferralEnabled(
-                    parser,
-                    XML_FALSE,
-                ) as XML_Bool;
+            let success: XML_Bool = XML_SetReparseDeferralEnabled(parser, XML_FALSE);
             if success == 0 {
                 *::libexpat::stdlib::__errno_location() = EINVAL;
                 perror(
@@ -2063,10 +1897,7 @@ unsafe fn main_0(
                 ),
                 Some(
                     nopEndElement
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                        ) -> (),
+                        as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
                 ),
             );
             XML_SetCharacterDataHandler(
@@ -2093,8 +1924,7 @@ unsafe fn main_0(
             );
             current_block_219 = 9952640327414195044;
         } else if !outputDir.is_null() {
-            let mut delim: *const XML_Char =
-                b"/\0" as *const u8 as *const XML_Char;
+            let mut delim: *const XML_Char = b"/\0" as *const u8 as *const XML_Char;
             let mut file: *const XML_Char = if useStdin != 0 {
                 b"STDIN\0" as *const u8 as *const XML_Char
             } else {
@@ -2102,44 +1932,25 @@ unsafe fn main_0(
             };
             if useStdin == 0 {
                 let mut lastDelim: *const XML_Char =
-                    ::libexpat::stdlib::strrchr(
-                        file as *const ::core::ffi::c_char,
-                        *delim.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int,
-                    );
+                    ::libexpat::stdlib::strrchr(file, *delim.offset(0isize) as ::core::ffi::c_int);
                 if !lastDelim.is_null() {
-                    file = lastDelim.offset(1 as ::core::ffi::c_int as isize);
+                    file = lastDelim.offset(1isize);
                 }
             }
             outName = malloc(
-                ::libexpat::stdlib::strlen(outputDir as *const ::core::ffi::c_char)
-                    .wrapping_add(::libexpat::stdlib::strlen(
-                        file as *const ::core::ffi::c_char,
-                    ))
-                    .wrapping_add(2 as size_t)
-                    .wrapping_mul(::core::mem::size_of::<XML_Char>()
-                        as size_t),
+                ::libexpat::stdlib::strlen(outputDir)
+                    .wrapping_add(::libexpat::stdlib::strlen(file))
+                    .wrapping_add(2usize)
+                    .wrapping_mul(::core::mem::size_of::<XML_Char>()),
             ) as *mut XML_Char;
             if outName.is_null() {
-                perror(
-                    b"Could not allocate memory\0" as *const u8 as *const ::core::ffi::c_char,
-                );
+                perror(b"Could not allocate memory\0" as *const u8 as *const ::core::ffi::c_char);
                 exit(XMLWF_EXIT_INTERNAL_ERROR as ::core::ffi::c_int);
             }
-            ::libexpat::stdlib::strcpy(
-                outName as *mut ::core::ffi::c_char,
-                outputDir as *const ::core::ffi::c_char,
-            );
-            crate::stdlib::strcat(
-                outName as *mut ::core::ffi::c_char,
-                delim as *const ::core::ffi::c_char,
-            );
-            crate::stdlib::strcat(
-                outName as *mut ::core::ffi::c_char,
-                file as *const ::core::ffi::c_char,
-            );
-            userData.fp =
-                fopen(outName, b"wb\0" as *const u8 as *const ::core::ffi::c_char)
-                    as *mut FILE;
+            ::libexpat::stdlib::strcpy(outName, outputDir);
+            crate::stdlib::strcat(outName, delim);
+            crate::stdlib::strcat(outName, file);
+            userData.fp = fopen(outName, b"wb\0" as *const u8 as *const ::core::ffi::c_char);
             if userData.fp.is_null() {
                 perror(outName);
                 exitCode = XMLWF_EXIT_OUTPUT_ERROR as ::core::ffi::c_int;
@@ -2154,12 +1965,9 @@ unsafe fn main_0(
                     userData.fp,
                     ::core::ptr::null_mut::<::core::ffi::c_char>(),
                     _IOFBF,
-                    16384 as size_t,
+                    16384usize,
                 );
-                XML_SetUserData(
-                    parser,
-                    &raw mut userData as *mut ::core::ffi::c_void,
-                );
+                XML_SetUserData(parser, &raw mut userData as *mut ::core::ffi::c_void);
                 match outputType {
                     109 => {
                         XML_UseParserAsHandlerArg(parser);
@@ -2536,7 +2344,7 @@ pub fn main() {
     unsafe {
         ::std::process::exit(main_0(
             (args_ptrs.len() - 1) as ::core::ffi::c_int,
-            args_ptrs.as_mut_ptr() as *mut *mut XML_Char,
-        ) as i32)
+            args_ptrs.as_mut_ptr(),
+        ))
     }
 }
