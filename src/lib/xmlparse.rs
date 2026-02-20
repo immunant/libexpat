@@ -397,13 +397,13 @@ pub struct tag {
     pub rawName: *const ::core::ffi::c_char,
     pub rawNameLength: ::core::ffi::c_int,
     pub name: TAG_NAME,
-    pub buf: C2RustUnnamed,
+    pub buf: C2RustUnnamed_0,
     pub bufEnd: *mut ::core::ffi::c_char,
     pub bindings: *mut BINDING,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub union C2RustUnnamed {
+pub union C2RustUnnamed_0 {
     pub raw: *mut ::core::ffi::c_char,
     pub str_0: *mut XML_Char,
 }
@@ -847,18 +847,18 @@ pub const XML_ACCOUNT_NONE: XML_Account = 2;
 pub const XML_ACCOUNT_ENTITY_EXPANSION: XML_Account = 1;
 pub const XML_ACCOUNT_DIRECT: XML_Account = 0;
 pub type ICHAR = ::core::ffi::c_char;
-pub const XML_ROLE_ELEMENT_NONE: C2RustUnnamed_0 = 39;
-pub const XML_ROLE_ATTLIST_NONE: C2RustUnnamed_0 = 33;
-pub const XML_ROLE_NOTATION_NONE: C2RustUnnamed_0 = 17;
-pub const XML_ROLE_ENTITY_NONE: C2RustUnnamed_0 = 11;
-pub const XML_ROLE_DOCTYPE_NONE: C2RustUnnamed_0 = 3;
-pub const XML_ROLE_NONE: C2RustUnnamed_0 = 0;
-pub const XML_ROLE_COMMENT: C2RustUnnamed_0 = 56;
-pub const XML_ROLE_PI: C2RustUnnamed_0 = 55;
-pub const XML_ROLE_GROUP_CLOSE_PLUS: C2RustUnnamed_0 = 48;
-pub const XML_ROLE_GROUP_CLOSE_REP: C2RustUnnamed_0 = 46;
-pub const XML_ROLE_GROUP_CLOSE_OPT: C2RustUnnamed_0 = 47;
-pub const XML_ROLE_GROUP_CLOSE: C2RustUnnamed_0 = 45;
+pub const XML_ROLE_ELEMENT_NONE: C2RustUnnamed_1 = 39;
+pub const XML_ROLE_ATTLIST_NONE: C2RustUnnamed_1 = 33;
+pub const XML_ROLE_NOTATION_NONE: C2RustUnnamed_1 = 17;
+pub const XML_ROLE_ENTITY_NONE: C2RustUnnamed_1 = 11;
+pub const XML_ROLE_DOCTYPE_NONE: C2RustUnnamed_1 = 3;
+pub const XML_ROLE_NONE: C2RustUnnamed_1 = 0;
+pub const XML_ROLE_COMMENT: C2RustUnnamed_1 = 56;
+pub const XML_ROLE_PI: C2RustUnnamed_1 = 55;
+pub const XML_ROLE_GROUP_CLOSE_PLUS: C2RustUnnamed_1 = 48;
+pub const XML_ROLE_GROUP_CLOSE_REP: C2RustUnnamed_1 = 46;
+pub const XML_ROLE_GROUP_CLOSE_OPT: C2RustUnnamed_1 = 47;
+pub const XML_ROLE_GROUP_CLOSE: C2RustUnnamed_1 = 45;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct siphash {
@@ -875,62 +875,62 @@ pub struct siphash {
 pub struct sipkey {
     pub k: [uint64_t; 2],
 }
-pub const XML_ROLE_CONTENT_ELEMENT_PLUS: C2RustUnnamed_0 = 54;
-pub const XML_ROLE_CONTENT_ELEMENT_REP: C2RustUnnamed_0 = 52;
-pub const XML_ROLE_CONTENT_ELEMENT_OPT: C2RustUnnamed_0 = 53;
-pub const XML_ROLE_CONTENT_ELEMENT: C2RustUnnamed_0 = 51;
-pub const XML_ROLE_CONTENT_PCDATA: C2RustUnnamed_0 = 43;
-pub const XML_ROLE_CONTENT_ANY: C2RustUnnamed_0 = 41;
-pub const XML_ROLE_CONTENT_EMPTY: C2RustUnnamed_0 = 42;
-pub const XML_ROLE_ELEMENT_NAME: C2RustUnnamed_0 = 40;
-pub const XML_ROLE_PARAM_ENTITY_REF: C2RustUnnamed_0 = 60;
-pub const XML_ROLE_INNER_PARAM_ENTITY_REF: C2RustUnnamed_0 = 59;
-pub const XML_ROLE_GROUP_CHOICE: C2RustUnnamed_0 = 49;
-pub const XML_ROLE_GROUP_SEQUENCE: C2RustUnnamed_0 = 50;
-pub const XML_ROLE_GROUP_OPEN: C2RustUnnamed_0 = 44;
-pub const XML_ROLE_IGNORE_SECT: C2RustUnnamed_0 = 58;
-pub const XML_ROLE_ERROR: C2RustUnnamed_0 = -1;
-pub const XML_ROLE_NOTATION_NO_SYSTEM_ID: C2RustUnnamed_0 = 20;
-pub const XML_ROLE_NOTATION_SYSTEM_ID: C2RustUnnamed_0 = 19;
-pub const XML_ROLE_NOTATION_PUBLIC_ID: C2RustUnnamed_0 = 21;
-pub const XML_ROLE_NOTATION_NAME: C2RustUnnamed_0 = 18;
-pub const XML_ROLE_PARAM_ENTITY_NAME: C2RustUnnamed_0 = 10;
-pub const XML_ROLE_GENERAL_ENTITY_NAME: C2RustUnnamed_0 = 9;
-pub const XML_ROLE_ENTITY_NOTATION_NAME: C2RustUnnamed_0 = 16;
-pub const XML_ROLE_ENTITY_COMPLETE: C2RustUnnamed_0 = 15;
-pub const XML_ROLE_ENTITY_SYSTEM_ID: C2RustUnnamed_0 = 13;
-pub const XML_ROLE_DOCTYPE_SYSTEM_ID: C2RustUnnamed_0 = 5;
-pub const XML_ROLE_ENTITY_VALUE: C2RustUnnamed_0 = 12;
-pub const XML_ROLE_FIXED_ATTRIBUTE_VALUE: C2RustUnnamed_0 = 38;
-pub const XML_ROLE_DEFAULT_ATTRIBUTE_VALUE: C2RustUnnamed_0 = 37;
-pub const XML_ROLE_REQUIRED_ATTRIBUTE_VALUE: C2RustUnnamed_0 = 36;
-pub const XML_ROLE_IMPLIED_ATTRIBUTE_VALUE: C2RustUnnamed_0 = 35;
-pub const XML_ROLE_ATTRIBUTE_NOTATION_VALUE: C2RustUnnamed_0 = 32;
-pub const XML_ROLE_ATTRIBUTE_ENUM_VALUE: C2RustUnnamed_0 = 31;
-pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS: C2RustUnnamed_0 = 30;
-pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN: C2RustUnnamed_0 = 29;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITIES: C2RustUnnamed_0 = 28;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITY: C2RustUnnamed_0 = 27;
-pub const XML_ROLE_ATTRIBUTE_TYPE_IDREFS: C2RustUnnamed_0 = 26;
-pub const XML_ROLE_ATTRIBUTE_TYPE_IDREF: C2RustUnnamed_0 = 25;
-pub const XML_ROLE_ATTRIBUTE_TYPE_ID: C2RustUnnamed_0 = 24;
-pub const XML_ROLE_ATTRIBUTE_TYPE_CDATA: C2RustUnnamed_0 = 23;
-pub const XML_ROLE_ATTRIBUTE_NAME: C2RustUnnamed_0 = 22;
-pub const XML_ROLE_ATTLIST_ELEMENT_NAME: C2RustUnnamed_0 = 34;
-pub const XML_ROLE_INSTANCE_START: C2RustUnnamed_0 = 2;
-pub const XML_ROLE_DOCTYPE_CLOSE: C2RustUnnamed_0 = 8;
-pub const XML_ROLE_ENTITY_PUBLIC_ID: C2RustUnnamed_0 = 14;
-pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2RustUnnamed_0 = 6;
+pub const XML_ROLE_CONTENT_ELEMENT_PLUS: C2RustUnnamed_1 = 54;
+pub const XML_ROLE_CONTENT_ELEMENT_REP: C2RustUnnamed_1 = 52;
+pub const XML_ROLE_CONTENT_ELEMENT_OPT: C2RustUnnamed_1 = 53;
+pub const XML_ROLE_CONTENT_ELEMENT: C2RustUnnamed_1 = 51;
+pub const XML_ROLE_CONTENT_PCDATA: C2RustUnnamed_1 = 43;
+pub const XML_ROLE_CONTENT_ANY: C2RustUnnamed_1 = 41;
+pub const XML_ROLE_CONTENT_EMPTY: C2RustUnnamed_1 = 42;
+pub const XML_ROLE_ELEMENT_NAME: C2RustUnnamed_1 = 40;
+pub const XML_ROLE_PARAM_ENTITY_REF: C2RustUnnamed_1 = 60;
+pub const XML_ROLE_INNER_PARAM_ENTITY_REF: C2RustUnnamed_1 = 59;
+pub const XML_ROLE_GROUP_CHOICE: C2RustUnnamed_1 = 49;
+pub const XML_ROLE_GROUP_SEQUENCE: C2RustUnnamed_1 = 50;
+pub const XML_ROLE_GROUP_OPEN: C2RustUnnamed_1 = 44;
+pub const XML_ROLE_IGNORE_SECT: C2RustUnnamed_1 = 58;
+pub const XML_ROLE_ERROR: C2RustUnnamed_1 = -1;
+pub const XML_ROLE_NOTATION_NO_SYSTEM_ID: C2RustUnnamed_1 = 20;
+pub const XML_ROLE_NOTATION_SYSTEM_ID: C2RustUnnamed_1 = 19;
+pub const XML_ROLE_NOTATION_PUBLIC_ID: C2RustUnnamed_1 = 21;
+pub const XML_ROLE_NOTATION_NAME: C2RustUnnamed_1 = 18;
+pub const XML_ROLE_PARAM_ENTITY_NAME: C2RustUnnamed_1 = 10;
+pub const XML_ROLE_GENERAL_ENTITY_NAME: C2RustUnnamed_1 = 9;
+pub const XML_ROLE_ENTITY_NOTATION_NAME: C2RustUnnamed_1 = 16;
+pub const XML_ROLE_ENTITY_COMPLETE: C2RustUnnamed_1 = 15;
+pub const XML_ROLE_ENTITY_SYSTEM_ID: C2RustUnnamed_1 = 13;
+pub const XML_ROLE_DOCTYPE_SYSTEM_ID: C2RustUnnamed_1 = 5;
+pub const XML_ROLE_ENTITY_VALUE: C2RustUnnamed_1 = 12;
+pub const XML_ROLE_FIXED_ATTRIBUTE_VALUE: C2RustUnnamed_1 = 38;
+pub const XML_ROLE_DEFAULT_ATTRIBUTE_VALUE: C2RustUnnamed_1 = 37;
+pub const XML_ROLE_REQUIRED_ATTRIBUTE_VALUE: C2RustUnnamed_1 = 36;
+pub const XML_ROLE_IMPLIED_ATTRIBUTE_VALUE: C2RustUnnamed_1 = 35;
+pub const XML_ROLE_ATTRIBUTE_NOTATION_VALUE: C2RustUnnamed_1 = 32;
+pub const XML_ROLE_ATTRIBUTE_ENUM_VALUE: C2RustUnnamed_1 = 31;
+pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKENS: C2RustUnnamed_1 = 30;
+pub const XML_ROLE_ATTRIBUTE_TYPE_NMTOKEN: C2RustUnnamed_1 = 29;
+pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITIES: C2RustUnnamed_1 = 28;
+pub const XML_ROLE_ATTRIBUTE_TYPE_ENTITY: C2RustUnnamed_1 = 27;
+pub const XML_ROLE_ATTRIBUTE_TYPE_IDREFS: C2RustUnnamed_1 = 26;
+pub const XML_ROLE_ATTRIBUTE_TYPE_IDREF: C2RustUnnamed_1 = 25;
+pub const XML_ROLE_ATTRIBUTE_TYPE_ID: C2RustUnnamed_1 = 24;
+pub const XML_ROLE_ATTRIBUTE_TYPE_CDATA: C2RustUnnamed_1 = 23;
+pub const XML_ROLE_ATTRIBUTE_NAME: C2RustUnnamed_1 = 22;
+pub const XML_ROLE_ATTLIST_ELEMENT_NAME: C2RustUnnamed_1 = 34;
+pub const XML_ROLE_INSTANCE_START: C2RustUnnamed_1 = 2;
+pub const XML_ROLE_DOCTYPE_CLOSE: C2RustUnnamed_1 = 8;
+pub const XML_ROLE_ENTITY_PUBLIC_ID: C2RustUnnamed_1 = 14;
+pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2RustUnnamed_1 = 6;
 pub type CONVERTER = Option<
     unsafe extern "C" fn(
         *mut ::core::ffi::c_void,
         *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int,
 >;
-pub const XML_ROLE_TEXT_DECL: C2RustUnnamed_0 = 57;
-pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2RustUnnamed_0 = 7;
-pub const XML_ROLE_DOCTYPE_NAME: C2RustUnnamed_0 = 4;
-pub const XML_ROLE_XML_DECL: C2RustUnnamed_0 = 1;
+pub const XML_ROLE_TEXT_DECL: C2RustUnnamed_1 = 57;
+pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2RustUnnamed_1 = 7;
+pub const XML_ROLE_DOCTYPE_NAME: C2RustUnnamed_1 = 4;
+pub const XML_ROLE_XML_DECL: C2RustUnnamed_1 = 1;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct XML_Expat_Version {
@@ -964,7 +964,7 @@ pub struct XML_Feature {
     pub name: *const XML_LChar,
     pub value: ::core::ffi::c_long,
 }
-pub type C2RustUnnamed_0 = ::core::ffi::c_int;
+pub type C2RustUnnamed_1 = ::core::ffi::c_int;
 static mut xmlLen: ::core::ffi::c_int = 0;
 static mut xmlnsLen: ::core::ffi::c_int = 0;
 pub const SIZE_MAX: ::core::ffi::c_ulong = 18446744073709551615 as ::core::ffi::c_ulong;

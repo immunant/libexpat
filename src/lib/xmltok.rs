@@ -153,70 +153,70 @@ pub struct normal_encoding {
         unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
     >,
 }
-pub const BT_MALFORM: C2RustUnnamed_3 = 1;
-pub const BT_NONXML: C2RustUnnamed_3 = 0;
-pub const BT_LEAD4: C2RustUnnamed_3 = 7;
-pub const BT_LEAD3: C2RustUnnamed_3 = 6;
-pub const BT_LEAD2: C2RustUnnamed_3 = 5;
-pub const BT_TRAIL: C2RustUnnamed_3 = 8;
-pub const BT_OTHER: C2RustUnnamed_3 = 28;
-pub const BT_VERBAR: C2RustUnnamed_3 = 36;
-pub const BT_NMSTRT: C2RustUnnamed_3 = 22;
-pub const BT_HEX: C2RustUnnamed_3 = 24;
-pub const BT_RSQB: C2RustUnnamed_3 = 4;
-pub const BT_LSQB: C2RustUnnamed_3 = 20;
-pub const BT_QUEST: C2RustUnnamed_3 = 15;
-pub const BT_GT: C2RustUnnamed_3 = 11;
-pub const BT_EQUALS: C2RustUnnamed_3 = 14;
-pub const BT_LT: C2RustUnnamed_3 = 2;
-pub const BT_SEMI: C2RustUnnamed_3 = 18;
-pub const BT_DIGIT: C2RustUnnamed_3 = 25;
-pub const BT_SOL: C2RustUnnamed_3 = 17;
-pub const BT_NAME: C2RustUnnamed_3 = 26;
-pub const BT_MINUS: C2RustUnnamed_3 = 27;
-pub const BT_COMMA: C2RustUnnamed_3 = 35;
-pub const BT_PLUS: C2RustUnnamed_3 = 34;
-pub const BT_AST: C2RustUnnamed_3 = 33;
-pub const BT_RPAR: C2RustUnnamed_3 = 32;
-pub const BT_LPAR: C2RustUnnamed_3 = 31;
-pub const BT_APOS: C2RustUnnamed_3 = 13;
-pub const BT_AMP: C2RustUnnamed_3 = 3;
-pub const BT_PERCNT: C2RustUnnamed_3 = 30;
-pub const BT_NUM: C2RustUnnamed_3 = 19;
-pub const BT_QUOT: C2RustUnnamed_3 = 12;
-pub const BT_EXCL: C2RustUnnamed_3 = 16;
-pub const BT_S: C2RustUnnamed_3 = 21;
-pub const BT_CR: C2RustUnnamed_3 = 9;
-pub const BT_LF: C2RustUnnamed_3 = 10;
-pub const BT_COLON_0: C2RustUnnamed_3 = 23;
-pub const UTF8_cval2: C2RustUnnamed_4 = 192;
-pub const inValue: C2RustUnnamed = 2;
-pub type C2RustUnnamed = ::core::ffi::c_uint;
-pub const inName: C2RustUnnamed = 1;
-pub const other: C2RustUnnamed = 0;
-pub const BT_NONASCII: C2RustUnnamed_3 = 29;
-pub const UTF8_cval4: C2RustUnnamed_4 = 240;
-pub const UTF8_cval3: C2RustUnnamed_4 = 224;
-pub const inValue_0: C2RustUnnamed_0 = 2;
-pub type C2RustUnnamed_0 = ::core::ffi::c_uint;
-pub const inName_0: C2RustUnnamed_0 = 1;
-pub const other_0: C2RustUnnamed_0 = 0;
-pub const inValue_1: C2RustUnnamed_1 = 2;
-pub type C2RustUnnamed_1 = ::core::ffi::c_uint;
-pub const inName_1: C2RustUnnamed_1 = 1;
-pub const other_1: C2RustUnnamed_1 = 0;
-pub const UNKNOWN_ENC: C2RustUnnamed_5 = -1;
-pub const NO_ENC: C2RustUnnamed_5 = 6;
-pub const UTF_16LE_ENC: C2RustUnnamed_5 = 5;
-pub const UTF_16BE_ENC: C2RustUnnamed_5 = 4;
-pub const UTF_8_ENC: C2RustUnnamed_5 = 2;
-pub const UTF_16_ENC: C2RustUnnamed_5 = 3;
-pub const ISO_8859_1_ENC: C2RustUnnamed_5 = 0;
-pub const min4: C2RustUnnamed_2 = 65536;
-pub const min3: C2RustUnnamed_2 = 2048;
-pub const UTF8_cval1: C2RustUnnamed_4 = 0;
-pub const min2: C2RustUnnamed_2 = 128;
-pub type C2RustUnnamed_2 = ::core::ffi::c_uint;
+pub const BT_MALFORM: C2RustUnnamed_7 = 1;
+pub const BT_NONXML: C2RustUnnamed_7 = 0;
+pub const BT_LEAD4: C2RustUnnamed_7 = 7;
+pub const BT_LEAD3: C2RustUnnamed_7 = 6;
+pub const BT_LEAD2: C2RustUnnamed_7 = 5;
+pub const BT_TRAIL: C2RustUnnamed_7 = 8;
+pub const BT_OTHER: C2RustUnnamed_7 = 28;
+pub const BT_VERBAR: C2RustUnnamed_7 = 36;
+pub const BT_NMSTRT: C2RustUnnamed_7 = 22;
+pub const BT_HEX: C2RustUnnamed_7 = 24;
+pub const BT_RSQB: C2RustUnnamed_7 = 4;
+pub const BT_LSQB: C2RustUnnamed_7 = 20;
+pub const BT_QUEST: C2RustUnnamed_7 = 15;
+pub const BT_GT: C2RustUnnamed_7 = 11;
+pub const BT_EQUALS: C2RustUnnamed_7 = 14;
+pub const BT_LT: C2RustUnnamed_7 = 2;
+pub const BT_SEMI: C2RustUnnamed_7 = 18;
+pub const BT_DIGIT: C2RustUnnamed_7 = 25;
+pub const BT_SOL: C2RustUnnamed_7 = 17;
+pub const BT_NAME: C2RustUnnamed_7 = 26;
+pub const BT_MINUS: C2RustUnnamed_7 = 27;
+pub const BT_COMMA: C2RustUnnamed_7 = 35;
+pub const BT_PLUS: C2RustUnnamed_7 = 34;
+pub const BT_AST: C2RustUnnamed_7 = 33;
+pub const BT_RPAR: C2RustUnnamed_7 = 32;
+pub const BT_LPAR: C2RustUnnamed_7 = 31;
+pub const BT_APOS: C2RustUnnamed_7 = 13;
+pub const BT_AMP: C2RustUnnamed_7 = 3;
+pub const BT_PERCNT: C2RustUnnamed_7 = 30;
+pub const BT_NUM: C2RustUnnamed_7 = 19;
+pub const BT_QUOT: C2RustUnnamed_7 = 12;
+pub const BT_EXCL: C2RustUnnamed_7 = 16;
+pub const BT_S: C2RustUnnamed_7 = 21;
+pub const BT_CR: C2RustUnnamed_7 = 9;
+pub const BT_LF: C2RustUnnamed_7 = 10;
+pub const BT_COLON_0: C2RustUnnamed_7 = 23;
+pub const UTF8_cval2: C2RustUnnamed_8 = 192;
+pub const inValue: C2RustUnnamed_3 = 2;
+pub type C2RustUnnamed_3 = ::core::ffi::c_uint;
+pub const inName: C2RustUnnamed_3 = 1;
+pub const other: C2RustUnnamed_3 = 0;
+pub const BT_NONASCII: C2RustUnnamed_7 = 29;
+pub const UTF8_cval4: C2RustUnnamed_8 = 240;
+pub const UTF8_cval3: C2RustUnnamed_8 = 224;
+pub const inValue_0: C2RustUnnamed_4 = 2;
+pub type C2RustUnnamed_4 = ::core::ffi::c_uint;
+pub const inName_0: C2RustUnnamed_4 = 1;
+pub const other_0: C2RustUnnamed_4 = 0;
+pub const inValue_1: C2RustUnnamed_5 = 2;
+pub type C2RustUnnamed_5 = ::core::ffi::c_uint;
+pub const inName_1: C2RustUnnamed_5 = 1;
+pub const other_1: C2RustUnnamed_5 = 0;
+pub const UNKNOWN_ENC: C2RustUnnamed_9 = -1;
+pub const NO_ENC: C2RustUnnamed_9 = 6;
+pub const UTF_16LE_ENC: C2RustUnnamed_9 = 5;
+pub const UTF_16BE_ENC: C2RustUnnamed_9 = 4;
+pub const UTF_8_ENC: C2RustUnnamed_9 = 2;
+pub const UTF_16_ENC: C2RustUnnamed_9 = 3;
+pub const ISO_8859_1_ENC: C2RustUnnamed_9 = 0;
+pub const min4: C2RustUnnamed_6 = 65536;
+pub const min3: C2RustUnnamed_6 = 2048;
+pub const UTF8_cval1: C2RustUnnamed_8 = 0;
+pub const min2: C2RustUnnamed_6 = 128;
+pub type C2RustUnnamed_6 = ::core::ffi::c_uint;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct unknown_encoding {
@@ -232,10 +232,10 @@ pub type CONVERTER = Option<
         *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int,
 >;
-pub type C2RustUnnamed_3 = ::core::ffi::c_uint;
-pub type C2RustUnnamed_4 = ::core::ffi::c_uint;
-pub type C2RustUnnamed_5 = ::core::ffi::c_int;
-pub const US_ASCII_ENC: C2RustUnnamed_5 = 1;
+pub type C2RustUnnamed_7 = ::core::ffi::c_uint;
+pub type C2RustUnnamed_8 = ::core::ffi::c_uint;
+pub type C2RustUnnamed_9 = ::core::ffi::c_int;
+pub const US_ASCII_ENC: C2RustUnnamed_9 = 1;
 pub const XML_TOK_TRAILING_RSQB: ::core::ffi::c_int = -(5 as ::core::ffi::c_int);
 pub const XML_TOK_NONE: ::core::ffi::c_int = -(4 as ::core::ffi::c_int);
 pub const XML_TOK_TRAILING_CR: ::core::ffi::c_int = -(3 as ::core::ffi::c_int);
@@ -4320,7 +4320,7 @@ unsafe extern "C" fn normal_getAtts(
     mut attsMax: ::core::ffi::c_int,
     mut atts: *mut ATTRIBUTE,
 ) -> ::core::ffi::c_int {
-    let mut state: C2RustUnnamed = inName;
+    let mut state: C2RustUnnamed_3 = inName;
     let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
@@ -8595,7 +8595,7 @@ unsafe extern "C" fn little2_getAtts(
     mut attsMax: ::core::ffi::c_int,
     mut atts: *mut ATTRIBUTE,
 ) -> ::core::ffi::c_int {
-    let mut state: C2RustUnnamed_0 = inName_0;
+    let mut state: C2RustUnnamed_4 = inName_0;
     let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
@@ -13084,7 +13084,7 @@ unsafe extern "C" fn big2_getAtts(
     mut attsMax: ::core::ffi::c_int,
     mut atts: *mut ATTRIBUTE,
 ) -> ::core::ffi::c_int {
-    let mut state: C2RustUnnamed_1 = inName_1;
+    let mut state: C2RustUnnamed_5 = inName_1;
     let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
