@@ -33,7 +33,7 @@ pub use crate::stdlib::__uint64_t;
 
 pub use crate::stdlib::FILE;
 
-pub const O_BINARY: ::core::ffi::c_int = 0i32;
+pub const O_BINARY: ::core::ffi::c_int = 0;
 #[no_mangle]
 
 pub unsafe extern "C" fn filemap(
@@ -73,16 +73,16 @@ pub unsafe extern "C" fn filemap(
     };
     let mut p: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
     fd = crate::stdlib::open(name, O_RDONLY | O_BINARY);
-    if fd < 0i32 {
+    if fd < 0 {
         crate::stdlib::perror(name);
         return 0i32;
     }
-    if crate::stdlib::fstat(fd, &raw mut sb) < 0i32 {
+    if crate::stdlib::fstat(fd, &raw mut sb) < 0 {
         crate::stdlib::perror(name);
         crate::stdlib::close(fd);
         return 0i32;
     }
-    if !(sb.st_mode & __S_IFMT as __mode_t == 0o100000u32) {
+    if !(sb.st_mode & __S_IFMT as __mode_t == 0o100000) {
         crate::stdlib::fprintf(
             crate::stdlib::stderr,
             b"%s: not a regular file\n\0" as *const u8 as *const ::core::ffi::c_char,
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn filemap(
         return 2i32;
     }
     nbytes = sb.st_size as size_t;
-    if nbytes == 0usize {
+    if nbytes == 0 {
         static mut c: ::core::ffi::c_char = '\0' as ::core::ffi::c_char;
         processor.expect("non-null function pointer")(
             &raw const c as *const ::core::ffi::c_void,
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn filemap(
         return 0i32;
     }
     n = crate::stdlib::read(fd, p, nbytes);
-    if n < 0i64 {
+    if n < 0 {
         crate::stdlib::perror(name);
         crate::stdlib::free(p);
         crate::stdlib::close(fd);
@@ -137,5 +137,5 @@ pub unsafe extern "C" fn filemap(
     processor.expect("non-null function pointer")(p, nbytes, name, arg);
     crate::stdlib::free(p);
     crate::stdlib::close(fd);
-    return 1i32;
+    return 1;
 }

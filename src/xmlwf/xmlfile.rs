@@ -1,7 +1,7 @@
 // =============== BEGIN xmlfile_h ================
-pub const XML_MAP_FILE: ::core::ffi::c_int = 0o1i32;
+pub const XML_MAP_FILE: ::core::ffi::c_int = 0o1;
 
-pub const XML_EXTERNAL_ENTITIES: ::core::ffi::c_int = 0o2i32;
+pub const XML_EXTERNAL_ENTITIES: ::core::ffi::c_int = 0o2;
 
 pub use crate::__stddef_size_t_h::size_t;
 
@@ -99,10 +99,10 @@ pub struct PROCESS_ARGS {
     pub retPtr: *mut ::core::ffi::c_int,
 }
 
-pub const O_BINARY: ::core::ffi::c_int = 0i32;
+pub const O_BINARY: ::core::ffi::c_int = 0;
 #[no_mangle]
 
-pub static mut g_read_size_bytes: ::core::ffi::c_int = 1024i32 * 8i32;
+pub static mut g_read_size_bytes: ::core::ffi::c_int = 1024 * 8;
 
 unsafe extern "C" fn reportError(mut parser: XML_Parser, mut filename: *const XML_Char) {
     let mut code: XML_Error = XML_GetErrorCode(parser);
@@ -138,7 +138,7 @@ unsafe extern "C" fn processFile(
         parser,
         data as *const ::core::ffi::c_char,
         size as ::core::ffi::c_int,
-        1i32,
+        1,
     ) == XML_STATUS_ERROR
     {
         reportError(parser, filename);
@@ -234,10 +234,10 @@ unsafe extern "C" fn processStream(
     mut filename: *const XML_Char,
     mut parser: XML_Parser,
 ) -> ::core::ffi::c_int {
-    let mut fd: ::core::ffi::c_int = 0i32;
+    let mut fd: ::core::ffi::c_int = 0;
     if !filename.is_null() {
         fd = crate::stdlib::open(filename, O_BINARY | O_RDONLY);
-        if fd < 0i32 {
+        if fd < 0 {
             crate::stdlib::perror(filename);
             return 0i32;
         }
@@ -266,7 +266,7 @@ unsafe extern "C" fn processStream(
             buf as *mut ::core::ffi::c_void,
             g_read_size_bytes as size_t,
         );
-        if nread < 0i64 {
+        if nread < 0 {
             crate::stdlib::perror(if !filename.is_null() {
                 filename
             } else {
@@ -280,7 +280,7 @@ unsafe extern "C" fn processStream(
         if XML_ParseBuffer(
             parser,
             nread as ::core::ffi::c_int,
-            (nread == 0i64) as ::core::ffi::c_int,
+            (nread == 0) as ::core::ffi::c_int,
         ) == XML_STATUS_ERROR
         {
             reportError(
@@ -296,7 +296,7 @@ unsafe extern "C" fn processStream(
             }
             return 0i32;
         }
-        if !(nread == 0i64) {
+        if !(nread == 0) {
             continue;
         }
         if !filename.is_null() {
@@ -304,7 +304,7 @@ unsafe extern "C" fn processStream(
         }
         break;
     }
-    return 1i32;
+    return 1;
 }
 
 unsafe extern "C" fn externalEntityRefStream(

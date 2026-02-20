@@ -1763,7 +1763,7 @@ unsafe extern "C" fn attlist2(
                 ]
             };
             let mut i: ::core::ffi::c_int = 0;
-            i = 0i32;
+            i = 0;
             while i
                 < (::core::mem::size_of::<[*const ::core::ffi::c_char; 8]>())
                     .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>())
@@ -2795,9 +2795,9 @@ pub unsafe extern "C" fn XmlPrologStateInit(
                 *const ENCODING,
             ) -> ::core::ffi::c_int,
     );
-    (*state).documentEntity = 1i32;
+    (*state).documentEntity = 1;
     (*state).includeLevel = 0u32;
-    (*state).inEntityValue = 0i32;
+    (*state).inEntityValue = 0;
 }
 #[no_mangle]
 
@@ -2814,6 +2814,6 @@ pub unsafe extern "C" fn XmlPrologStateInitExternalEntity(
                 *const ENCODING,
             ) -> ::core::ffi::c_int,
     );
-    (*state).documentEntity = 0i32;
+    (*state).documentEntity = 0;
     (*state).includeLevel = 0u32;
 }
