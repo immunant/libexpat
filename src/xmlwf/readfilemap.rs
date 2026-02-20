@@ -11,7 +11,7 @@ pub use crate::stdlib::_IO_lock_t;
 pub use crate::stdlib::_IO_marker;
 pub use crate::stdlib::_IO_wide_data;
 
-pub use crate::stdlib::ssize_t_1;
+pub use crate::stdlib::ssize_t;
 pub use crate::stdlib::stat;
 
 pub use crate::stdlib::_IO_FILE;
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn filemap(
 ) -> ::core::ffi::c_int {
     let mut nbytes: crate::__stddef_size_t_h::size_t = 0;
     let mut fd: ::core::ffi::c_int = 0;
-    let mut n: crate::stdlib::ssize_t_1 = 0;
+    let mut n: crate::stdlib::ssize_t = 0;
     let mut sb: crate::stdlib::stat = crate::stdlib::stat {
         st_dev: 0,
         st_ino: 0,
@@ -119,14 +119,14 @@ pub unsafe extern "C" fn filemap(
         crate::stdlib::close(fd);
         return 0 as ::core::ffi::c_int;
     }
-    n = crate::stdlib::read_1(fd, p, nbytes);
-    if n < 0 as crate::stdlib::ssize_t_1 {
+    n = crate::stdlib::read(fd, p, nbytes);
+    if n < 0 as crate::stdlib::ssize_t {
         crate::stdlib::perror(name);
         crate::stdlib::free(p);
         crate::stdlib::close(fd);
         return 0 as ::core::ffi::c_int;
     }
-    if n != nbytes as crate::stdlib::ssize_t_1 {
+    if n != nbytes as crate::stdlib::ssize_t {
         crate::stdlib::fprintf(
             crate::stdlib::stderr,
             b"%s: read unexpected number of bytes\n\0" as *const u8 as *const ::core::ffi::c_char,

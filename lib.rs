@@ -913,12 +913,6 @@ pub mod stdlib {
             __nbytes: crate::__stddef_size_t_h::size_t,
         ) -> crate::stdlib::ssize_t;
 
-        pub fn read_1(
-            __fd: ::core::ffi::c_int,
-            __buf: *mut ::core::ffi::c_void,
-            __nbytes: crate::__stddef_size_t_h::size_t,
-        ) -> crate::stdlib::ssize_t_1;
-
         pub fn getpid() -> crate::stdlib::__pid_t;
     }
     pub type FILE = crate::stdlib::_IO_FILE;
@@ -997,7 +991,6 @@ pub mod stdlib {
         pub tv_sec: crate::stdlib::__time_t,
         pub tv_usec: crate::stdlib::__suseconds_t,
     }
-    pub type ssize_t_1 = isize;
     pub type __uint64_t = u64;
 
     pub type __dev_t = ::core::ffi::c_ulong;
