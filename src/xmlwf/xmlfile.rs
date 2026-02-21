@@ -2,6 +2,7 @@
 pub const XML_MAP_FILE: ::core::ffi::c_int = 0o1 as ::core::ffi::c_int;
 
 pub const XML_EXTERNAL_ENTITIES: ::core::ffi::c_int = 0o2 as ::core::ffi::c_int;
+
 pub use crate::__stddef_size_t_h::size_t;
 
 pub use crate::expat_external_h::XML_Char;
@@ -71,10 +72,10 @@ pub use crate::src::lib::xmlparse::XML_ParseBuffer;
 pub use crate::src::lib::xmlparse::XML_ParserFree;
 pub use crate::src::lib::xmlparse::XML_SetBase;
 pub use crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler;
-use crate::src::xmlwf::readfilemap::filemap;
-use crate::stdlib::open;
+
 pub use crate::stdlib::O_RDONLY;
 
+pub use crate::__stddef_null_h::NULL;
 pub use crate::stdlib::_IO_codecvt;
 pub use crate::stdlib::_IO_lock_t;
 pub use crate::stdlib::_IO_marker;
@@ -84,22 +85,12 @@ pub use crate::stdlib::__off_t;
 pub use crate::stdlib::__ssize_t;
 pub use crate::stdlib::__uint64_t;
 pub use crate::stdlib::close;
-use crate::stdlib::exit;
-use crate::stdlib::fprintf;
-use crate::stdlib::free;
-use crate::stdlib::malloc;
-use crate::stdlib::perror;
+
 pub use crate::stdlib::read;
 pub use crate::stdlib::ssize_t;
-use crate::stdlib::stderr;
-use crate::stdlib::stdout;
-use crate::stdlib::strcpy;
-use crate::stdlib::strlen;
-use crate::stdlib::strrchr;
-pub use crate::stdlib::_IO_FILE;
 
-pub use crate::__stddef_null_h::NULL;
 pub use crate::stdlib::FILE;
+pub use crate::stdlib::_IO_FILE;
 #[derive(Copy, Clone)]
 #[repr(C)]
 

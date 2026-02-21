@@ -248,10 +248,8 @@ use ::libexpat;
 pub use crate::__stddef_size_t_h::size_t;
 
 pub use crate::stdlib::__ASSERT_FUNCTION;
-use ::libexpat::src::xmlwf::codepage::codepageConvert;
-use ::libexpat::src::xmlwf::codepage::codepageMap;
+
 pub use ::libexpat::stdlib::__assert_fail;
-use ::libexpat::stdlib::__errno_location;
 
 pub use crate::expat_external_h::XML_Char;
 pub use crate::expat_external_h::XML_Index;
@@ -353,9 +351,7 @@ pub use crate::stdlib::remove;
 pub use crate::stdlib::setvbuf;
 pub use crate::stdlib::stderr;
 pub use crate::stdlib::stdout;
-use crate::stdlib::strcat;
-use crate::stdlib::strchr;
-use crate::stdlib::strcmp;
+
 pub use crate::stdlib::strtof;
 pub use crate::stdlib::strtoull;
 pub use crate::stdlib::EINVAL;
@@ -372,11 +368,9 @@ pub use ::libexpat::stdlib::exit;
 pub use ::libexpat::stdlib::fprintf;
 pub use ::libexpat::stdlib::free;
 pub use ::libexpat::stdlib::malloc;
-use ::libexpat::stdlib::memcpy;
+
 pub use ::libexpat::stdlib::perror;
-use ::libexpat::stdlib::strcpy;
-use ::libexpat::stdlib::strlen;
-use ::libexpat::stdlib::strrchr;
+
 pub use ::libexpat::stdlib::_IO_FILE;
 
 pub type ExitCode = ::core::ffi::c_uint;

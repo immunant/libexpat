@@ -13839,28 +13839,6 @@ pub mod xmltok_impl_c {
             }
         }
     }
-    use crate::__stddef_size_t_h::size_t;
-    use crate::ascii_h::ASCII_a_1;
-
-    use crate::ascii_h::ASCII_0;
-
-    use crate::ascii_h::ASCII_A;
-    use crate::ascii_h::ASCII_AMP;
-    use crate::ascii_h::ASCII_APOS;
-
-    use crate::ascii_h::ASCII_C;
-    use crate::ascii_h::ASCII_D;
-
-    use crate::ascii_h::ASCII_GT;
-
-    use crate::ascii_h::ASCII_LSQB;
-    use crate::ascii_h::ASCII_LT;
-
-    use crate::ascii_h::ASCII_QUOT;
-    use crate::ascii_h::ASCII_SPACE;
-    use crate::ascii_h::ASCII_T;
-
-    use crate::expat_external_h::XML_Size;
 
     use crate::src::lib::xmltok::checkCharRefNumber;
     use crate::src::lib::xmltok::nametab_h::namePages;
@@ -13868,58 +13846,6 @@ pub mod xmltok_impl_c {
     use crate::src::lib::xmltok::nametab_h::nmstrtPages;
     use crate::src::lib::xmltok::normal_encoding;
     use crate::src::lib::xmltok::unicode_byte_type;
-
-    use crate::src::lib::xmltok::XML_TOK_ATTRIBUTE_VALUE_S_1;
-    use crate::src::lib::xmltok::XML_TOK_CDATA_SECT_CLOSE_1;
-    use crate::src::lib::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
-    use crate::src::lib::xmltok::XML_TOK_CHAR_REF_1;
-    use crate::src::lib::xmltok::XML_TOK_CLOSE_BRACKET_1;
-    use crate::src::lib::xmltok::XML_TOK_CLOSE_PAREN_1;
-    use crate::src::lib::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK_1;
-    use crate::src::lib::xmltok::XML_TOK_CLOSE_PAREN_PLUS_1;
-    use crate::src::lib::xmltok::XML_TOK_CLOSE_PAREN_QUESTION_1;
-    use crate::src::lib::xmltok::XML_TOK_COMMA_1;
-    use crate::src::lib::xmltok::XML_TOK_COMMENT_1;
-    use crate::src::lib::xmltok::XML_TOK_COND_SECT_CLOSE_1;
-    use crate::src::lib::xmltok::XML_TOK_COND_SECT_OPEN_1;
-    use crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
-    use crate::src::lib::xmltok::XML_TOK_DATA_NEWLINE_1;
-    use crate::src::lib::xmltok::XML_TOK_DECL_CLOSE_1;
-    use crate::src::lib::xmltok::XML_TOK_DECL_OPEN_1;
-    use crate::src::lib::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
-    use crate::src::lib::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
-    use crate::src::lib::xmltok::XML_TOK_END_TAG_1;
-    use crate::src::lib::xmltok::XML_TOK_ENTITY_REF_1;
-    use crate::src::lib::xmltok::XML_TOK_IGNORE_SECT_1;
-    use crate::src::lib::xmltok::XML_TOK_INSTANCE_START;
-    use crate::src::lib::xmltok::XML_TOK_INVALID_1;
-    use crate::src::lib::xmltok::XML_TOK_LITERAL_1;
-    use crate::src::lib::xmltok::XML_TOK_NAME;
-    use crate::src::lib::xmltok::XML_TOK_NAME_ASTERISK_1;
-    use crate::src::lib::xmltok::XML_TOK_NAME_PLUS_1;
-    use crate::src::lib::xmltok::XML_TOK_NAME_QUESTION_1;
-    use crate::src::lib::xmltok::XML_TOK_NMTOKEN_1;
-    use crate::src::lib::xmltok::XML_TOK_NONE_1;
-    use crate::src::lib::xmltok::XML_TOK_OPEN_BRACKET_1;
-    use crate::src::lib::xmltok::XML_TOK_OPEN_PAREN_1;
-    use crate::src::lib::xmltok::XML_TOK_OR_1;
-    use crate::src::lib::xmltok::XML_TOK_PARAM_ENTITY_REF_1;
-    use crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
-    use crate::src::lib::xmltok::XML_TOK_PARTIAL_CHAR_1;
-    use crate::src::lib::xmltok::XML_TOK_PERCENT_1;
-    use crate::src::lib::xmltok::XML_TOK_PI_1;
-    use crate::src::lib::xmltok::XML_TOK_POUND_NAME_1;
-    use crate::src::lib::xmltok::XML_TOK_PREFIXED_NAME;
-    use crate::src::lib::xmltok::XML_TOK_PROLOG_S_1;
-    use crate::src::lib::xmltok::XML_TOK_START_TAG_NO_ATTS_1;
-    use crate::src::lib::xmltok::XML_TOK_START_TAG_WITH_ATTS_1;
-    use crate::src::lib::xmltok::XML_TOK_TRAILING_CR_1;
-    use crate::src::lib::xmltok::XML_TOK_TRAILING_RSQB_1;
-    use crate::src::lib::xmltok::XML_TOK_XML_DECL_1;
-    use crate::xmltok_impl_h::BT_APOS;
-    use crate::xmltok_impl_h::BT_EQUALS;
-    use crate::xmltok_impl_h::BT_LF;
-    use crate::xmltok_impl_h::BT_QUOT;
 }
 
 pub mod xmltok_ns_c {
@@ -14285,14 +14211,10 @@ pub mod xmltok_ns_c {
     use crate::src::lib::xmltok::internal_utf8_encoding;
     use crate::src::lib::xmltok::internal_utf8_encoding_ns;
     use crate::src::lib::xmltok::streqci;
-    use crate::src::lib::xmltok::ENCODING;
-    use crate::src::lib::xmltok::INIT_ENCODING;
+
     use crate::src::lib::xmltok::KW_UTF_16;
-    use crate::src::lib::xmltok::POSITION;
-    use crate::src::lib::xmltok::SCANNER;
+
     use crate::src::lib::xmltok::UNKNOWN_ENC;
-    use crate::src::lib::xmltok::XML_CONTENT_STATE;
-    use crate::src::lib::xmltok::XML_PROLOG_STATE;
 }
 
 pub mod nametab_h {
@@ -15205,7 +15127,6 @@ pub use crate::src::lib::xmltok::nametab_h::namingBitmap;
 pub use crate::src::lib::xmltok::nametab_h::nmstrtPages;
 pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
-use crate::stdlib::memcpy;
 
 pub use crate::src::lib::xmltok::xmltok_impl_c::big2_attributeValueTok;
 pub use crate::src::lib::xmltok::xmltok_impl_c::big2_cdataSectionTok;
@@ -15291,17 +15212,6 @@ pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanPoundName;
 pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanRef;
 pub use crate::src::lib::xmltok::xmltok_impl_c::normal_skipS;
 pub use crate::src::lib::xmltok::xmltok_impl_c::normal_updatePosition;
-pub use crate::xmltok_impl_c::inName;
-pub use crate::xmltok_impl_c::inName_0;
-pub use crate::xmltok_impl_c::inName_1;
-pub use crate::xmltok_impl_c::inValue;
-pub use crate::xmltok_impl_c::inValue_0;
-pub use crate::xmltok_impl_c::inValue_1;
-pub use crate::xmltok_impl_c::other;
-pub use crate::xmltok_impl_c::other_0;
-pub use crate::xmltok_impl_c::other_1;
-pub use crate::xmltok_impl_h::C2RustUnnamed_3;
-
 pub use crate::src::lib::xmltok::xmltok_ns_c::encodings;
 pub use crate::src::lib::xmltok::xmltok_ns_c::encodingsNS;
 pub use crate::src::lib::xmltok::xmltok_ns_c::findEncoding;
@@ -15318,6 +15228,16 @@ pub use crate::src::lib::xmltok::xmltok_ns_c::XmlInitEncoding;
 pub use crate::src::lib::xmltok::xmltok_ns_c::XmlInitEncodingNS;
 pub use crate::src::lib::xmltok::xmltok_ns_c::XmlParseXmlDecl;
 pub use crate::src::lib::xmltok::xmltok_ns_c::XmlParseXmlDeclNS;
+pub use crate::xmltok_impl_c::inName;
+pub use crate::xmltok_impl_c::inName_0;
+pub use crate::xmltok_impl_c::inName_1;
+pub use crate::xmltok_impl_c::inValue;
+pub use crate::xmltok_impl_c::inValue_0;
+pub use crate::xmltok_impl_c::inValue_1;
+pub use crate::xmltok_impl_c::other;
+pub use crate::xmltok_impl_c::other_0;
+pub use crate::xmltok_impl_c::other_1;
+pub use crate::xmltok_impl_h::C2RustUnnamed_3;
 pub use crate::xmltok_impl_h::BT_AMP;
 pub use crate::xmltok_impl_h::BT_APOS;
 pub use crate::xmltok_impl_h::BT_AST;

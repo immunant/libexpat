@@ -2,8 +2,7 @@ pub use crate::__stddef_size_t_h::size_t;
 pub use crate::filemap_h::XML_MAX_CHUNK_LEN;
 pub use crate::internal::__INT_MAX__;
 pub use crate::limits_h::INT_MAX;
-use crate::stdlib::fstat;
-use crate::stdlib::open;
+
 pub use crate::stdlib::O_RDONLY;
 pub use crate::stdlib::__S_IFMT;
 
@@ -11,13 +10,10 @@ pub use crate::stdlib::_IO_codecvt;
 pub use crate::stdlib::_IO_lock_t;
 pub use crate::stdlib::_IO_marker;
 pub use crate::stdlib::_IO_wide_data;
-use crate::stdlib::fprintf;
-use crate::stdlib::free;
-use crate::stdlib::malloc;
-use crate::stdlib::perror;
+
 pub use crate::stdlib::ssize_t_1;
 pub use crate::stdlib::stat;
-use crate::stdlib::stderr;
+
 pub use crate::stdlib::_IO_FILE;
 
 pub use crate::stdlib::__blkcnt_t;
@@ -34,8 +30,7 @@ pub use crate::stdlib::__syscall_ulong_t;
 pub use crate::stdlib::__time_t;
 pub use crate::stdlib::__uid_t;
 pub use crate::stdlib::__uint64_t;
-use crate::stdlib::close;
-use crate::stdlib::read_1;
+
 pub use crate::stdlib::FILE;
 
 pub const O_BINARY: ::core::ffi::c_int = 0 as ::core::ffi::c_int;

@@ -989,8 +989,6 @@ pub mod siphash_h {
         }
         return 1 as ::core::ffi::c_int;
     }
-    use crate::__stddef_size_t_h::size_t;
-    use crate::stdlib::uint64_t;
 }
 
 pub use crate::__stddef_null_h::NULL;
@@ -1043,8 +1041,7 @@ pub use crate::ascii_h::ASCII_T;
 pub use crate::ascii_h::ASCII_X;
 pub use crate::ascii_h::ASCII_Y;
 pub use crate::expat_config_h::XML_CONTEXT_BYTES;
-use crate::stdlib::__assert_fail;
-use crate::stdlib::__errno_location;
+
 pub use crate::stdlib::EINTR;
 
 pub use crate::expat_external_h::XML_Char;
@@ -1176,7 +1173,7 @@ pub use crate::expat_h::XML_STATUS_SUSPENDED;
 pub use crate::expat_h::XML_SUSPENDED;
 pub use crate::expat_h::XML_TRUE;
 pub use crate::internal::__INT_MAX__;
-use crate::stdlib::open;
+
 pub use crate::stdlib::O_RDONLY;
 
 pub use crate::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
@@ -1208,18 +1205,10 @@ pub use crate::stdlib::_IO_lock_t;
 pub use crate::stdlib::_IO_marker;
 pub use crate::stdlib::_IO_wide_data;
 pub use crate::stdlib::fprintf;
-use crate::stdlib::free;
-use crate::stdlib::getenv;
-use crate::stdlib::gettimeofday;
-use crate::stdlib::malloc;
-use crate::stdlib::memcmp;
-use crate::stdlib::memcpy;
-use crate::stdlib::memmove;
-use crate::stdlib::memset;
-use crate::stdlib::realloc;
+
 pub use crate::stdlib::ssize_t;
 pub use crate::stdlib::stderr;
-use crate::stdlib::strtoul;
+
 pub use crate::stdlib::timeval;
 pub use crate::stdlib::_IO_FILE;
 
@@ -1345,9 +1334,7 @@ pub use crate::stdlib::__ssize_t;
 pub use crate::stdlib::__suseconds_t;
 pub use crate::stdlib::__time_t;
 pub use crate::stdlib::__uint64_t;
-use crate::stdlib::close;
-use crate::stdlib::getpid;
-use crate::stdlib::read;
+
 pub use crate::stdlib::FILE;
 #[derive(Copy, Clone)]
 #[repr(C)]

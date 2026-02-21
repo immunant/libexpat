@@ -25,7 +25,7 @@ sed -i 's/ -Wstrict-aliasing=3//g' "$PWD/expat/build/compile_commands.json"
 
 c2rust transpile --emit-build-files --emit-c-decl-map \
     --binary xmlwf --output-dir $PWD --overwrite-existing \
-    --reorganize-definitions --disable-refactoring \
+    --reorganize-definitions \
     $PWD/expat/build/compile_commands.json
 
 cargo fix --bin "xmlwf" --allow-dirty --allow-staged
