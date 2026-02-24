@@ -12282,98 +12282,13 @@ pub use crate::ascii_h::ASCII_X_1;
 pub use crate::ascii_h::ASCII_Z;
 pub use crate::expat_external_h::XML_Size;
 
-pub use crate::src::lib::xmltok::nametab_h::namePages;
-pub use crate::src::lib::xmltok::nametab_h::namingBitmap;
-pub use crate::src::lib::xmltok::nametab_h::nmstrtPages;
 pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
+pub use nametab_h::namePages;
+pub use nametab_h::namingBitmap;
+pub use nametab_h::nmstrtPages;
 
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_attributeValueTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_cdataSectionTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_charRefNumber;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_checkPiTarget;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_contentTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_entityValueTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_getAtts;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_isPublicId;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_nameLength;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_nameMatchesAscii;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_predefinedEntityName;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_prologTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanAtts;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanCdataSection;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanCharRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanComment;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanDecl;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanEndTag;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanHexCharRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanLit;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanLt;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanPercent;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanPi;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanPoundName;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_scanRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_skipS;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::big2_updatePosition;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_attributeValueTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_cdataSectionTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_charRefNumber;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_checkPiTarget;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_contentTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_entityValueTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_getAtts;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_isPublicId;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_nameLength;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_nameMatchesAscii;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_predefinedEntityName;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_prologTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanAtts;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanCdataSection;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanCharRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanComment;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanDecl;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanEndTag;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanHexCharRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanLit;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanLt;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanPercent;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanPi;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanPoundName;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_scanRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_skipS;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::little2_updatePosition;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_attributeValueTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_cdataSectionTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_charRefNumber;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_checkPiTarget;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_contentTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_entityValueTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_getAtts;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_isPublicId;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_nameLength;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_nameMatchesAscii;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_predefinedEntityName;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_prologTok;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanAtts;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanCdataSection;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanCharRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanComment;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanDecl;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanEndTag;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanHexCharRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanLit;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanLt;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanPercent;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanPi;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanPoundName;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_scanRef;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_skipS;
-pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::normal_updatePosition;
-pub(crate) use crate::src::lib::xmltok::xmltok_ns_c::encodings;
-pub(crate) use crate::src::lib::xmltok::xmltok_ns_c::encodingsNS;
+use crate::stdlib::memcpy;
 pub use crate::xmltok_impl_c::inName;
 pub use crate::xmltok_impl_c::inName_0;
 pub use crate::xmltok_impl_c::inName_1;
@@ -12421,66 +12336,110 @@ pub use crate::xmltok_impl_h::BT_SEMI;
 pub use crate::xmltok_impl_h::BT_SOL;
 pub use crate::xmltok_impl_h::BT_TRAIL;
 pub use crate::xmltok_impl_h::BT_VERBAR;
+use core::ffi::{c_char, c_int, c_long, c_uchar, c_uint, c_ushort, c_void};
+use core::mem::size_of;
+use core::ptr::{null, null_mut};
+pub(crate) use xmltok_impl_c::big2_attributeValueTok;
+pub(crate) use xmltok_impl_c::big2_cdataSectionTok;
+pub(crate) use xmltok_impl_c::big2_charRefNumber;
+pub(crate) use xmltok_impl_c::big2_checkPiTarget;
+pub(crate) use xmltok_impl_c::big2_contentTok;
+pub(crate) use xmltok_impl_c::big2_entityValueTok;
+pub(crate) use xmltok_impl_c::big2_getAtts;
+pub(crate) use xmltok_impl_c::big2_ignoreSectionTok;
+pub(crate) use xmltok_impl_c::big2_isPublicId;
+pub(crate) use xmltok_impl_c::big2_nameLength;
+pub(crate) use xmltok_impl_c::big2_nameMatchesAscii;
+pub(crate) use xmltok_impl_c::big2_predefinedEntityName;
+pub(crate) use xmltok_impl_c::big2_prologTok;
+pub(crate) use xmltok_impl_c::big2_scanAtts;
+pub(crate) use xmltok_impl_c::big2_scanCdataSection;
+pub(crate) use xmltok_impl_c::big2_scanCharRef;
+pub(crate) use xmltok_impl_c::big2_scanComment;
+pub(crate) use xmltok_impl_c::big2_scanDecl;
+pub(crate) use xmltok_impl_c::big2_scanEndTag;
+pub(crate) use xmltok_impl_c::big2_scanHexCharRef;
+pub(crate) use xmltok_impl_c::big2_scanLit;
+pub(crate) use xmltok_impl_c::big2_scanLt;
+pub(crate) use xmltok_impl_c::big2_scanPercent;
+pub(crate) use xmltok_impl_c::big2_scanPi;
+pub(crate) use xmltok_impl_c::big2_scanPoundName;
+pub(crate) use xmltok_impl_c::big2_scanRef;
+pub(crate) use xmltok_impl_c::big2_skipS;
+pub(crate) use xmltok_impl_c::big2_updatePosition;
+pub(crate) use xmltok_impl_c::little2_attributeValueTok;
+pub(crate) use xmltok_impl_c::little2_cdataSectionTok;
+pub(crate) use xmltok_impl_c::little2_charRefNumber;
+pub(crate) use xmltok_impl_c::little2_checkPiTarget;
+pub(crate) use xmltok_impl_c::little2_contentTok;
+pub(crate) use xmltok_impl_c::little2_entityValueTok;
+pub(crate) use xmltok_impl_c::little2_getAtts;
+pub(crate) use xmltok_impl_c::little2_ignoreSectionTok;
+pub(crate) use xmltok_impl_c::little2_isPublicId;
+pub(crate) use xmltok_impl_c::little2_nameLength;
+pub(crate) use xmltok_impl_c::little2_nameMatchesAscii;
+pub(crate) use xmltok_impl_c::little2_predefinedEntityName;
+pub(crate) use xmltok_impl_c::little2_prologTok;
+pub(crate) use xmltok_impl_c::little2_scanAtts;
+pub(crate) use xmltok_impl_c::little2_scanCdataSection;
+pub(crate) use xmltok_impl_c::little2_scanCharRef;
+pub(crate) use xmltok_impl_c::little2_scanComment;
+pub(crate) use xmltok_impl_c::little2_scanDecl;
+pub(crate) use xmltok_impl_c::little2_scanEndTag;
+pub(crate) use xmltok_impl_c::little2_scanHexCharRef;
+pub(crate) use xmltok_impl_c::little2_scanLit;
+pub(crate) use xmltok_impl_c::little2_scanLt;
+pub(crate) use xmltok_impl_c::little2_scanPercent;
+pub(crate) use xmltok_impl_c::little2_scanPi;
+pub(crate) use xmltok_impl_c::little2_scanPoundName;
+pub(crate) use xmltok_impl_c::little2_scanRef;
+pub(crate) use xmltok_impl_c::little2_skipS;
+pub(crate) use xmltok_impl_c::little2_updatePosition;
+pub(crate) use xmltok_impl_c::normal_attributeValueTok;
+pub(crate) use xmltok_impl_c::normal_cdataSectionTok;
+pub(crate) use xmltok_impl_c::normal_charRefNumber;
+pub(crate) use xmltok_impl_c::normal_checkPiTarget;
+pub(crate) use xmltok_impl_c::normal_contentTok;
+pub(crate) use xmltok_impl_c::normal_entityValueTok;
+pub(crate) use xmltok_impl_c::normal_getAtts;
+pub(crate) use xmltok_impl_c::normal_ignoreSectionTok;
+pub(crate) use xmltok_impl_c::normal_isPublicId;
+pub(crate) use xmltok_impl_c::normal_nameLength;
+pub(crate) use xmltok_impl_c::normal_nameMatchesAscii;
+pub(crate) use xmltok_impl_c::normal_predefinedEntityName;
+pub(crate) use xmltok_impl_c::normal_prologTok;
+pub(crate) use xmltok_impl_c::normal_scanAtts;
+pub(crate) use xmltok_impl_c::normal_scanCdataSection;
+pub(crate) use xmltok_impl_c::normal_scanCharRef;
+pub(crate) use xmltok_impl_c::normal_scanComment;
+pub(crate) use xmltok_impl_c::normal_scanDecl;
+pub(crate) use xmltok_impl_c::normal_scanEndTag;
+pub(crate) use xmltok_impl_c::normal_scanHexCharRef;
+pub(crate) use xmltok_impl_c::normal_scanLit;
+pub(crate) use xmltok_impl_c::normal_scanLt;
+pub(crate) use xmltok_impl_c::normal_scanPercent;
+pub(crate) use xmltok_impl_c::normal_scanPi;
+pub(crate) use xmltok_impl_c::normal_scanPoundName;
+pub(crate) use xmltok_impl_c::normal_scanRef;
+pub(crate) use xmltok_impl_c::normal_skipS;
+pub(crate) use xmltok_impl_c::normal_updatePosition;
+pub(crate) use xmltok_ns_c::encodings;
+pub(crate) use xmltok_ns_c::encodingsNS;
 #[derive(Copy, Clone)]
 #[repr(C)]
 
 pub struct normal_encoding {
-    pub enc: crate::src::lib::xmltok::ENCODING,
-    pub type_0: [::core::ffi::c_uchar; 256],
-    pub isName2: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isName3: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isName4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt2: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt3: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid2: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid3: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub enc: ENCODING,
+    pub type_0: [c_uchar; 256],
+    pub isName2: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isName3: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isName4: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt2: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt3: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt4: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isInvalid2: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isInvalid3: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isInvalid4: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
 }
 
 pub const UTF8_cval2: C2RustUnnamed_8 = 192;
@@ -12511,190 +12470,142 @@ pub const UTF8_cval1: C2RustUnnamed_8 = 0;
 
 pub const min2: C2RustUnnamed_7 = 128;
 
-pub type C2RustUnnamed_7 = ::core::ffi::c_uint;
+pub type C2RustUnnamed_7 = c_uint;
 #[derive(Copy, Clone)]
 #[repr(C)]
 
 pub struct unknown_encoding {
     pub normal: normal_encoding,
-    pub convert: crate::src::lib::xmltok::CONVERTER,
-    pub userData: *mut ::core::ffi::c_void,
-    pub utf16: [::core::ffi::c_ushort; 256],
-    pub utf8: [[::core::ffi::c_char; 4]; 256],
+    pub convert: CONVERTER,
+    pub userData: *mut c_void,
+    pub utf16: [c_ushort; 256],
+    pub utf8: [[c_char; 4]; 256],
 }
 
-pub type C2RustUnnamed_8 = ::core::ffi::c_uint;
+pub type C2RustUnnamed_8 = c_uint;
 
-pub type C2RustUnnamed_9 = ::core::ffi::c_int;
+pub type C2RustUnnamed_9 = c_int;
 
 pub const US_ASCII_ENC: C2RustUnnamed_9 = 1;
 
-unsafe extern "C" fn isNever(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut _p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+unsafe extern "C" fn isNever(mut _enc: *const ENCODING, mut _p: *const c_char) -> c_int {
     return 0;
 }
 
-unsafe extern "C" fn utf8_isName2(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return (namingBitmap[(((namePages
-        [(*(p as *const ::core::ffi::c_uchar).offset(0) as ::core::ffi::c_int >> 2 & 7) as usize]
-        as ::core::ffi::c_int)
+unsafe extern "C" fn utf8_isName2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+    return (namingBitmap[(((namePages[(*(p as *const c_uchar).offset(0) as c_int >> 2 & 7) as usize]
+        as c_int)
         << 3)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(0) as ::core::ffi::c_int & 3) << 1)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int >> 5 & 1))
-        as usize]
-        & (1) << (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x1f))
-        as ::core::ffi::c_int;
+        + ((*(p as *const c_uchar).offset(0) as c_int & 3) << 1)
+        + (*(p as *const c_uchar).offset(1) as c_int >> 5 & 1)) as usize]
+        & (1) << (*(p as *const c_uchar).offset(1) as c_int & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn utf8_isName3(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return (namingBitmap[(((namePages[(((*(p as *const ::core::ffi::c_uchar).offset(0)
-        as ::core::ffi::c_int
-        & 0xf)
-        << 4)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int >> 2 & 0xf))
-        as usize] as ::core::ffi::c_int)
+unsafe extern "C" fn utf8_isName3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+    return (namingBitmap[(((namePages[(((*(p as *const c_uchar).offset(0) as c_int & 0xf) << 4)
+        + (*(p as *const c_uchar).offset(1) as c_int >> 2 & 0xf))
+        as usize] as c_int)
         << 3)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 3) << 1)
-        + (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int >> 5 & 1))
-        as usize]
-        & (1) << (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0x1f))
-        as ::core::ffi::c_int;
+        + ((*(p as *const c_uchar).offset(1) as c_int & 3) << 1)
+        + (*(p as *const c_uchar).offset(2) as c_int >> 5 & 1)) as usize]
+        & (1) << (*(p as *const c_uchar).offset(2) as c_int & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn utf8_isNmstrt2(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+unsafe extern "C" fn utf8_isNmstrt2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((nmstrtPages
-        [(*(p as *const ::core::ffi::c_uchar).offset(0) as ::core::ffi::c_int >> 2 & 7) as usize]
-        as ::core::ffi::c_int)
+        [(*(p as *const c_uchar).offset(0) as c_int >> 2 & 7) as usize]
+        as c_int)
         << 3)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(0) as ::core::ffi::c_int & 3) << 1)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int >> 5 & 1))
-        as usize]
-        & (1) << (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x1f))
-        as ::core::ffi::c_int;
+        + ((*(p as *const c_uchar).offset(0) as c_int & 3) << 1)
+        + (*(p as *const c_uchar).offset(1) as c_int >> 5 & 1)) as usize]
+        & (1) << (*(p as *const c_uchar).offset(1) as c_int & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn utf8_isNmstrt3(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return (namingBitmap[(((nmstrtPages[(((*(p as *const ::core::ffi::c_uchar).offset(0)
-        as ::core::ffi::c_int
-        & 0xf)
-        << 4)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int >> 2 & 0xf))
-        as usize] as ::core::ffi::c_int)
+unsafe extern "C" fn utf8_isNmstrt3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+    return (namingBitmap[(((nmstrtPages[(((*(p as *const c_uchar).offset(0) as c_int & 0xf) << 4)
+        + (*(p as *const c_uchar).offset(1) as c_int >> 2 & 0xf))
+        as usize] as c_int)
         << 3)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 3) << 1)
-        + (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int >> 5 & 1))
-        as usize]
-        & (1) << (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0x1f))
-        as ::core::ffi::c_int;
+        + ((*(p as *const c_uchar).offset(1) as c_int & 3) << 1)
+        + (*(p as *const c_uchar).offset(2) as c_int >> 5 & 1)) as usize]
+        & (1) << (*(p as *const c_uchar).offset(2) as c_int & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn utf8_isInvalid2(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return ((*(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int) < 0xc2
-        || *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x80 == 0
-        || *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0 == 0xc0)
-        as ::core::ffi::c_int;
+unsafe extern "C" fn utf8_isInvalid2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+    return ((*(p as *const c_uchar) as c_int) < 0xc2
+        || *(p as *const c_uchar).offset(1) as c_int & 0x80 == 0
+        || *(p as *const c_uchar).offset(1) as c_int & 0xc0 == 0xc0) as c_int;
 }
 
-unsafe extern "C" fn utf8_isInvalid3(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0x80 == 0
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xef
-            && *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int == 0xbf
+unsafe extern "C" fn utf8_isInvalid3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+    return (*(p as *const c_uchar).offset(2) as c_int & 0x80 == 0
+        || (if *(p as *const c_uchar) as c_int == 0xef
+            && *(p as *const c_uchar).offset(1) as c_int == 0xbf
         {
-            (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int > 0xbd)
-                as ::core::ffi::c_int
+            (*(p as *const c_uchar).offset(2) as c_int > 0xbd) as c_int
         } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0xc0 == 0xc0)
-                as ::core::ffi::c_int
+            (*(p as *const c_uchar).offset(2) as c_int & 0xc0 == 0xc0) as c_int
         }) != 0
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xe0 {
-            ((*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int) < 0xa0
-                || *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0
-                    == 0xc0) as ::core::ffi::c_int
+        || (if *(p as *const c_uchar) as c_int == 0xe0 {
+            ((*(p as *const c_uchar).offset(1) as c_int) < 0xa0
+                || *(p as *const c_uchar).offset(1) as c_int & 0xc0 == 0xc0) as c_int
         } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x80 == 0
-                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xed {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int > 0x9f)
-                        as ::core::ffi::c_int
+            (*(p as *const c_uchar).offset(1) as c_int & 0x80 == 0
+                || (if *(p as *const c_uchar) as c_int == 0xed {
+                    (*(p as *const c_uchar).offset(1) as c_int > 0x9f) as c_int
                 } else {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0
-                        == 0xc0) as ::core::ffi::c_int
-                }) != 0) as ::core::ffi::c_int
-        }) != 0) as ::core::ffi::c_int;
+                    (*(p as *const c_uchar).offset(1) as c_int & 0xc0 == 0xc0) as c_int
+                }) != 0) as c_int
+        }) != 0) as c_int;
 }
 
-unsafe extern "C" fn utf8_isInvalid4(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return (*(p as *const ::core::ffi::c_uchar).offset(3) as ::core::ffi::c_int & 0x80 == 0
-        || *(p as *const ::core::ffi::c_uchar).offset(3) as ::core::ffi::c_int & 0xc0 == 0xc0
-        || *(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0x80 == 0
-        || *(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0xc0 == 0xc0
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xf0 {
-            ((*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int) < 0x90
-                || *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0
-                    == 0xc0) as ::core::ffi::c_int
+unsafe extern "C" fn utf8_isInvalid4(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+    return (*(p as *const c_uchar).offset(3) as c_int & 0x80 == 0
+        || *(p as *const c_uchar).offset(3) as c_int & 0xc0 == 0xc0
+        || *(p as *const c_uchar).offset(2) as c_int & 0x80 == 0
+        || *(p as *const c_uchar).offset(2) as c_int & 0xc0 == 0xc0
+        || (if *(p as *const c_uchar) as c_int == 0xf0 {
+            ((*(p as *const c_uchar).offset(1) as c_int) < 0x90
+                || *(p as *const c_uchar).offset(1) as c_int & 0xc0 == 0xc0) as c_int
         } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x80 == 0
-                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xf4 {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int > 0x8f)
-                        as ::core::ffi::c_int
+            (*(p as *const c_uchar).offset(1) as c_int & 0x80 == 0
+                || (if *(p as *const c_uchar) as c_int == 0xf4 {
+                    (*(p as *const c_uchar).offset(1) as c_int > 0x8f) as c_int
                 } else {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0
-                        == 0xc0) as ::core::ffi::c_int
-                }) != 0) as ::core::ffi::c_int
-        }) != 0) as ::core::ffi::c_int;
+                    (*(p as *const c_uchar).offset(1) as c_int & 0xc0 == 0xc0) as c_int
+                }) != 0) as c_int
+        }) != 0) as c_int;
 }
 pub(crate) unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
-    mut from: *const ::core::ffi::c_char,
-    mut fromLimRef: *mut *const ::core::ffi::c_char,
+    mut from: *const c_char,
+    mut fromLimRef: *mut *const c_char,
 ) {
-    let mut fromLim: *const ::core::ffi::c_char = *fromLimRef;
+    let mut fromLim: *const c_char = *fromLimRef;
     let mut walked: size_t = 0;
     while fromLim > from {
-        let prev: ::core::ffi::c_uchar = *fromLim.offset(-1) as ::core::ffi::c_uchar;
-        if prev as ::core::ffi::c_uint & 0xf8 == 0xf0 {
+        let prev: c_uchar = *fromLim.offset(-1) as c_uchar;
+        if prev as c_uint & 0xf8 == 0xf0 {
             if walked.wrapping_add(1usize) >= 4usize {
                 fromLim = fromLim.offset((4i32 - 1) as isize);
                 break;
             } else {
                 walked = 0usize;
             }
-        } else if prev as ::core::ffi::c_uint & 0xf0 == 0xe0 {
+        } else if prev as c_uint & 0xf0 == 0xe0 {
             if walked.wrapping_add(1usize) >= 3usize {
                 fromLim = fromLim.offset((3i32 - 1) as isize);
                 break;
             } else {
                 walked = 0usize;
             }
-        } else if prev as ::core::ffi::c_uint & 0xe0 == 0xc0 {
+        } else if prev as c_uint & 0xe0 == 0xc0 {
             if walked.wrapping_add(1usize) >= 2usize {
                 fromLim = fromLim.offset((2i32 - 1) as isize);
                 break;
             } else {
                 walked = 0usize;
             }
-        } else if prev as ::core::ffi::c_uint & 0x80 == 0 {
+        } else if prev as c_uint & 0x80 == 0 {
             break;
         }
         fromLim = fromLim.offset(-1);
@@ -12706,19 +12617,19 @@ pub(crate) unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
 #[cfg(feature = "expat_test_shims")]
 #[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
 unsafe extern "C" fn internal_trim_to_complete_utf8_characters_test_shim(
-    from: *const ::core::ffi::c_char,
-    fromLimRef: *mut *const ::core::ffi::c_char,
+    from: *const c_char,
+    fromLimRef: *mut *const c_char,
 ) {
     _INTERNAL_trim_to_complete_utf8_characters(from, fromLimRef);
 }
 
 unsafe extern "C" fn utf8_toUtf8(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
+    mut _enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_char,
+    mut toLim: *const c_char,
+) -> XML_Convert_Result {
     let mut input_incomplete: bool = false_0 != 0;
     let mut output_exhausted: bool = false_0 != 0;
     let bytesAvailable: ptrdiff_t = fromLim.offset_from(*fromP);
@@ -12727,96 +12638,93 @@ unsafe extern "C" fn utf8_toUtf8(
         fromLim = (*fromP).offset(bytesStorable);
         output_exhausted = true_0 != 0;
     }
-    let fromLimBefore: *const ::core::ffi::c_char = fromLim;
+    let fromLimBefore: *const c_char = fromLim;
     _INTERNAL_trim_to_complete_utf8_characters(*fromP, &raw mut fromLim);
     if fromLim < fromLimBefore {
         input_incomplete = true_0 != 0;
     }
     let bytesToCopy: ptrdiff_t = fromLim.offset_from(*fromP);
-    crate::stdlib::memcpy(
-        *toP as *mut ::core::ffi::c_void,
-        *fromP as *const ::core::ffi::c_void,
+    memcpy(
+        *toP as *mut c_void,
+        *fromP as *const c_void,
         bytesToCopy as size_t,
     );
     *fromP = (*fromP).offset(bytesToCopy);
     *toP = (*toP).offset(bytesToCopy);
     if output_exhausted {
-        return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+        return XML_CONVERT_OUTPUT_EXHAUSTED;
     } else if input_incomplete {
-        return crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+        return XML_CONVERT_INPUT_INCOMPLETE;
     } else {
-        return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
+        return XML_CONVERT_COMPLETED;
     };
 }
 
 unsafe extern "C" fn utf8_toUtf16(
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
+    mut enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_ushort,
+    mut toLim: *const c_ushort,
+) -> XML_Convert_Result {
     let mut current_block: u64;
-    let mut res: crate::src::lib::xmltok::XML_Convert_Result =
-        crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
-    let mut to: *mut ::core::ffi::c_ushort = *toP;
-    let mut from: *const ::core::ffi::c_char = *fromP;
+    let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
+    let mut to: *mut c_ushort = *toP;
+    let mut from: *const c_char = *fromP;
     loop {
-        if !(from < fromLim && to < toLim as *mut ::core::ffi::c_ushort) {
+        if !(from < fromLim && to < toLim as *mut c_ushort) {
             current_block = 18317007320854588510;
             break;
         }
-        match (*(enc as *const normal_encoding)).type_0[*from as ::core::ffi::c_uchar as usize]
-            as ::core::ffi::c_int
-        {
+        match (*(enc as *const normal_encoding)).type_0[*from as c_uchar as usize] as c_int {
             5 => {
-                if (fromLim.offset_from(from) as ::core::ffi::c_long) < 2 {
-                    res = crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+                if (fromLim.offset_from(from) as c_long) < 2 {
+                    res = XML_CONVERT_INPUT_INCOMPLETE;
                     current_block = 7621590230452126720;
                     break;
                 } else {
                     let fresh0 = to;
                     to = to.offset(1);
-                    *fresh0 = ((*from.offset(0) as ::core::ffi::c_int & 0x1f) << 6
-                        | *from.offset(1) as ::core::ffi::c_int & 0x3f)
-                        as ::core::ffi::c_ushort;
+                    *fresh0 = ((*from.offset(0) as c_int & 0x1f) << 6
+                        | *from.offset(1) as c_int & 0x3f)
+                        as c_ushort;
                     from = from.offset(2isize);
                 }
             }
             6 => {
-                if (fromLim.offset_from(from) as ::core::ffi::c_long) < 3 {
-                    res = crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+                if (fromLim.offset_from(from) as c_long) < 3 {
+                    res = XML_CONVERT_INPUT_INCOMPLETE;
                     current_block = 7621590230452126720;
                     break;
                 } else {
                     let fresh1 = to;
                     to = to.offset(1);
-                    *fresh1 = ((*from.offset(0) as ::core::ffi::c_int & 0xf) << 12
-                        | (*from.offset(1) as ::core::ffi::c_int & 0x3f) << 6
-                        | *from.offset(2) as ::core::ffi::c_int & 0x3f)
-                        as ::core::ffi::c_ushort;
+                    *fresh1 = ((*from.offset(0) as c_int & 0xf) << 12
+                        | (*from.offset(1) as c_int & 0x3f) << 6
+                        | *from.offset(2) as c_int & 0x3f)
+                        as c_ushort;
                     from = from.offset(3isize);
                 }
             }
             7 => {
                 let mut n: ::core::ffi::c_ulong = 0;
-                if (toLim.offset_from(to) as ::core::ffi::c_long) < 2 {
-                    res = crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                if (toLim.offset_from(to) as c_long) < 2 {
+                    res = XML_CONVERT_OUTPUT_EXHAUSTED;
                     current_block = 7621590230452126720;
                     break;
-                } else if (fromLim.offset_from(from) as ::core::ffi::c_long) < 4 {
-                    res = crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+                } else if (fromLim.offset_from(from) as c_long) < 4 {
+                    res = XML_CONVERT_INPUT_INCOMPLETE;
                     current_block = 7621590230452126720;
                     break;
                 } else {
-                    n = ((*from.offset(0) as ::core::ffi::c_int & 0x7) << 18
-                        | (*from.offset(1) as ::core::ffi::c_int & 0x3f) << 12
-                        | (*from.offset(2) as ::core::ffi::c_int & 0x3f) << 6
-                        | *from.offset(3) as ::core::ffi::c_int & 0x3f)
+                    n = ((*from.offset(0) as c_int & 0x7) << 18
+                        | (*from.offset(1) as c_int & 0x3f) << 12
+                        | (*from.offset(2) as c_int & 0x3f) << 6
+                        | *from.offset(3) as c_int & 0x3f)
                         as ::core::ffi::c_ulong;
                     n = n.wrapping_sub(0x10000u64);
-                    *to.offset(0) = (n >> 10 | 0xd800) as ::core::ffi::c_ushort;
-                    *to.offset(1) = (n & 0x3ff | 0xdc00) as ::core::ffi::c_ushort;
+                    *to.offset(0) = (n >> 10 | 0xd800) as c_ushort;
+                    *to.offset(1) = (n & 0x3ff | 0xdc00) as c_ushort;
                     to = to.offset(2);
                     from = from.offset(4isize);
                 }
@@ -12826,14 +12734,14 @@ unsafe extern "C" fn utf8_toUtf16(
                 from = from.offset(1);
                 let fresh3 = to;
                 to = to.offset(1);
-                *fresh3 = *fresh2 as ::core::ffi::c_ushort;
+                *fresh3 = *fresh2 as c_ushort;
             }
         }
     }
     match current_block {
         18317007320854588510 => {
             if from < fromLim {
-                res = crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                res = XML_CONVERT_OUTPUT_EXHAUSTED;
             }
         }
         _ => {}
@@ -12845,1936 +12753,1711 @@ unsafe extern "C" fn utf8_toUtf16(
 
 static mut utf8_encoding_ns: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     normal_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     normal_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                normal_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                normal_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 normal_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 normal_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 normal_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 utf8_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 utf8_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 1,
             isUtf8: 1i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_COLON_0 as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_MALFORM as ::core::ffi::c_uchar,
-            BT_MALFORM as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_COLON_0 as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_MALFORM as c_uchar,
+            BT_MALFORM as c_uchar,
         ],
         isName2: Some(
-            utf8_isName2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isName2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isName3: Some(
-            utf8_isName3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isName3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
-        isName4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isName4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
         isNmstrt2: Some(
-            utf8_isNmstrt2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isNmstrt2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isNmstrt3: Some(
-            utf8_isNmstrt3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isNmstrt3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
-        isNmstrt4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isNmstrt4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
         isInvalid2: Some(
-            utf8_isInvalid2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isInvalid3: Some(
-            utf8_isInvalid3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isInvalid4: Some(
-            utf8_isInvalid4
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid4 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
     }
 };
 
 static mut utf8_encoding: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     normal_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     normal_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                normal_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                normal_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 normal_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 normal_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 normal_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 utf8_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 utf8_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 1,
             isUtf8: 1i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_MALFORM as ::core::ffi::c_uchar,
-            BT_MALFORM as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_MALFORM as c_uchar,
+            BT_MALFORM as c_uchar,
         ],
         isName2: Some(
-            utf8_isName2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isName2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isName3: Some(
-            utf8_isName3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isName3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
-        isName4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isName4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
         isNmstrt2: Some(
-            utf8_isNmstrt2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isNmstrt2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isNmstrt3: Some(
-            utf8_isNmstrt3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isNmstrt3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
-        isNmstrt4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isNmstrt4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
         isInvalid2: Some(
-            utf8_isInvalid2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isInvalid3: Some(
-            utf8_isInvalid3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isInvalid4: Some(
-            utf8_isInvalid4
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid4 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
     }
 };
 
 static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     normal_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     normal_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                normal_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                normal_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 normal_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 normal_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 normal_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 utf8_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 utf8_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 1,
             isUtf8: 1i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_COLON_0 as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_MALFORM as ::core::ffi::c_uchar,
-            BT_MALFORM as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_COLON_0 as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_MALFORM as c_uchar,
+            BT_MALFORM as c_uchar,
         ],
         isName2: Some(
-            utf8_isName2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isName2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isName3: Some(
-            utf8_isName3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isName3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
-        isName4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isName4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
         isNmstrt2: Some(
-            utf8_isNmstrt2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isNmstrt2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isNmstrt3: Some(
-            utf8_isNmstrt3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isNmstrt3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
-        isNmstrt4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isNmstrt4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
         isInvalid2: Some(
-            utf8_isInvalid2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isInvalid3: Some(
-            utf8_isInvalid3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isInvalid4: Some(
-            utf8_isInvalid4
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid4 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
     }
 };
 
 static mut internal_utf8_encoding: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     normal_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     normal_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                normal_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                normal_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 normal_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 normal_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 normal_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 utf8_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 utf8_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 1,
             isUtf8: 1i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_TRAIL as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD2 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD3 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_LEAD4 as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_MALFORM as ::core::ffi::c_uchar,
-            BT_MALFORM as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_TRAIL as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD2 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD3 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_LEAD4 as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_MALFORM as c_uchar,
+            BT_MALFORM as c_uchar,
         ],
         isName2: Some(
-            utf8_isName2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isName2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isName3: Some(
-            utf8_isName3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isName3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
-        isName4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isName4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
         isNmstrt2: Some(
-            utf8_isNmstrt2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isNmstrt2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isNmstrt3: Some(
-            utf8_isNmstrt3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isNmstrt3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
-        isNmstrt4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isNmstrt4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
         isInvalid2: Some(
-            utf8_isInvalid2
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isInvalid3: Some(
-            utf8_isInvalid3
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
         isInvalid4: Some(
-            utf8_isInvalid4
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            utf8_isInvalid4 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         ),
     }
 };
 
 unsafe extern "C" fn latin1_toUtf8(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
+    mut _enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_char,
+    mut toLim: *const c_char,
+) -> XML_Convert_Result {
     loop {
-        let mut c: ::core::ffi::c_uchar = 0;
+        let mut c: c_uchar = 0;
         if *fromP == fromLim {
-            return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
+            return XML_CONVERT_COMPLETED;
         }
-        c = **fromP as ::core::ffi::c_uchar;
-        if c as ::core::ffi::c_int & 0x80 != 0 {
-            if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 2 {
-                return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+        c = **fromP as c_uchar;
+        if c as c_int & 0x80 != 0 {
+            if (toLim.offset_from(*toP) as c_long) < 2 {
+                return XML_CONVERT_OUTPUT_EXHAUSTED;
             }
             let fresh6 = *toP;
             *toP = (*toP).offset(1);
-            *fresh6 = (c as ::core::ffi::c_int >> 6 | UTF8_cval2 as ::core::ffi::c_int)
-                as ::core::ffi::c_char;
+            *fresh6 = (c as c_int >> 6 | UTF8_cval2 as c_int) as c_char;
             let fresh7 = *toP;
             *toP = (*toP).offset(1);
-            *fresh7 = (c as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
+            *fresh7 = (c as c_int & 0x3f | 0x80) as c_char;
             *fromP = (*fromP).offset(1);
         } else {
-            if *toP == toLim as *mut ::core::ffi::c_char {
-                return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+            if *toP == toLim as *mut c_char {
+                return XML_CONVERT_OUTPUT_EXHAUSTED;
             }
             let fresh8 = *fromP;
             *fromP = (*fromP).offset(1);
@@ -14786,435 +14469,419 @@ unsafe extern "C" fn latin1_toUtf8(
 }
 
 unsafe extern "C" fn latin1_toUtf16(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
+    mut _enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_ushort,
+    mut toLim: *const c_ushort,
+) -> XML_Convert_Result {
+    while *fromP < fromLim && *toP < toLim as *mut c_ushort {
         let fresh4 = *fromP;
         *fromP = (*fromP).offset(1);
         let fresh5 = *toP;
         *toP = (*toP).offset(1);
-        *fresh5 = *fresh4 as ::core::ffi::c_uchar as ::core::ffi::c_ushort;
+        *fresh5 = *fresh4 as c_uchar as c_ushort;
     }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+    if *toP == toLim as *mut c_ushort && *fromP < fromLim {
+        return XML_CONVERT_OUTPUT_EXHAUSTED;
     } else {
-        return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
+        return XML_CONVERT_COMPLETED;
     };
 }
 
 static mut latin1_encoding_ns: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     normal_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     normal_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                normal_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                normal_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 normal_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 normal_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 normal_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 latin1_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 latin1_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 1,
             isUtf8: 0i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_COLON_0 as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_COLON_0 as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NAME as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
         ],
         isName2: None,
         isName3: None,
@@ -15230,413 +14897,397 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
 
 static mut latin1_encoding: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     normal_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     normal_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                normal_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                normal_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 normal_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 normal_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 normal_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 latin1_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 latin1_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 1,
             isUtf8: 0i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NAME as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
         ],
         isName2: None,
         isName3: None,
@@ -15651,307 +15302,291 @@ static mut latin1_encoding: normal_encoding = unsafe {
 };
 
 unsafe extern "C" fn ascii_toUtf8(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_char {
+    mut _enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_char,
+    mut toLim: *const c_char,
+) -> XML_Convert_Result {
+    while *fromP < fromLim && *toP < toLim as *mut c_char {
         let fresh56 = *fromP;
         *fromP = (*fromP).offset(1);
         let fresh57 = *toP;
         *toP = (*toP).offset(1);
         *fresh57 = *fresh56;
     }
-    if *toP == toLim as *mut ::core::ffi::c_char && *fromP < fromLim {
-        return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+    if *toP == toLim as *mut c_char && *fromP < fromLim {
+        return XML_CONVERT_OUTPUT_EXHAUSTED;
     } else {
-        return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
+        return XML_CONVERT_COMPLETED;
     };
 }
 
 static mut ascii_encoding_ns: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     normal_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     normal_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                normal_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                normal_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 normal_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 normal_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 normal_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 ascii_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 latin1_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 1,
             isUtf8: 1i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_COLON_0 as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_COLON_0 as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
             0,
             0,
             0,
@@ -16095,285 +15730,269 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
 
 static mut ascii_encoding: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     normal_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     normal_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     normal_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                normal_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                normal_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 normal_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 normal_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 normal_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 ascii_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 latin1_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 1,
             isUtf8: 1i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
             0,
             0,
             0,
@@ -16515,47 +16134,44 @@ static mut ascii_encoding: normal_encoding = unsafe {
     }
 };
 
-unsafe extern "C" fn unicode_byte_type(
-    mut hi: ::core::ffi::c_char,
-    mut lo: ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    match hi as ::core::ffi::c_uchar as ::core::ffi::c_int {
-        216 | 217 | 218 | 219 => return BT_LEAD4 as ::core::ffi::c_int,
-        220 | 221 | 222 | 223 => return BT_TRAIL as ::core::ffi::c_int,
-        255 => match lo as ::core::ffi::c_uchar as ::core::ffi::c_int {
-            255 | 254 => return BT_NONXML as ::core::ffi::c_int,
+unsafe extern "C" fn unicode_byte_type(mut hi: c_char, mut lo: c_char) -> c_int {
+    match hi as c_uchar as c_int {
+        216 | 217 | 218 | 219 => return BT_LEAD4 as c_int,
+        220 | 221 | 222 | 223 => return BT_TRAIL as c_int,
+        255 => match lo as c_uchar as c_int {
+            255 | 254 => return BT_NONXML as c_int,
             _ => {}
         },
         _ => {}
     }
-    return BT_NONASCII as ::core::ffi::c_int;
+    return BT_NONASCII as c_int;
 }
 
 unsafe extern "C" fn little2_toUtf8(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
-    let mut from: *const ::core::ffi::c_char = *fromP;
-    fromLim = from.offset(((fromLim.offset_from(from) as ::core::ffi::c_long >> 1) << 1) as isize);
+    mut _enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_char,
+    mut toLim: *const c_char,
+) -> XML_Convert_Result {
+    let mut from: *const c_char = *fromP;
+    fromLim = from.offset(((fromLim.offset_from(from) as c_long >> 1) << 1) as isize);
     while from < fromLim {
-        let mut plane: ::core::ffi::c_int = 0;
-        let mut lo2: ::core::ffi::c_uchar = 0;
-        let mut lo: ::core::ffi::c_uchar = *from.offset(0) as ::core::ffi::c_uchar;
-        let mut hi: ::core::ffi::c_uchar = *from.offset(1) as ::core::ffi::c_uchar;
+        let mut plane: c_int = 0;
+        let mut lo2: c_uchar = 0;
+        let mut lo: c_uchar = *from.offset(0) as c_uchar;
+        let mut hi: c_uchar = *from.offset(1) as c_uchar;
         let mut current_block_34: u64;
-        match hi as ::core::ffi::c_int {
+        match hi as c_int {
             0 => {
-                if (lo as ::core::ffi::c_int) < 0x80 {
-                    if *toP == toLim as *mut ::core::ffi::c_char {
+                if (lo as c_int) < 0x80 {
+                    if *toP == toLim as *mut c_char {
                         *fromP = from;
-                        return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                        return XML_CONVERT_OUTPUT_EXHAUSTED;
                     }
                     let fresh19 = *toP;
                     *toP = (*toP).offset(1);
-                    *fresh19 = lo as ::core::ffi::c_char;
+                    *fresh19 = lo as c_char;
                     current_block_34 = 14136749492126903395;
                 } else {
                     current_block_34 = 9261908759940751603;
@@ -16565,72 +16181,63 @@ unsafe extern "C" fn little2_toUtf8(
                 current_block_34 = 9261908759940751603;
             }
             216 | 217 | 218 | 219 => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 4 {
+                if (toLim.offset_from(*toP) as c_long) < 4 {
                     *fromP = from;
-                    return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return XML_CONVERT_OUTPUT_EXHAUSTED;
                 }
-                if (fromLim.offset_from(from) as ::core::ffi::c_long) < 4 {
+                if (fromLim.offset_from(from) as c_long) < 4 {
                     *fromP = from;
-                    return crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+                    return XML_CONVERT_INPUT_INCOMPLETE;
                 }
-                plane = ((hi as ::core::ffi::c_int & 0x3) << 2
-                    | lo as ::core::ffi::c_int >> 6 & 0x3)
-                    + 1;
+                plane = ((hi as c_int & 0x3) << 2 | lo as c_int >> 6 & 0x3) + 1;
                 let fresh25 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh25 = (plane >> 2 | UTF8_cval4 as ::core::ffi::c_int) as ::core::ffi::c_char;
+                *fresh25 = (plane >> 2 | UTF8_cval4 as c_int) as c_char;
                 let fresh26 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh26 = (lo as ::core::ffi::c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80)
-                    as ::core::ffi::c_char;
+                *fresh26 = (lo as c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80) as c_char;
                 from = from.offset(2);
-                lo2 = *from.offset(0) as ::core::ffi::c_uchar;
+                lo2 = *from.offset(0) as c_uchar;
                 let fresh27 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh27 = ((lo as ::core::ffi::c_int & 0x3) << 4
-                    | (*from.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x3) << 2
-                    | lo2 as ::core::ffi::c_int >> 6
-                    | 0x80) as ::core::ffi::c_char;
+                *fresh27 = ((lo as c_int & 0x3) << 4
+                    | (*from.offset(1) as c_uchar as c_int & 0x3) << 2
+                    | lo2 as c_int >> 6
+                    | 0x80) as c_char;
                 let fresh28 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh28 = (lo2 as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
+                *fresh28 = (lo2 as c_int & 0x3f | 0x80) as c_char;
                 current_block_34 = 14136749492126903395;
             }
             _ => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 3 {
+                if (toLim.offset_from(*toP) as c_long) < 3 {
                     *fromP = from;
-                    return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return XML_CONVERT_OUTPUT_EXHAUSTED;
                 }
                 let fresh22 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh22 = (hi as ::core::ffi::c_int >> 4 | UTF8_cval3 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
+                *fresh22 = (hi as c_int >> 4 | UTF8_cval3 as c_int) as c_char;
                 let fresh23 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh23 = ((hi as ::core::ffi::c_int & 0xf) << 2
-                    | lo as ::core::ffi::c_int >> 6
-                    | 0x80) as ::core::ffi::c_char;
+                *fresh23 = ((hi as c_int & 0xf) << 2 | lo as c_int >> 6 | 0x80) as c_char;
                 let fresh24 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh24 = (lo as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
+                *fresh24 = (lo as c_int & 0x3f | 0x80) as c_char;
                 current_block_34 = 14136749492126903395;
             }
         }
         match current_block_34 {
             9261908759940751603 => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 2 {
+                if (toLim.offset_from(*toP) as c_long) < 2 {
                     *fromP = from;
-                    return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return XML_CONVERT_OUTPUT_EXHAUSTED;
                 }
                 let fresh20 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh20 = (lo as ::core::ffi::c_int >> 6
-                    | (hi as ::core::ffi::c_int) << 2
-                    | UTF8_cval2 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
+                *fresh20 = (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char;
                 let fresh21 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh21 = (lo as ::core::ffi::c_int & 0x3fi32 | 0x80i32) as ::core::ffi::c_char;
+                *fresh21 = (lo as c_int & 0x3fi32 | 0x80i32) as c_char;
             }
             _ => {}
         }
@@ -16638,71 +16245,66 @@ unsafe extern "C" fn little2_toUtf8(
     }
     *fromP = from;
     if from < fromLim {
-        return crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+        return XML_CONVERT_INPUT_INCOMPLETE;
     } else {
-        return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
+        return XML_CONVERT_COMPLETED;
     };
 }
 
 unsafe extern "C" fn little2_toUtf16(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
-    let mut res: crate::src::lib::xmltok::XML_Convert_Result =
-        crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
-    fromLim =
-        (*fromP).offset(((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1) << 1) as isize);
-    if fromLim.offset_from(*fromP) as ::core::ffi::c_long
-        > (toLim.offset_from(*toP) as ::core::ffi::c_long) << 1
-        && *fromLim.offset(-(2)).offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0xf8
-            == 0xd8
+    mut _enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_ushort,
+    mut toLim: *const c_ushort,
+) -> XML_Convert_Result {
+    let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
+    fromLim = (*fromP).offset(((fromLim.offset_from(*fromP) as c_long >> 1) << 1) as isize);
+    if fromLim.offset_from(*fromP) as c_long > (toLim.offset_from(*toP) as c_long) << 1
+        && *fromLim.offset(-(2)).offset(1) as c_uchar as c_int & 0xf8 == 0xd8
     {
         fromLim = fromLim.offset(-(2));
-        res = crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+        res = XML_CONVERT_INPUT_INCOMPLETE;
     }
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
+    while *fromP < fromLim && *toP < toLim as *mut c_ushort {
         let fresh18 = *toP;
         *toP = (*toP).offset(1);
-        *fresh18 = ((*(*fromP).offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int) << 8
-            | *(*fromP).offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int)
-            as ::core::ffi::c_ushort;
+        *fresh18 = ((*(*fromP).offset(1) as c_uchar as c_int) << 8
+            | *(*fromP).offset(0) as c_uchar as c_int) as c_ushort;
         *fromP = (*fromP).offset(2);
     }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+    if *toP == toLim as *mut c_ushort && *fromP < fromLim {
+        return XML_CONVERT_OUTPUT_EXHAUSTED;
     } else {
         return res;
     };
 }
 
 unsafe extern "C" fn big2_toUtf8(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
-    let mut from: *const ::core::ffi::c_char = *fromP;
-    fromLim = from.offset(((fromLim.offset_from(from) as ::core::ffi::c_long >> 1) << 1) as isize);
+    mut _enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_char,
+    mut toLim: *const c_char,
+) -> XML_Convert_Result {
+    let mut from: *const c_char = *fromP;
+    fromLim = from.offset(((fromLim.offset_from(from) as c_long >> 1) << 1) as isize);
     while from < fromLim {
-        let mut plane: ::core::ffi::c_int = 0;
-        let mut lo2: ::core::ffi::c_uchar = 0;
-        let mut lo: ::core::ffi::c_uchar = *from.offset(1) as ::core::ffi::c_uchar;
-        let mut hi: ::core::ffi::c_uchar = *from.offset(0) as ::core::ffi::c_uchar;
+        let mut plane: c_int = 0;
+        let mut lo2: c_uchar = 0;
+        let mut lo: c_uchar = *from.offset(1) as c_uchar;
+        let mut hi: c_uchar = *from.offset(0) as c_uchar;
         let mut current_block_34: u64;
-        match hi as ::core::ffi::c_int {
+        match hi as c_int {
             0 => {
-                if (lo as ::core::ffi::c_int) < 0x80 {
-                    if *toP == toLim as *mut ::core::ffi::c_char {
+                if (lo as c_int) < 0x80 {
+                    if *toP == toLim as *mut c_char {
                         *fromP = from;
-                        return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                        return XML_CONVERT_OUTPUT_EXHAUSTED;
                     }
                     let fresh38 = *toP;
                     *toP = (*toP).offset(1);
-                    *fresh38 = lo as ::core::ffi::c_char;
+                    *fresh38 = lo as c_char;
                     current_block_34 = 14136749492126903395;
                 } else {
                     current_block_34 = 4084411463441859965;
@@ -16712,72 +16314,63 @@ unsafe extern "C" fn big2_toUtf8(
                 current_block_34 = 4084411463441859965;
             }
             216 | 217 | 218 | 219 => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 4 {
+                if (toLim.offset_from(*toP) as c_long) < 4 {
                     *fromP = from;
-                    return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return XML_CONVERT_OUTPUT_EXHAUSTED;
                 }
-                if (fromLim.offset_from(from) as ::core::ffi::c_long) < 4 {
+                if (fromLim.offset_from(from) as c_long) < 4 {
                     *fromP = from;
-                    return crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+                    return XML_CONVERT_INPUT_INCOMPLETE;
                 }
-                plane = ((hi as ::core::ffi::c_int & 0x3) << 2
-                    | lo as ::core::ffi::c_int >> 6 & 0x3)
-                    + 1;
+                plane = ((hi as c_int & 0x3) << 2 | lo as c_int >> 6 & 0x3) + 1;
                 let fresh44 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh44 = (plane >> 2 | UTF8_cval4 as ::core::ffi::c_int) as ::core::ffi::c_char;
+                *fresh44 = (plane >> 2 | UTF8_cval4 as c_int) as c_char;
                 let fresh45 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh45 = (lo as ::core::ffi::c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80)
-                    as ::core::ffi::c_char;
+                *fresh45 = (lo as c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80) as c_char;
                 from = from.offset(2);
-                lo2 = *from.offset(1) as ::core::ffi::c_uchar;
+                lo2 = *from.offset(1) as c_uchar;
                 let fresh46 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh46 = ((lo as ::core::ffi::c_int & 0x3) << 4
-                    | (*from.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x3) << 2
-                    | lo2 as ::core::ffi::c_int >> 6
-                    | 0x80) as ::core::ffi::c_char;
+                *fresh46 = ((lo as c_int & 0x3) << 4
+                    | (*from.offset(0) as c_uchar as c_int & 0x3) << 2
+                    | lo2 as c_int >> 6
+                    | 0x80) as c_char;
                 let fresh47 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh47 = (lo2 as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
+                *fresh47 = (lo2 as c_int & 0x3f | 0x80) as c_char;
                 current_block_34 = 14136749492126903395;
             }
             _ => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 3 {
+                if (toLim.offset_from(*toP) as c_long) < 3 {
                     *fromP = from;
-                    return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return XML_CONVERT_OUTPUT_EXHAUSTED;
                 }
                 let fresh41 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh41 = (hi as ::core::ffi::c_int >> 4 | UTF8_cval3 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
+                *fresh41 = (hi as c_int >> 4 | UTF8_cval3 as c_int) as c_char;
                 let fresh42 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh42 = ((hi as ::core::ffi::c_int & 0xf) << 2
-                    | lo as ::core::ffi::c_int >> 6
-                    | 0x80) as ::core::ffi::c_char;
+                *fresh42 = ((hi as c_int & 0xf) << 2 | lo as c_int >> 6 | 0x80) as c_char;
                 let fresh43 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh43 = (lo as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
+                *fresh43 = (lo as c_int & 0x3f | 0x80) as c_char;
                 current_block_34 = 14136749492126903395;
             }
         }
         match current_block_34 {
             4084411463441859965 => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 2 {
+                if (toLim.offset_from(*toP) as c_long) < 2 {
                     *fromP = from;
-                    return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return XML_CONVERT_OUTPUT_EXHAUSTED;
                 }
                 let fresh39 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh39 = (lo as ::core::ffi::c_int >> 6
-                    | (hi as ::core::ffi::c_int) << 2
-                    | UTF8_cval2 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
+                *fresh39 = (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char;
                 let fresh40 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh40 = (lo as ::core::ffi::c_int & 0x3fi32 | 0x80i32) as ::core::ffi::c_char;
+                *fresh40 = (lo as c_int & 0x3fi32 | 0x80i32) as c_char;
             }
             _ => {}
         }
@@ -16785,41 +16378,36 @@ unsafe extern "C" fn big2_toUtf8(
     }
     *fromP = from;
     if from < fromLim {
-        return crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+        return XML_CONVERT_INPUT_INCOMPLETE;
     } else {
-        return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
+        return XML_CONVERT_COMPLETED;
     };
 }
 
 unsafe extern "C" fn big2_toUtf16(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
-    let mut res: crate::src::lib::xmltok::XML_Convert_Result =
-        crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
-    fromLim =
-        (*fromP).offset(((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1) << 1) as isize);
-    if fromLim.offset_from(*fromP) as ::core::ffi::c_long
-        > (toLim.offset_from(*toP) as ::core::ffi::c_long) << 1
-        && *fromLim.offset(-(2)).offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0xf8
-            == 0xd8
+    mut _enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_ushort,
+    mut toLim: *const c_ushort,
+) -> XML_Convert_Result {
+    let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
+    fromLim = (*fromP).offset(((fromLim.offset_from(*fromP) as c_long >> 1) << 1) as isize);
+    if fromLim.offset_from(*fromP) as c_long > (toLim.offset_from(*toP) as c_long) << 1
+        && *fromLim.offset(-(2)).offset(0) as c_uchar as c_int & 0xf8 == 0xd8
     {
         fromLim = fromLim.offset(-(2));
-        res = crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+        res = XML_CONVERT_INPUT_INCOMPLETE;
     }
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
+    while *fromP < fromLim && *toP < toLim as *mut c_ushort {
         let fresh37 = *toP;
         *toP = (*toP).offset(1);
-        *fresh37 = ((*(*fromP).offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int) << 8
-            | *(*fromP).offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int)
-            as ::core::ffi::c_ushort;
+        *fresh37 = ((*(*fromP).offset(0) as c_uchar as c_int) << 8
+            | *(*fromP).offset(1) as c_uchar as c_int) as c_ushort;
         *fromP = (*fromP).offset(2);
     }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+    if *toP == toLim as *mut c_ushort && *fromP < fromLim {
+        return XML_CONVERT_OUTPUT_EXHAUSTED;
     } else {
         return res;
     };
@@ -16827,413 +16415,397 @@ unsafe extern "C" fn big2_toUtf16(
 
 static mut little2_encoding_ns: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     little2_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     little2_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 little2_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                little2_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                little2_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 little2_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 little2_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 little2_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 little2_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 little2_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 little2_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 little2_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 little2_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 2,
             isUtf8: 0i8,
             isUtf16: 1i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_COLON_0 as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_COLON_0 as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NAME as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
         ],
         isName2: None,
         isName3: None,
@@ -17249,413 +16821,397 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
 
 static mut little2_encoding: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     little2_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     little2_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 little2_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                little2_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                little2_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 little2_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 little2_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 little2_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 little2_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 little2_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 little2_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 little2_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 little2_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 2,
             isUtf8: 0i8,
             isUtf16: 1i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NAME as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
         ],
         isName2: None,
         isName3: None,
@@ -17671,413 +17227,397 @@ static mut little2_encoding: normal_encoding = unsafe {
 
 static mut internal_little2_encoding_ns: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     little2_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     little2_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 little2_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                little2_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                little2_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 little2_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 little2_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 little2_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 little2_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 little2_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 little2_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 little2_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 little2_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 2,
             isUtf8: 0i8,
             isUtf16: 1i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_COLON_0 as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_COLON_0 as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NAME as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
         ],
         isName2: None,
         isName3: None,
@@ -18093,413 +17633,397 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
 
 static mut internal_little2_encoding: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     little2_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     little2_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     little2_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 little2_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                little2_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                little2_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
                 little2_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 little2_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
                 little2_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 little2_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 little2_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 little2_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 little2_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 little2_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 2,
             isUtf8: 0i8,
             isUtf16: 1i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NAME as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
         ],
         isName2: None,
         isName3: None,
@@ -18515,413 +18039,395 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
 
 static mut big2_encoding_ns: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     big2_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     big2_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     big2_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     big2_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     big2_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     big2_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 big2_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                big2_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                big2_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
-                big2_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                big2_skipS as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 big2_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
-                big2_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                big2_charRefNumber as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 big2_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 big2_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 big2_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 big2_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 big2_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 2,
             isUtf8: 0i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_COLON_0 as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_COLON_0 as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NAME as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
         ],
         isName2: None,
         isName3: None,
@@ -18937,413 +18443,395 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
 
 static mut big2_encoding: normal_encoding = unsafe {
     normal_encoding {
-        enc: crate::src::lib::xmltok::encoding {
+        enc: encoding {
             scanners: [
                 Some(
                     big2_prologTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     big2_contentTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     big2_cdataSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     big2_ignoreSectionTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             literalScanners: [
                 Some(
                     big2_attributeValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
                 Some(
                     big2_entityValueTok
                         as unsafe extern "C" fn(
-                            *const crate::src::lib::xmltok::ENCODING,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> ::core::ffi::c_int,
+                            *const ENCODING,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> c_int,
                 ),
             ],
             nameMatchesAscii: Some(
                 big2_nameMatchesAscii
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *const c_char,
+                    ) -> c_int,
             ),
             nameLength: Some(
-                big2_nameLength
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                big2_nameLength as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             skipS: Some(
-                big2_skipS
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ::core::ffi::c_char,
+                big2_skipS as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
             ),
             getAtts: Some(
                 big2_getAtts
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        ::core::ffi::c_int,
-                        *mut crate::src::lib::xmltok::ATTRIBUTE,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        c_int,
+                        *mut ATTRIBUTE,
+                    ) -> c_int,
             ),
             charRefNumber: Some(
-                big2_charRefNumber
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                big2_charRefNumber as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
             ),
             predefinedEntityName: Some(
                 big2_predefinedEntityName
-                    as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                    as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
             ),
             updatePosition: Some(
                 big2_updatePosition
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut crate::src::lib::xmltok::POSITION,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut POSITION,
                     ) -> (),
             ),
             isPublicId: Some(
                 big2_isPublicId
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
+                        *const ENCODING,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> c_int,
             ),
             utf8Convert: Some(
                 big2_toUtf8
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_char,
+                        *const c_char,
+                    ) -> XML_Convert_Result,
             ),
             utf16Convert: Some(
                 big2_toUtf16
                     as unsafe extern "C" fn(
-                        *const crate::src::lib::xmltok::ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    )
-                        -> crate::src::lib::xmltok::XML_Convert_Result,
+                        *const ENCODING,
+                        *mut *const c_char,
+                        *const c_char,
+                        *mut *mut c_ushort,
+                        *const c_ushort,
+                    ) -> XML_Convert_Result,
             ),
             minBytesPerChar: 2,
             isUtf8: 0i8,
             isUtf16: 0i8,
         },
         type_0: [
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_LF as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_CR as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_NONXML as ::core::ffi::c_uchar,
-            BT_S as ::core::ffi::c_uchar,
-            BT_EXCL as ::core::ffi::c_uchar,
-            BT_QUOT as ::core::ffi::c_uchar,
-            BT_NUM as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_PERCNT as ::core::ffi::c_uchar,
-            BT_AMP as ::core::ffi::c_uchar,
-            BT_APOS as ::core::ffi::c_uchar,
-            BT_LPAR as ::core::ffi::c_uchar,
-            BT_RPAR as ::core::ffi::c_uchar,
-            BT_AST as ::core::ffi::c_uchar,
-            BT_PLUS as ::core::ffi::c_uchar,
-            BT_COMMA as ::core::ffi::c_uchar,
-            BT_MINUS as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_SOL as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_DIGIT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_SEMI as ::core::ffi::c_uchar,
-            BT_LT as ::core::ffi::c_uchar,
-            BT_EQUALS as ::core::ffi::c_uchar,
-            BT_GT as ::core::ffi::c_uchar,
-            BT_QUEST as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_LSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_RSQB as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_HEX as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_VERBAR as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NAME as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_OTHER as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
-            BT_NMSTRT as ::core::ffi::c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_LF as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_CR as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_NONXML as c_uchar,
+            BT_S as c_uchar,
+            BT_EXCL as c_uchar,
+            BT_QUOT as c_uchar,
+            BT_NUM as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_PERCNT as c_uchar,
+            BT_AMP as c_uchar,
+            BT_APOS as c_uchar,
+            BT_LPAR as c_uchar,
+            BT_RPAR as c_uchar,
+            BT_AST as c_uchar,
+            BT_PLUS as c_uchar,
+            BT_COMMA as c_uchar,
+            BT_MINUS as c_uchar,
+            BT_NAME as c_uchar,
+            BT_SOL as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_DIGIT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_SEMI as c_uchar,
+            BT_LT as c_uchar,
+            BT_EQUALS as c_uchar,
+            BT_GT as c_uchar,
+            BT_QUEST as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_LSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_RSQB as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_HEX as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_VERBAR as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NAME as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_OTHER as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
+            BT_NMSTRT as c_uchar,
         ],
         isName2: None,
         isName3: None,
@@ -19357,24 +18845,21 @@ static mut big2_encoding: normal_encoding = unsafe {
     }
 };
 
-unsafe extern "C" fn streqci(
-    mut s1: *const ::core::ffi::c_char,
-    mut s2: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+unsafe extern "C" fn streqci(mut s1: *const c_char, mut s2: *const c_char) -> c_int {
     loop {
         let fresh58 = s1;
         s1 = s1.offset(1);
-        let mut c1: ::core::ffi::c_char = *fresh58;
+        let mut c1: c_char = *fresh58;
         let fresh59 = s2;
         s2 = s2.offset(1);
-        let mut c2: ::core::ffi::c_char = *fresh59;
-        if ASCII_a_1 <= c1 as ::core::ffi::c_int && c1 as ::core::ffi::c_int <= ASCII_z {
-            c1 = (c1 as ::core::ffi::c_int + (ASCII_A - ASCII_a_1)) as ::core::ffi::c_char;
+        let mut c2: c_char = *fresh59;
+        if ASCII_a_1 <= c1 as c_int && c1 as c_int <= ASCII_z {
+            c1 = (c1 as c_int + (ASCII_A - ASCII_a_1)) as c_char;
         }
-        if ASCII_a_1 <= c2 as ::core::ffi::c_int && c2 as ::core::ffi::c_int <= ASCII_z {
-            c2 = (c2 as ::core::ffi::c_int + (ASCII_A - ASCII_a_1)) as ::core::ffi::c_char;
+        if ASCII_a_1 <= c2 as c_int && c2 as c_int <= ASCII_z {
+            c2 = (c2 as c_int + (ASCII_A - ASCII_a_1)) as c_char;
         }
-        if c1 as ::core::ffi::c_int != c2 as ::core::ffi::c_int {
+        if c1 as c_int != c2 as c_int {
             return 0i32;
         }
         if c1 == 0 {
@@ -19385,21 +18870,21 @@ unsafe extern "C" fn streqci(
 }
 
 unsafe extern "C" fn initUpdatePosition(
-    mut _enc: *const crate::src::lib::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pos: *mut crate::src::lib::xmltok::POSITION,
+    mut _enc: *const ENCODING,
+    mut ptr: *const c_char,
+    mut end: *const c_char,
+    mut pos: *mut POSITION,
 ) {
     normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
 }
 
 unsafe extern "C" fn toAscii(
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    let mut buf: [::core::ffi::c_char; 1] = [0; 1];
-    let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
+    mut enc: *const ENCODING,
+    mut ptr: *const c_char,
+    mut end: *const c_char,
+) -> c_int {
+    let mut buf: [c_char; 1] = [0; 1];
+    let mut p: *mut c_char = &raw mut buf as *mut c_char;
     (*enc).utf8Convert.expect("non-null function pointer")(
         enc,
         &raw mut ptr,
@@ -19407,14 +18892,14 @@ unsafe extern "C" fn toAscii(
         &raw mut p,
         p.offset(1),
     );
-    if p == &raw mut buf as *mut ::core::ffi::c_char {
+    if p == &raw mut buf as *mut c_char {
         return -(1i32);
     } else {
-        return buf[0usize] as ::core::ffi::c_int;
+        return buf[0usize] as c_int;
     };
 }
 
-unsafe extern "C" fn isSpace(mut c: ::core::ffi::c_int) -> ::core::ffi::c_int {
+unsafe extern "C" fn isSpace(mut c: c_int) -> c_int {
     match c {
         32 | 13 | 10 | 9 => return 1,
         _ => {}
@@ -19423,18 +18908,18 @@ unsafe extern "C" fn isSpace(mut c: ::core::ffi::c_int) -> ::core::ffi::c_int {
 }
 
 unsafe extern "C" fn parsePseudoAttribute(
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut namePtr: *mut *const ::core::ffi::c_char,
-    mut nameEndPtr: *mut *const ::core::ffi::c_char,
-    mut valPtr: *mut *const ::core::ffi::c_char,
-    mut nextTokPtr: *mut *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    let mut c: ::core::ffi::c_int = 0;
-    let mut open: ::core::ffi::c_char = 0;
+    mut enc: *const ENCODING,
+    mut ptr: *const c_char,
+    mut end: *const c_char,
+    mut namePtr: *mut *const c_char,
+    mut nameEndPtr: *mut *const c_char,
+    mut valPtr: *mut *const c_char,
+    mut nextTokPtr: *mut *const c_char,
+) -> c_int {
+    let mut c: c_int = 0;
+    let mut open: c_char = 0;
     if ptr == end {
-        *namePtr = ::core::ptr::null::<::core::ffi::c_char>();
+        *namePtr = null::<c_char>();
         return 1i32;
     }
     if isSpace(toAscii(enc, ptr, end)) == 0 {
@@ -19448,7 +18933,7 @@ unsafe extern "C" fn parsePseudoAttribute(
         }
     }
     if ptr == end {
-        *namePtr = ::core::ptr::null::<::core::ffi::c_char>();
+        *namePtr = null::<c_char>();
         return 1i32;
     }
     *namePtr = ptr;
@@ -19493,12 +18978,12 @@ unsafe extern "C" fn parsePseudoAttribute(
         *nextTokPtr = ptr;
         return 0i32;
     }
-    open = c as ::core::ffi::c_char;
+    open = c as c_char;
     ptr = ptr.offset((*enc).minBytesPerChar as isize);
     *valPtr = ptr;
     loop {
         c = toAscii(enc, ptr, end);
-        if c == open as ::core::ffi::c_int {
+        if c == open as c_int {
             break;
         }
         if !(ASCII_a_1 <= c && c <= ASCII_z)
@@ -19517,78 +19002,70 @@ unsafe extern "C" fn parsePseudoAttribute(
     return 1;
 }
 
-static mut KW_version: [::core::ffi::c_char; 8] = [
-    ASCII_v as ::core::ffi::c_char,
-    ASCII_e_1 as ::core::ffi::c_char,
-    ASCII_r as ::core::ffi::c_char,
-    ASCII_s as ::core::ffi::c_char,
-    ASCII_i as ::core::ffi::c_char,
-    ASCII_o as ::core::ffi::c_char,
-    ASCII_n as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_version: [c_char; 8] = [
+    ASCII_v as c_char,
+    ASCII_e_1 as c_char,
+    ASCII_r as c_char,
+    ASCII_s as c_char,
+    ASCII_i as c_char,
+    ASCII_o as c_char,
+    ASCII_n as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_encoding: [::core::ffi::c_char; 9] = [
-    ASCII_e_1 as ::core::ffi::c_char,
-    ASCII_n as ::core::ffi::c_char,
-    ASCII_c_1 as ::core::ffi::c_char,
-    ASCII_o as ::core::ffi::c_char,
-    ASCII_d as ::core::ffi::c_char,
-    ASCII_i as ::core::ffi::c_char,
-    ASCII_n as ::core::ffi::c_char,
-    ASCII_g_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_encoding: [c_char; 9] = [
+    ASCII_e_1 as c_char,
+    ASCII_n as c_char,
+    ASCII_c_1 as c_char,
+    ASCII_o as c_char,
+    ASCII_d as c_char,
+    ASCII_i as c_char,
+    ASCII_n as c_char,
+    ASCII_g_1 as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_standalone: [::core::ffi::c_char; 11] = [
-    ASCII_s as ::core::ffi::c_char,
-    ASCII_t as ::core::ffi::c_char,
-    ASCII_a_1 as ::core::ffi::c_char,
-    ASCII_n as ::core::ffi::c_char,
-    ASCII_d as ::core::ffi::c_char,
-    ASCII_a_1 as ::core::ffi::c_char,
-    ASCII_l_1 as ::core::ffi::c_char,
-    ASCII_o as ::core::ffi::c_char,
-    ASCII_n as ::core::ffi::c_char,
-    ASCII_e_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_standalone: [c_char; 11] = [
+    ASCII_s as c_char,
+    ASCII_t as c_char,
+    ASCII_a_1 as c_char,
+    ASCII_n as c_char,
+    ASCII_d as c_char,
+    ASCII_a_1 as c_char,
+    ASCII_l_1 as c_char,
+    ASCII_o as c_char,
+    ASCII_n as c_char,
+    ASCII_e_1 as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_yes: [::core::ffi::c_char; 4] = [
-    ASCII_y as ::core::ffi::c_char,
-    ASCII_e_1 as ::core::ffi::c_char,
-    ASCII_s as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_yes: [c_char; 4] = [
+    ASCII_y as c_char,
+    ASCII_e_1 as c_char,
+    ASCII_s as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_no: [::core::ffi::c_char; 3] = [
-    ASCII_n as ::core::ffi::c_char,
-    ASCII_o as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
+static mut KW_no: [c_char; 3] = [ASCII_n as c_char, ASCII_o as c_char, '\0' as c_char];
 
 unsafe extern "C" fn doParseXmlDecl(
     mut encodingFinder: Option<
-        unsafe extern "C" fn(
-            *const crate::src::lib::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> *const crate::src::lib::xmltok::ENCODING,
+        unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> *const ENCODING,
     >,
-    mut isGeneralTextEntity: ::core::ffi::c_int,
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut badPtr: *mut *const ::core::ffi::c_char,
-    mut versionPtr: *mut *const ::core::ffi::c_char,
-    mut versionEndPtr: *mut *const ::core::ffi::c_char,
-    mut encodingName: *mut *const ::core::ffi::c_char,
-    mut encoding: *mut *const crate::src::lib::xmltok::ENCODING,
-    mut standalone: *mut ::core::ffi::c_int,
-) -> ::core::ffi::c_int {
-    let mut val: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut name: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut nameEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    mut isGeneralTextEntity: c_int,
+    mut enc: *const ENCODING,
+    mut ptr: *const c_char,
+    mut end: *const c_char,
+    mut badPtr: *mut *const c_char,
+    mut versionPtr: *mut *const c_char,
+    mut versionEndPtr: *mut *const c_char,
+    mut encodingName: *mut *const c_char,
+    mut encoding: *mut *const ENCODING,
+    mut standalone: *mut c_int,
+) -> c_int {
+    let mut val: *const c_char = null::<c_char>();
+    let mut name: *const c_char = null::<c_char>();
+    let mut nameEnd: *const c_char = null::<c_char>();
     ptr = ptr.offset((5i32 * (*enc).minBytesPerChar) as isize);
     end = end.offset(-((2i32 * (*enc).minBytesPerChar) as isize));
     if parsePseudoAttribute(
@@ -19609,7 +19086,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_version as *const ::core::ffi::c_char,
+        &raw const KW_version as *const c_char,
     ) == 0
     {
         if isGeneralTextEntity == 0 {
@@ -19648,10 +19125,10 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_encoding as *const ::core::ffi::c_char,
+        &raw const KW_encoding as *const c_char,
     ) != 0
     {
-        let mut c: ::core::ffi::c_int = toAscii(enc, val, end);
+        let mut c: c_int = toAscii(enc, val, end);
         if !(ASCII_a_1 <= c && c <= ASCII_z) && !(ASCII_A <= c && c <= ASCII_Z) {
             *badPtr = val;
             return 0i32;
@@ -19687,7 +19164,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_standalone as *const ::core::ffi::c_char,
+        &raw const KW_standalone as *const c_char,
     ) == 0
         || isGeneralTextEntity != 0
     {
@@ -19698,7 +19175,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         val,
         ptr.offset(-((*enc).minBytesPerChar as isize)),
-        &raw const KW_yes as *const ::core::ffi::c_char,
+        &raw const KW_yes as *const c_char,
     ) != 0
     {
         if !standalone.is_null() {
@@ -19708,7 +19185,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         val,
         ptr.offset(-((*enc).minBytesPerChar as isize)),
-        &raw const KW_no as *const ::core::ffi::c_char,
+        &raw const KW_no as *const c_char,
     ) != 0
     {
         if !standalone.is_null() {
@@ -19728,15 +19205,13 @@ unsafe extern "C" fn doParseXmlDecl(
     return 1;
 }
 
-unsafe extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
+unsafe extern "C" fn checkCharRefNumber(mut result: c_int) -> c_int {
     match result >> 8 {
         216 | 217 | 218 | 219 | 220 | 221 | 222 | 223 => {
             return -(1i32);
         }
         0 => {
-            if latin1_encoding.type_0[result as usize] as ::core::ffi::c_int
-                == BT_NONXML as ::core::ffi::c_int
-            {
+            if latin1_encoding.type_0[result as usize] as c_int == BT_NONXML as c_int {
                 return -(1i32);
             }
         }
@@ -19749,166 +19224,144 @@ unsafe extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::cor
     }
     return result;
 }
-pub(crate) unsafe extern "C" fn XmlUtf8Encode(
-    mut c: ::core::ffi::c_int,
-    mut buf: *mut ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+pub(crate) unsafe extern "C" fn XmlUtf8Encode(mut c: c_int, mut buf: *mut c_char) -> c_int {
     if c < 0 {
         return 0i32;
     }
-    if c < min2 as ::core::ffi::c_int {
-        *buf.offset(0) = (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
+    if c < min2 as c_int {
+        *buf.offset(0) = (c | UTF8_cval1 as c_int) as c_char;
         return 1i32;
     }
-    if c < min3 as ::core::ffi::c_int {
-        *buf.offset(0) = (c >> 6 | UTF8_cval2 as ::core::ffi::c_int) as ::core::ffi::c_char;
-        *buf.offset(1) = (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+    if c < min3 as c_int {
+        *buf.offset(0) = (c >> 6 | UTF8_cval2 as c_int) as c_char;
+        *buf.offset(1) = (c & 0x3fi32 | 0x80) as c_char;
         return 2i32;
     }
-    if c < min4 as ::core::ffi::c_int {
-        *buf.offset(0) = (c >> 12 | UTF8_cval3 as ::core::ffi::c_int) as ::core::ffi::c_char;
-        *buf.offset(1) = (c >> 6 & 0x3fi32 | 0x80) as ::core::ffi::c_char;
-        *buf.offset(2) = (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+    if c < min4 as c_int {
+        *buf.offset(0) = (c >> 12 | UTF8_cval3 as c_int) as c_char;
+        *buf.offset(1) = (c >> 6 & 0x3fi32 | 0x80) as c_char;
+        *buf.offset(2) = (c & 0x3fi32 | 0x80) as c_char;
         return 3i32;
     }
     if c < 0x110000 {
-        *buf.offset(0) = (c >> 18 | UTF8_cval4 as ::core::ffi::c_int) as ::core::ffi::c_char;
-        *buf.offset(1) = (c >> 12 & 0x3fi32 | 0x80) as ::core::ffi::c_char;
-        *buf.offset(2) = (c >> 6 & 0x3fi32 | 0x80) as ::core::ffi::c_char;
-        *buf.offset(3) = (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+        *buf.offset(0) = (c >> 18 | UTF8_cval4 as c_int) as c_char;
+        *buf.offset(1) = (c >> 12 & 0x3fi32 | 0x80) as c_char;
+        *buf.offset(2) = (c >> 6 & 0x3fi32 | 0x80) as c_char;
+        *buf.offset(3) = (c & 0x3fi32 | 0x80) as c_char;
         return 4i32;
     }
     return 0;
 }
 pub(crate) unsafe extern "C" fn XmlUtf16Encode(
-    mut charNum: ::core::ffi::c_int,
-    mut buf: *mut ::core::ffi::c_ushort,
-) -> ::core::ffi::c_int {
+    mut charNum: c_int,
+    mut buf: *mut c_ushort,
+) -> c_int {
     if charNum < 0 {
         return 0i32;
     }
     if charNum < 0x10000 {
-        *buf.offset(0) = charNum as ::core::ffi::c_ushort;
+        *buf.offset(0) = charNum as c_ushort;
         return 1i32;
     }
     if charNum < 0x110000 {
         charNum -= 0x10000;
-        *buf.offset(0) = ((charNum >> 10) + 0xd800i32) as ::core::ffi::c_ushort;
-        *buf.offset(1) = ((charNum & 0x3ffi32) + 0xdc00) as ::core::ffi::c_ushort;
+        *buf.offset(0) = ((charNum >> 10) + 0xd800i32) as c_ushort;
+        *buf.offset(1) = ((charNum & 0x3ffi32) + 0xdc00) as c_ushort;
         return 2i32;
     }
     return 0;
 }
-pub(crate) unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
-    return ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int;
+pub(crate) unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> c_int {
+    return size_of::<unknown_encoding>() as c_int;
 }
 
-unsafe extern "C" fn unknown_isName(
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+unsafe extern "C" fn unknown_isName(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
     if c & !(0xffff) != 0 {
         return 0i32;
     }
-    return (namingBitmap[(((namePages[(c >> 8) as usize] as ::core::ffi::c_int) << 3)
-        + ((c & 0xff) >> 5)) as usize]
-        & (1) << (c & 0xff & 0x1f)) as ::core::ffi::c_int;
+    return (namingBitmap
+        [(((namePages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
+        & (1) << (c & 0xff & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn unknown_isNmstrt(
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+unsafe extern "C" fn unknown_isNmstrt(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
     if c & !(0xffff) != 0 {
         return 0i32;
     }
-    return (namingBitmap[(((nmstrtPages[(c >> 8) as usize] as ::core::ffi::c_int) << 3)
-        + ((c & 0xff) >> 5)) as usize]
-        & (1) << (c & 0xff & 0x1f)) as ::core::ffi::c_int;
+    return (namingBitmap
+        [(((nmstrtPages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
+        & (1) << (c & 0xff & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn unknown_isInvalid(
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+unsafe extern "C" fn unknown_isInvalid(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
-    return (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as ::core::ffi::c_int;
+    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    return (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as c_int;
 }
 
 unsafe extern "C" fn unknown_toUtf8(
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
+    mut enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_char,
+    mut toLim: *const c_char,
+) -> XML_Convert_Result {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut buf: [::core::ffi::c_char; 4] = [0; 4];
+    let mut buf: [c_char; 4] = [0; 4];
     loop {
-        let mut utf8: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        let mut n: ::core::ffi::c_int = 0;
+        let mut utf8: *const c_char = null::<c_char>();
+        let mut n: c_int = 0;
         if *fromP == fromLim {
-            return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
+            return XML_CONVERT_COMPLETED;
         }
-        utf8 = &raw const *(&raw const (*uenc).utf8 as *const [::core::ffi::c_char; 4])
-            .offset(**fromP as ::core::ffi::c_uchar as isize)
-            as *const ::core::ffi::c_char;
+        utf8 = &raw const *(&raw const (*uenc).utf8 as *const [c_char; 4])
+            .offset(**fromP as c_uchar as isize) as *const c_char;
         let fresh61 = utf8;
         utf8 = utf8.offset(1);
-        n = *fresh61 as ::core::ffi::c_int;
+        n = *fresh61 as c_int;
         if n == 0 {
-            let mut c: ::core::ffi::c_int =
+            let mut c: c_int =
                 (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP);
-            n = XmlUtf8Encode(c, &raw mut buf as *mut ::core::ffi::c_char);
-            if n as ::core::ffi::c_long > toLim.offset_from(*toP) as ::core::ffi::c_long {
-                return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+            n = XmlUtf8Encode(c, &raw mut buf as *mut c_char);
+            if n as c_long > toLim.offset_from(*toP) as c_long {
+                return XML_CONVERT_OUTPUT_EXHAUSTED;
             }
-            utf8 = &raw mut buf as *mut ::core::ffi::c_char;
+            utf8 = &raw mut buf as *mut c_char;
             *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                    - (BT_LEAD2 as ::core::ffi::c_int - 2i32)) as isize,
+                ((*(enc as *const normal_encoding)).type_0[**fromP as c_uchar as usize] as c_int
+                    - (BT_LEAD2 as c_int - 2i32)) as isize,
             );
         } else {
-            if n as ::core::ffi::c_long > toLim.offset_from(*toP) as ::core::ffi::c_long {
-                return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+            if n as c_long > toLim.offset_from(*toP) as c_long {
+                return XML_CONVERT_OUTPUT_EXHAUSTED;
             }
             *fromP = (*fromP).offset(1);
         }
-        crate::stdlib::memcpy(
-            *toP as *mut ::core::ffi::c_void,
-            utf8 as *const ::core::ffi::c_void,
-            n as size_t,
-        );
+        memcpy(*toP as *mut c_void, utf8 as *const c_void, n as size_t);
         *toP = (*toP).offset(n as isize);
     }
 }
 
 unsafe extern "C" fn unknown_toUtf16(
-    mut enc: *const crate::src::lib::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::lib::xmltok::XML_Convert_Result {
+    mut enc: *const ENCODING,
+    mut fromP: *mut *const c_char,
+    mut fromLim: *const c_char,
+    mut toP: *mut *mut c_ushort,
+    mut toLim: *const c_ushort,
+) -> XML_Convert_Result {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-        let mut c: ::core::ffi::c_ushort = (*uenc).utf16[**fromP as ::core::ffi::c_uchar as usize];
-        if c as ::core::ffi::c_int == 0 {
+    while *fromP < fromLim && *toP < toLim as *mut c_ushort {
+        let mut c: c_ushort = (*uenc).utf16[**fromP as c_uchar as usize];
+        if c as c_int == 0 {
             c = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP)
-                as ::core::ffi::c_ushort;
+                as c_ushort;
             *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                    - (BT_LEAD2 as ::core::ffi::c_int - 2i32)) as isize,
+                ((*(enc as *const normal_encoding)).type_0[**fromP as c_uchar as usize] as c_int
+                    - (BT_LEAD2 as c_int - 2i32)) as isize,
             );
         } else {
             *fromP = (*fromP).offset(1);
@@ -19917,284 +19370,232 @@ unsafe extern "C" fn unknown_toUtf16(
         *toP = (*toP).offset(1);
         *fresh60 = c;
     }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+    if *toP == toLim as *mut c_ushort && *fromP < fromLim {
+        return XML_CONVERT_OUTPUT_EXHAUSTED;
     } else {
-        return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
+        return XML_CONVERT_COMPLETED;
     };
 }
 pub(crate) unsafe extern "C" fn XmlInitUnknownEncoding(
-    mut mem: *mut ::core::ffi::c_void,
-    mut table: *const ::core::ffi::c_int,
-    mut convert: crate::src::lib::xmltok::CONVERTER,
-    mut userData: *mut ::core::ffi::c_void,
-) -> *mut crate::src::lib::xmltok::ENCODING {
-    let mut i: ::core::ffi::c_int = 0;
+    mut mem: *mut c_void,
+    mut table: *const c_int,
+    mut convert: CONVERTER,
+    mut userData: *mut c_void,
+) -> *mut ENCODING {
+    let mut i: c_int = 0;
     let mut e: *mut unknown_encoding = mem as *mut unknown_encoding;
-    crate::stdlib::memcpy(
+    memcpy(
         mem,
-        &raw const latin1_encoding as *const ::core::ffi::c_void,
-        ::core::mem::size_of::<normal_encoding>(),
+        &raw const latin1_encoding as *const c_void,
+        size_of::<normal_encoding>(),
     );
     i = 0;
     while i < 128 {
-        if latin1_encoding.type_0[i as usize] as ::core::ffi::c_int
-            != BT_OTHER as ::core::ffi::c_int
-            && latin1_encoding.type_0[i as usize] as ::core::ffi::c_int
-                != BT_NONXML as ::core::ffi::c_int
+        if latin1_encoding.type_0[i as usize] as c_int != BT_OTHER as c_int
+            && latin1_encoding.type_0[i as usize] as c_int != BT_NONXML as c_int
             && *table.offset(i as isize) != i
         {
-            return ::core::ptr::null_mut::<crate::src::lib::xmltok::ENCODING>();
+            return null_mut::<ENCODING>();
         }
         i += 1;
     }
     i = 0;
     while i < 256 {
-        let mut c: ::core::ffi::c_int = *table.offset(i as isize);
+        let mut c: c_int = *table.offset(i as isize);
         if c == -(1) {
-            (*e).normal.type_0[i as usize] = BT_MALFORM as ::core::ffi::c_uchar;
+            (*e).normal.type_0[i as usize] = BT_MALFORM as c_uchar;
             (*e).utf16[i as usize] = 0xffff;
             (*e).utf8[i as usize][0] = 1;
             (*e).utf8[i as usize][1usize] = 0i8;
         } else if c < 0 {
             if c < -(4) {
-                return ::core::ptr::null_mut::<crate::src::lib::xmltok::ENCODING>();
+                return null_mut::<ENCODING>();
             }
             if convert.is_none() {
-                return ::core::ptr::null_mut::<crate::src::lib::xmltok::ENCODING>();
+                return null_mut::<ENCODING>();
             }
-            (*e).normal.type_0[i as usize] =
-                (BT_LEAD2 as ::core::ffi::c_int - (c + 2)) as ::core::ffi::c_uchar;
+            (*e).normal.type_0[i as usize] = (BT_LEAD2 as c_int - (c + 2)) as c_uchar;
             (*e).utf8[i as usize][0] = 0;
             (*e).utf16[i as usize] = 0u16;
         } else if c < 0x80 {
-            if latin1_encoding.type_0[c as usize] as ::core::ffi::c_int
-                != BT_OTHER as ::core::ffi::c_int
-                && latin1_encoding.type_0[c as usize] as ::core::ffi::c_int
-                    != BT_NONXML as ::core::ffi::c_int
+            if latin1_encoding.type_0[c as usize] as c_int != BT_OTHER as c_int
+                && latin1_encoding.type_0[c as usize] as c_int != BT_NONXML as c_int
                 && c != i
             {
-                return ::core::ptr::null_mut::<crate::src::lib::xmltok::ENCODING>();
+                return null_mut::<ENCODING>();
             }
             (*e).normal.type_0[i as usize] = latin1_encoding.type_0[c as usize];
             (*e).utf8[i as usize][0] = 1;
-            (*e).utf8[i as usize][1] = c as ::core::ffi::c_char;
-            (*e).utf16[i as usize] =
-                (if c == 0i32 { 0xffffi32 } else { c }) as ::core::ffi::c_ushort;
+            (*e).utf8[i as usize][1] = c as c_char;
+            (*e).utf16[i as usize] = (if c == 0i32 { 0xffffi32 } else { c }) as c_ushort;
         } else if checkCharRefNumber(c) < 0 {
-            (*e).normal.type_0[i as usize] = BT_NONXML as ::core::ffi::c_uchar;
+            (*e).normal.type_0[i as usize] = BT_NONXML as c_uchar;
             (*e).utf16[i as usize] = 0xffff;
             (*e).utf8[i as usize][0] = 1;
             (*e).utf8[i as usize][1usize] = 0i8;
         } else {
             if c > 0xffff {
-                return ::core::ptr::null_mut::<crate::src::lib::xmltok::ENCODING>();
+                return null_mut::<ENCODING>();
             }
-            if namingBitmap[(((nmstrtPages[(c >> 8) as usize] as ::core::ffi::c_int) << 3)
-                + ((c & 0xff) >> 5)) as usize]
+            if namingBitmap
+                [(((nmstrtPages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
                 & (1) << (c & 0xff & 0x1f)
                 != 0
             {
-                (*e).normal.type_0[i as usize] = BT_NMSTRT as ::core::ffi::c_uchar;
-            } else if namingBitmap[(((namePages[(c >> 8) as usize] as ::core::ffi::c_int) << 3)
-                + ((c & 0xff) >> 5)) as usize]
+                (*e).normal.type_0[i as usize] = BT_NMSTRT as c_uchar;
+            } else if namingBitmap
+                [(((namePages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
                 & (1) << (c & 0xff & 0x1f)
                 != 0
             {
-                (*e).normal.type_0[i as usize] = BT_NAME as ::core::ffi::c_uchar;
+                (*e).normal.type_0[i as usize] = BT_NAME as c_uchar;
             } else {
-                (*e).normal.type_0[i as usize] = BT_OTHER as ::core::ffi::c_uchar;
+                (*e).normal.type_0[i as usize] = BT_OTHER as c_uchar;
             }
             (*e).utf8[i as usize][0] = XmlUtf8Encode(
                 c,
-                (&raw mut *(&raw mut (*e).utf8 as *mut [::core::ffi::c_char; 4]).offset(i as isize)
-                    as *mut ::core::ffi::c_char)
+                (&raw mut *(&raw mut (*e).utf8 as *mut [c_char; 4]).offset(i as isize)
+                    as *mut c_char)
                     .offset(1),
-            ) as ::core::ffi::c_char;
-            (*e).utf16[i as usize] = c as ::core::ffi::c_ushort;
+            ) as c_char;
+            (*e).utf16[i as usize] = c as c_ushort;
         }
         i += 1;
     }
     (*e).userData = userData;
     (*e).convert = convert;
     if convert.is_some() {
-        (*e).normal.isName2 = Some(
-            unknown_isName
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        );
-        (*e).normal.isName3 = Some(
-            unknown_isName
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        );
-        (*e).normal.isName4 = Some(
-            unknown_isName
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        );
-        (*e).normal.isNmstrt2 = Some(
-            unknown_isNmstrt
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        );
-        (*e).normal.isNmstrt3 = Some(
-            unknown_isNmstrt
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        );
-        (*e).normal.isNmstrt4 = Some(
-            unknown_isNmstrt
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        );
+        (*e).normal.isName2 =
+            Some(unknown_isName as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isName3 =
+            Some(unknown_isName as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isName4 =
+            Some(unknown_isName as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isNmstrt2 =
+            Some(unknown_isNmstrt as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isNmstrt3 =
+            Some(unknown_isNmstrt as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isNmstrt4 =
+            Some(unknown_isNmstrt as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
         (*e).normal.isInvalid2 = Some(
-            unknown_isInvalid
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            unknown_isInvalid as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         );
         (*e).normal.isInvalid3 = Some(
-            unknown_isInvalid
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            unknown_isInvalid as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         );
         (*e).normal.isInvalid4 = Some(
-            unknown_isInvalid
-                as unsafe extern "C" fn(
-                    *const crate::src::lib::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+            unknown_isInvalid as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
         );
     }
     (*e).normal.enc.utf8Convert = Some(
         unknown_toUtf8
             as unsafe extern "C" fn(
-                *const crate::src::lib::xmltok::ENCODING,
-                *mut *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *mut *mut ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-            ) -> crate::src::lib::xmltok::XML_Convert_Result,
+                *const ENCODING,
+                *mut *const c_char,
+                *const c_char,
+                *mut *mut c_char,
+                *const c_char,
+            ) -> XML_Convert_Result,
     );
     (*e).normal.enc.utf16Convert = Some(
         unknown_toUtf16
             as unsafe extern "C" fn(
-                *const crate::src::lib::xmltok::ENCODING,
-                *mut *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *mut *mut ::core::ffi::c_ushort,
-                *const ::core::ffi::c_ushort,
-            ) -> crate::src::lib::xmltok::XML_Convert_Result,
+                *const ENCODING,
+                *mut *const c_char,
+                *const c_char,
+                *mut *mut c_ushort,
+                *const c_ushort,
+            ) -> XML_Convert_Result,
     );
     return &raw mut (*e).normal.enc;
 }
 
-static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
-    ASCII_I as ::core::ffi::c_char,
-    ASCII_S as ::core::ffi::c_char,
-    ASCII_O as ::core::ffi::c_char,
-    ASCII_MINUS as ::core::ffi::c_char,
-    ASCII_8_1 as ::core::ffi::c_char,
-    ASCII_8_1 as ::core::ffi::c_char,
-    ASCII_5 as ::core::ffi::c_char,
-    ASCII_9_1 as ::core::ffi::c_char,
-    ASCII_MINUS as ::core::ffi::c_char,
-    ASCII_1_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_ISO_8859_1: [c_char; 11] = [
+    ASCII_I as c_char,
+    ASCII_S as c_char,
+    ASCII_O as c_char,
+    ASCII_MINUS as c_char,
+    ASCII_8_1 as c_char,
+    ASCII_8_1 as c_char,
+    ASCII_5 as c_char,
+    ASCII_9_1 as c_char,
+    ASCII_MINUS as c_char,
+    ASCII_1_1 as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
-    ASCII_U as ::core::ffi::c_char,
-    ASCII_S as ::core::ffi::c_char,
-    ASCII_MINUS as ::core::ffi::c_char,
-    ASCII_A as ::core::ffi::c_char,
-    ASCII_S as ::core::ffi::c_char,
-    ASCII_C as ::core::ffi::c_char,
-    ASCII_I as ::core::ffi::c_char,
-    ASCII_I as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_US_ASCII: [c_char; 9] = [
+    ASCII_U as c_char,
+    ASCII_S as c_char,
+    ASCII_MINUS as c_char,
+    ASCII_A as c_char,
+    ASCII_S as c_char,
+    ASCII_C as c_char,
+    ASCII_I as c_char,
+    ASCII_I as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
-    ASCII_U as ::core::ffi::c_char,
-    ASCII_T as ::core::ffi::c_char,
-    ASCII_F_1 as ::core::ffi::c_char,
-    ASCII_MINUS as ::core::ffi::c_char,
-    ASCII_8_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_UTF_8: [c_char; 6] = [
+    ASCII_U as c_char,
+    ASCII_T as c_char,
+    ASCII_F_1 as c_char,
+    ASCII_MINUS as c_char,
+    ASCII_8_1 as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
-    ASCII_U as ::core::ffi::c_char,
-    ASCII_T as ::core::ffi::c_char,
-    ASCII_F_1 as ::core::ffi::c_char,
-    ASCII_MINUS as ::core::ffi::c_char,
-    ASCII_1_1 as ::core::ffi::c_char,
-    ASCII_6 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_UTF_16: [c_char; 7] = [
+    ASCII_U as c_char,
+    ASCII_T as c_char,
+    ASCII_F_1 as c_char,
+    ASCII_MINUS as c_char,
+    ASCII_1_1 as c_char,
+    ASCII_6 as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
-    ASCII_U as ::core::ffi::c_char,
-    ASCII_T as ::core::ffi::c_char,
-    ASCII_F_1 as ::core::ffi::c_char,
-    ASCII_MINUS as ::core::ffi::c_char,
-    ASCII_1_1 as ::core::ffi::c_char,
-    ASCII_6 as ::core::ffi::c_char,
-    ASCII_B_1 as ::core::ffi::c_char,
-    ASCII_E_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_UTF_16BE: [c_char; 9] = [
+    ASCII_U as c_char,
+    ASCII_T as c_char,
+    ASCII_F_1 as c_char,
+    ASCII_MINUS as c_char,
+    ASCII_1_1 as c_char,
+    ASCII_6 as c_char,
+    ASCII_B_1 as c_char,
+    ASCII_E_1 as c_char,
+    '\0' as c_char,
 ];
 
-static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
-    ASCII_U as ::core::ffi::c_char,
-    ASCII_T as ::core::ffi::c_char,
-    ASCII_F_1 as ::core::ffi::c_char,
-    ASCII_MINUS as ::core::ffi::c_char,
-    ASCII_1_1 as ::core::ffi::c_char,
-    ASCII_6 as ::core::ffi::c_char,
-    ASCII_L_1 as ::core::ffi::c_char,
-    ASCII_E_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
+static mut KW_UTF_16LE: [c_char; 9] = [
+    ASCII_U as c_char,
+    ASCII_T as c_char,
+    ASCII_F_1 as c_char,
+    ASCII_MINUS as c_char,
+    ASCII_1_1 as c_char,
+    ASCII_6 as c_char,
+    ASCII_L_1 as c_char,
+    ASCII_E_1 as c_char,
+    '\0' as c_char,
 ];
 
-unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    static mut encodingNames: [*const ::core::ffi::c_char; 6] = unsafe {
+unsafe extern "C" fn getEncodingIndex(mut name: *const c_char) -> c_int {
+    static mut encodingNames: [*const c_char; 6] = unsafe {
         [
-            &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
-            &raw const KW_US_ASCII as *const ::core::ffi::c_char,
-            &raw const KW_UTF_8 as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16BE as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16LE as *const ::core::ffi::c_char,
+            &raw const KW_ISO_8859_1 as *const c_char,
+            &raw const KW_US_ASCII as *const c_char,
+            &raw const KW_UTF_8 as *const c_char,
+            &raw const KW_UTF_16 as *const c_char,
+            &raw const KW_UTF_16BE as *const c_char,
+            &raw const KW_UTF_16LE as *const c_char,
         ]
     };
-    let mut i: ::core::ffi::c_int = 0;
+    let mut i: c_int = 0;
     if name.is_null() {
         return NO_ENC;
     }
     i = 0;
-    while i
-        < (::core::mem::size_of::<[*const ::core::ffi::c_char; 6]>())
-            .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>())
-            as ::core::ffi::c_int
-    {
+    while i < (size_of::<[*const c_char; 6]>()).wrapping_div(size_of::<*const c_char>()) as c_int {
         if streqci(name, encodingNames[i as usize]) != 0 {
             return i;
         }
@@ -20204,30 +19605,27 @@ unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> :
 }
 
 unsafe extern "C" fn initScan(
-    mut encodingTable: *const *const crate::src::lib::xmltok::ENCODING,
-    mut enc: *const crate::src::lib::xmltok::INIT_ENCODING,
-    mut state: ::core::ffi::c_int,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextTokPtr: *mut *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    let mut encPtr: *mut *const crate::src::lib::xmltok::ENCODING =
-        ::core::ptr::null_mut::<*const crate::src::lib::xmltok::ENCODING>();
+    mut encodingTable: *const *const ENCODING,
+    mut enc: *const INIT_ENCODING,
+    mut state: c_int,
+    mut ptr: *const c_char,
+    mut end: *const c_char,
+    mut nextTokPtr: *mut *const c_char,
+) -> c_int {
+    let mut encPtr: *mut *const ENCODING = null_mut::<*const ENCODING>();
     if ptr >= end {
-        return crate::src::lib::xmltok::XML_TOK_NONE_1;
+        return XML_TOK_NONE_1;
     }
     encPtr = (*enc).encPtr;
     if ptr.offset(1) == end {
-        match (*enc).initEnc.isUtf16 as ::core::ffi::c_int {
-            3 | 5 | 4 => return crate::src::lib::xmltok::XML_TOK_PARTIAL_1,
+        match (*enc).initEnc.isUtf16 as c_int {
+            3 | 5 | 4 => return XML_TOK_PARTIAL_1,
             _ => {}
         }
         let mut current_block_5: u64;
-        match *ptr as ::core::ffi::c_uchar as ::core::ffi::c_int {
+        match *ptr as c_uchar as c_int {
             254 | 255 | 239 => {
-                if (*enc).initEnc.isUtf16 as ::core::ffi::c_int == ISO_8859_1_ENC
-                    && state == crate::src::lib::xmltok::XML_CONTENT_STATE
-                {
+                if (*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE {
                     current_block_5 = 13183875560443969876;
                 } else {
                     current_block_5 = 6556540211831925522;
@@ -20242,26 +19640,24 @@ unsafe extern "C" fn initScan(
         }
         match current_block_5 {
             13183875560443969876 => {}
-            _ => return crate::src::lib::xmltok::XML_TOK_PARTIAL_1,
+            _ => return XML_TOK_PARTIAL_1,
         }
     } else {
         let mut current_block_26: u64;
-        match (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int) << 8
-            | *ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int
-        {
+        match (*ptr.offset(0) as c_uchar as c_int) << 8 | *ptr.offset(1) as c_uchar as c_int {
             65279 => {
-                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int == ISO_8859_1_ENC
-                    && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
+                if !((*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC
+                    && state == XML_CONTENT_STATE)
                 {
                     *nextTokPtr = ptr.offset(2);
                     *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
-                    return crate::src::lib::xmltok::XML_TOK_BOM_1;
+                    return XML_TOK_BOM_1;
                 }
             }
             15360 => {
-                if !(((*enc).initEnc.isUtf16 as ::core::ffi::c_int == UTF_16BE_ENC
-                    || (*enc).initEnc.isUtf16 as ::core::ffi::c_int == UTF_16_ENC)
-                    && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
+                if !(((*enc).initEnc.isUtf16 as c_int == UTF_16BE_ENC
+                    || (*enc).initEnc.isUtf16 as c_int == UTF_16_ENC)
+                    && state == XML_CONTENT_STATE)
                 {
                     *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
                     return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
@@ -20270,17 +19666,17 @@ unsafe extern "C" fn initScan(
                 }
             }
             65534 => {
-                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int == ISO_8859_1_ENC
-                    && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
+                if !((*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC
+                    && state == XML_CONTENT_STATE)
                 {
                     *nextTokPtr = ptr.offset(2);
                     *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                    return crate::src::lib::xmltok::XML_TOK_BOM_1;
+                    return XML_TOK_BOM_1;
                 }
             }
             61371 => {
-                if state == crate::src::lib::xmltok::XML_CONTENT_STATE {
-                    let mut e: ::core::ffi::c_int = (*enc).initEnc.isUtf16 as ::core::ffi::c_int;
+                if state == XML_CONTENT_STATE {
+                    let mut e: c_int = (*enc).initEnc.isUtf16 as c_int;
                     if e == ISO_8859_1_ENC
                         || e == UTF_16BE_ENC
                         || e == UTF_16LE_ENC
@@ -20297,20 +19693,20 @@ unsafe extern "C" fn initScan(
                     2604890879466389055 => {}
                     _ => {
                         if ptr.offset(2) == end {
-                            return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
+                            return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(2) as ::core::ffi::c_uchar as ::core::ffi::c_int == 0xbf {
+                        if *ptr.offset(2) as c_uchar as c_int == 0xbf {
                             *nextTokPtr = ptr.offset(3);
                             *encPtr = *encodingTable.offset(UTF_8_ENC as isize);
-                            return crate::src::lib::xmltok::XML_TOK_BOM_1;
+                            return XML_TOK_BOM_1;
                         }
                     }
                 }
             }
             _ => {
-                if *ptr.offset(0) as ::core::ffi::c_int == '\0' as i32 {
-                    if !(state == crate::src::lib::xmltok::XML_CONTENT_STATE
-                        && (*enc).initEnc.isUtf16 as ::core::ffi::c_int == UTF_16LE_ENC)
+                if *ptr.offset(0) as c_int == '\0' as i32 {
+                    if !(state == XML_CONTENT_STATE
+                        && (*enc).initEnc.isUtf16 as c_int == UTF_16LE_ENC)
                     {
                         *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
                         return (**encPtr).scanners[state as usize]
@@ -20318,8 +19714,8 @@ unsafe extern "C" fn initScan(
                             *encPtr, ptr, end, nextTokPtr
                         );
                     }
-                } else if *ptr.offset(1) as ::core::ffi::c_int == '\0' as i32 {
-                    if !(state == crate::src::lib::xmltok::XML_CONTENT_STATE) {
+                } else if *ptr.offset(1) as c_int == '\0' as i32 {
+                    if !(state == XML_CONTENT_STATE) {
                         *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
                         return (**encPtr).scanners[state as usize]
                             .expect("non-null function pointer")(
@@ -20330,22 +19726,20 @@ unsafe extern "C" fn initScan(
             }
         }
     }
-    *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as ::core::ffi::c_int as isize);
+    *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as c_int as isize);
     return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
         *encPtr, ptr, end, nextTokPtr,
     );
 }
 pub(crate) unsafe extern "C" fn XmlInitUnknownEncodingNS(
-    mut mem: *mut ::core::ffi::c_void,
-    mut table: *const ::core::ffi::c_int,
-    mut convert: crate::src::lib::xmltok::CONVERTER,
-    mut userData: *mut ::core::ffi::c_void,
-) -> *mut crate::src::lib::xmltok::ENCODING {
-    let mut enc: *mut crate::src::lib::xmltok::ENCODING =
-        XmlInitUnknownEncoding(mem, table, convert, userData);
+    mut mem: *mut c_void,
+    mut table: *const c_int,
+    mut convert: CONVERTER,
+    mut userData: *mut c_void,
+) -> *mut ENCODING {
+    let mut enc: *mut ENCODING = XmlInitUnknownEncoding(mem, table, convert, userData);
     if !enc.is_null() {
-        (*(enc as *mut normal_encoding)).type_0[ASCII_COLON as usize] =
-            BT_COLON_0 as ::core::ffi::c_uchar;
+        (*(enc as *mut normal_encoding)).type_0[ASCII_COLON as usize] = BT_COLON_0 as c_uchar;
     }
     return enc;
 }
