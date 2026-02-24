@@ -676,7 +676,7 @@ use core::ffi::{
 };
 use core::mem::size_of;
 use core::ptr::{null, null_mut};
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[repr(C)]
 
 pub struct XML_ParserStruct {
@@ -754,8 +754,8 @@ pub struct XML_ParserStruct {
     pub m_declAttributeIsId: XML_Bool,
     pub m_dtd: *mut DTD,
     pub m_curBase: *const XML_Char,
-    pub m_tagStack: *mut TAG,
-    pub m_freeTagList: *mut TAG,
+    pub m_tagStack: Option<Box<tag>>,
+    pub m_freeTagList: Option<Box<tag>>,
     pub m_inheritedBindings: *mut BINDING,
     pub m_freeBindingList: *mut BINDING,
     pub m_attsSize: c_int,
@@ -880,11 +880,11 @@ pub struct prefix {
 }
 
 pub type TAG = tag;
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[repr(C)]
 
 pub struct tag {
-    pub parent: *mut tag,
+    pub parent: Option<Box<tag>>,
     pub rawName: *const c_char,
     pub rawNameLength: c_int,
     pub name: TAG_NAME,
@@ -1742,7 +1742,8 @@ unsafe extern "C" fn parserCreate(
         }
     }
     (*parser).m_freeBindingList = null_mut::<BINDING>();
-    (*parser).m_freeTagList = null_mut::<TAG>();
+    core::ptr::write(&raw mut (*parser).m_tagStack, None);
+    core::ptr::write(&raw mut (*parser).m_freeTagList, None);
     (*parser).m_freeInternalEntities = null_mut::<OPEN_INTERNAL_ENTITY>();
     (*parser).m_freeAttributeEntities = null_mut::<OPEN_INTERNAL_ENTITY>();
     (*parser).m_freeValueEntities = null_mut::<OPEN_INTERNAL_ENTITY>();
@@ -1853,7 +1854,7 @@ unsafe extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const
     (*parser).m_openValueEntities = null_mut::<OPEN_INTERNAL_ENTITY>();
     (*parser).m_defaultExpandInternalEntities = XML_TRUE;
     (*parser).m_tagLevel = 0;
-    (*parser).m_tagStack = null_mut::<TAG>();
+    (*parser).m_tagStack = None;
     (*parser).m_inheritedBindings = null_mut::<BINDING>();
     (*parser).m_nSpecifiedAtts = 0;
     (*parser).m_unknownEncodingMem = NULL;
@@ -1899,7 +1900,7 @@ pub unsafe extern "C" fn XML_ParserReset(
     mut parser: XML_Parser,
     mut encodingName: *const XML_Char,
 ) -> XML_Bool {
-    let mut tStk: *mut TAG = null_mut::<TAG>();
+    let mut tStk: Option<Box<TAG>> = None;
     let mut openEntityList: *mut OPEN_INTERNAL_ENTITY = null_mut::<OPEN_INTERNAL_ENTITY>();
     if parser.is_null() {
         return XML_FALSE;
@@ -1907,14 +1908,13 @@ pub unsafe extern "C" fn XML_ParserReset(
     if !(*parser).m_parentParser.is_null() {
         return XML_FALSE;
     }
-    tStk = (*parser).m_tagStack;
-    while !tStk.is_null() {
-        let mut tag: *mut TAG = tStk;
-        tStk = (*tStk).parent;
-        (*tag).parent = (*parser).m_freeTagList;
-        moveToFreeBindingList(parser, (*tag).bindings);
-        (*tag).bindings = null_mut::<BINDING>();
-        (*parser).m_freeTagList = tag;
+    tStk = core::mem::take(&mut (*parser).m_tagStack);
+    while let Some(mut tag) = tStk {
+        tStk = tag.parent.take();
+        moveToFreeBindingList(parser, tag.bindings);
+        tag.bindings = null_mut::<BINDING>();
+        tag.parent = (*parser).m_freeTagList.take();
+        (*parser).m_freeTagList = Some(tag);
     }
     openEntityList = (*parser).m_openInternalEntities;
     while !openEntityList.is_null() {
@@ -2174,26 +2174,23 @@ unsafe extern "C" fn destroyBindings(mut bindings: *mut BINDING, mut parser: XML
 #[no_mangle]
 
 pub unsafe extern "C" fn XML_ParserFree(mut parser: XML_Parser) {
-    let mut tagList: *mut TAG = null_mut::<TAG>();
+    let mut tagList: Option<Box<TAG>> = None;
     let mut entityList: *mut OPEN_INTERNAL_ENTITY = null_mut::<OPEN_INTERNAL_ENTITY>();
     if parser.is_null() {
         return;
     }
-    tagList = (*parser).m_tagStack;
+    tagList = core::mem::take(&mut (*parser).m_tagStack);
     loop {
-        let mut p: *mut TAG = null_mut::<TAG>();
-        if tagList.is_null() {
-            if (*parser).m_freeTagList.is_null() {
-                break;
-            }
-            tagList = (*parser).m_freeTagList;
-            (*parser).m_freeTagList = null_mut::<TAG>();
-        }
-        p = tagList;
-        tagList = (*tagList).parent;
-        expat_free(parser, (*p).buf.raw as *mut c_void, 1942);
-        destroyBindings((*p).bindings, parser);
-        expat_free(parser, p as *mut c_void, 1944);
+        let mut p: Box<TAG> = if let Some(p) = tagList {
+            p
+        } else if let Some(p) = (*parser).m_freeTagList.take() {
+            p
+        } else {
+            break;
+        };
+        tagList = p.parent.take();
+        expat_free(parser, p.buf.raw as *mut c_void, 1942);
+        destroyBindings(p.bindings, parser);
     }
     entityList = (*parser).m_openInternalEntities;
     loop {
@@ -3492,7 +3489,11 @@ pub unsafe extern "C" fn XML_SetReparseDeferralEnabled(
 }
 
 unsafe extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
-    let mut tag: *mut TAG = (*parser).m_tagStack;
+    let mut tag: *mut TAG = if let Some(tag) = (*parser).m_tagStack.as_mut() {
+        &mut **tag
+    } else {
+        null_mut::<TAG>()
+    };
     while !tag.is_null() {
         let mut bufSize: size_t = 0;
         let mut nameLen: size_t =
@@ -3532,7 +3533,11 @@ unsafe extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
             (*tag).rawNameLength as size_t,
         );
         (*tag).rawName = rawNameBuf;
-        tag = (*tag).parent;
+        tag = if let Some(parent) = (*tag).parent.as_mut() {
+            &mut **parent
+        } else {
+            null_mut::<TAG>()
+        };
     }
     return XML_TRUE;
 }
@@ -3950,24 +3955,39 @@ unsafe extern "C" fn doContent(
                 let mut tag: *mut TAG = null_mut::<TAG>();
                 let mut result_0: XML_Error = XML_ERROR_NONE;
                 let mut toPtr: *mut XML_Char = null_mut::<XML_Char>();
-                if !(*parser).m_freeTagList.is_null() {
-                    tag = (*parser).m_freeTagList;
-                    (*parser).m_freeTagList = (*(*parser).m_freeTagList).parent;
+                if let Some(mut free_tag) = (*parser).m_freeTagList.take() {
+                    (*parser).m_freeTagList = free_tag.parent.take();
+                    free_tag.parent = (*parser).m_tagStack.take();
+                    (*parser).m_tagStack = Some(free_tag);
                 } else {
-                    tag = expat_malloc(parser, size_of::<TAG>(), 3477) as *mut TAG;
-                    if tag.is_null() {
+                    let mut tag_buf: *mut c_char = expat_malloc(parser, 32, 3480) as *mut c_char;
+                    if tag_buf.is_null() {
                         return XML_ERROR_NO_MEMORY;
                     }
-                    (*tag).buf.raw = expat_malloc(parser, 32, 3480) as *mut c_char;
-                    if (*tag).buf.raw.is_null() {
-                        expat_free(parser, tag as *mut c_void, 3482);
-                        return XML_ERROR_NO_MEMORY;
-                    }
-                    (*tag).bufEnd = (*tag).buf.raw.offset(INIT_TAG_BUF_SIZE as isize);
+                    let mut new_tag: Box<TAG> = Box::new(TAG {
+                        parent: (*parser).m_tagStack.take(),
+                        rawName: null::<c_char>(),
+                        rawNameLength: 0,
+                        name: TAG_NAME {
+                            str_0: null::<XML_Char>(),
+                            localPart: null::<XML_Char>(),
+                            prefix: null::<XML_Char>(),
+                            strLen: 0,
+                            uriLen: 0,
+                            prefixLen: 0,
+                        },
+                        buf: C2RustUnnamed_1 { raw: tag_buf },
+                        bufEnd: tag_buf.offset(INIT_TAG_BUF_SIZE as isize),
+                        bindings: null_mut::<BINDING>(),
+                    });
+                    (*parser).m_tagStack = Some(new_tag);
                 }
+                tag = if let Some(tag_on_stack) = (*parser).m_tagStack.as_mut() {
+                    &mut **tag_on_stack
+                } else {
+                    return XML_ERROR_UNEXPECTED_STATE;
+                };
                 (*tag).bindings = null_mut::<BINDING>();
-                (*tag).parent = (*parser).m_tagStack;
-                (*parser).m_tagStack = tag;
                 (*tag).name.localPart = null::<XML_Char>();
                 (*tag).name.prefix = null::<XML_Char>();
                 (*tag).rawName = s.offset((*enc).minBytesPerChar as isize);
@@ -4123,7 +4143,11 @@ unsafe extern "C" fn doContent(
                 } else {
                     let mut len: c_int = 0;
                     let mut rawName_0: *const c_char = null::<c_char>();
-                    let mut tag_0: *mut TAG = (*parser).m_tagStack;
+                    let mut tag_0: *mut TAG = if let Some(tag) = (*parser).m_tagStack.as_mut() {
+                        &mut **tag
+                    } else {
+                        return XML_ERROR_UNEXPECTED_STATE;
+                    };
                     rawName_0 = s.offset(((*enc).minBytesPerChar * 2i32) as isize);
                     len = (*enc).nameLength(enc, rawName_0);
                     if len != (*tag_0).rawNameLength
@@ -4136,9 +4160,14 @@ unsafe extern "C" fn doContent(
                         *eventPP = rawName_0;
                         return XML_ERROR_TAG_MISMATCH;
                     }
-                    (*parser).m_tagStack = (*tag_0).parent;
-                    (*tag_0).parent = (*parser).m_freeTagList;
-                    (*parser).m_freeTagList = tag_0;
+                    let mut closed_tag: Box<TAG> = (*parser)
+                        .m_tagStack
+                        .take()
+                        .expect("tag stack cannot be empty here");
+                    tag_0 = &mut *closed_tag;
+                    (*parser).m_tagStack = closed_tag.parent.take();
+                    closed_tag.parent = (*parser).m_freeTagList.take();
+                    (*parser).m_freeTagList = Some(closed_tag);
                     (*parser).m_tagLevel -= 1;
                     if (*parser).m_endElementHandler.is_some() {
                         let mut localPart: *const XML_Char = null::<XML_Char>();
@@ -4923,12 +4952,20 @@ unsafe extern "C" fn storeAtts(
             (*binding).uri as *const c_void,
             ((*binding).uriLen as size_t).wrapping_mul(size_of::<XML_Char>()),
         );
-        p = (*parser).m_tagStack;
+        p = if let Some(tag) = (*parser).m_tagStack.as_mut() {
+            &mut **tag
+        } else {
+            null_mut::<TAG>()
+        };
         while !p.is_null() {
             if (*p).name.str_0 == (*binding).uri as *const XML_Char {
                 (*p).name.str_0 = uri;
             }
-            p = (*p).parent;
+            p = if let Some(parent) = (*p).parent.as_mut() {
+                &mut **parent
+            } else {
+                null_mut::<TAG>()
+            };
         }
         expat_free(parser, (*binding).uri as *mut c_void, 4278);
         (*binding).uri = uri;
