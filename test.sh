@@ -39,7 +39,7 @@ build_expat_runtests() {
 
   if [ "$mode" = "rust" ]; then
     local ldadd='../../target/debug/liblibexpat.a'
-    cargo build
+    cargo build --features expat_test_shims
     make -C expat/tests runtests runtests_LDADD="$ldadd"
   else
     make -C expat/tests runtests

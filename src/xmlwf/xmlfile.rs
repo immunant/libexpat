@@ -101,7 +101,6 @@ pub struct PROCESS_ARGS {
 
 pub const O_BINARY: ::core::ffi::c_int = 0;
 #[no_mangle]
-
 pub static mut g_read_size_bytes: ::core::ffi::c_int = 1024 * 8;
 
 unsafe extern "C" fn reportError(mut parser: XML_Parser, mut filename: *const XML_Char) {
@@ -326,9 +325,7 @@ unsafe extern "C" fn externalEntityRefStream(
     XML_ParserFree(entParser);
     return ret;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XML_ProcessFile(
+pub unsafe fn XML_ProcessFile(
     mut parser: XML_Parser,
     mut filename: *const XML_Char,
     mut flags: ::core::ffi::c_uint,

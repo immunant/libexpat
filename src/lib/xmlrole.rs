@@ -2780,11 +2780,7 @@ unsafe extern "C" fn common(
     );
     return crate::src::lib::xmlrole::XML_ROLE_ERROR;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XmlPrologStateInit(
-    mut state: *mut crate::src::lib::xmlrole::PROLOG_STATE,
-) {
+pub(crate) unsafe fn XmlPrologStateInit(mut state: *mut crate::src::lib::xmlrole::PROLOG_STATE) {
     (*state).handler = Some(
         prolog0
             as unsafe extern "C" fn(
@@ -2799,9 +2795,7 @@ pub unsafe extern "C" fn XmlPrologStateInit(
     (*state).includeLevel = 0u32;
     (*state).inEntityValue = 0;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XmlPrologStateInitExternalEntity(
+pub(crate) unsafe fn XmlPrologStateInitExternalEntity(
     mut state: *mut crate::src::lib::xmlrole::PROLOG_STATE,
 ) {
     (*state).handler = Some(

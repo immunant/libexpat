@@ -1,6 +1,6 @@
 pub mod siphash_h {
 
-    pub unsafe extern "C" fn sip_tokey(
+    pub(crate) unsafe extern "C" fn sip_tokey(
         mut key: *mut crate::siphash_h::sipkey,
         mut src: *const ::core::ffi::c_void,
     ) -> *mut crate::siphash_h::sipkey {
@@ -40,7 +40,7 @@ pub mod siphash_h {
         return key;
     }
 
-    pub unsafe extern "C" fn sip_round(
+    pub(crate) unsafe extern "C" fn sip_round(
         mut H: *mut crate::siphash_h::siphash,
         rounds: ::core::ffi::c_int,
     ) {
@@ -65,7 +65,7 @@ pub mod siphash_h {
         }
     }
 
-    pub unsafe extern "C" fn sip24_init(
+    pub(crate) unsafe extern "C" fn sip24_init(
         mut H: *mut crate::siphash_h::siphash,
         mut key: *const crate::siphash_h::sipkey,
     ) -> *mut crate::siphash_h::siphash {
@@ -78,7 +78,7 @@ pub mod siphash_h {
         return H;
     }
 
-    pub unsafe extern "C" fn sip24_update(
+    pub(crate) unsafe extern "C" fn sip24_update(
         mut H: *mut crate::siphash_h::siphash,
         mut src: *const ::core::ffi::c_void,
         mut len: crate::__stddef_size_t_h::size_t,
@@ -130,7 +130,7 @@ pub mod siphash_h {
         return H;
     }
 
-    pub unsafe extern "C" fn sip24_final(
+    pub(crate) unsafe extern "C" fn sip24_final(
         mut H: *mut crate::siphash_h::siphash,
     ) -> crate::stdlib::uint64_t {
         let left: ::core::ffi::c_char = (*H)
@@ -216,7 +216,7 @@ pub mod siphash_h {
         return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
     }
 
-    pub unsafe extern "C" fn siphash24(
+    pub(crate) unsafe extern "C" fn siphash24(
         mut src: *const ::core::ffi::c_void,
         mut len: crate::__stddef_size_t_h::size_t,
         mut key: *const crate::siphash_h::sipkey,
@@ -233,7 +233,7 @@ pub mod siphash_h {
         return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
     }
 
-    pub unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
+    pub(crate) unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
         pub static mut vectors: [[::core::ffi::c_uchar; 8]; 64] = [
             [0x31, 0xe, 0xe, 0xdd, 0x47, 0xdb, 0x6f, 0x72],
             [0xfd, 0x67, 0xdc, 0x93, 0xc5, 0x39, 0xf8, 0x74],
@@ -524,13 +524,13 @@ pub use crate::limits_h::INT_MAX;
 pub use crate::limits_h::UINT_MAX;
 pub use crate::siphash_h::siphash;
 pub use crate::siphash_h::sipkey;
-pub use crate::src::lib::xmlparse::siphash_h::sip24_final;
-pub use crate::src::lib::xmlparse::siphash_h::sip24_init;
-pub use crate::src::lib::xmlparse::siphash_h::sip24_update;
-pub use crate::src::lib::xmlparse::siphash_h::sip24_valid;
-pub use crate::src::lib::xmlparse::siphash_h::sip_round;
-pub use crate::src::lib::xmlparse::siphash_h::sip_tokey;
-pub use crate::src::lib::xmlparse::siphash_h::siphash24;
+pub(crate) use crate::src::lib::xmlparse::siphash_h::sip24_final;
+pub(crate) use crate::src::lib::xmlparse::siphash_h::sip24_init;
+pub(crate) use crate::src::lib::xmlparse::siphash_h::sip24_update;
+pub(crate) use crate::src::lib::xmlparse::siphash_h::sip24_valid;
+pub(crate) use crate::src::lib::xmlparse::siphash_h::sip_round;
+pub(crate) use crate::src::lib::xmlparse::siphash_h::sip_tokey;
+pub(crate) use crate::src::lib::xmlparse::siphash_h::siphash24;
 pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
 pub use crate::stdlib::getrandom;
@@ -552,8 +552,8 @@ pub use crate::stdlib::_IO_FILE;
 
 pub use crate::src::lib::xmlrole::prolog_state;
 pub use crate::src::lib::xmlrole::C2RustUnnamed_0;
-pub use crate::src::lib::xmlrole::XmlPrologStateInit;
-pub use crate::src::lib::xmlrole::XmlPrologStateInitExternalEntity;
+use crate::src::lib::xmlrole::XmlPrologStateInit;
+use crate::src::lib::xmlrole::XmlPrologStateInitExternalEntity;
 pub use crate::src::lib::xmlrole::PROLOG_STATE;
 pub use crate::src::lib::xmlrole::XML_ROLE_ATTLIST_ELEMENT_NAME;
 pub use crate::src::lib::xmlrole::XML_ROLE_ATTLIST_NONE;
@@ -619,17 +619,17 @@ pub use crate::src::lib::xmlrole::XML_ROLE_TEXT_DECL;
 pub use crate::src::lib::xmlrole::XML_ROLE_XML_DECL;
 pub use crate::src::lib::xmltok::encoding;
 pub use crate::src::lib::xmltok::position;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncodingNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlInitEncoding;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlInitEncodingNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlParseXmlDecl;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlParseXmlDeclNS;
+use crate::src::lib::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding;
+use crate::src::lib::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncodingNS;
+use crate::src::lib::xmltok::xmltok_ns_c::XmlInitEncoding;
+use crate::src::lib::xmltok::xmltok_ns_c::XmlInitEncodingNS;
+use crate::src::lib::xmltok::xmltok_ns_c::XmlParseXmlDecl;
+use crate::src::lib::xmltok::xmltok_ns_c::XmlParseXmlDeclNS;
 pub use crate::src::lib::xmltok::XML_Convert_Result;
-pub use crate::src::lib::xmltok::XmlInitUnknownEncoding;
-pub use crate::src::lib::xmltok::XmlInitUnknownEncodingNS;
-pub use crate::src::lib::xmltok::XmlSizeOfUnknownEncoding;
-pub use crate::src::lib::xmltok::XmlUtf8Encode;
+use crate::src::lib::xmltok::XmlInitUnknownEncoding;
+use crate::src::lib::xmltok::XmlInitUnknownEncodingNS;
+use crate::src::lib::xmltok::XmlSizeOfUnknownEncoding;
+use crate::src::lib::xmltok::XmlUtf8Encode;
 pub use crate::src::lib::xmltok::ATTRIBUTE;
 pub use crate::src::lib::xmltok::CONVERTER;
 pub use crate::src::lib::xmltok::ENCODING;
@@ -1160,9 +1160,7 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
     }
     return tolerable;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn expat_malloc(
+unsafe fn expat_malloc(
     mut parser: XML_Parser,
     mut size: size_t,
     mut sourceLine: ::core::ffi::c_int,
@@ -1229,9 +1227,18 @@ pub unsafe extern "C" fn expat_malloc(
         .offset(::core::mem::size_of::<size_t>() as isize)
         .offset(EXPAT_MALLOC_PADDING as isize) as *mut ::core::ffi::c_void;
 }
-#[no_mangle]
 
-pub unsafe extern "C" fn expat_free(
+#[cfg(feature = "expat_test_shims")]
+#[export_name = "expat_malloc"]
+unsafe extern "C" fn expat_malloc_test_shim(
+    parser: XML_Parser,
+    size: size_t,
+    sourceLine: ::core::ffi::c_int,
+) -> *mut ::core::ffi::c_void {
+    expat_malloc(parser, size, sourceLine)
+}
+
+unsafe fn expat_free(
     mut parser: XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
     mut sourceLine: ::core::ffi::c_int,
@@ -1298,9 +1305,18 @@ pub unsafe extern "C" fn expat_free(
     }
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(mallocedPtr);
 }
-#[no_mangle]
 
-pub unsafe extern "C" fn expat_realloc(
+#[cfg(feature = "expat_test_shims")]
+#[export_name = "expat_free"]
+unsafe extern "C" fn expat_free_test_shim(
+    parser: XML_Parser,
+    ptr: *mut ::core::ffi::c_void,
+    sourceLine: ::core::ffi::c_int,
+) {
+    expat_free(parser, ptr, sourceLine);
+}
+
+unsafe fn expat_realloc(
     mut parser: XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
     mut size: size_t,
@@ -1446,6 +1462,18 @@ pub unsafe extern "C" fn expat_realloc(
         .offset(::core::mem::size_of::<size_t>() as isize)
         .offset(EXPAT_MALLOC_PADDING as isize) as *mut ::core::ffi::c_void;
 }
+
+#[cfg(feature = "expat_test_shims")]
+#[export_name = "expat_realloc"]
+unsafe extern "C" fn expat_realloc_test_shim(
+    parser: XML_Parser,
+    ptr: *mut ::core::ffi::c_void,
+    size: size_t,
+    sourceLine: ::core::ffi::c_int,
+) -> *mut ::core::ffi::c_void {
+    expat_realloc(parser, ptr, size, sourceLine)
+}
+
 #[no_mangle]
 
 pub unsafe extern "C" fn XML_ParserCreate(mut encodingName: *const XML_Char) -> XML_Parser {
@@ -10774,25 +10802,36 @@ unsafe extern "C" fn accountingDiffTolerated(
     }
     return tolerated;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn testingAccountingGetCountBytesDirect(
-    mut parser: XML_Parser,
-) -> ::core::ffi::c_ulonglong {
+unsafe fn testingAccountingGetCountBytesDirect(mut parser: XML_Parser) -> ::core::ffi::c_ulonglong {
     if parser.is_null() {
         return 0u64;
     }
     return (*parser).m_accounting.countBytesDirect;
 }
-#[no_mangle]
 
-pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect(
+#[cfg(feature = "expat_test_shims")]
+#[export_name = "testingAccountingGetCountBytesDirect"]
+unsafe extern "C" fn testing_accounting_get_count_bytes_direct_test_shim(
+    parser: XML_Parser,
+) -> ::core::ffi::c_ulonglong {
+    testingAccountingGetCountBytesDirect(parser)
+}
+
+unsafe fn testingAccountingGetCountBytesIndirect(
     mut parser: XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
     if parser.is_null() {
         return 0u64;
     }
     return (*parser).m_accounting.countBytesIndirect;
+}
+
+#[cfg(feature = "expat_test_shims")]
+#[export_name = "testingAccountingGetCountBytesIndirect"]
+unsafe extern "C" fn testing_accounting_get_count_bytes_indirect_test_shim(
+    parser: XML_Parser,
+) -> ::core::ffi::c_ulonglong {
+    testingAccountingGetCountBytesIndirect(parser)
 }
 
 unsafe extern "C" fn entityTrackingReportStats(
@@ -10928,11 +10967,7 @@ unsafe extern "C" fn getRootParserOf(
     }
     return rootParser;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn unsignedCharToPrintable(
-    mut c: ::core::ffi::c_uchar,
-) -> *const ::core::ffi::c_char {
+unsafe fn unsignedCharToPrintable(mut c: ::core::ffi::c_uchar) -> *const ::core::ffi::c_char {
     match c as ::core::ffi::c_int {
         0 => return b"\\0\0" as *const u8 as *const ::core::ffi::c_char,
         1 => return b"\\x1\0" as *const u8 as *const ::core::ffi::c_char,
@@ -11205,6 +11240,14 @@ pub unsafe extern "C" fn unsignedCharToPrintable(
             return b"dead code\0" as *const u8 as *const ::core::ffi::c_char;
         }
     };
+}
+
+#[cfg(feature = "expat_test_shims")]
+#[export_name = "unsignedCharToPrintable"]
+unsafe extern "C" fn unsigned_char_to_printable_test_shim(
+    c: ::core::ffi::c_uchar,
+) -> *const ::core::ffi::c_char {
+    unsignedCharToPrintable(c)
 }
 
 unsafe extern "C" fn getDebugLevel(

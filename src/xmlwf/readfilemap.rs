@@ -34,9 +34,7 @@ pub use crate::stdlib::__uint64_t;
 pub use crate::stdlib::FILE;
 
 pub const O_BINARY: ::core::ffi::c_int = 0;
-#[no_mangle]
-
-pub unsafe extern "C" fn filemap(
+pub unsafe fn filemap(
     mut name: *const ::core::ffi::c_char,
     mut processor: Option<
         unsafe extern "C" fn(
