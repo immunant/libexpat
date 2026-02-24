@@ -245,10 +245,6 @@ use ::libexpat;
 
 pub use crate::__stddef_size_t_h::size_t;
 
-pub use crate::stdlib::__ASSERT_FUNCTION;
-
-pub use ::libexpat::stdlib::__assert_fail;
-
 pub use crate::expat_external_h::XML_Char;
 pub use crate::expat_external_h::XML_Index;
 pub use crate::expat_external_h::XML_LChar;
@@ -442,16 +438,7 @@ unsafe extern "C" fn characterData(
 unsafe extern "C" fn attributeValue(mut fp: *mut FILE, mut s: *const XML_Char) {
     putc('=' as i32, fp);
     putc('"' as i32, fp);
-    if !s.is_null() {
-    } else {
-        __assert_fail(
-            b"s\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/xmlwf/xmlwf.c\0" as *const u8
-                as *const c_char,
-            134u32,
-            __ASSERT_FUNCTION.as_ptr(),
-        );
-    };
+    assert!(!s.is_null());
     loop {
         match *s as c_int {
             0 | 1 => {

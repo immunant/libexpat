@@ -670,7 +670,7 @@ pub use crate::stdlib::__time_t;
 pub use crate::stdlib::__uint64_t;
 
 pub use crate::stdlib::FILE;
-use crate::stdlib::{__assert_fail, __errno_location, memcpy, memset};
+use crate::stdlib::{__errno_location, memcpy, memset};
 use core::ffi::{
     c_char, c_float, c_int, c_long, c_longlong, c_uchar, c_uint, c_ulong, c_ulonglong, c_void,
 };
@@ -1094,28 +1094,8 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
     mut increase: XmlBigCount,
     mut sourceLine: c_int,
 ) -> bool {
-    if !rootParser.is_null() {
-    } else {
-        __assert_fail(
-            b"rootParser != NULL\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            815u32,
-            b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0" as *const u8
-                as *const c_char,
-        );
-    };
-    if increase > 0u64 {
-    } else {
-        __assert_fail(
-            b"increase > 0\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            816u32,
-            b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0" as *const u8
-                as *const c_char,
-        );
-    };
+    assert!(!rootParser.is_null());
+    assert!(increase > 0u64);
     let mut newTotal: XmlBigCount = 0;
     let mut tolerable: bool = true_0 != 0;
     if (-(1i32) as XmlBigCount).wrapping_sub((*rootParser).m_alloc_tracker.bytesAllocated)
@@ -1128,17 +1108,7 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
             .bytesAllocated
             .wrapping_add(increase);
         if newTotal >= (*rootParser).m_alloc_tracker.activationThresholdBytes {
-            if newTotal > 0 {
-            } else {
-                __assert_fail(
-                    b"newTotal > 0\0" as *const u8 as *const c_char,
-                    b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                        as *const u8 as *const c_char,
-                    828u32,
-                    b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0"
-                        as *const u8 as *const c_char,
-                );
-            };
+            assert!(newTotal > 0);
             let amplification: c_float =
                 newTotal as c_float / (*rootParser).m_accounting.countBytesDirect as c_float;
             if amplification > (*rootParser).m_alloc_tracker.maximumAmplificationFactor {
@@ -1169,16 +1139,7 @@ unsafe fn expat_malloc(
         return NULL;
     }
     let rootParser: XML_Parser = getRootParserOf(parser, null_mut::<c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"rootParser->m_parentParser == NULL\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            858u32,
-            b"void *expat_malloc(XML_Parser, size_t, int)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     let bytesToAllocate: size_t = (size_of::<size_t>())
         .wrapping_add(EXPAT_MALLOC_PADDING)
         .wrapping_add(size);
@@ -1234,47 +1195,19 @@ unsafe extern "C" fn expat_malloc_test_shim(
 }
 
 unsafe fn expat_free(mut parser: XML_Parser, mut ptr: *mut c_void, mut sourceLine: c_int) {
-    if !parser.is_null() {
-    } else {
-        __assert_fail(
-            b"parser != NULL\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            906u32,
-            b"void expat_free(XML_Parser, void *, int)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!(!parser.is_null());
     if ptr.is_null() {
         return;
     }
     let rootParser: XML_Parser = getRootParserOf(parser, null_mut::<c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"rootParser->m_parentParser == NULL\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            913u32,
-            b"void expat_free(XML_Parser, void *, int)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     let mallocedPtr: *mut c_void = (ptr as *mut c_char)
         .offset(-(EXPAT_MALLOC_PADDING as isize))
         .offset(-(size_of::<size_t>() as isize)) as *mut c_void;
     let bytesAllocated: size_t = (size_of::<size_t>())
         .wrapping_add(EXPAT_MALLOC_PADDING)
         .wrapping_add(*(mallocedPtr as *mut size_t));
-    if (*rootParser).m_alloc_tracker.bytesAllocated >= bytesAllocated as XmlBigCount {
-    } else {
-        __assert_fail(
-            b"rootParser->m_alloc_tracker.bytesAllocated >= bytesAllocated\0" as *const u8
-                as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            922u32,
-            b"void expat_free(XML_Parser, void *, int)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_alloc_tracker.bytesAllocated >= bytesAllocated as XmlBigCount);
     (*rootParser).m_alloc_tracker.bytesAllocated = (*rootParser)
         .m_alloc_tracker
         .bytesAllocated
@@ -1304,16 +1237,7 @@ unsafe fn expat_realloc(
     mut size: size_t,
     mut sourceLine: c_int,
 ) -> *mut c_void {
-    if !parser.is_null() {
-    } else {
-        __assert_fail(
-            b"parser != NULL\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            942u32,
-            b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!(!parser.is_null());
     if ptr.is_null() {
         return expat_malloc(parser, size, sourceLine);
     }
@@ -1322,16 +1246,7 @@ unsafe fn expat_realloc(
         return NULL;
     }
     let rootParser: XML_Parser = getRootParserOf(parser, null_mut::<c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"rootParser->m_parentParser == NULL\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            954u32,
-            b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     let mut mallocedPtr: *mut c_void = (ptr as *mut c_char)
         .offset(-(EXPAT_MALLOC_PADDING as isize))
         .offset(-(size_of::<size_t>() as isize))
@@ -1348,21 +1263,12 @@ unsafe fn expat_realloc(
             return NULL;
         }
     }
-    if (18446744073709551615 as usize)
-        .wrapping_sub(size_of::<size_t>())
-        .wrapping_sub((size_of::<c_longlong>()).wrapping_sub(size_of::<size_t>()))
-        >= size
-    {
-    } else {
-        __assert_fail(
-            b"SIZE_MAX - sizeof(size_t) - EXPAT_MALLOC_PADDING >= size\0" as *const u8
-                as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            975u32,
-            b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!(
+        (18446744073709551615 as usize)
+            .wrapping_sub(size_of::<size_t>())
+            .wrapping_sub((size_of::<c_longlong>()).wrapping_sub(size_of::<size_t>()))
+            >= size
+    );
     mallocedPtr = (*parser)
         .m_mem
         .realloc_fcn
@@ -1376,37 +1282,16 @@ unsafe fn expat_realloc(
         return NULL;
     }
     if isIncrease {
-        if (-(1i32) as XmlBigCount).wrapping_sub((*rootParser).m_alloc_tracker.bytesAllocated)
-            >= absDiff as XmlBigCount
-        {
-        } else {
-            __assert_fail(
-                b"(XmlBigCount)-1 - rootParser->m_alloc_tracker.bytesAllocated >= absDiff\0"
-                    as *const u8 as *const c_char,
-                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                    as *const u8 as *const c_char,
-                988u32,
-                b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8
-                    as *const c_char,
-            );
-        };
+        assert!(
+            (-(1i32) as XmlBigCount).wrapping_sub((*rootParser).m_alloc_tracker.bytesAllocated)
+                >= absDiff as XmlBigCount
+        );
         (*rootParser).m_alloc_tracker.bytesAllocated = (*rootParser)
             .m_alloc_tracker
             .bytesAllocated
             .wrapping_add(absDiff as XmlBigCount);
     } else {
-        if (*rootParser).m_alloc_tracker.bytesAllocated >= absDiff as XmlBigCount {
-        } else {
-            __assert_fail(
-                b"rootParser->m_alloc_tracker.bytesAllocated >= absDiff\0" as *const u8
-                    as *const c_char,
-                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                    as *const u8 as *const c_char,
-                991u32,
-                b"void *expat_realloc(XML_Parser, void *, size_t, int)\0" as *const u8
-                    as *const c_char,
-            );
-        };
+        assert!((*rootParser).m_alloc_tracker.bytesAllocated >= absDiff as XmlBigCount);
         (*rootParser).m_alloc_tracker.bytesAllocated = (*rootParser)
             .m_alloc_tracker
             .bytesAllocated
@@ -1527,17 +1412,7 @@ unsafe extern "C" fn writeRandomBytes_getrandom_nonblock(
         let currentTarget: *mut c_void =
             (target as *mut c_char).offset(bytesWrittenTotal as isize) as *mut c_void;
         let bytesToWrite: size_t = count.wrapping_sub(bytesWrittenTotal);
-        if bytesToWrite <= 2147483647i32 as size_t {
-        } else {
-            __assert_fail(
-                b"bytesToWrite <= INT_MAX\0" as *const u8 as *const c_char,
-                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                    as *const u8 as *const c_char,
-                1053u32,
-                b"int writeRandomBytes_getrandom_nonblock(void *, size_t)\0" as *const u8
-                    as *const c_char,
-            );
-        };
+        assert!(bytesToWrite <= 2147483647i32 as size_t);
         let bytesWrittenMore: c_int =
             getrandom(currentTarget, bytesToWrite, getrandomFlags) as c_int;
         if bytesWrittenMore > 0 {
@@ -1589,16 +1464,7 @@ unsafe extern "C" fn gather_time_entropy() -> c_ulong {
     };
     let mut gettimeofday_res: c_int = 0;
     gettimeofday_res = crate::stdlib::gettimeofday(&raw mut tv, NULL);
-    if gettimeofday_res == 0 {
-    } else {
-        __assert_fail(
-            b"gettimeofday_res == 0\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            1183u32,
-            b"unsigned long gather_time_entropy(void)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!(gettimeofday_res == 0);
     return tv.tv_usec as c_ulong;
 }
 
@@ -1643,16 +1509,7 @@ unsafe extern "C" fn generate_hash_secret_salt(mut _parser: XML_Parser) -> c_ulo
 
 unsafe extern "C" fn get_hash_secret_salt(mut parser: XML_Parser) -> c_ulong {
     let rootParser: XML_Parser = getRootParserOf(parser, null_mut::<c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            1251u32,
-            b"unsigned long get_hash_secret_salt(XML_Parser)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     return (*rootParser).m_hash_secret_salt;
 }
 
@@ -1825,32 +1682,11 @@ unsafe extern "C" fn parserCreate(
         (*parser).m_parentParser = parentParser;
     }
     let rootParser_0: XML_Parser = getRootParserOf(parser, null_mut::<c_uint>());
-    if (*rootParser_0).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"rootParser->m_parentParser == NULL\0" as *const u8
-                as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                as *const u8 as *const c_char,
-            1425u32,
-            b"XML_Parser parserCreate(const XML_Char *, const XML_Memory_Handling_Suite *, const XML_Char *, DTD *, XML_Parser)\0"
-                as *const u8 as *const c_char,
-        );
-    };
-    if (18446744073709551615u64).wrapping_sub((*rootParser_0).m_alloc_tracker.bytesAllocated)
-        >= increase as XmlBigCount
-    {
-    } else {
-        __assert_fail(
-            b"SIZE_MAX - rootParser->m_alloc_tracker.bytesAllocated >= increase\0"
-                as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                as *const u8 as *const c_char,
-            1426u32,
-            b"XML_Parser parserCreate(const XML_Char *, const XML_Memory_Handling_Suite *, const XML_Char *, DTD *, XML_Parser)\0"
-                as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser_0).m_parentParser.is_null());
+    assert!(
+        (18446744073709551615u64).wrapping_sub((*rootParser_0).m_alloc_tracker.bytesAllocated)
+            >= increase as XmlBigCount
+    );
     (*rootParser_0).m_alloc_tracker.bytesAllocated = (*rootParser_0)
         .m_alloc_tracker
         .bytesAllocated
@@ -2847,16 +2683,7 @@ pub unsafe extern "C" fn XML_SetHashSalt(mut parser: XML_Parser, mut hash_salt: 
         return 0i32;
     }
     let rootParser: XML_Parser = getRootParserOf(parser, null_mut::<c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            2331u32,
-            b"int XML_SetHashSalt(XML_Parser, unsigned long)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     if parserBusy(rootParser) != 0 {
         return 0i32;
     }
@@ -2900,17 +2727,7 @@ pub unsafe extern "C" fn XML_Parse(
         return XML_STATUS_ERROR;
     }
     if len > 0 {
-        if !s.is_null() {
-        } else {
-            __assert_fail(
-                b"s != NULL\0" as *const u8 as *const c_char,
-                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                    as *const u8 as *const c_char,
-                2445u32,
-                b"enum XML_Status XML_Parse(XML_Parser, const char *, int, int)\0" as *const u8
-                    as *const c_char,
-            );
-        };
+        assert!(!s.is_null());
         memcpy(buff, s as *const c_void, len as size_t);
     }
     return XML_ParseBuffer(parser, len, isFinal);
@@ -3198,17 +3015,7 @@ pub unsafe extern "C" fn XML_StopParser(
             }
         }
         _ => {
-            if 0i32 != 0 {
-            } else {
-                __assert_fail(
-                    b"0\0" as *const u8 as *const c_char,
-                    b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                        as *const u8 as *const c_char,
-                    2692u32,
-                    b"enum XML_Status XML_StopParser(XML_Parser, XML_Bool)\0" as *const u8
-                        as *const c_char,
-                );
-            };
+            assert!(0i32 != 0);
         }
     }
     return XML_STATUS_OK;
@@ -3277,17 +3084,7 @@ pub unsafe extern "C" fn XML_GetParsingStatus(
     if parser.is_null() {
         return;
     }
-    if !status.is_null() {
-    } else {
-        __assert_fail(
-            b"status != NULL\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            2741u32,
-            b"void XML_GetParsingStatus(XML_Parser, XML_ParsingStatus *)\0" as *const u8
-                as *const c_char,
-        );
-    };
+    assert!(!status.is_null());
     *status = (*parser).m_parsingStatus;
 }
 #[no_mangle]
@@ -7249,18 +7046,7 @@ unsafe extern "C" fn doProlog(
                     if myindex < 0 {
                         return XML_ERROR_NO_MEMORY;
                     }
-                    if !(*dtd).scaffIndex.is_null() {
-                    } else {
-                        __assert_fail(
-                            b"dtd->scaffIndex != NULL\0" as *const u8
-                                as *const c_char,
-                            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                                as *const u8 as *const c_char,
-                            5956u32,
-                            b"enum XML_Error doProlog(XML_Parser, const ENCODING *, const char *, const char *, int, const char *, const char **, XML_Bool, XML_Bool, enum XML_Account)\0"
-                                as *const u8 as *const c_char,
-                        );
-                    };
+                    assert!(!(*dtd).scaffIndex.is_null());
                     *(*dtd).scaffIndex.offset((*dtd).scaffLevel as isize) = myindex;
                     (*dtd).scaffLevel += 1;
                     (*(*dtd).scaffold.offset(myindex as isize)).type_0 = XML_CTYPE_SEQ;
@@ -7878,17 +7664,7 @@ unsafe extern "C" fn processEntity(
             freeEntityList = &raw mut (*parser).m_freeValueEntities;
         }
         _ => {
-            if 0i32 != 0 {
-            } else {
-                __assert_fail(
-                    b"0\0" as *const u8 as *const c_char,
-                    b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                        as *const u8 as *const c_char,
-                    6374u32,
-                    b"enum XML_Error processEntity(XML_Parser, ENTITY *, XML_Bool, enum EntityType)\0"
-                        as *const u8 as *const c_char,
-                );
-            };
+            assert!(0i32 != 0);
         }
     }
     if !(*freeEntityList).is_null() {
@@ -7990,18 +7766,7 @@ unsafe extern "C" fn internalEntityProcessor(
         return result;
     }
     entityTrackingOnClose(parser, entity, 6470);
-    if (*parser).m_openInternalEntities == openEntity {
-    } else {
-        __assert_fail(
-            b"parser->m_openInternalEntities == openEntity\0" as *const u8
-                as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                as *const u8 as *const c_char,
-            6476u32,
-            b"enum XML_Error internalEntityProcessor(XML_Parser, const char *, const char *, const char **)\0"
-                as *const u8 as *const c_char,
-        );
-    };
+    assert!((*parser).m_openInternalEntities == openEntity);
     (*entity).open = XML_FALSE;
     (*parser).m_openInternalEntities = (*(*parser).m_openInternalEntities).next;
     (*openEntity).next = (*parser).m_freeInternalEntities;
@@ -8097,18 +7862,7 @@ unsafe extern "C" fn storeAttributeValue(
                 }
             } else {
                 entityTrackingOnClose(parser, entity, 6547);
-                if (*parser).m_openAttributeEntities == openEntity {
-                } else {
-                    __assert_fail(
-                        b"parser->m_openAttributeEntities == openEntity\0" as *const u8
-                            as *const c_char,
-                        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                            as *const u8 as *const c_char,
-                        6553u32,
-                        b"enum XML_Error storeAttributeValue(XML_Parser, const ENCODING *, XML_Bool, const char *, const char *, STRING_POOL *, enum XML_Account)\0"
-                            as *const u8 as *const c_char,
-                    );
-                };
+                assert!((*parser).m_openAttributeEntities == openEntity);
                 (*entity).open = XML_FALSE;
                 (*parser).m_openAttributeEntities = (*(*parser).m_openAttributeEntities).next;
                 (*openEntity).next = (*parser).m_freeAttributeEntities;
@@ -8607,18 +8361,7 @@ unsafe extern "C" fn callStoreEntityValue(
                 }
             } else {
                 entityTrackingOnClose(parser, entity, 6998);
-                if (*parser).m_openValueEntities == openEntity {
-                } else {
-                    __assert_fail(
-                        b"parser->m_openValueEntities == openEntity\0" as *const u8
-                            as *const c_char,
-                        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                            as *const u8 as *const c_char,
-                        7004u32,
-                        b"enum XML_Error callStoreEntityValue(XML_Parser, const ENCODING *, const char *, const char *, enum XML_Account)\0"
-                            as *const u8 as *const c_char,
-                    );
-                };
+                assert!((*parser).m_openValueEntities == openEntity);
                 (*entity).open = XML_FALSE;
                 (*parser).m_openValueEntities = (*(*parser).m_openValueEntities).next;
                 (*openEntity).next = (*parser).m_freeValueEntities;
@@ -10378,16 +10121,7 @@ unsafe extern "C" fn accountingGetCurrentAmplification(mut rootParser: XML_Parse
             .wrapping_add((*rootParser).m_accounting.countBytesIndirect) as c_float
             / lenOfShortestInclude as c_float
     };
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            8480u32,
-            b"float accountingGetCurrentAmplification(XML_Parser)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     return amplificationFactor;
 }
 
@@ -10396,16 +10130,7 @@ unsafe extern "C" fn accountingReportStats(
     mut epilog: *const c_char,
 ) {
     let rootParser: XML_Parser = getRootParserOf(originParser, null_mut::<c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            8487u32,
-            b"void accountingReportStats(XML_Parser, const char *)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     if (*rootParser).m_accounting.debugLevel == 0 {
         return;
     }
@@ -10435,17 +10160,7 @@ unsafe extern "C" fn accountingReportDiff(
     mut source_line: c_int,
     mut account: XML_Account,
 ) {
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                as *const u8 as *const c_char,
-            8513u32,
-            b"void accountingReportDiff(XML_Parser, unsigned int, const char *, const char *, ptrdiff_t, int, enum XML_Account)\0"
-                as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     fprintf(
         stderr,
         b" (+%6ld bytes %s|%u, xmlparse.c:%d) %*s\"\0" as *const u8 as *const c_char,
@@ -10520,17 +10235,7 @@ unsafe extern "C" fn accountingDiffTolerated(
     }
     let mut levelsAwayFromRootParser: c_uint = 0;
     let rootParser: XML_Parser = getRootParserOf(originParser, &raw mut levelsAwayFromRootParser);
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                as *const u8 as *const c_char,
-            8566u32,
-            b"XML_Bool accountingDiffTolerated(XML_Parser, int, const char *, const char *, int, enum XML_Account)\0"
-                as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     let isDirect: c_int = (account == XML_ACCOUNT_DIRECT && originParser == rootParser) as c_int;
     let bytesMore: ptrdiff_t = after.offset_from(before);
     let additionTarget: *mut XmlBigCount = if isDirect != 0 {
@@ -10601,17 +10306,7 @@ unsafe extern "C" fn entityTrackingReportStats(
     mut action: *const c_char,
     mut sourceLine: c_int,
 ) {
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            8617u32,
-            b"void entityTrackingReportStats(XML_Parser, ENTITY *, const char *, int)\0"
-                as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     if (*rootParser).m_entity_stats.debugLevel == 0u64 {
         return;
     }
@@ -10644,16 +10339,7 @@ unsafe extern "C" fn entityTrackingOnOpen(
     mut sourceLine: c_int,
 ) {
     let rootParser: XML_Parser = getRootParserOf(originParser, null_mut::<c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            8641u32,
-            b"void entityTrackingOnOpen(XML_Parser, ENTITY *, int)\0" as *const u8 as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     (*rootParser).m_entity_stats.countEverOpened =
         (*rootParser).m_entity_stats.countEverOpened.wrapping_add(1);
     (*rootParser).m_entity_stats.currentDepth =
@@ -10678,17 +10364,7 @@ unsafe extern "C" fn entityTrackingOnClose(
     mut sourceLine: c_int,
 ) {
     let rootParser: XML_Parser = getRootParserOf(originParser, null_mut::<c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            8656u32,
-            b"void entityTrackingOnClose(XML_Parser, ENTITY *, int)\0" as *const u8
-                as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     entityTrackingReportStats(
         rootParser,
         entity,
@@ -10709,17 +10385,7 @@ unsafe extern "C" fn getRootParserOf(
         rootParser = (*rootParser).m_parentParser;
         stepsTakenUpwards = stepsTakenUpwards.wrapping_add(1);
     }
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0" as *const u8 as *const c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const c_char,
-            8672u32,
-            b"XML_Parser getRootParserOf(XML_Parser, unsigned int *)\0" as *const u8
-                as *const c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
     if !outLevelDiff.is_null() {
         *outLevelDiff = stepsTakenUpwards;
     }
@@ -10984,17 +10650,7 @@ unsafe fn unsignedCharToPrintable(mut c: c_uchar) -> *const c_char {
         254 => return b"\\xFE\0" as *const u8 as *const c_char,
         255 => return b"\\xFF\0" as *const u8 as *const c_char,
         _ => {
-            if 0 != 0 {
-            } else {
-                __assert_fail(
-                    b"0\0" as *const u8 as *const c_char,
-                    b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0"
-                        as *const u8 as *const c_char,
-                    9198u32,
-                    b"const char *unsignedCharToPrintable(unsigned char)\0" as *const u8
-                        as *const c_char,
-                );
-            };
+            assert!(0 != 0);
             return b"dead code\0" as *const u8 as *const c_char;
         }
     };
