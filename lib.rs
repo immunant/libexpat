@@ -5,7 +5,6 @@
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
 #![feature(extern_types)]
-#![feature(label_break_value)]
 #![feature(raw_ref_op)]
 #![feature(register_tool)]
 #![register_tool(c2rust)]

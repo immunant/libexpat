@@ -240,8 +240,6 @@ pub mod stdlib {
 
     pub type __off64_t = ::core::ffi::c_long;
 }
-#[macro_use]
-extern crate c2rust_bitfields;
 #[allow(unused_imports)]
 use ::libexpat;
 
