@@ -508,7 +508,7 @@ unsafe extern "C" fn prolog0(
         }
         XML_TOK_BOM => return XML_ROLE_NONE,
         XML_TOK_DECL_OPEN => {
-            if !((*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if !((*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
                 end,
@@ -559,7 +559,7 @@ unsafe extern "C" fn prolog1(
         XML_TOK_COMMENT => return XML_ROLE_COMMENT,
         XML_TOK_BOM => return XML_ROLE_NONE,
         XML_TOK_DECL_OPEN => {
-            if !((*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if !((*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
                 end,
@@ -689,13 +689,7 @@ unsafe extern "C" fn doctype1(
             return XML_ROLE_DOCTYPE_CLOSE;
         }
         XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_SYSTEM as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_SYSTEM as *const c_char) != 0 {
                 (*state).handler = Some(
                     doctype3
                         as unsafe extern "C" fn(
@@ -708,13 +702,7 @@ unsafe extern "C" fn doctype1(
                 );
                 return XML_ROLE_DOCTYPE_NONE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_PUBLIC as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_PUBLIC as *const c_char) != 0 {
                 (*state).handler = Some(
                     doctype2
                         as unsafe extern "C" fn(
@@ -864,7 +852,7 @@ unsafe extern "C" fn internalSubset(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_NONE,
         XML_TOK_DECL_OPEN => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if (*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
                 end,
@@ -883,7 +871,7 @@ unsafe extern "C" fn internalSubset(
                 );
                 return XML_ROLE_ENTITY_NONE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if (*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
                 end,
@@ -902,7 +890,7 @@ unsafe extern "C" fn internalSubset(
                 );
                 return XML_ROLE_ATTLIST_NONE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if (*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
                 end,
@@ -921,7 +909,7 @@ unsafe extern "C" fn internalSubset(
                 );
                 return XML_ROLE_ELEMENT_NONE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if (*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
                 end,
@@ -1104,13 +1092,7 @@ unsafe extern "C" fn entity2(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
         XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_SYSTEM as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_SYSTEM as *const c_char) != 0 {
                 (*state).handler = Some(
                     entity4
                         as unsafe extern "C" fn(
@@ -1123,13 +1105,7 @@ unsafe extern "C" fn entity2(
                 );
                 return XML_ROLE_ENTITY_NONE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_PUBLIC as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_PUBLIC as *const c_char) != 0 {
                 (*state).handler = Some(
                     entity3
                         as unsafe extern "C" fn(
@@ -1252,13 +1228,7 @@ unsafe extern "C" fn entity5(
             return XML_ROLE_ENTITY_COMPLETE;
         }
         XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_NDATA as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_NDATA as *const c_char) != 0 {
                 (*state).handler = Some(
                     entity6
                         as unsafe extern "C" fn(
@@ -1315,13 +1285,7 @@ unsafe extern "C" fn entity7(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
         XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_SYSTEM as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_SYSTEM as *const c_char) != 0 {
                 (*state).handler = Some(
                     entity9
                         as unsafe extern "C" fn(
@@ -1334,13 +1298,7 @@ unsafe extern "C" fn entity7(
                 );
                 return XML_ROLE_ENTITY_NONE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_PUBLIC as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_PUBLIC as *const c_char) != 0 {
                 (*state).handler = Some(
                     entity8
                         as unsafe extern "C" fn(
@@ -1504,13 +1462,7 @@ unsafe extern "C" fn notation1(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
         XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_SYSTEM as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_SYSTEM as *const c_char) != 0 {
                 (*state).handler = Some(
                     notation3
                         as unsafe extern "C" fn(
@@ -1523,13 +1475,7 @@ unsafe extern "C" fn notation1(
                 );
                 return XML_ROLE_NOTATION_NONE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_PUBLIC as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_PUBLIC as *const c_char) != 0 {
                 (*state).handler = Some(
                     notation2
                         as unsafe extern "C" fn(
@@ -1766,13 +1712,7 @@ unsafe extern "C" fn attlist2(
                     .wrapping_div(::core::mem::size_of::<*const c_char>())
                     as c_int
             {
-                if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                    enc,
-                    ptr,
-                    end,
-                    types[i as usize],
-                ) != 0
-                {
+                if (*enc).nameMatchesAscii(enc, ptr, end, types[i as usize]) != 0 {
                     (*state).handler = Some(
                         attlist8
                             as unsafe extern "C" fn(
@@ -1787,12 +1727,7 @@ unsafe extern "C" fn attlist2(
                 }
                 i += 1;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_NOTATION as *const c_char,
-            ) != 0
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_NOTATION as *const c_char) != 0
             {
                 (*state).handler = Some(
                     attlist5
@@ -1996,7 +1931,7 @@ unsafe extern "C" fn attlist8(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
         XML_TOK_POUND_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if (*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((*enc).minBytesPerChar as isize),
                 end,
@@ -2015,7 +1950,7 @@ unsafe extern "C" fn attlist8(
                 );
                 return XML_ROLE_IMPLIED_ATTRIBUTE_VALUE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if (*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((*enc).minBytesPerChar as isize),
                 end,
@@ -2034,7 +1969,7 @@ unsafe extern "C" fn attlist8(
                 );
                 return XML_ROLE_REQUIRED_ATTRIBUTE_VALUE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if (*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((*enc).minBytesPerChar as isize),
                 end,
@@ -2136,13 +2071,7 @@ unsafe extern "C" fn element1(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
         XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_EMPTY as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_EMPTY as *const c_char) != 0 {
                 (*state).handler = Some(
                     declClose
                         as unsafe extern "C" fn(
@@ -2156,13 +2085,7 @@ unsafe extern "C" fn element1(
                 (*state).role_none = XML_ROLE_ELEMENT_NONE;
                 return XML_ROLE_CONTENT_EMPTY;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_ANY as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_ANY as *const c_char) != 0 {
                 (*state).handler = Some(
                     declClose
                         as unsafe extern "C" fn(
@@ -2206,7 +2129,7 @@ unsafe extern "C" fn element2(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
         XML_TOK_POUND_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            if (*enc).nameMatchesAscii(
                 enc,
                 ptr.offset((*enc).minBytesPerChar as isize),
                 end,
@@ -2608,13 +2531,7 @@ unsafe extern "C" fn condSect0(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_NONE,
         XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_INCLUDE as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_INCLUDE as *const c_char) != 0 {
                 (*state).handler = Some(
                     condSect1
                         as unsafe extern "C" fn(
@@ -2627,13 +2544,7 @@ unsafe extern "C" fn condSect0(
                 );
                 return XML_ROLE_NONE;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_IGNORE as *const c_char,
-            ) != 0
-            {
+            if (*enc).nameMatchesAscii(enc, ptr, end, &raw const KW_IGNORE as *const c_char) != 0 {
                 (*state).handler = Some(
                     condSect2
                         as unsafe extern "C" fn(
