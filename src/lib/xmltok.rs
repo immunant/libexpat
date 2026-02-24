@@ -211,7 +211,7 @@ pub struct ATTRIBUTE {
 
 pub type ENCODING = crate::src::lib::xmltok::encoding;
 
-pub type SCANNER = unsafe extern "C" fn(
+pub type SCANNER = unsafe fn(
     *const crate::src::lib::xmltok::ENCODING,
     *const ::core::ffi::c_char,
     *const ::core::ffi::c_char,
@@ -231,55 +231,55 @@ pub const XML_CONVERT_OUTPUT_EXHAUSTED: crate::src::lib::xmltok::XML_Convert_Res
 pub struct encoding {
     pub scanners: [crate::src::lib::xmltok::SCANNER; 4],
     pub literalScanners: [crate::src::lib::xmltok::SCANNER; 2],
-    pub nameMatchesAscii: unsafe extern "C" fn(
+    pub nameMatchesAscii: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int,
-    pub nameLength: unsafe extern "C" fn(
+    pub nameLength: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int,
-    pub skipS: unsafe extern "C" fn(
+    pub skipS: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char,
-    pub getAtts: unsafe extern "C" fn(
+    pub getAtts: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *const ::core::ffi::c_char,
         ::core::ffi::c_int,
         *mut crate::src::lib::xmltok::ATTRIBUTE,
     ) -> ::core::ffi::c_int,
-    pub charRefNumber: unsafe extern "C" fn(
+    pub charRefNumber: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int,
-    pub predefinedEntityName: unsafe extern "C" fn(
+    pub predefinedEntityName: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int,
-    pub updatePosition: unsafe extern "C" fn(
+    pub updatePosition: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
         *mut crate::src::lib::xmltok::POSITION,
     ) -> (),
-    pub isPublicId: unsafe extern "C" fn(
+    pub isPublicId: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
         *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int,
-    pub utf8Convert: unsafe extern "C" fn(
+    pub utf8Convert: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *mut *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
         *mut *mut ::core::ffi::c_char,
         *const ::core::ffi::c_char,
     ) -> crate::src::lib::xmltok::XML_Convert_Result,
-    pub utf16Convert: unsafe extern "C" fn(
+    pub utf16Convert: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
         *mut *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
@@ -404,7 +404,7 @@ pub type CONVERTER = Option<
 
 pub mod xmltok_impl_c {
 
-    pub(crate) unsafe extern "C" fn normal_scanComment(
+    pub(crate) unsafe fn normal_scanComment(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -498,7 +498,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanDecl(
+    pub(crate) unsafe fn normal_scanDecl(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -565,7 +565,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_checkPiTarget(
+    pub(crate) unsafe fn normal_checkPiTarget(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -606,7 +606,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanPi(
+    pub(crate) unsafe fn normal_scanPi(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -887,7 +887,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanCdataSection(
+    pub(crate) unsafe fn normal_scanCdataSection(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -918,7 +918,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_cdataSectionTok(
+    pub(crate) unsafe fn normal_cdataSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1086,7 +1086,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanEndTag(
+    pub(crate) unsafe fn normal_scanEndTag(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1295,7 +1295,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanHexCharRef(
+    pub(crate) unsafe fn normal_scanHexCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1333,7 +1333,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanCharRef(
+    pub(crate) unsafe fn normal_scanCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1374,7 +1374,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanRef(
+    pub(crate) unsafe fn normal_scanRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1559,7 +1559,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanAtts(
+    pub(crate) unsafe fn normal_scanAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -2053,7 +2053,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanLt(
+    pub(crate) unsafe fn normal_scanLt(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -2505,7 +2505,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_contentTok(
+    pub(crate) unsafe fn normal_contentTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -2714,7 +2714,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanPercent(
+    pub(crate) unsafe fn normal_scanPercent(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -2900,7 +2900,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanPoundName(
+    pub(crate) unsafe fn normal_scanPoundName(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3082,7 +3082,7 @@ pub mod xmltok_impl_c {
         return -crate::src::lib::xmltok::XML_TOK_POUND_NAME_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_scanLit(
+    pub(crate) unsafe fn normal_scanLit(
         mut open: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -3168,7 +3168,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_prologTok(
+    pub(crate) unsafe fn normal_prologTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3700,7 +3700,7 @@ pub mod xmltok_impl_c {
         return -tok;
     }
 
-    pub(crate) unsafe extern "C" fn normal_attributeValueTok(
+    pub(crate) unsafe fn normal_attributeValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3785,7 +3785,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_entityValueTok(
+    pub(crate) unsafe fn normal_entityValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3871,7 +3871,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_ignoreSectionTok(
+    pub(crate) unsafe fn normal_ignoreSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3988,7 +3988,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_isPublicId(
+    pub(crate) unsafe fn normal_isPublicId(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4038,7 +4038,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub(crate) unsafe extern "C" fn normal_getAtts(
+    pub(crate) unsafe fn normal_getAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut attsMax: ::core::ffi::c_int,
@@ -4169,7 +4169,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn normal_charRefNumber(
+    pub(crate) unsafe fn normal_charRefNumber(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -4232,7 +4232,7 @@ pub mod xmltok_impl_c {
         return checkCharRefNumber(result);
     }
 
-    pub(crate) unsafe extern "C" fn normal_predefinedEntityName(
+    pub(crate) unsafe fn normal_predefinedEntityName(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4290,7 +4290,7 @@ pub mod xmltok_impl_c {
         return 0;
     }
 
-    pub(crate) unsafe extern "C" fn normal_nameMatchesAscii(
+    pub(crate) unsafe fn normal_nameMatchesAscii(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
@@ -4309,7 +4309,7 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub(crate) unsafe extern "C" fn normal_nameLength(
+    pub(crate) unsafe fn normal_nameLength(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -4337,7 +4337,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn normal_skipS(
+    pub(crate) unsafe fn normal_skipS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
@@ -4353,7 +4353,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn normal_updatePosition(
+    pub(crate) unsafe fn normal_updatePosition(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4402,7 +4402,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanComment(
+    pub(crate) unsafe fn little2_scanComment(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4480,7 +4480,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanDecl(
+    pub(crate) unsafe fn little2_scanDecl(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4555,7 +4555,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_checkPiTarget(
+    pub(crate) unsafe fn little2_checkPiTarget(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4608,7 +4608,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanPi(
+    pub(crate) unsafe fn little2_scanPi(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4842,7 +4842,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanCdataSection(
+    pub(crate) unsafe fn little2_scanCdataSection(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4876,7 +4876,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_cdataSectionTok(
+    pub(crate) unsafe fn little2_cdataSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5018,7 +5018,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanEndTag(
+    pub(crate) unsafe fn little2_scanEndTag(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5203,7 +5203,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanHexCharRef(
+    pub(crate) unsafe fn little2_scanHexCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5246,7 +5246,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanCharRef(
+    pub(crate) unsafe fn little2_scanCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5294,7 +5294,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanRef(
+    pub(crate) unsafe fn little2_scanRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5452,7 +5452,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanAtts(
+    pub(crate) unsafe fn little2_scanAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5893,7 +5893,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanLt(
+    pub(crate) unsafe fn little2_scanLt(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -6292,7 +6292,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_contentTok(
+    pub(crate) unsafe fn little2_contentTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -6481,7 +6481,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanPercent(
+    pub(crate) unsafe fn little2_scanPercent(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -6640,7 +6640,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanPoundName(
+    pub(crate) unsafe fn little2_scanPoundName(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -6795,7 +6795,7 @@ pub mod xmltok_impl_c {
         return -crate::src::lib::xmltok::XML_TOK_POUND_NAME_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_scanLit(
+    pub(crate) unsafe fn little2_scanLit(
         mut open: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -6863,7 +6863,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_prologTok(
+    pub(crate) unsafe fn little2_prologTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7337,7 +7337,7 @@ pub mod xmltok_impl_c {
         return -tok;
     }
 
-    pub(crate) unsafe extern "C" fn little2_attributeValueTok(
+    pub(crate) unsafe fn little2_attributeValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7428,7 +7428,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_entityValueTok(
+    pub(crate) unsafe fn little2_entityValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7520,7 +7520,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_ignoreSectionTok(
+    pub(crate) unsafe fn little2_ignoreSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7624,7 +7624,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_isPublicId(
+    pub(crate) unsafe fn little2_isPublicId(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7691,7 +7691,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub(crate) unsafe extern "C" fn little2_getAtts(
+    pub(crate) unsafe fn little2_getAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut attsMax: ::core::ffi::c_int,
@@ -7839,7 +7839,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn little2_charRefNumber(
+    pub(crate) unsafe fn little2_charRefNumber(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -7915,7 +7915,7 @@ pub mod xmltok_impl_c {
         return checkCharRefNumber(result);
     }
 
-    pub(crate) unsafe extern "C" fn little2_predefinedEntityName(
+    pub(crate) unsafe fn little2_predefinedEntityName(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8003,7 +8003,7 @@ pub mod xmltok_impl_c {
         return 0;
     }
 
-    pub(crate) unsafe extern "C" fn little2_nameMatchesAscii(
+    pub(crate) unsafe fn little2_nameMatchesAscii(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
@@ -8024,7 +8024,7 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub(crate) unsafe extern "C" fn little2_nameLength(
+    pub(crate) unsafe fn little2_nameLength(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -8055,7 +8055,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn little2_skipS(
+    pub(crate) unsafe fn little2_skipS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
@@ -8074,7 +8074,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn little2_updatePosition(
+    pub(crate) unsafe fn little2_updatePosition(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8129,7 +8129,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanComment(
+    pub(crate) unsafe fn big2_scanComment(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8208,7 +8208,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanDecl(
+    pub(crate) unsafe fn big2_scanDecl(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8284,7 +8284,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_checkPiTarget(
+    pub(crate) unsafe fn big2_checkPiTarget(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8337,7 +8337,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanPi(
+    pub(crate) unsafe fn big2_scanPi(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8572,7 +8572,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanCdataSection(
+    pub(crate) unsafe fn big2_scanCdataSection(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8606,7 +8606,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_cdataSectionTok(
+    pub(crate) unsafe fn big2_cdataSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8750,7 +8750,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanEndTag(
+    pub(crate) unsafe fn big2_scanEndTag(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8936,7 +8936,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanHexCharRef(
+    pub(crate) unsafe fn big2_scanHexCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8981,7 +8981,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanCharRef(
+    pub(crate) unsafe fn big2_scanCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -9031,7 +9031,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanRef(
+    pub(crate) unsafe fn big2_scanRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -9190,7 +9190,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanAtts(
+    pub(crate) unsafe fn big2_scanAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -9632,7 +9632,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanLt(
+    pub(crate) unsafe fn big2_scanLt(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -10033,7 +10033,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_contentTok(
+    pub(crate) unsafe fn big2_contentTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -10224,7 +10224,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanPercent(
+    pub(crate) unsafe fn big2_scanPercent(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -10384,7 +10384,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanPoundName(
+    pub(crate) unsafe fn big2_scanPoundName(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -10540,7 +10540,7 @@ pub mod xmltok_impl_c {
         return -crate::src::lib::xmltok::XML_TOK_POUND_NAME_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_scanLit(
+    pub(crate) unsafe fn big2_scanLit(
         mut open: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -10609,7 +10609,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_prologTok(
+    pub(crate) unsafe fn big2_prologTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11086,7 +11086,7 @@ pub mod xmltok_impl_c {
         return -tok;
     }
 
-    pub(crate) unsafe extern "C" fn big2_attributeValueTok(
+    pub(crate) unsafe fn big2_attributeValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11178,7 +11178,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_entityValueTok(
+    pub(crate) unsafe fn big2_entityValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11271,7 +11271,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_ignoreSectionTok(
+    pub(crate) unsafe fn big2_ignoreSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11376,7 +11376,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_isPublicId(
+    pub(crate) unsafe fn big2_isPublicId(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11444,7 +11444,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub(crate) unsafe extern "C" fn big2_getAtts(
+    pub(crate) unsafe fn big2_getAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut attsMax: ::core::ffi::c_int,
@@ -11593,7 +11593,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn big2_charRefNumber(
+    pub(crate) unsafe fn big2_charRefNumber(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -11669,7 +11669,7 @@ pub mod xmltok_impl_c {
         return checkCharRefNumber(result);
     }
 
-    pub(crate) unsafe extern "C" fn big2_predefinedEntityName(
+    pub(crate) unsafe fn big2_predefinedEntityName(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11757,7 +11757,7 @@ pub mod xmltok_impl_c {
         return 0;
     }
 
-    pub(crate) unsafe extern "C" fn big2_nameMatchesAscii(
+    pub(crate) unsafe fn big2_nameMatchesAscii(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
@@ -11778,7 +11778,7 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub(crate) unsafe extern "C" fn big2_nameLength(
+    pub(crate) unsafe fn big2_nameLength(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -11810,7 +11810,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn big2_skipS(
+    pub(crate) unsafe fn big2_skipS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
@@ -11830,7 +11830,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe extern "C" fn big2_updatePosition(
+    pub(crate) unsafe fn big2_updatePosition(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11895,19 +11895,17 @@ pub mod xmltok_impl_c {
 }
 
 pub mod xmltok_ns_c {
-    pub(crate) unsafe extern "C" fn XmlGetUtf8InternalEncoding(
-    ) -> *const crate::src::lib::xmltok::ENCODING {
+    pub(crate) unsafe fn XmlGetUtf8InternalEncoding() -> *const crate::src::lib::xmltok::ENCODING {
         return &raw const internal_utf8_encoding.enc;
     }
-    pub(crate) unsafe extern "C" fn XmlGetUtf16InternalEncoding(
-    ) -> *const crate::src::lib::xmltok::ENCODING {
+    pub(crate) unsafe fn XmlGetUtf16InternalEncoding() -> *const crate::src::lib::xmltok::ENCODING {
         return &raw const internal_little2_encoding.enc;
     }
 
     pub static mut encodings: [*const crate::src::lib::xmltok::ENCODING; 7] =
         [::core::ptr::null::<crate::src::lib::xmltok::ENCODING>(); 7];
 
-    pub(crate) unsafe extern "C" fn initScanProlog(
+    pub(crate) unsafe fn initScanProlog(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11923,7 +11921,7 @@ pub mod xmltok_ns_c {
         );
     }
 
-    pub(crate) unsafe extern "C" fn initScanContent(
+    pub(crate) unsafe fn initScanContent(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11938,7 +11936,7 @@ pub mod xmltok_ns_c {
             nextTokPtr,
         );
     }
-    pub(crate) unsafe extern "C" fn XmlInitEncoding(
+    pub(crate) unsafe fn XmlInitEncoding(
         mut p: *mut crate::src::lib::xmltok::INIT_ENCODING,
         mut encPtr: *mut *const crate::src::lib::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
@@ -11949,21 +11947,21 @@ pub mod xmltok_ns_c {
         }
         (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
         (*p).initEnc.scanners[crate::src::lib::xmltok::XML_PROLOG_STATE as usize] = initScanProlog
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const crate::src::lib::xmltok::ENCODING,
                 *const ::core::ffi::c_char,
                 *const ::core::ffi::c_char,
                 *mut *const ::core::ffi::c_char,
             ) -> ::core::ffi::c_int;
         (*p).initEnc.scanners[crate::src::lib::xmltok::XML_CONTENT_STATE as usize] = initScanContent
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const crate::src::lib::xmltok::ENCODING,
                 *const ::core::ffi::c_char,
                 *const ::core::ffi::c_char,
                 *mut *const ::core::ffi::c_char,
             ) -> ::core::ffi::c_int;
         (*p).initEnc.updatePosition = initUpdatePosition
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const crate::src::lib::xmltok::ENCODING,
                 *const ::core::ffi::c_char,
                 *const ::core::ffi::c_char,
@@ -11974,7 +11972,7 @@ pub mod xmltok_ns_c {
         return 1;
     }
 
-    pub(crate) unsafe extern "C" fn findEncoding(
+    pub(crate) unsafe fn findEncoding(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -12012,7 +12010,7 @@ pub mod xmltok_ns_c {
         }
         return encodings[i as usize];
     }
-    pub(crate) unsafe extern "C" fn XmlParseXmlDecl(
+    pub(crate) unsafe fn XmlParseXmlDecl(
         mut isGeneralTextEntity: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -12027,12 +12025,11 @@ pub mod xmltok_ns_c {
         return doParseXmlDecl(
             Some(
                 findEncoding
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *const crate::src::lib::xmltok::ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::lib::xmltok::ENCODING,
+                    ) -> *const crate::src::lib::xmltok::ENCODING,
             ),
             isGeneralTextEntity,
             enc,
@@ -12046,19 +12043,19 @@ pub mod xmltok_ns_c {
             standalone,
         );
     }
-    pub(crate) unsafe extern "C" fn XmlGetUtf8InternalEncodingNS(
-    ) -> *const crate::src::lib::xmltok::ENCODING {
+    pub(crate) unsafe fn XmlGetUtf8InternalEncodingNS() -> *const crate::src::lib::xmltok::ENCODING
+    {
         return &raw const internal_utf8_encoding_ns.enc;
     }
-    pub(crate) unsafe extern "C" fn XmlGetUtf16InternalEncodingNS(
-    ) -> *const crate::src::lib::xmltok::ENCODING {
+    pub(crate) unsafe fn XmlGetUtf16InternalEncodingNS() -> *const crate::src::lib::xmltok::ENCODING
+    {
         return &raw const internal_little2_encoding_ns.enc;
     }
 
     pub static mut encodingsNS: [*const crate::src::lib::xmltok::ENCODING; 7] =
         [::core::ptr::null::<crate::src::lib::xmltok::ENCODING>(); 7];
 
-    pub(crate) unsafe extern "C" fn initScanPrologNS(
+    pub(crate) unsafe fn initScanPrologNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -12074,7 +12071,7 @@ pub mod xmltok_ns_c {
         );
     }
 
-    pub(crate) unsafe extern "C" fn initScanContentNS(
+    pub(crate) unsafe fn initScanContentNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -12089,7 +12086,7 @@ pub mod xmltok_ns_c {
             nextTokPtr,
         );
     }
-    pub(crate) unsafe extern "C" fn XmlInitEncodingNS(
+    pub(crate) unsafe fn XmlInitEncodingNS(
         mut p: *mut crate::src::lib::xmltok::INIT_ENCODING,
         mut encPtr: *mut *const crate::src::lib::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
@@ -12100,7 +12097,7 @@ pub mod xmltok_ns_c {
         }
         (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
         (*p).initEnc.scanners[crate::src::lib::xmltok::XML_PROLOG_STATE as usize] = initScanPrologNS
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const crate::src::lib::xmltok::ENCODING,
                 *const ::core::ffi::c_char,
                 *const ::core::ffi::c_char,
@@ -12108,14 +12105,14 @@ pub mod xmltok_ns_c {
             ) -> ::core::ffi::c_int;
         (*p).initEnc.scanners[crate::src::lib::xmltok::XML_CONTENT_STATE as usize] =
             initScanContentNS
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
                     *mut *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int;
         (*p).initEnc.updatePosition = initUpdatePosition
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const crate::src::lib::xmltok::ENCODING,
                 *const ::core::ffi::c_char,
                 *const ::core::ffi::c_char,
@@ -12126,7 +12123,7 @@ pub mod xmltok_ns_c {
         return 1;
     }
 
-    pub(crate) unsafe extern "C" fn findEncodingNS(
+    pub(crate) unsafe fn findEncodingNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -12164,7 +12161,7 @@ pub mod xmltok_ns_c {
         }
         return encodingsNS[i as usize];
     }
-    pub(crate) unsafe extern "C" fn XmlParseXmlDeclNS(
+    pub(crate) unsafe fn XmlParseXmlDeclNS(
         mut isGeneralTextEntity: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -12179,12 +12176,11 @@ pub mod xmltok_ns_c {
         return doParseXmlDecl(
             Some(
                 findEncodingNS
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *const crate::src::lib::xmltok::ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::lib::xmltok::ENCODING,
+                    ) -> *const crate::src::lib::xmltok::ENCODING,
             ),
             isGeneralTextEntity,
             enc,
@@ -12453,15 +12449,15 @@ pub(crate) use xmltok_ns_c::encodingsNS;
 pub struct normal_encoding {
     pub enc: ENCODING,
     pub type_0: [c_uchar; 256],
-    pub isName2: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isName3: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isName4: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt2: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt3: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt4: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isInvalid2: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isInvalid3: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isInvalid4: Option<unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isName2: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isName3: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isName4: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt2: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt3: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt4: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isInvalid2: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isInvalid3: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isInvalid4: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
 }
 
 pub const UTF8_cval2: C2RustUnnamed_8 = 192;
@@ -12510,11 +12506,11 @@ pub type C2RustUnnamed_9 = c_int;
 
 pub const US_ASCII_ENC: C2RustUnnamed_9 = 1;
 
-unsafe extern "C" fn isNever(mut _enc: *const ENCODING, mut _p: *const c_char) -> c_int {
+unsafe fn isNever(mut _enc: *const ENCODING, mut _p: *const c_char) -> c_int {
     return 0;
 }
 
-unsafe extern "C" fn utf8_isName2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isName2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((namePages[(*(p as *const c_uchar).offset(0) as c_int >> 2 & 7) as usize]
         as c_int)
         << 3)
@@ -12523,7 +12519,7 @@ unsafe extern "C" fn utf8_isName2(mut _enc: *const ENCODING, mut p: *const c_cha
         & (1) << (*(p as *const c_uchar).offset(1) as c_int & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn utf8_isName3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isName3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((namePages[(((*(p as *const c_uchar).offset(0) as c_int & 0xf) << 4)
         + (*(p as *const c_uchar).offset(1) as c_int >> 2 & 0xf))
         as usize] as c_int)
@@ -12533,7 +12529,7 @@ unsafe extern "C" fn utf8_isName3(mut _enc: *const ENCODING, mut p: *const c_cha
         & (1) << (*(p as *const c_uchar).offset(2) as c_int & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn utf8_isNmstrt2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isNmstrt2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((nmstrtPages
         [(*(p as *const c_uchar).offset(0) as c_int >> 2 & 7) as usize]
         as c_int)
@@ -12543,7 +12539,7 @@ unsafe extern "C" fn utf8_isNmstrt2(mut _enc: *const ENCODING, mut p: *const c_c
         & (1) << (*(p as *const c_uchar).offset(1) as c_int & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn utf8_isNmstrt3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isNmstrt3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((nmstrtPages[(((*(p as *const c_uchar).offset(0) as c_int & 0xf) << 4)
         + (*(p as *const c_uchar).offset(1) as c_int >> 2 & 0xf))
         as usize] as c_int)
@@ -12553,13 +12549,13 @@ unsafe extern "C" fn utf8_isNmstrt3(mut _enc: *const ENCODING, mut p: *const c_c
         & (1) << (*(p as *const c_uchar).offset(2) as c_int & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn utf8_isInvalid2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isInvalid2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
     return ((*(p as *const c_uchar) as c_int) < 0xc2
         || *(p as *const c_uchar).offset(1) as c_int & 0x80 == 0
         || *(p as *const c_uchar).offset(1) as c_int & 0xc0 == 0xc0) as c_int;
 }
 
-unsafe extern "C" fn utf8_isInvalid3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isInvalid3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
     return (*(p as *const c_uchar).offset(2) as c_int & 0x80 == 0
         || (if *(p as *const c_uchar) as c_int == 0xef
             && *(p as *const c_uchar).offset(1) as c_int == 0xbf
@@ -12581,7 +12577,7 @@ unsafe extern "C" fn utf8_isInvalid3(mut _enc: *const ENCODING, mut p: *const c_
         }) != 0) as c_int;
 }
 
-unsafe extern "C" fn utf8_isInvalid4(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isInvalid4(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
     return (*(p as *const c_uchar).offset(3) as c_int & 0x80 == 0
         || *(p as *const c_uchar).offset(3) as c_int & 0xc0 == 0xc0
         || *(p as *const c_uchar).offset(2) as c_int & 0x80 == 0
@@ -12598,7 +12594,7 @@ unsafe extern "C" fn utf8_isInvalid4(mut _enc: *const ENCODING, mut p: *const c_
                 }) != 0) as c_int
         }) != 0) as c_int;
 }
-pub(crate) unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
+pub(crate) unsafe fn _INTERNAL_trim_to_complete_utf8_characters(
     mut from: *const c_char,
     mut fromLimRef: *mut *const c_char,
 ) {
@@ -12638,14 +12634,14 @@ pub(crate) unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
 
 #[cfg(feature = "expat_test_shims")]
 #[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
-unsafe extern "C" fn internal_trim_to_complete_utf8_characters_test_shim(
+unsafe fn internal_trim_to_complete_utf8_characters_test_shim(
     from: *const c_char,
     fromLimRef: *mut *const c_char,
 ) {
     _INTERNAL_trim_to_complete_utf8_characters(from, fromLimRef);
 }
 
-unsafe extern "C" fn utf8_toUtf8(
+unsafe fn utf8_toUtf8(
     mut _enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -12682,7 +12678,7 @@ unsafe extern "C" fn utf8_toUtf8(
     };
 }
 
-unsafe extern "C" fn utf8_toUtf16(
+unsafe fn utf8_toUtf16(
     mut enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -12777,28 +12773,28 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -12807,14 +12803,14 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -12822,38 +12818,25 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: normal_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: utf8_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -12861,7 +12844,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: utf8_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -13130,53 +13113,43 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(
-        utf8_isNmstrt2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isNmstrt3: Some(
-        utf8_isNmstrt3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isNmstrt4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(
-        utf8_isInvalid2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isInvalid3: Some(
-        utf8_isInvalid3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isInvalid4: Some(
-        utf8_isInvalid4 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
+    isName2: Some(utf8_isName2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName3: Some(utf8_isName3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
 };
 
 static mut utf8_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -13185,14 +13158,14 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -13200,38 +13173,25 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: normal_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: utf8_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -13239,7 +13199,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: utf8_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -13508,53 +13468,43 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(
-        utf8_isNmstrt2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isNmstrt3: Some(
-        utf8_isNmstrt3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isNmstrt4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(
-        utf8_isInvalid2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isInvalid3: Some(
-        utf8_isInvalid3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isInvalid4: Some(
-        utf8_isInvalid4 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
+    isName2: Some(utf8_isName2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName3: Some(utf8_isName3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
 };
 
 static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -13563,14 +13513,14 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -13578,38 +13528,25 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: normal_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: utf8_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -13617,7 +13554,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: utf8_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -13886,53 +13823,43 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(
-        utf8_isNmstrt2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isNmstrt3: Some(
-        utf8_isNmstrt3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isNmstrt4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(
-        utf8_isInvalid2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isInvalid3: Some(
-        utf8_isInvalid3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isInvalid4: Some(
-        utf8_isInvalid4 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
+    isName2: Some(utf8_isName2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName3: Some(utf8_isName3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
 };
 
 static mut internal_utf8_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -13941,14 +13868,14 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -13956,38 +13883,25 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: normal_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: utf8_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -13995,7 +13909,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: utf8_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -14264,28 +14178,18 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(
-        utf8_isNmstrt2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isNmstrt3: Some(
-        utf8_isNmstrt3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isNmstrt4: Some(isNever as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(
-        utf8_isInvalid2 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isInvalid3: Some(
-        utf8_isInvalid3 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
-    isInvalid4: Some(
-        utf8_isInvalid4 as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-    ),
+    isName2: Some(utf8_isName2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName3: Some(utf8_isName3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isNmstrt4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
 };
 
-unsafe extern "C" fn latin1_toUtf8(
+unsafe fn latin1_toUtf8(
     mut _enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -14322,7 +14226,7 @@ unsafe extern "C" fn latin1_toUtf8(
     }
 }
 
-unsafe extern "C" fn latin1_toUtf16(
+unsafe fn latin1_toUtf16(
     mut _enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -14347,28 +14251,28 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -14377,14 +14281,14 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -14392,38 +14296,25 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: normal_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: latin1_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -14431,7 +14322,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: latin1_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -14715,28 +14606,28 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -14745,14 +14636,14 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -14760,38 +14651,25 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: normal_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: latin1_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -14799,7 +14677,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: latin1_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -15079,7 +14957,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-unsafe extern "C" fn ascii_toUtf8(
+unsafe fn ascii_toUtf8(
     mut _enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -15104,28 +14982,28 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -15134,14 +15012,14 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -15149,38 +15027,25 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: normal_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: ascii_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -15188,7 +15053,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: latin1_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -15472,28 +15337,28 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -15502,14 +15367,14 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             normal_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -15517,38 +15382,25 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: normal_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: ascii_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -15556,7 +15408,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: latin1_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -15836,7 +15688,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-unsafe extern "C" fn unicode_byte_type(mut hi: c_char, mut lo: c_char) -> c_int {
+unsafe fn unicode_byte_type(mut hi: c_char, mut lo: c_char) -> c_int {
     match hi as c_uchar as c_int {
         216 | 217 | 218 | 219 => return BT_LEAD4 as c_int,
         220 | 221 | 222 | 223 => return BT_TRAIL as c_int,
@@ -15849,7 +15701,7 @@ unsafe extern "C" fn unicode_byte_type(mut hi: c_char, mut lo: c_char) -> c_int 
     return BT_NONASCII as c_int;
 }
 
-unsafe extern "C" fn little2_toUtf8(
+unsafe fn little2_toUtf8(
     mut _enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -15953,7 +15805,7 @@ unsafe extern "C" fn little2_toUtf8(
     };
 }
 
-unsafe extern "C" fn little2_toUtf16(
+unsafe fn little2_toUtf16(
     mut _enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -15982,7 +15834,7 @@ unsafe extern "C" fn little2_toUtf16(
     };
 }
 
-unsafe extern "C" fn big2_toUtf8(
+unsafe fn big2_toUtf8(
     mut _enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -16086,7 +15938,7 @@ unsafe extern "C" fn big2_toUtf8(
     };
 }
 
-unsafe extern "C" fn big2_toUtf16(
+unsafe fn big2_toUtf16(
     mut _enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -16119,28 +15971,28 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -16149,14 +16001,14 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             little2_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -16164,38 +16016,25 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: little2_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: little2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: little2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: little2_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: little2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: little2_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: little2_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: little2_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: little2_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -16203,7 +16042,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: little2_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -16487,28 +16326,28 @@ static mut little2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -16517,14 +16356,14 @@ static mut little2_encoding: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             little2_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -16532,38 +16371,25 @@ static mut little2_encoding: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: little2_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: little2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: little2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: little2_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: little2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: little2_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: little2_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: little2_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: little2_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -16571,7 +16397,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: little2_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -16855,28 +16681,28 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -16885,14 +16711,14 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             little2_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -16900,38 +16726,25 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: little2_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: little2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: little2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: little2_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: little2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: little2_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: little2_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: little2_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: little2_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -16939,7 +16752,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: little2_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -17223,28 +17036,28 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -17253,14 +17066,14 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             little2_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             little2_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -17268,38 +17081,25 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: little2_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: little2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: little2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: little2_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: little2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: little2_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: little2_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: little2_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: little2_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -17307,7 +17107,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: little2_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -17591,28 +17391,28 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             big2_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             big2_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             big2_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             big2_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -17621,14 +17421,14 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             big2_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             big2_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -17636,37 +17436,25 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: big2_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: big2_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: big2_skipS as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: big2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: big2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: big2_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: big2_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: big2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: big2_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: big2_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: big2_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: big2_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -17674,7 +17462,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: big2_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -17958,28 +17746,28 @@ static mut big2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             big2_prologTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             big2_contentTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             big2_cdataSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             big2_ignoreSectionTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -17988,14 +17776,14 @@ static mut big2_encoding: normal_encoding = normal_encoding {
         ],
         literalScanners: [
             big2_attributeValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
                     *mut *const c_char,
                 ) -> c_int,
             big2_entityValueTok
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     *const ENCODING,
                     *const c_char,
                     *const c_char,
@@ -18003,37 +17791,25 @@ static mut big2_encoding: normal_encoding = normal_encoding {
                 ) -> c_int,
         ],
         nameMatchesAscii: big2_nameMatchesAscii
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *const c_char,
-            ) -> c_int,
-        nameLength: big2_nameLength
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: big2_skipS as unsafe extern "C" fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: big2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+        skipS: big2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
         getAtts: big2_getAtts
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: big2_charRefNumber
-            as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: big2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
         predefinedEntityName: big2_predefinedEntityName
-            as unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: big2_updatePosition
-            as unsafe extern "C" fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut POSITION,
-            ) -> (),
+            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: big2_isPublicId
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *const c_char,
                 *const c_char,
                 *mut *const c_char,
             ) -> c_int,
         utf8Convert: big2_toUtf8
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -18041,7 +17817,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
                 *const c_char,
             ) -> XML_Convert_Result,
         utf16Convert: big2_toUtf16
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *const ENCODING,
                 *mut *const c_char,
                 *const c_char,
@@ -18321,7 +18097,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-unsafe extern "C" fn streqci(mut s1: *const c_char, mut s2: *const c_char) -> c_int {
+unsafe fn streqci(mut s1: *const c_char, mut s2: *const c_char) -> c_int {
     loop {
         let fresh58 = s1;
         s1 = s1.offset(1);
@@ -18345,7 +18121,7 @@ unsafe extern "C" fn streqci(mut s1: *const c_char, mut s2: *const c_char) -> c_
     return 1;
 }
 
-unsafe extern "C" fn initUpdatePosition(
+unsafe fn initUpdatePosition(
     mut _enc: *const ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
@@ -18354,7 +18130,7 @@ unsafe extern "C" fn initUpdatePosition(
     normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
 }
 
-unsafe extern "C" fn toAscii(
+unsafe fn toAscii(
     mut enc: *const ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
@@ -18369,7 +18145,7 @@ unsafe extern "C" fn toAscii(
     };
 }
 
-unsafe extern "C" fn isSpace(mut c: c_int) -> c_int {
+unsafe fn isSpace(mut c: c_int) -> c_int {
     match c {
         32 | 13 | 10 | 9 => return 1,
         _ => {}
@@ -18377,7 +18153,7 @@ unsafe extern "C" fn isSpace(mut c: c_int) -> c_int {
     return 0;
 }
 
-unsafe extern "C" fn parsePseudoAttribute(
+unsafe fn parsePseudoAttribute(
     mut enc: *const ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
@@ -18518,9 +18294,9 @@ static mut KW_yes: [c_char; 4] = [
 
 static mut KW_no: [c_char; 3] = [ASCII_n as c_char, ASCII_o as c_char, '\0' as c_char];
 
-unsafe extern "C" fn doParseXmlDecl(
+unsafe fn doParseXmlDecl(
     mut encodingFinder: Option<
-        unsafe extern "C" fn(*const ENCODING, *const c_char, *const c_char) -> *const ENCODING,
+        unsafe fn(*const ENCODING, *const c_char, *const c_char) -> *const ENCODING,
     >,
     mut isGeneralTextEntity: c_int,
     mut enc: *const ENCODING,
@@ -18663,7 +18439,7 @@ unsafe extern "C" fn doParseXmlDecl(
     return 1;
 }
 
-unsafe extern "C" fn checkCharRefNumber(mut result: c_int) -> c_int {
+unsafe fn checkCharRefNumber(mut result: c_int) -> c_int {
     match result >> 8 {
         216 | 217 | 218 | 219 | 220 | 221 | 222 | 223 => {
             return -(1i32);
@@ -18682,7 +18458,7 @@ unsafe extern "C" fn checkCharRefNumber(mut result: c_int) -> c_int {
     }
     return result;
 }
-pub(crate) unsafe extern "C" fn XmlUtf8Encode(mut c: c_int, mut buf: *mut c_char) -> c_int {
+pub(crate) unsafe fn XmlUtf8Encode(mut c: c_int, mut buf: *mut c_char) -> c_int {
     if c < 0 {
         return 0i32;
     }
@@ -18710,10 +18486,7 @@ pub(crate) unsafe extern "C" fn XmlUtf8Encode(mut c: c_int, mut buf: *mut c_char
     }
     return 0;
 }
-pub(crate) unsafe extern "C" fn XmlUtf16Encode(
-    mut charNum: c_int,
-    mut buf: *mut c_ushort,
-) -> c_int {
+pub(crate) unsafe fn XmlUtf16Encode(mut charNum: c_int, mut buf: *mut c_ushort) -> c_int {
     if charNum < 0 {
         return 0i32;
     }
@@ -18729,11 +18502,11 @@ pub(crate) unsafe extern "C" fn XmlUtf16Encode(
     }
     return 0;
 }
-pub(crate) unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> c_int {
+pub(crate) unsafe fn XmlSizeOfUnknownEncoding() -> c_int {
     return size_of::<unknown_encoding>() as c_int;
 }
 
-unsafe extern "C" fn unknown_isName(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn unknown_isName(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
     let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
     if c & !(0xffff) != 0 {
@@ -18744,7 +18517,7 @@ unsafe extern "C" fn unknown_isName(mut enc: *const ENCODING, mut p: *const c_ch
         & (1) << (c & 0xff & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn unknown_isNmstrt(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn unknown_isNmstrt(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
     let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
     if c & !(0xffff) != 0 {
@@ -18755,13 +18528,13 @@ unsafe extern "C" fn unknown_isNmstrt(mut enc: *const ENCODING, mut p: *const c_
         & (1) << (c & 0xff & 0x1f)) as c_int;
 }
 
-unsafe extern "C" fn unknown_isInvalid(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn unknown_isInvalid(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
     let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
     return (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as c_int;
 }
 
-unsafe extern "C" fn unknown_toUtf8(
+unsafe fn unknown_toUtf8(
     mut enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -18804,7 +18577,7 @@ unsafe extern "C" fn unknown_toUtf8(
     }
 }
 
-unsafe extern "C" fn unknown_toUtf16(
+unsafe fn unknown_toUtf16(
     mut enc: *const ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
@@ -18834,7 +18607,7 @@ unsafe extern "C" fn unknown_toUtf16(
         return XML_CONVERT_COMPLETED;
     };
 }
-pub(crate) unsafe extern "C" fn XmlInitUnknownEncoding(
+pub(crate) unsafe fn XmlInitUnknownEncoding(
     mut mem: *mut c_void,
     mut table: *const c_int,
     mut convert: CONVERTER,
@@ -18924,29 +18697,26 @@ pub(crate) unsafe extern "C" fn XmlInitUnknownEncoding(
     (*e).convert = convert;
     if convert.is_some() {
         (*e).normal.isName2 =
-            Some(unknown_isName as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isName as unsafe fn(*const ENCODING, *const c_char) -> c_int);
         (*e).normal.isName3 =
-            Some(unknown_isName as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isName as unsafe fn(*const ENCODING, *const c_char) -> c_int);
         (*e).normal.isName4 =
-            Some(unknown_isName as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isName as unsafe fn(*const ENCODING, *const c_char) -> c_int);
         (*e).normal.isNmstrt2 =
-            Some(unknown_isNmstrt as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isNmstrt as unsafe fn(*const ENCODING, *const c_char) -> c_int);
         (*e).normal.isNmstrt3 =
-            Some(unknown_isNmstrt as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isNmstrt as unsafe fn(*const ENCODING, *const c_char) -> c_int);
         (*e).normal.isNmstrt4 =
-            Some(unknown_isNmstrt as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int);
-        (*e).normal.isInvalid2 = Some(
-            unknown_isInvalid as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        );
-        (*e).normal.isInvalid3 = Some(
-            unknown_isInvalid as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        );
-        (*e).normal.isInvalid4 = Some(
-            unknown_isInvalid as unsafe extern "C" fn(*const ENCODING, *const c_char) -> c_int,
-        );
+            Some(unknown_isNmstrt as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isInvalid2 =
+            Some(unknown_isInvalid as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isInvalid3 =
+            Some(unknown_isInvalid as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isInvalid4 =
+            Some(unknown_isInvalid as unsafe fn(*const ENCODING, *const c_char) -> c_int);
     }
     (*e).normal.enc.utf8Convert = unknown_toUtf8
-        as unsafe extern "C" fn(
+        as unsafe fn(
             *const ENCODING,
             *mut *const c_char,
             *const c_char,
@@ -18954,7 +18724,7 @@ pub(crate) unsafe extern "C" fn XmlInitUnknownEncoding(
             *const c_char,
         ) -> XML_Convert_Result;
     (*e).normal.enc.utf16Convert = unknown_toUtf16
-        as unsafe extern "C" fn(
+        as unsafe fn(
             *const ENCODING,
             *mut *const c_char,
             *const c_char,
@@ -19033,7 +18803,7 @@ static mut KW_UTF_16LE: [c_char; 9] = [
     '\0' as c_char,
 ];
 
-unsafe extern "C" fn getEncodingIndex(mut name: *const c_char) -> c_int {
+unsafe fn getEncodingIndex(mut name: *const c_char) -> c_int {
     static mut encodingNames: [*const c_char; 6] = unsafe {
         [
             &raw const KW_ISO_8859_1 as *const c_char,
@@ -19058,7 +18828,7 @@ unsafe extern "C" fn getEncodingIndex(mut name: *const c_char) -> c_int {
     return UNKNOWN_ENC;
 }
 
-unsafe extern "C" fn initScan(
+unsafe fn initScan(
     mut encodingTable: *const *const ENCODING,
     mut enc: *const INIT_ENCODING,
     mut state: c_int,
@@ -19175,7 +18945,7 @@ unsafe extern "C" fn initScan(
     *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as c_int as isize);
     return (**encPtr).scanners[state as usize](*encPtr, ptr, end, nextTokPtr);
 }
-pub(crate) unsafe extern "C" fn XmlInitUnknownEncodingNS(
+pub(crate) unsafe fn XmlInitUnknownEncodingNS(
     mut mem: *mut c_void,
     mut table: *const c_int,
     mut convert: CONVERTER,
@@ -19187,7 +18957,7 @@ pub(crate) unsafe extern "C" fn XmlInitUnknownEncodingNS(
     }
     return enc;
 }
-unsafe extern "C" fn run_static_initializers() {
+unsafe fn run_static_initializers() {
     encodings = [
         &raw const latin1_encoding.enc,
         &raw const ascii_encoding.enc,
@@ -19211,4 +18981,4 @@ unsafe extern "C" fn run_static_initializers() {
 #[cfg_attr(target_os = "linux", link_section = ".init_array")]
 #[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
 #[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [run_static_initializers];
+static INIT_ARRAY: [unsafe fn(); 1] = [run_static_initializers];

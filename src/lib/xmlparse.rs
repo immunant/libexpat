@@ -1,6 +1,6 @@
 pub mod siphash_h {
 
-    pub(crate) unsafe extern "C" fn sip_tokey(
+    pub(crate) unsafe fn sip_tokey(
         mut key: *mut crate::siphash_h::sipkey,
         mut src: *const ::core::ffi::c_void,
     ) -> *mut crate::siphash_h::sipkey {
@@ -40,7 +40,7 @@ pub mod siphash_h {
         return key;
     }
 
-    pub(crate) unsafe extern "C" fn sip_round(
+    pub(crate) unsafe fn sip_round(
         mut H: *mut crate::siphash_h::siphash,
         rounds: ::core::ffi::c_int,
     ) {
@@ -65,7 +65,7 @@ pub mod siphash_h {
         }
     }
 
-    pub(crate) unsafe extern "C" fn sip24_init(
+    pub(crate) unsafe fn sip24_init(
         mut H: *mut crate::siphash_h::siphash,
         mut key: *const crate::siphash_h::sipkey,
     ) -> *mut crate::siphash_h::siphash {
@@ -78,7 +78,7 @@ pub mod siphash_h {
         return H;
     }
 
-    pub(crate) unsafe extern "C" fn sip24_update(
+    pub(crate) unsafe fn sip24_update(
         mut H: *mut crate::siphash_h::siphash,
         mut src: *const ::core::ffi::c_void,
         mut len: crate::__stddef_size_t_h::size_t,
@@ -130,7 +130,7 @@ pub mod siphash_h {
         return H;
     }
 
-    pub(crate) unsafe extern "C" fn sip24_final(
+    pub(crate) unsafe fn sip24_final(
         mut H: *mut crate::siphash_h::siphash,
     ) -> crate::stdlib::uint64_t {
         let left: ::core::ffi::c_char = (*H)
@@ -216,7 +216,7 @@ pub mod siphash_h {
         return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
     }
 
-    pub(crate) unsafe extern "C" fn siphash24(
+    pub(crate) unsafe fn siphash24(
         mut src: *const ::core::ffi::c_void,
         mut len: crate::__stddef_size_t_h::size_t,
         mut key: *const crate::siphash_h::sipkey,
@@ -233,7 +233,7 @@ pub mod siphash_h {
         return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
     }
 
-    pub(crate) unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
+    pub(crate) unsafe fn sip24_valid() -> ::core::ffi::c_int {
         pub static mut vectors: [[::core::ffi::c_uchar; 8]; 64] = [
             [0x31, 0xe, 0xe, 0xdd, 0x47, 0xdb, 0x6f, 0x72],
             [0xfd, 0x67, 0xdc, 0x93, 0xc5, 0x39, 0xf8, 0x74],
@@ -5481,20 +5481,12 @@ unsafe extern "C" fn initializeEncoding(mut parser: XML_Parser) -> XML_Error {
     if if (*parser).m_ns as c_int != 0 {
         Some(
             XmlInitEncodingNS
-                as unsafe extern "C" fn(
-                    *mut INIT_ENCODING,
-                    *mut *const ENCODING,
-                    *const c_char,
-                ) -> c_int,
+                as unsafe fn(*mut INIT_ENCODING, *mut *const ENCODING, *const c_char) -> c_int,
         )
     } else {
         Some(
             XmlInitEncoding
-                as unsafe extern "C" fn(
-                    *mut INIT_ENCODING,
-                    *mut *const ENCODING,
-                    *const c_char,
-                ) -> c_int,
+                as unsafe fn(*mut INIT_ENCODING, *mut *const ENCODING, *const c_char) -> c_int,
         )
     }
     .expect("non-null function pointer")(
@@ -5528,7 +5520,7 @@ unsafe extern "C" fn processXmlDecl(
     if if (*parser).m_ns as c_int != 0 {
         Some(
             XmlParseXmlDeclNS
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     c_int,
                     *const ENCODING,
                     *const c_char,
@@ -5544,7 +5536,7 @@ unsafe extern "C" fn processXmlDecl(
     } else {
         Some(
             XmlParseXmlDecl
-                as unsafe extern "C" fn(
+                as unsafe fn(
                     c_int,
                     *const ENCODING,
                     *const c_char,
@@ -5699,7 +5691,7 @@ unsafe extern "C" fn handleUnknownEncoding(
             enc = if (*parser).m_ns as c_int != 0 {
                 Some(
                     XmlInitUnknownEncodingNS
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut c_void,
                             *const c_int,
                             CONVERTER,
@@ -5709,7 +5701,7 @@ unsafe extern "C" fn handleUnknownEncoding(
             } else {
                 Some(
                     XmlInitUnknownEncoding
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut c_void,
                             *const c_int,
                             CONVERTER,
