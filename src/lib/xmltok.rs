@@ -893,7 +893,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
+        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
             crate::ascii_h::ASCII_C as ::core::ffi::c_char,
             crate::ascii_h::ASCII_D as ::core::ffi::c_char,
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
@@ -4848,7 +4848,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
+        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
             crate::ascii_h::ASCII_C as ::core::ffi::c_char,
             crate::ascii_h::ASCII_D as ::core::ffi::c_char,
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
@@ -8578,7 +8578,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
+        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
             crate::ascii_h::ASCII_C as ::core::ffi::c_char,
             crate::ascii_h::ASCII_D as ::core::ffi::c_char,
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
@@ -11902,17 +11902,15 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding.enc;
     }
 
-    pub static encodings: [&crate::src::lib::xmltok::ENCODING; 7] = unsafe {
-        [
-            &crate::src::lib::xmltok::latin1_encoding.enc,
-            &crate::src::lib::xmltok::ascii_encoding.enc,
-            &crate::src::lib::xmltok::utf8_encoding.enc,
-            &crate::src::lib::xmltok::big2_encoding.enc,
-            &crate::src::lib::xmltok::big2_encoding.enc,
-            &crate::src::lib::xmltok::little2_encoding.enc,
-            &crate::src::lib::xmltok::utf8_encoding.enc,
-        ]
-    };
+    pub static encodings: [&crate::src::lib::xmltok::ENCODING; 7] = [
+        &crate::src::lib::xmltok::latin1_encoding.enc,
+        &crate::src::lib::xmltok::ascii_encoding.enc,
+        &crate::src::lib::xmltok::utf8_encoding.enc,
+        &crate::src::lib::xmltok::big2_encoding.enc,
+        &crate::src::lib::xmltok::big2_encoding.enc,
+        &crate::src::lib::xmltok::little2_encoding.enc,
+        &crate::src::lib::xmltok::utf8_encoding.enc,
+    ];
 
     pub(crate) unsafe fn initScanProlog(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
@@ -12061,17 +12059,15 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding_ns.enc;
     }
 
-    pub static encodingsNS: [&crate::src::lib::xmltok::ENCODING; 7] = unsafe {
-        [
-            &crate::src::lib::xmltok::latin1_encoding_ns.enc,
-            &crate::src::lib::xmltok::ascii_encoding_ns.enc,
-            &crate::src::lib::xmltok::utf8_encoding_ns.enc,
-            &crate::src::lib::xmltok::big2_encoding_ns.enc,
-            &crate::src::lib::xmltok::big2_encoding_ns.enc,
-            &crate::src::lib::xmltok::little2_encoding_ns.enc,
-            &crate::src::lib::xmltok::utf8_encoding_ns.enc,
-        ]
-    };
+    pub static encodingsNS: [&crate::src::lib::xmltok::ENCODING; 7] = [
+        &crate::src::lib::xmltok::latin1_encoding_ns.enc,
+        &crate::src::lib::xmltok::ascii_encoding_ns.enc,
+        &crate::src::lib::xmltok::utf8_encoding_ns.enc,
+        &crate::src::lib::xmltok::big2_encoding_ns.enc,
+        &crate::src::lib::xmltok::big2_encoding_ns.enc,
+        &crate::src::lib::xmltok::little2_encoding_ns.enc,
+        &crate::src::lib::xmltok::utf8_encoding_ns.enc,
+    ];
 
     pub(crate) unsafe fn initScanPrologNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
@@ -12230,7 +12226,7 @@ pub mod xmltok_ns_c {
 
 pub mod nametab_h {
 
-    pub static mut namingBitmap: [::core::ffi::c_uint; 320] = [
+    pub static namingBitmap: [::core::ffi::c_uint; 320] = [
         0, 0, 0, 0, 0, 0, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
         0xffffffff, 0xffffffff, 0xffffffff, 0, 0x4000000, 0x87fffffe, 0x7fffffe, 0, 0, 0xff7fffff,
         0xff7fffff, 0xffffffff, 0x7ff3ffff, 0xfffffdfe, 0x7fffffff, 0xffffffff, 0xffffffff,
@@ -12267,7 +12263,7 @@ pub mod nametab_h {
         0xffffffff, 0x77ffffff,
     ];
 
-    pub static mut nmstrtPages: [::core::ffi::c_uchar; 256] = [
+    pub static nmstrtPages: [::core::ffi::c_uchar; 256] = [
         0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0, 0, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x13, 0, 0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0x15, 0x16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -12282,7 +12278,7 @@ pub mod nametab_h {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
 
-    pub static mut namePages: [::core::ffi::c_uchar; 256] = [
+    pub static namePages: [::core::ffi::c_uchar; 256] = [
         0x19, 0x3, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0, 0, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25,
         0x10, 0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x13, 0x26, 0x14, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0x27, 0x16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -12785,7 +12781,7 @@ unsafe fn utf8_toUtf16(
     return res;
 }
 
-static mut utf8_encoding_ns: normal_encoding = normal_encoding {
+static utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
@@ -13140,7 +13136,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
     isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
 };
 
-static mut utf8_encoding: normal_encoding = normal_encoding {
+static utf8_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
@@ -13495,7 +13491,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
     isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
 };
 
-static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
+static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
@@ -13850,7 +13846,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
 };
 
-static mut internal_utf8_encoding: normal_encoding = normal_encoding {
+static internal_utf8_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
@@ -14263,7 +14259,7 @@ unsafe fn latin1_toUtf16(
     };
 }
 
-static mut latin1_encoding_ns: normal_encoding = normal_encoding {
+static latin1_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
@@ -14618,7 +14614,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-static mut latin1_encoding: normal_encoding = normal_encoding {
+static latin1_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
@@ -14994,7 +14990,7 @@ unsafe fn ascii_toUtf8(
     };
 }
 
-static mut ascii_encoding_ns: normal_encoding = normal_encoding {
+static ascii_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
@@ -15349,7 +15345,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-static mut ascii_encoding: normal_encoding = normal_encoding {
+static ascii_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
@@ -15983,7 +15979,7 @@ unsafe fn big2_toUtf16(
     };
 }
 
-static mut little2_encoding_ns: normal_encoding = normal_encoding {
+static little2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
@@ -16338,7 +16334,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-static mut little2_encoding: normal_encoding = normal_encoding {
+static little2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
@@ -16693,7 +16689,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
+static internal_little2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
@@ -17048,7 +17044,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-static mut internal_little2_encoding: normal_encoding = normal_encoding {
+static internal_little2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
@@ -17403,7 +17399,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-static mut big2_encoding_ns: normal_encoding = normal_encoding {
+static big2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             big2_prologTok
@@ -17758,7 +17754,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-static mut big2_encoding: normal_encoding = normal_encoding {
+static big2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             big2_prologTok
@@ -18264,7 +18260,7 @@ unsafe fn parsePseudoAttribute(
     return 1;
 }
 
-static mut KW_version: [c_char; 8] = [
+static KW_version: [c_char; 8] = [
     ASCII_v as c_char,
     ASCII_e_1 as c_char,
     ASCII_r as c_char,
@@ -18275,7 +18271,7 @@ static mut KW_version: [c_char; 8] = [
     '\0' as c_char,
 ];
 
-static mut KW_encoding: [c_char; 9] = [
+static KW_encoding: [c_char; 9] = [
     ASCII_e_1 as c_char,
     ASCII_n as c_char,
     ASCII_c_1 as c_char,
@@ -18287,7 +18283,7 @@ static mut KW_encoding: [c_char; 9] = [
     '\0' as c_char,
 ];
 
-static mut KW_standalone: [c_char; 11] = [
+static KW_standalone: [c_char; 11] = [
     ASCII_s as c_char,
     ASCII_t as c_char,
     ASCII_a_1 as c_char,
@@ -18301,14 +18297,14 @@ static mut KW_standalone: [c_char; 11] = [
     '\0' as c_char,
 ];
 
-static mut KW_yes: [c_char; 4] = [
+static KW_yes: [c_char; 4] = [
     ASCII_y as c_char,
     ASCII_e_1 as c_char,
     ASCII_s as c_char,
     '\0' as c_char,
 ];
 
-static mut KW_no: [c_char; 3] = [ASCII_n as c_char, ASCII_o as c_char, '\0' as c_char];
+static KW_no: [c_char; 3] = [ASCII_n as c_char, ASCII_o as c_char, '\0' as c_char];
 
 unsafe fn doParseXmlDecl(
     mut encodingFinder: Option<
@@ -18750,7 +18746,7 @@ pub(crate) unsafe fn XmlInitUnknownEncoding(
     return &raw mut (*e).normal.enc;
 }
 
-static mut KW_ISO_8859_1: [c_char; 11] = [
+static KW_ISO_8859_1: [c_char; 11] = [
     ASCII_I as c_char,
     ASCII_S as c_char,
     ASCII_O as c_char,
@@ -18764,7 +18760,7 @@ static mut KW_ISO_8859_1: [c_char; 11] = [
     '\0' as c_char,
 ];
 
-static mut KW_US_ASCII: [c_char; 9] = [
+static KW_US_ASCII: [c_char; 9] = [
     ASCII_U as c_char,
     ASCII_S as c_char,
     ASCII_MINUS as c_char,
@@ -18776,7 +18772,7 @@ static mut KW_US_ASCII: [c_char; 9] = [
     '\0' as c_char,
 ];
 
-static mut KW_UTF_8: [c_char; 6] = [
+static KW_UTF_8: [c_char; 6] = [
     ASCII_U as c_char,
     ASCII_T as c_char,
     ASCII_F_1 as c_char,
@@ -18785,7 +18781,7 @@ static mut KW_UTF_8: [c_char; 6] = [
     '\0' as c_char,
 ];
 
-static mut KW_UTF_16: [c_char; 7] = [
+static KW_UTF_16: [c_char; 7] = [
     ASCII_U as c_char,
     ASCII_T as c_char,
     ASCII_F_1 as c_char,
@@ -18795,7 +18791,7 @@ static mut KW_UTF_16: [c_char; 7] = [
     '\0' as c_char,
 ];
 
-static mut KW_UTF_16BE: [c_char; 9] = [
+static KW_UTF_16BE: [c_char; 9] = [
     ASCII_U as c_char,
     ASCII_T as c_char,
     ASCII_F_1 as c_char,
@@ -18807,7 +18803,7 @@ static mut KW_UTF_16BE: [c_char; 9] = [
     '\0' as c_char,
 ];
 
-static mut KW_UTF_16LE: [c_char; 9] = [
+static KW_UTF_16LE: [c_char; 9] = [
     ASCII_U as c_char,
     ASCII_T as c_char,
     ASCII_F_1 as c_char,
@@ -18820,16 +18816,14 @@ static mut KW_UTF_16LE: [c_char; 9] = [
 ];
 
 unsafe fn getEncodingIndex(mut name: *const c_char) -> c_int {
-    static mut encodingNames: [*const c_char; 6] = unsafe {
-        [
-            &raw const KW_ISO_8859_1 as *const c_char,
-            &raw const KW_US_ASCII as *const c_char,
-            &raw const KW_UTF_8 as *const c_char,
-            &raw const KW_UTF_16 as *const c_char,
-            &raw const KW_UTF_16BE as *const c_char,
-            &raw const KW_UTF_16LE as *const c_char,
-        ]
-    };
+    let encodingNames: [*const c_char; 6] = [
+        &raw const KW_ISO_8859_1 as *const c_char,
+        &raw const KW_US_ASCII as *const c_char,
+        &raw const KW_UTF_8 as *const c_char,
+        &raw const KW_UTF_16 as *const c_char,
+        &raw const KW_UTF_16BE as *const c_char,
+        &raw const KW_UTF_16LE as *const c_char,
+    ];
     let mut i: c_int = 0;
     if name.is_null() {
         return NO_ENC;

@@ -92,7 +92,7 @@ pub unsafe fn filemap(
     }
     nbytes = sb.st_size as size_t;
     if nbytes == 0 {
-        static mut c: c_char = '\0' as c_char;
+        static c: c_char = '\0' as c_char;
         processor.expect("non-null function pointer")(
             &raw const c as *const c_void,
             0usize,

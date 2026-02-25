@@ -207,14 +207,14 @@ use core::ffi::{c_char, c_int};
 pub type PROLOG_HANDLER =
     unsafe fn(*mut PROLOG_STATE, c_int, *const c_char, *const c_char, *const ENCODING) -> c_int;
 
-static mut KW_ANY: [c_char; 4] = [
+static KW_ANY: [c_char; 4] = [
     ASCII_A as c_char,
     ASCII_N as c_char,
     ASCII_Y as c_char,
     '\0' as c_char,
 ];
 
-static mut KW_ATTLIST: [c_char; 8] = [
+static KW_ATTLIST: [c_char; 8] = [
     ASCII_A as c_char,
     ASCII_T as c_char,
     ASCII_T as c_char,
@@ -225,7 +225,7 @@ static mut KW_ATTLIST: [c_char; 8] = [
     '\0' as c_char,
 ];
 
-static mut KW_CDATA: [c_char; 6] = [
+static KW_CDATA: [c_char; 6] = [
     ASCII_C as c_char,
     ASCII_D as c_char,
     ASCII_A as c_char,
@@ -234,7 +234,7 @@ static mut KW_CDATA: [c_char; 6] = [
     '\0' as c_char,
 ];
 
-static mut KW_DOCTYPE: [c_char; 8] = [
+static KW_DOCTYPE: [c_char; 8] = [
     ASCII_D as c_char,
     ASCII_O as c_char,
     ASCII_C as c_char,
@@ -245,7 +245,7 @@ static mut KW_DOCTYPE: [c_char; 8] = [
     '\0' as c_char,
 ];
 
-static mut KW_ELEMENT: [c_char; 8] = [
+static KW_ELEMENT: [c_char; 8] = [
     ASCII_E as c_char,
     ASCII_L as c_char,
     ASCII_E as c_char,
@@ -256,7 +256,7 @@ static mut KW_ELEMENT: [c_char; 8] = [
     '\0' as c_char,
 ];
 
-static mut KW_EMPTY: [c_char; 6] = [
+static KW_EMPTY: [c_char; 6] = [
     ASCII_E as c_char,
     ASCII_M as c_char,
     ASCII_P as c_char,
@@ -265,7 +265,7 @@ static mut KW_EMPTY: [c_char; 6] = [
     '\0' as c_char,
 ];
 
-static mut KW_ENTITIES: [c_char; 9] = [
+static KW_ENTITIES: [c_char; 9] = [
     ASCII_E as c_char,
     ASCII_N as c_char,
     ASCII_T as c_char,
@@ -277,7 +277,7 @@ static mut KW_ENTITIES: [c_char; 9] = [
     '\0' as c_char,
 ];
 
-static mut KW_ENTITY: [c_char; 7] = [
+static KW_ENTITY: [c_char; 7] = [
     ASCII_E as c_char,
     ASCII_N as c_char,
     ASCII_T as c_char,
@@ -287,7 +287,7 @@ static mut KW_ENTITY: [c_char; 7] = [
     '\0' as c_char,
 ];
 
-static mut KW_FIXED: [c_char; 6] = [
+static KW_FIXED: [c_char; 6] = [
     ASCII_F as c_char,
     ASCII_I as c_char,
     ASCII_X as c_char,
@@ -296,9 +296,9 @@ static mut KW_FIXED: [c_char; 6] = [
     '\0' as c_char,
 ];
 
-static mut KW_ID: [c_char; 3] = [ASCII_I as c_char, ASCII_D as c_char, '\0' as c_char];
+static KW_ID: [c_char; 3] = [ASCII_I as c_char, ASCII_D as c_char, '\0' as c_char];
 
-static mut KW_IDREF: [c_char; 6] = [
+static KW_IDREF: [c_char; 6] = [
     ASCII_I as c_char,
     ASCII_D as c_char,
     ASCII_R as c_char,
@@ -307,7 +307,7 @@ static mut KW_IDREF: [c_char; 6] = [
     '\0' as c_char,
 ];
 
-static mut KW_IDREFS: [c_char; 7] = [
+static KW_IDREFS: [c_char; 7] = [
     ASCII_I as c_char,
     ASCII_D as c_char,
     ASCII_R as c_char,
@@ -317,7 +317,7 @@ static mut KW_IDREFS: [c_char; 7] = [
     '\0' as c_char,
 ];
 
-static mut KW_IGNORE: [c_char; 7] = [
+static KW_IGNORE: [c_char; 7] = [
     ASCII_I as c_char,
     ASCII_G as c_char,
     ASCII_N as c_char,
@@ -327,7 +327,7 @@ static mut KW_IGNORE: [c_char; 7] = [
     '\0' as c_char,
 ];
 
-static mut KW_IMPLIED: [c_char; 8] = [
+static KW_IMPLIED: [c_char; 8] = [
     ASCII_I as c_char,
     ASCII_M as c_char,
     ASCII_P as c_char,
@@ -338,7 +338,7 @@ static mut KW_IMPLIED: [c_char; 8] = [
     '\0' as c_char,
 ];
 
-static mut KW_INCLUDE: [c_char; 8] = [
+static KW_INCLUDE: [c_char; 8] = [
     ASCII_I as c_char,
     ASCII_N as c_char,
     ASCII_C as c_char,
@@ -349,7 +349,7 @@ static mut KW_INCLUDE: [c_char; 8] = [
     '\0' as c_char,
 ];
 
-static mut KW_NDATA: [c_char; 6] = [
+static KW_NDATA: [c_char; 6] = [
     ASCII_N as c_char,
     ASCII_D as c_char,
     ASCII_A as c_char,
@@ -358,7 +358,7 @@ static mut KW_NDATA: [c_char; 6] = [
     '\0' as c_char,
 ];
 
-static mut KW_NMTOKEN: [c_char; 8] = [
+static KW_NMTOKEN: [c_char; 8] = [
     ASCII_N as c_char,
     ASCII_M as c_char,
     ASCII_T as c_char,
@@ -369,7 +369,7 @@ static mut KW_NMTOKEN: [c_char; 8] = [
     '\0' as c_char,
 ];
 
-static mut KW_NMTOKENS: [c_char; 9] = [
+static KW_NMTOKENS: [c_char; 9] = [
     ASCII_N as c_char,
     ASCII_M as c_char,
     ASCII_T as c_char,
@@ -381,7 +381,7 @@ static mut KW_NMTOKENS: [c_char; 9] = [
     '\0' as c_char,
 ];
 
-static mut KW_NOTATION: [c_char; 9] = [
+static KW_NOTATION: [c_char; 9] = [
     ASCII_N as c_char,
     ASCII_O as c_char,
     ASCII_T as c_char,
@@ -393,7 +393,7 @@ static mut KW_NOTATION: [c_char; 9] = [
     '\0' as c_char,
 ];
 
-static mut KW_PCDATA: [c_char; 7] = [
+static KW_PCDATA: [c_char; 7] = [
     ASCII_P as c_char,
     ASCII_C as c_char,
     ASCII_D as c_char,
@@ -403,7 +403,7 @@ static mut KW_PCDATA: [c_char; 7] = [
     '\0' as c_char,
 ];
 
-static mut KW_PUBLIC: [c_char; 7] = [
+static KW_PUBLIC: [c_char; 7] = [
     ASCII_P as c_char,
     ASCII_U as c_char,
     ASCII_B as c_char,
@@ -413,7 +413,7 @@ static mut KW_PUBLIC: [c_char; 7] = [
     '\0' as c_char,
 ];
 
-static mut KW_REQUIRED: [c_char; 9] = [
+static KW_REQUIRED: [c_char; 9] = [
     ASCII_R as c_char,
     ASCII_E as c_char,
     ASCII_Q as c_char,
@@ -425,7 +425,7 @@ static mut KW_REQUIRED: [c_char; 9] = [
     '\0' as c_char,
 ];
 
-static mut KW_SYSTEM: [c_char; 7] = [
+static KW_SYSTEM: [c_char; 7] = [
     ASCII_S as c_char,
     ASCII_Y as c_char,
     ASCII_S as c_char,
@@ -1682,18 +1682,16 @@ unsafe fn attlist2(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
         XML_TOK_NAME => {
-            static mut types: [*const c_char; 8] = unsafe {
-                [
-                    &raw const KW_CDATA as *const c_char,
-                    &raw const KW_ID as *const c_char,
-                    &raw const KW_IDREF as *const c_char,
-                    &raw const KW_IDREFS as *const c_char,
-                    &raw const KW_ENTITY as *const c_char,
-                    &raw const KW_ENTITIES as *const c_char,
-                    &raw const KW_NMTOKEN as *const c_char,
-                    &raw const KW_NMTOKENS as *const c_char,
-                ]
-            };
+            let types: [*const c_char; 8] = [
+                &raw const KW_CDATA as *const c_char,
+                &raw const KW_ID as *const c_char,
+                &raw const KW_IDREF as *const c_char,
+                &raw const KW_IDREFS as *const c_char,
+                &raw const KW_ENTITY as *const c_char,
+                &raw const KW_ENTITIES as *const c_char,
+                &raw const KW_NMTOKEN as *const c_char,
+                &raw const KW_NMTOKENS as *const c_char,
+            ];
             let mut i: c_int = 0;
             i = 0;
             while i
