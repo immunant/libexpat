@@ -11902,8 +11902,17 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding.enc;
     }
 
-    pub static mut encodings: [*const crate::src::lib::xmltok::ENCODING; 7] =
-        [::core::ptr::null::<crate::src::lib::xmltok::ENCODING>(); 7];
+    pub static mut encodings: [*const crate::src::lib::xmltok::ENCODING; 7] = unsafe {
+        [
+            &raw const crate::src::lib::xmltok::latin1_encoding.enc,
+            &raw const crate::src::lib::xmltok::ascii_encoding.enc,
+            &raw const crate::src::lib::xmltok::utf8_encoding.enc,
+            &raw const crate::src::lib::xmltok::big2_encoding.enc,
+            &raw const crate::src::lib::xmltok::big2_encoding.enc,
+            &raw const crate::src::lib::xmltok::little2_encoding.enc,
+            &raw const crate::src::lib::xmltok::utf8_encoding.enc,
+        ]
+    };
 
     pub(crate) unsafe fn initScanProlog(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
@@ -12052,8 +12061,17 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding_ns.enc;
     }
 
-    pub static mut encodingsNS: [*const crate::src::lib::xmltok::ENCODING; 7] =
-        [::core::ptr::null::<crate::src::lib::xmltok::ENCODING>(); 7];
+    pub static mut encodingsNS: [*const crate::src::lib::xmltok::ENCODING; 7] = unsafe {
+        [
+            &raw const crate::src::lib::xmltok::latin1_encoding_ns.enc,
+            &raw const crate::src::lib::xmltok::ascii_encoding_ns.enc,
+            &raw const crate::src::lib::xmltok::utf8_encoding_ns.enc,
+            &raw const crate::src::lib::xmltok::big2_encoding_ns.enc,
+            &raw const crate::src::lib::xmltok::big2_encoding_ns.enc,
+            &raw const crate::src::lib::xmltok::little2_encoding_ns.enc,
+            &raw const crate::src::lib::xmltok::utf8_encoding_ns.enc,
+        ]
+    };
 
     pub(crate) unsafe fn initScanPrologNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
@@ -12441,8 +12459,6 @@ pub(crate) use xmltok_impl_c::normal_predefinedEntityName;
 pub(crate) use xmltok_impl_c::normal_prologTok;
 pub(crate) use xmltok_impl_c::normal_skipS;
 pub(crate) use xmltok_impl_c::normal_updatePosition;
-pub(crate) use xmltok_ns_c::encodings;
-pub(crate) use xmltok_ns_c::encodingsNS;
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -18957,28 +18973,3 @@ pub(crate) unsafe fn XmlInitUnknownEncodingNS(
     }
     return enc;
 }
-unsafe fn run_static_initializers() {
-    encodings = [
-        &raw const latin1_encoding.enc,
-        &raw const ascii_encoding.enc,
-        &raw const utf8_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const little2_encoding.enc,
-        &raw const utf8_encoding.enc,
-    ];
-    encodingsNS = [
-        &raw const latin1_encoding_ns.enc,
-        &raw const ascii_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const little2_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-    ];
-}
-#[used]
-#[cfg_attr(target_os = "linux", link_section = ".init_array")]
-#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
-#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe fn(); 1] = [run_static_initializers];
