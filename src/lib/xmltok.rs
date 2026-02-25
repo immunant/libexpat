@@ -11902,15 +11902,15 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding.enc;
     }
 
-    pub static mut encodings: [*const crate::src::lib::xmltok::ENCODING; 7] = unsafe {
+    pub static encodings: [&crate::src::lib::xmltok::ENCODING; 7] = unsafe {
         [
-            &raw const crate::src::lib::xmltok::latin1_encoding.enc,
-            &raw const crate::src::lib::xmltok::ascii_encoding.enc,
-            &raw const crate::src::lib::xmltok::utf8_encoding.enc,
-            &raw const crate::src::lib::xmltok::big2_encoding.enc,
-            &raw const crate::src::lib::xmltok::big2_encoding.enc,
-            &raw const crate::src::lib::xmltok::little2_encoding.enc,
-            &raw const crate::src::lib::xmltok::utf8_encoding.enc,
+            &crate::src::lib::xmltok::latin1_encoding.enc,
+            &crate::src::lib::xmltok::ascii_encoding.enc,
+            &crate::src::lib::xmltok::utf8_encoding.enc,
+            &crate::src::lib::xmltok::big2_encoding.enc,
+            &crate::src::lib::xmltok::big2_encoding.enc,
+            &crate::src::lib::xmltok::little2_encoding.enc,
+            &crate::src::lib::xmltok::utf8_encoding.enc,
         ]
     };
 
@@ -11921,7 +11921,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodings as *const *const crate::src::lib::xmltok::ENCODING,
+            encodings.as_ptr() as *const *const crate::src::lib::xmltok::ENCODING,
             enc as *const crate::src::lib::xmltok::INIT_ENCODING,
             crate::src::lib::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -11937,7 +11937,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodings as *const *const crate::src::lib::xmltok::ENCODING,
+            encodings.as_ptr() as *const *const crate::src::lib::xmltok::ENCODING,
             enc as *const crate::src::lib::xmltok::INIT_ENCODING,
             crate::src::lib::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -12017,7 +12017,7 @@ pub mod xmltok_ns_c {
         if i == UNKNOWN_ENC {
             return ::core::ptr::null::<crate::src::lib::xmltok::ENCODING>();
         }
-        return encodings[i as usize];
+        return encodings[i as usize] as *const crate::src::lib::xmltok::ENCODING;
     }
     pub(crate) unsafe fn XmlParseXmlDecl(
         mut isGeneralTextEntity: ::core::ffi::c_int,
@@ -12061,15 +12061,15 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding_ns.enc;
     }
 
-    pub static mut encodingsNS: [*const crate::src::lib::xmltok::ENCODING; 7] = unsafe {
+    pub static encodingsNS: [&crate::src::lib::xmltok::ENCODING; 7] = unsafe {
         [
-            &raw const crate::src::lib::xmltok::latin1_encoding_ns.enc,
-            &raw const crate::src::lib::xmltok::ascii_encoding_ns.enc,
-            &raw const crate::src::lib::xmltok::utf8_encoding_ns.enc,
-            &raw const crate::src::lib::xmltok::big2_encoding_ns.enc,
-            &raw const crate::src::lib::xmltok::big2_encoding_ns.enc,
-            &raw const crate::src::lib::xmltok::little2_encoding_ns.enc,
-            &raw const crate::src::lib::xmltok::utf8_encoding_ns.enc,
+            &crate::src::lib::xmltok::latin1_encoding_ns.enc,
+            &crate::src::lib::xmltok::ascii_encoding_ns.enc,
+            &crate::src::lib::xmltok::utf8_encoding_ns.enc,
+            &crate::src::lib::xmltok::big2_encoding_ns.enc,
+            &crate::src::lib::xmltok::big2_encoding_ns.enc,
+            &crate::src::lib::xmltok::little2_encoding_ns.enc,
+            &crate::src::lib::xmltok::utf8_encoding_ns.enc,
         ]
     };
 
@@ -12080,7 +12080,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::lib::xmltok::ENCODING,
+            encodingsNS.as_ptr() as *const *const crate::src::lib::xmltok::ENCODING,
             enc as *const crate::src::lib::xmltok::INIT_ENCODING,
             crate::src::lib::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -12096,7 +12096,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::lib::xmltok::ENCODING,
+            encodingsNS.as_ptr() as *const *const crate::src::lib::xmltok::ENCODING,
             enc as *const crate::src::lib::xmltok::INIT_ENCODING,
             crate::src::lib::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -12177,7 +12177,7 @@ pub mod xmltok_ns_c {
         if i == UNKNOWN_ENC {
             return ::core::ptr::null::<crate::src::lib::xmltok::ENCODING>();
         }
-        return encodingsNS[i as usize];
+        return encodingsNS[i as usize] as *const crate::src::lib::xmltok::ENCODING;
     }
     pub(crate) unsafe fn XmlParseXmlDeclNS(
         mut isGeneralTextEntity: ::core::ffi::c_int,
