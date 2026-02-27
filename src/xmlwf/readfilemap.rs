@@ -32,8 +32,15 @@ pub use crate::stdlib::__uid_t;
 pub use crate::stdlib::__uint64_t;
 
 pub use crate::stdlib::FILE;
-use crate::stdlib::{close, fprintf, free, perror, stderr};
-use core::ffi::{c_char, c_int, c_void};
+
+use crate::stdlib::close;
+use crate::stdlib::fprintf;
+use crate::stdlib::free;
+use crate::stdlib::perror;
+use crate::stdlib::stderr;
+use core::ffi::c_char;
+use core::ffi::c_int;
+use core::ffi::c_void;
 
 pub const O_BINARY: c_int = 0;
 pub unsafe fn filemap(

@@ -91,9 +91,15 @@ pub use crate::stdlib::ssize_t;
 
 pub use crate::stdlib::FILE;
 pub use crate::stdlib::_IO_FILE;
-use crate::stdlib::{fprintf, stderr};
-use core::ffi::{c_char, c_int, c_uint, c_void};
-use core::ptr::{null, null_mut};
+
+use crate::stdlib::fprintf;
+use crate::stdlib::stderr;
+use core::ffi::c_char;
+use core::ffi::c_int;
+use core::ffi::c_uint;
+use core::ffi::c_void;
+use core::ptr::null;
+use core::ptr::null_mut;
 #[derive(Copy, Clone)]
 #[repr(C)]
 

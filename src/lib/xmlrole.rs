@@ -202,7 +202,8 @@ pub use crate::src::lib::xmltok::XML_TOK_POUND_NAME;
 pub use crate::src::lib::xmltok::XML_TOK_PREFIXED_NAME;
 pub use crate::src::lib::xmltok::XML_TOK_PROLOG_S;
 pub use crate::src::lib::xmltok::XML_TOK_XML_DECL;
-use core::ffi::{c_char, c_int};
+use core::ffi::c_char;
+use core::ffi::c_int;
 
 pub type PROLOG_HANDLER =
     unsafe fn(*mut PROLOG_STATE, c_int, *const c_char, *const c_char, *const ENCODING) -> c_int;

@@ -1,195 +1,195 @@
 // =============== BEGIN xmltok_h ================
-pub const XML_TOK_TRAILING_RSQB: ::core::ffi::c_int = -5;
+pub const XML_TOK_TRAILING_RSQB: c_int = -5;
 
-pub const XML_TOK_TRAILING_RSQB_1: ::core::ffi::c_int = -(5);
+pub const XML_TOK_TRAILING_RSQB_1: c_int = -(5);
 
-pub const XML_TOK_NONE: ::core::ffi::c_int = -4;
+pub const XML_TOK_NONE: c_int = -4;
 
-pub const XML_TOK_NONE_1: ::core::ffi::c_int = -(4);
+pub const XML_TOK_NONE_1: c_int = -(4);
 
-pub const XML_TOK_TRAILING_CR: ::core::ffi::c_int = -3;
+pub const XML_TOK_TRAILING_CR: c_int = -3;
 
-pub const XML_TOK_TRAILING_CR_1: ::core::ffi::c_int = -(3);
+pub const XML_TOK_TRAILING_CR_1: c_int = -(3);
 
-pub const XML_TOK_PARTIAL_CHAR: ::core::ffi::c_int = -2;
+pub const XML_TOK_PARTIAL_CHAR: c_int = -2;
 
-pub const XML_TOK_PARTIAL_CHAR_1: ::core::ffi::c_int = -(2);
+pub const XML_TOK_PARTIAL_CHAR_1: c_int = -(2);
 
-pub const XML_TOK_PARTIAL: ::core::ffi::c_int = -1;
+pub const XML_TOK_PARTIAL: c_int = -1;
 
-pub const XML_TOK_PARTIAL_1: ::core::ffi::c_int = -(1);
+pub const XML_TOK_PARTIAL_1: c_int = -(1);
 
-pub const XML_TOK_INVALID: ::core::ffi::c_int = 0;
+pub const XML_TOK_INVALID: c_int = 0;
 
-pub const XML_TOK_INVALID_1: ::core::ffi::c_int = 0;
+pub const XML_TOK_INVALID_1: c_int = 0;
 
-pub const XML_TOK_START_TAG_WITH_ATTS: ::core::ffi::c_int = 1;
+pub const XML_TOK_START_TAG_WITH_ATTS: c_int = 1;
 
-pub const XML_TOK_START_TAG_WITH_ATTS_1: ::core::ffi::c_int = 1;
+pub const XML_TOK_START_TAG_WITH_ATTS_1: c_int = 1;
 
-pub const XML_TOK_START_TAG_NO_ATTS: ::core::ffi::c_int = 2;
+pub const XML_TOK_START_TAG_NO_ATTS: c_int = 2;
 
-pub const XML_TOK_START_TAG_NO_ATTS_1: ::core::ffi::c_int = 2;
+pub const XML_TOK_START_TAG_NO_ATTS_1: c_int = 2;
 
-pub const XML_TOK_EMPTY_ELEMENT_WITH_ATTS: ::core::ffi::c_int = 3;
+pub const XML_TOK_EMPTY_ELEMENT_WITH_ATTS: c_int = 3;
 
-pub const XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1: ::core::ffi::c_int = 3;
+pub const XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1: c_int = 3;
 
-pub const XML_TOK_EMPTY_ELEMENT_NO_ATTS: ::core::ffi::c_int = 4;
+pub const XML_TOK_EMPTY_ELEMENT_NO_ATTS: c_int = 4;
 
-pub const XML_TOK_EMPTY_ELEMENT_NO_ATTS_1: ::core::ffi::c_int = 4;
+pub const XML_TOK_EMPTY_ELEMENT_NO_ATTS_1: c_int = 4;
 
-pub const XML_TOK_END_TAG: ::core::ffi::c_int = 5;
+pub const XML_TOK_END_TAG: c_int = 5;
 
-pub const XML_TOK_END_TAG_1: ::core::ffi::c_int = 5;
+pub const XML_TOK_END_TAG_1: c_int = 5;
 
-pub const XML_TOK_DATA_CHARS: ::core::ffi::c_int = 6;
+pub const XML_TOK_DATA_CHARS: c_int = 6;
 
-pub const XML_TOK_DATA_CHARS_1: ::core::ffi::c_int = 6;
+pub const XML_TOK_DATA_CHARS_1: c_int = 6;
 
-pub const XML_TOK_DATA_NEWLINE: ::core::ffi::c_int = 7;
+pub const XML_TOK_DATA_NEWLINE: c_int = 7;
 
-pub const XML_TOK_DATA_NEWLINE_1: ::core::ffi::c_int = 7;
+pub const XML_TOK_DATA_NEWLINE_1: c_int = 7;
 
-pub const XML_TOK_CDATA_SECT_OPEN: ::core::ffi::c_int = 8;
+pub const XML_TOK_CDATA_SECT_OPEN: c_int = 8;
 
-pub const XML_TOK_CDATA_SECT_OPEN_1: ::core::ffi::c_int = 8;
+pub const XML_TOK_CDATA_SECT_OPEN_1: c_int = 8;
 
-pub const XML_TOK_ENTITY_REF: ::core::ffi::c_int = 9;
+pub const XML_TOK_ENTITY_REF: c_int = 9;
 
-pub const XML_TOK_ENTITY_REF_1: ::core::ffi::c_int = 9;
+pub const XML_TOK_ENTITY_REF_1: c_int = 9;
 
-pub const XML_TOK_CHAR_REF: ::core::ffi::c_int = 10;
+pub const XML_TOK_CHAR_REF: c_int = 10;
 
-pub const XML_TOK_CHAR_REF_1: ::core::ffi::c_int = 10;
+pub const XML_TOK_CHAR_REF_1: c_int = 10;
 
-pub const XML_TOK_PI: ::core::ffi::c_int = 11;
+pub const XML_TOK_PI: c_int = 11;
 
-pub const XML_TOK_PI_1: ::core::ffi::c_int = 11;
+pub const XML_TOK_PI_1: c_int = 11;
 
-pub const XML_TOK_XML_DECL: ::core::ffi::c_int = 12;
+pub const XML_TOK_XML_DECL: c_int = 12;
 
-pub const XML_TOK_XML_DECL_1: ::core::ffi::c_int = 12;
+pub const XML_TOK_XML_DECL_1: c_int = 12;
 
-pub const XML_TOK_COMMENT: ::core::ffi::c_int = 13;
+pub const XML_TOK_COMMENT: c_int = 13;
 
-pub const XML_TOK_COMMENT_1: ::core::ffi::c_int = 13;
+pub const XML_TOK_COMMENT_1: c_int = 13;
 
-pub const XML_TOK_BOM: ::core::ffi::c_int = 14;
+pub const XML_TOK_BOM: c_int = 14;
 
-pub const XML_TOK_BOM_1: ::core::ffi::c_int = 14;
+pub const XML_TOK_BOM_1: c_int = 14;
 
-pub const XML_TOK_PROLOG_S: ::core::ffi::c_int = 15;
+pub const XML_TOK_PROLOG_S: c_int = 15;
 
-pub const XML_TOK_PROLOG_S_1: ::core::ffi::c_int = 15;
+pub const XML_TOK_PROLOG_S_1: c_int = 15;
 
-pub const XML_TOK_DECL_OPEN: ::core::ffi::c_int = 16;
+pub const XML_TOK_DECL_OPEN: c_int = 16;
 
-pub const XML_TOK_DECL_OPEN_1: ::core::ffi::c_int = 16;
+pub const XML_TOK_DECL_OPEN_1: c_int = 16;
 
-pub const XML_TOK_DECL_CLOSE: ::core::ffi::c_int = 17;
+pub const XML_TOK_DECL_CLOSE: c_int = 17;
 
-pub const XML_TOK_DECL_CLOSE_1: ::core::ffi::c_int = 17;
+pub const XML_TOK_DECL_CLOSE_1: c_int = 17;
 
-pub const XML_TOK_NAME: ::core::ffi::c_int = 18;
+pub const XML_TOK_NAME: c_int = 18;
 
-pub const XML_TOK_NMTOKEN: ::core::ffi::c_int = 19;
+pub const XML_TOK_NMTOKEN: c_int = 19;
 
-pub const XML_TOK_NMTOKEN_1: ::core::ffi::c_int = 19;
+pub const XML_TOK_NMTOKEN_1: c_int = 19;
 
-pub const XML_TOK_POUND_NAME: ::core::ffi::c_int = 20;
+pub const XML_TOK_POUND_NAME: c_int = 20;
 
-pub const XML_TOK_POUND_NAME_1: ::core::ffi::c_int = 20;
+pub const XML_TOK_POUND_NAME_1: c_int = 20;
 
-pub const XML_TOK_OR: ::core::ffi::c_int = 21;
+pub const XML_TOK_OR: c_int = 21;
 
-pub const XML_TOK_OR_1: ::core::ffi::c_int = 21;
+pub const XML_TOK_OR_1: c_int = 21;
 
-pub const XML_TOK_PERCENT: ::core::ffi::c_int = 22;
+pub const XML_TOK_PERCENT: c_int = 22;
 
-pub const XML_TOK_PERCENT_1: ::core::ffi::c_int = 22;
+pub const XML_TOK_PERCENT_1: c_int = 22;
 
-pub const XML_TOK_OPEN_PAREN: ::core::ffi::c_int = 23;
+pub const XML_TOK_OPEN_PAREN: c_int = 23;
 
-pub const XML_TOK_OPEN_PAREN_1: ::core::ffi::c_int = 23;
+pub const XML_TOK_OPEN_PAREN_1: c_int = 23;
 
-pub const XML_TOK_CLOSE_PAREN: ::core::ffi::c_int = 24;
+pub const XML_TOK_CLOSE_PAREN: c_int = 24;
 
-pub const XML_TOK_CLOSE_PAREN_1: ::core::ffi::c_int = 24;
+pub const XML_TOK_CLOSE_PAREN_1: c_int = 24;
 
-pub const XML_TOK_OPEN_BRACKET: ::core::ffi::c_int = 25;
+pub const XML_TOK_OPEN_BRACKET: c_int = 25;
 
-pub const XML_TOK_OPEN_BRACKET_1: ::core::ffi::c_int = 25;
+pub const XML_TOK_OPEN_BRACKET_1: c_int = 25;
 
-pub const XML_TOK_CLOSE_BRACKET: ::core::ffi::c_int = 26;
+pub const XML_TOK_CLOSE_BRACKET: c_int = 26;
 
-pub const XML_TOK_CLOSE_BRACKET_1: ::core::ffi::c_int = 26;
+pub const XML_TOK_CLOSE_BRACKET_1: c_int = 26;
 
-pub const XML_TOK_LITERAL: ::core::ffi::c_int = 27;
+pub const XML_TOK_LITERAL: c_int = 27;
 
-pub const XML_TOK_LITERAL_1: ::core::ffi::c_int = 27;
+pub const XML_TOK_LITERAL_1: c_int = 27;
 
-pub const XML_TOK_PARAM_ENTITY_REF: ::core::ffi::c_int = 28;
+pub const XML_TOK_PARAM_ENTITY_REF: c_int = 28;
 
-pub const XML_TOK_PARAM_ENTITY_REF_1: ::core::ffi::c_int = 28;
+pub const XML_TOK_PARAM_ENTITY_REF_1: c_int = 28;
 
-pub const XML_TOK_INSTANCE_START: ::core::ffi::c_int = 29;
+pub const XML_TOK_INSTANCE_START: c_int = 29;
 
-pub const XML_TOK_INSTANCE_START_1: ::core::ffi::c_int = 29;
+pub const XML_TOK_INSTANCE_START_1: c_int = 29;
 
-pub const XML_TOK_NAME_QUESTION: ::core::ffi::c_int = 30;
+pub const XML_TOK_NAME_QUESTION: c_int = 30;
 
-pub const XML_TOK_NAME_QUESTION_1: ::core::ffi::c_int = 30;
+pub const XML_TOK_NAME_QUESTION_1: c_int = 30;
 
-pub const XML_TOK_NAME_ASTERISK: ::core::ffi::c_int = 31;
+pub const XML_TOK_NAME_ASTERISK: c_int = 31;
 
-pub const XML_TOK_NAME_ASTERISK_1: ::core::ffi::c_int = 31;
+pub const XML_TOK_NAME_ASTERISK_1: c_int = 31;
 
-pub const XML_TOK_NAME_PLUS: ::core::ffi::c_int = 32;
+pub const XML_TOK_NAME_PLUS: c_int = 32;
 
-pub const XML_TOK_NAME_PLUS_1: ::core::ffi::c_int = 32;
+pub const XML_TOK_NAME_PLUS_1: c_int = 32;
 
-pub const XML_TOK_COND_SECT_OPEN: ::core::ffi::c_int = 33;
+pub const XML_TOK_COND_SECT_OPEN: c_int = 33;
 
-pub const XML_TOK_COND_SECT_OPEN_1: ::core::ffi::c_int = 33;
+pub const XML_TOK_COND_SECT_OPEN_1: c_int = 33;
 
-pub const XML_TOK_COND_SECT_CLOSE: ::core::ffi::c_int = 34;
+pub const XML_TOK_COND_SECT_CLOSE: c_int = 34;
 
-pub const XML_TOK_COND_SECT_CLOSE_1: ::core::ffi::c_int = 34;
+pub const XML_TOK_COND_SECT_CLOSE_1: c_int = 34;
 
-pub const XML_TOK_CLOSE_PAREN_QUESTION: ::core::ffi::c_int = 35;
+pub const XML_TOK_CLOSE_PAREN_QUESTION: c_int = 35;
 
-pub const XML_TOK_CLOSE_PAREN_QUESTION_1: ::core::ffi::c_int = 35;
+pub const XML_TOK_CLOSE_PAREN_QUESTION_1: c_int = 35;
 
-pub const XML_TOK_CLOSE_PAREN_ASTERISK: ::core::ffi::c_int = 36;
+pub const XML_TOK_CLOSE_PAREN_ASTERISK: c_int = 36;
 
-pub const XML_TOK_CLOSE_PAREN_ASTERISK_1: ::core::ffi::c_int = 36;
+pub const XML_TOK_CLOSE_PAREN_ASTERISK_1: c_int = 36;
 
-pub const XML_TOK_CLOSE_PAREN_PLUS: ::core::ffi::c_int = 37;
+pub const XML_TOK_CLOSE_PAREN_PLUS: c_int = 37;
 
-pub const XML_TOK_CLOSE_PAREN_PLUS_1: ::core::ffi::c_int = 37;
+pub const XML_TOK_CLOSE_PAREN_PLUS_1: c_int = 37;
 
-pub const XML_TOK_COMMA: ::core::ffi::c_int = 38;
+pub const XML_TOK_COMMA: c_int = 38;
 
-pub const XML_TOK_COMMA_1: ::core::ffi::c_int = 38;
+pub const XML_TOK_COMMA_1: c_int = 38;
 
-pub const XML_TOK_ATTRIBUTE_VALUE_S: ::core::ffi::c_int = 39;
+pub const XML_TOK_ATTRIBUTE_VALUE_S: c_int = 39;
 
-pub const XML_TOK_ATTRIBUTE_VALUE_S_1: ::core::ffi::c_int = 39;
+pub const XML_TOK_ATTRIBUTE_VALUE_S_1: c_int = 39;
 
-pub const XML_TOK_CDATA_SECT_CLOSE: ::core::ffi::c_int = 40;
+pub const XML_TOK_CDATA_SECT_CLOSE: c_int = 40;
 
-pub const XML_TOK_CDATA_SECT_CLOSE_1: ::core::ffi::c_int = 40;
+pub const XML_TOK_CDATA_SECT_CLOSE_1: c_int = 40;
 
-pub const XML_TOK_PREFIXED_NAME: ::core::ffi::c_int = 41;
+pub const XML_TOK_PREFIXED_NAME: c_int = 41;
 
-pub const XML_TOK_IGNORE_SECT: ::core::ffi::c_int = 42;
+pub const XML_TOK_IGNORE_SECT: c_int = 42;
 
-pub const XML_TOK_IGNORE_SECT_1: ::core::ffi::c_int = 42;
+pub const XML_TOK_IGNORE_SECT_1: c_int = 42;
 
-pub const XML_PROLOG_STATE: ::core::ffi::c_int = 0;
+pub const XML_PROLOG_STATE: c_int = 0;
 
-pub const XML_CONTENT_STATE: ::core::ffi::c_int = 1;
+pub const XML_CONTENT_STATE: c_int = 1;
 
 pub type POSITION = crate::src::lib::xmltok::position;
 #[derive(Copy, Clone)]
@@ -203,22 +203,22 @@ pub struct position {
 #[repr(C)]
 
 pub struct ATTRIBUTE {
-    pub name: *const ::core::ffi::c_char,
-    pub valuePtr: *const ::core::ffi::c_char,
-    pub valueEnd: *const ::core::ffi::c_char,
-    pub normalized: ::core::ffi::c_char,
+    pub name: *const c_char,
+    pub valuePtr: *const c_char,
+    pub valueEnd: *const c_char,
+    pub normalized: c_char,
 }
 
 pub type ENCODING = crate::src::lib::xmltok::encoding;
 
 pub type SCANNER = unsafe fn(
     *const crate::src::lib::xmltok::ENCODING,
-    *const ::core::ffi::c_char,
-    *const ::core::ffi::c_char,
-    *mut *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int;
+    *const c_char,
+    *const c_char,
+    *mut *const c_char,
+) -> c_int;
 
-pub type XML_Convert_Result = ::core::ffi::c_uint;
+pub type XML_Convert_Result = c_uint;
 
 pub const XML_CONVERT_COMPLETED: crate::src::lib::xmltok::XML_Convert_Result = 0;
 
@@ -233,123 +233,111 @@ pub struct encoding {
     pub literalScanners: [crate::src::lib::xmltok::SCANNER; 2],
     pub nameMatchesAscii: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
-    pub nameLength: unsafe fn(
-        *const crate::src::lib::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
-    pub skipS: unsafe fn(
-        *const crate::src::lib::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-    ) -> *const ::core::ffi::c_char,
+        *const c_char,
+        *const c_char,
+        *const c_char,
+    ) -> c_int,
+    pub nameLength: unsafe fn(*const crate::src::lib::xmltok::ENCODING, *const c_char) -> c_int,
+    pub skipS: unsafe fn(*const crate::src::lib::xmltok::ENCODING, *const c_char) -> *const c_char,
     pub getAtts: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-        ::core::ffi::c_int,
+        *const c_char,
+        c_int,
         *mut crate::src::lib::xmltok::ATTRIBUTE,
-    ) -> ::core::ffi::c_int,
-    pub charRefNumber: unsafe fn(
-        *const crate::src::lib::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
-    pub predefinedEntityName: unsafe fn(
-        *const crate::src::lib::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
+    ) -> c_int,
+    pub charRefNumber: unsafe fn(*const crate::src::lib::xmltok::ENCODING, *const c_char) -> c_int,
+    pub predefinedEntityName:
+        unsafe fn(*const crate::src::lib::xmltok::ENCODING, *const c_char, *const c_char) -> c_int,
     pub updatePosition: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
+        *const c_char,
+        *const c_char,
         *mut crate::src::lib::xmltok::POSITION,
     ) -> (),
     pub isPublicId: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-        *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
+        *const c_char,
+        *const c_char,
+        *mut *const c_char,
+    ) -> c_int,
     pub utf8Convert: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
-        *mut *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-        *mut *mut ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
+        *mut *const c_char,
+        *const c_char,
+        *mut *mut c_char,
+        *const c_char,
     ) -> crate::src::lib::xmltok::XML_Convert_Result,
     pub utf16Convert: unsafe fn(
         *const crate::src::lib::xmltok::ENCODING,
-        *mut *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-        *mut *mut ::core::ffi::c_ushort,
-        *const ::core::ffi::c_ushort,
+        *mut *const c_char,
+        *const c_char,
+        *mut *mut c_ushort,
+        *const c_ushort,
     ) -> crate::src::lib::xmltok::XML_Convert_Result,
-    pub minBytesPerChar: ::core::ffi::c_int,
-    pub isUtf8: ::core::ffi::c_char,
-    pub isUtf16: ::core::ffi::c_char,
+    pub minBytesPerChar: c_int,
+    pub isUtf8: c_char,
+    pub isUtf16: c_char,
 }
 
 impl encoding {
     pub(crate) unsafe fn nameMatchesAscii(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        kw: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int {
         (self.nameMatchesAscii)(enc, ptr, end, kw)
     }
 
     pub(crate) unsafe fn nameLength(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
+        ptr: *const c_char,
+    ) -> c_int {
         (self.nameLength)(enc, ptr)
     }
 
     pub(crate) unsafe fn skipS(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-    ) -> *const ::core::ffi::c_char {
+        ptr: *const c_char,
+    ) -> *const c_char {
         (self.skipS)(enc, ptr)
     }
 
     pub(crate) unsafe fn getAtts(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        n: ::core::ffi::c_int,
+        ptr: *const c_char,
+        n: c_int,
         atts: *mut crate::src::lib::xmltok::ATTRIBUTE,
-    ) -> ::core::ffi::c_int {
+    ) -> c_int {
         (self.getAtts)(enc, ptr, n, atts)
     }
 
     pub(crate) unsafe fn charRefNumber(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
+        ptr: *const c_char,
+    ) -> c_int {
         (self.charRefNumber)(enc, ptr)
     }
 
     pub(crate) unsafe fn predefinedEntityName(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int {
         (self.predefinedEntityName)(enc, ptr, end)
     }
 
     pub(crate) unsafe fn updatePosition(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
+        ptr: *const c_char,
+        end: *const c_char,
         pos: *mut crate::src::lib::xmltok::POSITION,
     ) {
         (self.updatePosition)(enc, ptr, end, pos)
@@ -358,20 +346,20 @@ impl encoding {
     pub(crate) unsafe fn isPublicId(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        event_pp: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int {
         (self.isPublicId)(enc, ptr, end, event_pp)
     }
 
     pub(crate) unsafe fn utf8Convert(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        from_p: *mut *const ::core::ffi::c_char,
-        from_lim: *const ::core::ffi::c_char,
-        to_p: *mut *mut ::core::ffi::c_char,
-        to_lim: *const ::core::ffi::c_char,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
     ) -> crate::src::lib::xmltok::XML_Convert_Result {
         (self.utf8Convert)(enc, from_p, from_lim, to_p, to_lim)
     }
@@ -379,10 +367,10 @@ impl encoding {
     pub(crate) unsafe fn utf16Convert(
         &self,
         enc: *const crate::src::lib::xmltok::ENCODING,
-        from_p: *mut *const ::core::ffi::c_char,
-        from_lim: *const ::core::ffi::c_char,
-        to_p: *mut *mut ::core::ffi::c_ushort,
-        to_lim: *const ::core::ffi::c_ushort,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
     ) -> crate::src::lib::xmltok::XML_Convert_Result {
         (self.utf16Convert)(enc, from_p, from_lim, to_p, to_lim)
     }
@@ -395,12 +383,7 @@ pub struct INIT_ENCODING {
     pub encPtr: *mut *const crate::src::lib::xmltok::ENCODING,
 }
 
-pub type CONVERTER = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
->;
+pub type CONVERTER = Option<unsafe extern "C" fn(*mut c_void, *const c_char) -> c_int>;
 
 pub mod xmltok_impl_c {
 
@@ -12410,9 +12393,16 @@ pub use crate::xmltok_impl_h::BT_SEMI;
 pub use crate::xmltok_impl_h::BT_SOL;
 pub use crate::xmltok_impl_h::BT_TRAIL;
 pub use crate::xmltok_impl_h::BT_VERBAR;
-use core::ffi::{c_char, c_int, c_long, c_uchar, c_uint, c_ushort, c_void};
+use core::ffi::c_char;
+use core::ffi::c_int;
+use core::ffi::c_long;
+use core::ffi::c_uchar;
+use core::ffi::c_uint;
+use core::ffi::c_ushort;
+use core::ffi::c_void;
 use core::mem::size_of;
-use core::ptr::{null, null_mut};
+use core::ptr::null;
+use core::ptr::null_mut;
 pub(crate) use xmltok_impl_c::big2_attributeValueTok;
 pub(crate) use xmltok_impl_c::big2_cdataSectionTok;
 pub(crate) use xmltok_impl_c::big2_charRefNumber;
