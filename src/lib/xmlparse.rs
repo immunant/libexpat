@@ -3202,14 +3202,14 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: XML_Parser) {
         if !(*parser).m_openInternalEntities.is_null() {
             reportDefault(
                 parser,
-                (*parser).m_internalEncoding,
+                &*(*parser).m_internalEncoding,
                 (*(*parser).m_openInternalEntities).internalEventPtr,
                 (*(*parser).m_openInternalEntities).internalEventEndPtr,
             );
         } else {
             reportDefault(
                 parser,
-                (*parser).m_encoding,
+                &*(*parser).m_encoding,
                 (*parser).m_eventPtr,
                 (*parser).m_eventEndPtr,
             );
@@ -3539,7 +3539,7 @@ unsafe extern "C" fn contentProcessor(
         } else {
             0
         },
-        (*parser).m_encoding,
+        &*(*parser).m_encoding,
         start,
         end,
         endPtr,
@@ -3698,7 +3698,7 @@ unsafe extern "C" fn externalEntityContentProcessor(
     let mut result: XML_Error = doContent(
         parser,
         1,
-        (*parser).m_encoding,
+        &*(*parser).m_encoding,
         start,
         end,
         endPtr,
@@ -3716,7 +3716,7 @@ unsafe extern "C" fn externalEntityContentProcessor(
 unsafe extern "C" fn doContent(
     mut parser: XML_Parser,
     mut startTagLevel: c_int,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut s: *const c_char,
     mut end: *const c_char,
     mut nextPtr: *mut *const c_char,
@@ -3726,7 +3726,7 @@ unsafe extern "C" fn doContent(
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut eventPP: *mut *const c_char = null_mut::<*const c_char>();
     let mut eventEndPP: *mut *const c_char = null_mut::<*const c_char>();
-    if enc == (*parser).m_encoding {
+    if core::ptr::eq(enc, &*(*parser).m_encoding) {
         eventPP = &raw mut (*parser).m_eventPtr;
         eventEndPP = &raw mut (*parser).m_eventEndPtr;
     } else {
@@ -4440,7 +4440,7 @@ unsafe extern "C" fn freeBindings(mut parser: XML_Parser, mut bindings: *mut BIN
 
 unsafe extern "C" fn storeAtts(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut attStr: *const c_char,
     mut tagNamePtr: *mut TAG_NAME,
     mut bindingsPtr: *mut *mut BINDING,
@@ -4522,7 +4522,7 @@ unsafe extern "C" fn storeAtts(
             return XML_ERROR_NO_MEMORY;
         }
         if *(*attId).name.offset(-1) != 0 {
-            if enc == (*parser).m_encoding {
+            if core::ptr::eq(enc, &*(*parser).m_encoding) {
                 (*parser).m_eventPtr = (*(*parser).m_atts.offset(i as isize)).name;
             }
             return XML_ERROR_DUPLICATE_ATTRIBUTE;
@@ -5205,7 +5205,7 @@ unsafe extern "C" fn cdataSectionProcessor(
 ) -> XML_Error {
     let mut result: XML_Error = doCdataSection(
         parser,
-        (*parser).m_encoding,
+        &*(*parser).m_encoding,
         &raw mut start,
         end,
         endPtr,
@@ -5245,7 +5245,7 @@ unsafe extern "C" fn cdataSectionProcessor(
 
 unsafe extern "C" fn doCdataSection(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut startPtr: *mut *const c_char,
     mut end: *const c_char,
     mut nextPtr: *mut *const c_char,
@@ -5255,7 +5255,7 @@ unsafe extern "C" fn doCdataSection(
     let mut s: *const c_char = *startPtr;
     let mut eventPP: *mut *const c_char = null_mut::<*const c_char>();
     let mut eventEndPP: *mut *const c_char = null_mut::<*const c_char>();
-    if enc == (*parser).m_encoding {
+    if core::ptr::eq(enc, &*(*parser).m_encoding) {
         eventPP = &raw mut (*parser).m_eventPtr;
         *eventPP = s;
         eventEndPP = &raw mut (*parser).m_eventEndPtr;
@@ -5405,7 +5405,7 @@ unsafe extern "C" fn ignoreSectionProcessor(
 ) -> XML_Error {
     let mut result: XML_Error = doIgnoreSection(
         parser,
-        (*parser).m_encoding,
+        &*(*parser).m_encoding,
         &raw mut start,
         end,
         endPtr,
@@ -5431,7 +5431,7 @@ unsafe extern "C" fn ignoreSectionProcessor(
 
 unsafe extern "C" fn doIgnoreSection(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut startPtr: *mut *const c_char,
     mut end: *const c_char,
     mut nextPtr: *mut *const c_char,
@@ -5442,7 +5442,7 @@ unsafe extern "C" fn doIgnoreSection(
     let mut s: *const c_char = *startPtr;
     let mut eventPP: *mut *const c_char = null_mut::<*const c_char>();
     let mut eventEndPP: *mut *const c_char = null_mut::<*const c_char>();
-    if enc == (*parser).m_encoding {
+    if core::ptr::eq(enc, &*(*parser).m_encoding) {
         eventPP = &raw mut (*parser).m_eventPtr;
         *eventPP = s;
         eventEndPP = &raw mut (*parser).m_eventEndPtr;
@@ -5600,7 +5600,7 @@ unsafe extern "C" fn processXmlDecl(
         if !encodingName.is_null() {
             storedEncName = poolStoreString(
                 &raw mut (*parser).m_temp2Pool,
-                (*parser).m_encoding,
+                &*(*parser).m_encoding,
                 encodingName,
                 encodingName.offset(
                     (*(*parser).m_encoding).nameLength((*parser).m_encoding, encodingName) as isize,
@@ -5614,7 +5614,7 @@ unsafe extern "C" fn processXmlDecl(
         if !version.is_null() {
             storedversion = poolStoreString(
                 &raw mut (*parser).m_temp2Pool,
-                (*parser).m_encoding,
+                &*(*parser).m_encoding,
                 version,
                 versionend.offset(-((*(*parser).m_encoding).minBytesPerChar as isize)),
             );
@@ -5631,7 +5631,7 @@ unsafe extern "C" fn processXmlDecl(
             standalone,
         );
     } else if (*parser).m_defaultHandler.is_some() {
-        reportDefault(parser, (*parser).m_encoding, s, next);
+        reportDefault(parser, &*(*parser).m_encoding, s, next);
     }
     if (*parser).m_protocolEncodingName.is_null() {
         if !newEncoding.is_null() {
@@ -5647,7 +5647,7 @@ unsafe extern "C" fn processXmlDecl(
             if storedEncName.is_null() {
                 storedEncName = poolStoreString(
                     &raw mut (*parser).m_temp2Pool,
-                    (*parser).m_encoding,
+                    &*(*parser).m_encoding,
                     encodingName,
                     encodingName.offset(
                         (*(*parser).m_encoding).nameLength((*parser).m_encoding, encodingName)
@@ -5834,7 +5834,7 @@ unsafe extern "C" fn entityValueInitProcessor(
             }
             return storeEntityValue(
                 parser,
-                (*parser).m_encoding,
+                &*(*parser).m_encoding,
                 s,
                 end,
                 XML_ACCOUNT_DIRECT,
@@ -5915,7 +5915,7 @@ unsafe extern "C" fn externalParEntProcessor(
     );
     return doProlog(
         parser,
-        (*parser).m_encoding,
+        &*(*parser).m_encoding,
         s,
         end,
         tok,
@@ -5935,7 +5935,7 @@ unsafe extern "C" fn entityValueProcessor(
 ) -> XML_Error {
     let mut start: *const c_char = s;
     let mut next: *const c_char = s;
-    let mut enc: *const ENCODING = (*parser).m_encoding;
+    let enc: &ENCODING = &*(*parser).m_encoding;
     let mut tok: c_int = 0;
     loop {
         tok = (*enc).scanners[0](enc, start, end, &raw mut next);
@@ -5974,7 +5974,7 @@ unsafe extern "C" fn prologProcessor(
         (*(*parser).m_encoding).scanners[0]((*parser).m_encoding, s, end, &raw mut next);
     return doProlog(
         parser,
-        (*parser).m_encoding,
+        &*(*parser).m_encoding,
         s,
         end,
         tok,
@@ -5988,7 +5988,7 @@ unsafe extern "C" fn prologProcessor(
 
 unsafe extern "C" fn doProlog(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    mut enc: &ENCODING,
     mut s: *const c_char,
     mut end: *const c_char,
     mut tok: c_int,
@@ -6085,7 +6085,7 @@ unsafe extern "C" fn doProlog(
     let mut eventPP: *mut *const c_char = null_mut::<*const c_char>();
     let mut eventEndPP: *mut *const c_char = null_mut::<*const c_char>();
     let mut quant: XML_Content_Quant = XML_CQUANT_NONE;
-    if enc == (*parser).m_encoding {
+    if core::ptr::eq(enc, &*(*parser).m_encoding) {
         eventPP = &raw mut (*parser).m_eventPtr;
         eventEndPP = &raw mut (*parser).m_eventEndPtr;
     } else {
@@ -6114,13 +6114,15 @@ unsafe extern "C" fn doProlog(
                     tok = -tok;
                 }
                 XML_TOK_NONE => {
-                    if enc != (*parser).m_encoding
+                    if !core::ptr::eq(enc, &*(*parser).m_encoding)
                         && (*(*parser).m_openInternalEntities).betweenDecl == 0
                     {
                         *nextPtr = s;
                         return XML_ERROR_NONE;
                     }
-                    if (*parser).m_isParamEntity as c_int != 0 || enc != (*parser).m_encoding {
+                    if (*parser).m_isParamEntity as c_int != 0
+                        || !core::ptr::eq(enc, &*(*parser).m_encoding)
+                    {
                         if (*parser)
                             .m_prologState
                             .handler
@@ -6170,7 +6172,7 @@ unsafe extern "C" fn doProlog(
                 if result != XML_ERROR_NONE {
                     return result;
                 }
-                enc = (*parser).m_encoding;
+                enc = &*(*parser).m_encoding;
                 handleDefault = XML_FALSE;
                 current_block = 8258632986558375165;
             }
@@ -6210,7 +6212,7 @@ unsafe extern "C" fn doProlog(
                 if result_0 != XML_ERROR_NONE {
                     return result_0;
                 }
-                enc = (*parser).m_encoding;
+                enc = &*(*parser).m_encoding;
                 handleDefault = XML_FALSE;
                 current_block = 8258632986558375165;
             }
@@ -7505,7 +7507,7 @@ unsafe extern "C" fn epilogProcessor(
         match tok {
             -15 => {
                 if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, (*parser).m_encoding, s, next);
+                    reportDefault(parser, &*(*parser).m_encoding, s, next);
                     if (*parser).m_parsingStatus.parsing == XML_FINISHED {
                         return XML_ERROR_ABORTED;
                     }
@@ -7519,16 +7521,16 @@ unsafe extern "C" fn epilogProcessor(
             }
             XML_TOK_PROLOG_S => {
                 if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, (*parser).m_encoding, s, next);
+                    reportDefault(parser, &*(*parser).m_encoding, s, next);
                 }
             }
             XML_TOK_PI => {
-                if reportProcessingInstruction(parser, (*parser).m_encoding, s, next) == 0 {
+                if reportProcessingInstruction(parser, &*(*parser).m_encoding, s, next) == 0 {
                     return XML_ERROR_NO_MEMORY;
                 }
             }
             XML_TOK_COMMENT => {
-                if reportComment(parser, (*parser).m_encoding, s, next) == 0 {
+                if reportComment(parser, &*(*parser).m_encoding, s, next) == 0 {
                     return XML_ERROR_NO_MEMORY;
                 }
             }
@@ -7668,7 +7670,7 @@ unsafe extern "C" fn internalEntityProcessor(
             );
             result = doProlog(
                 parser,
-                (*parser).m_internalEncoding,
+                &*(*parser).m_internalEncoding,
                 textStart,
                 textEnd,
                 tok,
@@ -7682,7 +7684,7 @@ unsafe extern "C" fn internalEntityProcessor(
             result = doContent(
                 parser,
                 (*openEntity).startTagLevel,
-                (*parser).m_internalEncoding,
+                &*(*parser).m_internalEncoding,
                 textStart,
                 textEnd,
                 &raw mut next,
@@ -7752,7 +7754,7 @@ unsafe extern "C" fn errorProcessor(
 
 unsafe extern "C" fn storeAttributeValue(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut isCdata: XML_Bool,
     mut ptr: *const c_char,
     mut end: *const c_char,
@@ -7785,7 +7787,7 @@ unsafe extern "C" fn storeAttributeValue(
             if (*entity).hasMore != 0 {
                 result = appendAttributeValue(
                     parser,
-                    (*parser).m_internalEncoding,
+                    &*(*parser).m_internalEncoding,
                     isCdata,
                     textStart,
                     textEnd,
@@ -7841,7 +7843,7 @@ unsafe extern "C" fn storeAttributeValue(
 
 unsafe extern "C" fn appendAttributeValue(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut isCdata: XML_Bool,
     mut ptr: *const c_char,
     mut end: *const c_char,
@@ -7866,13 +7868,13 @@ unsafe extern "C" fn appendAttributeValue(
                 return XML_ERROR_NONE;
             }
             XML_TOK_INVALID => {
-                if enc == (*parser).m_encoding {
+                if core::ptr::eq(enc, &*(*parser).m_encoding) {
                     (*parser).m_eventPtr = next;
                 }
                 return XML_ERROR_INVALID_TOKEN;
             }
             XML_TOK_PARTIAL => {
-                if enc == (*parser).m_encoding {
+                if core::ptr::eq(enc, &*(*parser).m_encoding) {
                     (*parser).m_eventPtr = ptr;
                 }
                 return XML_ERROR_INVALID_TOKEN;
@@ -7882,7 +7884,7 @@ unsafe extern "C" fn appendAttributeValue(
                 let mut i: c_int = 0;
                 let mut n: c_int = (*enc).charRefNumber(enc, ptr);
                 if n < 0 {
-                    if enc == (*parser).m_encoding {
+                    if core::ptr::eq(enc, &*(*parser).m_encoding) {
                         (*parser).m_eventPtr = ptr;
                     }
                     return XML_ERROR_BAD_CHAR_REF;
@@ -7995,19 +7997,19 @@ unsafe extern "C" fn appendAttributeValue(
                         18038362259723567392 => {}
                         _ => {
                             if (*entity).open != 0 {
-                                if enc == (*parser).m_encoding {
+                                if core::ptr::eq(enc, &*(*parser).m_encoding) {
                                     (*parser).m_eventPtr = ptr;
                                 }
                                 return XML_ERROR_RECURSIVE_ENTITY_REF;
                             }
                             if !(*entity).notation.is_null() {
-                                if enc == (*parser).m_encoding {
+                                if core::ptr::eq(enc, &*(*parser).m_encoding) {
                                     (*parser).m_eventPtr = ptr;
                                 }
                                 return XML_ERROR_BINARY_ENTITY_REF;
                             }
                             if (*entity).textPtr.is_null() {
-                                if enc == (*parser).m_encoding {
+                                if core::ptr::eq(enc, &*(*parser).m_encoding) {
                                     (*parser).m_eventPtr = ptr;
                                 }
                                 return XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF;
@@ -8025,7 +8027,7 @@ unsafe extern "C" fn appendAttributeValue(
                 current_block_70 = 18038362259723567392;
             }
             _ => {
-                if enc == (*parser).m_encoding {
+                if core::ptr::eq(enc, &*(*parser).m_encoding) {
                     (*parser).m_eventPtr = ptr;
                 }
                 return XML_ERROR_UNEXPECTED_STATE;
@@ -8058,7 +8060,7 @@ unsafe extern "C" fn appendAttributeValue(
 
 unsafe extern "C" fn storeEntityValue(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut entityTextPtr: *const c_char,
     mut entityTextEnd: *const c_char,
     mut account: XML_Account,
@@ -8087,7 +8089,9 @@ unsafe extern "C" fn storeEntityValue(
         } else {
             match tok {
                 XML_TOK_PARAM_ENTITY_REF => {
-                    if (*parser).m_isParamEntity as c_int != 0 || enc != (*parser).m_encoding {
+                    if (*parser).m_isParamEntity as c_int != 0
+                        || !core::ptr::eq(enc, &*(*parser).m_encoding)
+                    {
                         let mut name: *const XML_Char = null::<XML_Char>();
                         let mut entity: *mut ENTITY = null_mut::<ENTITY>();
                         name = poolStoreString(
@@ -8109,7 +8113,7 @@ unsafe extern "C" fn storeEntityValue(
                             } else if (*entity).open as c_int != 0
                                 || entity == (*parser).m_declEntity
                             {
-                                if enc == (*parser).m_encoding {
+                                if core::ptr::eq(enc, &*(*parser).m_encoding) {
                                     (*parser).m_eventPtr = entityTextPtr;
                                 }
                                 result = XML_ERROR_RECURSIVE_ENTITY_REF;
@@ -8179,7 +8183,7 @@ unsafe extern "C" fn storeEntityValue(
                     let mut i: c_int = 0;
                     let mut n: c_int = (*enc).charRefNumber(enc, entityTextPtr);
                     if n < 0 {
-                        if enc == (*parser).m_encoding {
+                        if core::ptr::eq(enc, &*(*parser).m_encoding) {
                             (*parser).m_eventPtr = entityTextPtr;
                         }
                         result = XML_ERROR_BAD_CHAR_REF;
@@ -8203,21 +8207,21 @@ unsafe extern "C" fn storeEntityValue(
                     current_block = 5028470053297453708;
                 }
                 XML_TOK_PARTIAL => {
-                    if enc == (*parser).m_encoding {
+                    if core::ptr::eq(enc, &*(*parser).m_encoding) {
                         (*parser).m_eventPtr = entityTextPtr;
                     }
                     result = XML_ERROR_INVALID_TOKEN;
                     break;
                 }
                 XML_TOK_INVALID => {
-                    if enc == (*parser).m_encoding {
+                    if core::ptr::eq(enc, &*(*parser).m_encoding) {
                         (*parser).m_eventPtr = next;
                     }
                     result = XML_ERROR_INVALID_TOKEN;
                     break;
                 }
                 _ => {
-                    if enc == (*parser).m_encoding {
+                    if core::ptr::eq(enc, &*(*parser).m_encoding) {
                         (*parser).m_eventPtr = entityTextPtr;
                     }
                     result = XML_ERROR_UNEXPECTED_STATE;
@@ -8249,7 +8253,7 @@ unsafe extern "C" fn storeEntityValue(
 
 unsafe extern "C" fn callStoreEntityValue(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut entityTextPtr: *const c_char,
     mut entityTextEnd: *const c_char,
     mut account: XML_Account,
@@ -8271,7 +8275,7 @@ unsafe extern "C" fn callStoreEntityValue(
             if (*entity).hasMore != 0 {
                 result = storeEntityValue(
                     parser,
-                    (*parser).m_internalEncoding,
+                    &*(*parser).m_internalEncoding,
                     textStart,
                     textEnd,
                     XML_ACCOUNT_ENTITY_EXPANSION,
@@ -8340,7 +8344,7 @@ unsafe extern "C" fn normalizeLines(mut s: *mut XML_Char) {
 
 unsafe extern "C" fn reportProcessingInstruction(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut start: *const c_char,
     mut end: *const c_char,
 ) -> c_int {
@@ -8379,7 +8383,7 @@ unsafe extern "C" fn reportProcessingInstruction(
 
 unsafe extern "C" fn reportComment(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut start: *const c_char,
     mut end: *const c_char,
 ) -> c_int {
@@ -8409,7 +8413,7 @@ unsafe extern "C" fn reportComment(
 
 unsafe extern "C" fn reportDefault(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut s: *const c_char,
     mut end: *const c_char,
 ) {
@@ -8417,7 +8421,7 @@ unsafe extern "C" fn reportDefault(
         let mut convert_res: XML_Convert_Result = XML_CONVERT_COMPLETED;
         let mut eventPP: *mut *const c_char = null_mut::<*const c_char>();
         let mut eventEndPP: *mut *const c_char = null_mut::<*const c_char>();
-        if enc == (*parser).m_encoding {
+        if core::ptr::eq(enc, &*(*parser).m_encoding) {
             eventPP = &raw mut (*parser).m_eventPtr;
             eventEndPP = &raw mut (*parser).m_eventEndPtr;
         } else {
@@ -8591,7 +8595,7 @@ unsafe extern "C" fn setElementTypePrefix(
 
 unsafe extern "C" fn getAttributeId(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut start: *const c_char,
     mut end: *const c_char,
 ) -> *mut ATTRIBUTE_ID {
@@ -9606,7 +9610,7 @@ unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
 
 unsafe extern "C" fn poolAppend(
     mut pool: *mut STRING_POOL,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
 ) -> *mut XML_Char {
@@ -9704,7 +9708,7 @@ unsafe extern "C" fn poolAppendString(
 
 unsafe extern "C" fn poolStoreString(
     mut pool: *mut STRING_POOL,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
 ) -> *mut XML_Char {
@@ -9977,7 +9981,7 @@ unsafe extern "C" fn build_model(mut parser: XML_Parser) -> *mut XML_Content {
 
 unsafe extern "C" fn getElementType(
     mut parser: XML_Parser,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
 ) -> *mut ELEMENT_TYPE {
