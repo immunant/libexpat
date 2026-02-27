@@ -211,8 +211,7 @@ pub struct ATTRIBUTE {
 
 pub type ENCODING = crate::src::lib::xmltok::encoding;
 
-pub type SCANNER =
-    unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
+pub type SCANNER = unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
 
 pub type XML_Convert_Result = c_uint;
 
@@ -228,34 +227,33 @@ pub struct encoding {
     pub scanners: [crate::src::lib::xmltok::SCANNER; 4],
     pub literalScanners: [crate::src::lib::xmltok::SCANNER; 2],
     pub nameMatchesAscii:
-        unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-    pub nameLength: unsafe fn(*const ENCODING, *const c_char) -> c_int,
-    pub skipS: unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+        unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+    pub nameLength: unsafe fn(&ENCODING, *const c_char) -> c_int,
+    pub skipS: unsafe fn(&ENCODING, *const c_char) -> *const c_char,
     pub getAtts: unsafe fn(
-        *const ENCODING,
+        &ENCODING,
         *const c_char,
         c_int,
         *mut crate::src::lib::xmltok::ATTRIBUTE,
     ) -> c_int,
-    pub charRefNumber: unsafe fn(*const ENCODING, *const c_char) -> c_int,
-    pub predefinedEntityName: unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+    pub charRefNumber: unsafe fn(&ENCODING, *const c_char) -> c_int,
+    pub predefinedEntityName: unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
     pub updatePosition: unsafe fn(
-        *const ENCODING,
+        &ENCODING,
         *const c_char,
         *const c_char,
         *mut crate::src::lib::xmltok::POSITION,
     ) -> (),
-    pub isPublicId:
-        unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
+    pub isPublicId: unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
     pub utf8Convert: unsafe fn(
-        *const ENCODING,
+        &ENCODING,
         *mut *const c_char,
         *const c_char,
         *mut *mut c_char,
         *const c_char,
     ) -> XML_Convert_Result,
     pub utf16Convert: unsafe fn(
-        *const ENCODING,
+        &ENCODING,
         *mut *const c_char,
         *const c_char,
         *mut *mut c_ushort,
@@ -269,7 +267,7 @@ pub struct encoding {
 impl encoding {
     pub(crate) unsafe fn nameMatchesAscii(
         &self,
-        enc: *const ENCODING,
+        enc: &ENCODING,
         ptr: *const c_char,
         end: *const c_char,
         kw: *const c_char,
@@ -277,17 +275,17 @@ impl encoding {
         (self.nameMatchesAscii)(enc, ptr, end, kw)
     }
 
-    pub(crate) unsafe fn nameLength(&self, enc: *const ENCODING, ptr: *const c_char) -> c_int {
+    pub(crate) unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
         (self.nameLength)(enc, ptr)
     }
 
-    pub(crate) unsafe fn skipS(&self, enc: *const ENCODING, ptr: *const c_char) -> *const c_char {
+    pub(crate) unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
         (self.skipS)(enc, ptr)
     }
 
     pub(crate) unsafe fn getAtts(
         &self,
-        enc: *const ENCODING,
+        enc: &ENCODING,
         ptr: *const c_char,
         n: c_int,
         atts: *mut crate::src::lib::xmltok::ATTRIBUTE,
@@ -295,13 +293,13 @@ impl encoding {
         (self.getAtts)(enc, ptr, n, atts)
     }
 
-    pub(crate) unsafe fn charRefNumber(&self, enc: *const ENCODING, ptr: *const c_char) -> c_int {
+    pub(crate) unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
         (self.charRefNumber)(enc, ptr)
     }
 
     pub(crate) unsafe fn predefinedEntityName(
         &self,
-        enc: *const ENCODING,
+        enc: &ENCODING,
         ptr: *const c_char,
         end: *const c_char,
     ) -> c_int {
@@ -310,7 +308,7 @@ impl encoding {
 
     pub(crate) unsafe fn updatePosition(
         &self,
-        enc: *const ENCODING,
+        enc: &ENCODING,
         ptr: *const c_char,
         end: *const c_char,
         pos: *mut crate::src::lib::xmltok::POSITION,
@@ -320,7 +318,7 @@ impl encoding {
 
     pub(crate) unsafe fn isPublicId(
         &self,
-        enc: *const ENCODING,
+        enc: &ENCODING,
         ptr: *const c_char,
         end: *const c_char,
         event_pp: *mut *const c_char,
@@ -330,7 +328,7 @@ impl encoding {
 
     pub(crate) unsafe fn utf8Convert(
         &self,
-        enc: *const ENCODING,
+        enc: &ENCODING,
         from_p: *mut *const c_char,
         from_lim: *const c_char,
         to_p: *mut *mut c_char,
@@ -341,7 +339,7 @@ impl encoding {
 
     pub(crate) unsafe fn utf16Convert(
         &self,
-        enc: *const ENCODING,
+        enc: &ENCODING,
         from_p: *mut *const c_char,
         from_lim: *const c_char,
         to_p: *mut *mut c_ushort,
@@ -360,6 +358,21 @@ pub struct INIT_ENCODING {
 
 pub type CONVERTER = Option<unsafe extern "C" fn(*mut c_void, *const c_char) -> c_int>;
 
+#[inline]
+unsafe fn as_normal_encoding(enc: &ENCODING) -> &normal_encoding {
+    &*(enc as *const ENCODING as *const normal_encoding)
+}
+
+#[inline]
+unsafe fn as_unknown_encoding(enc: &ENCODING) -> &unknown_encoding {
+    &*(enc as *const ENCODING as *const unknown_encoding)
+}
+
+#[inline]
+unsafe fn as_init_encoding(enc: &ENCODING) -> &INIT_ENCODING {
+    &*(enc as *const ENCODING as *const INIT_ENCODING)
+}
+
 pub mod xmltok_impl_c {
     use super::*;
     use crate::src::lib::xmltok::XML_TOK_COMMENT_1;
@@ -374,7 +387,7 @@ pub mod xmltok_impl_c {
     use core::ffi::c_uchar;
 
     pub(crate) unsafe fn normal_scanComment(
-        mut enc: *const crate::src::lib::xmltok::ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -386,12 +399,12 @@ pub mod xmltok_impl_c {
             }
             ptr = ptr.offset(1);
             while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     5 => {
                         if (end.offset_from(ptr) as c_long) < 2 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if (*(enc as *const normal_encoding))
+                        if as_normal_encoding(enc)
                             .isInvalid2
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -405,7 +418,7 @@ pub mod xmltok_impl_c {
                         if (end.offset_from(ptr) as c_long) < 3 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if (*(enc as *const normal_encoding))
+                        if as_normal_encoding(enc)
                             .isInvalid3
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -419,7 +432,7 @@ pub mod xmltok_impl_c {
                         if (end.offset_from(ptr) as c_long) < 4 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if (*(enc as *const normal_encoding))
+                        if as_normal_encoding(enc)
                             .isInvalid4
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -461,7 +474,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanDecl(
-        mut enc: *const crate::src::lib::xmltok::ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -469,7 +482,7 @@ pub mod xmltok_impl_c {
         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
             return XML_TOK_PARTIAL_1;
         }
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             27 => {
                 return normal_scanComment(enc, ptr.offset(1isize), end, nextTokPtr);
             }
@@ -487,13 +500,12 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             's_129: {
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     30 => {
                         if !(end.offset_from(ptr) as c_long >= (2i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        match (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize]
+                        match as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                             as c_int
                         {
                             21 | 9 | 10 | 30 => {
@@ -521,7 +533,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_checkPiTarget(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut tokPtr: *mut c_int,
@@ -562,7 +574,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanPi(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -573,7 +585,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_32: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -588,11 +600,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -607,11 +619,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -626,11 +638,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -654,7 +666,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_118: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -669,11 +681,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -688,11 +700,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -707,11 +719,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -729,14 +741,12 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(1);
                     while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
-                        {
+                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                             5 => {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid2
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -751,7 +761,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid3
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -766,7 +776,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid4
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -832,7 +842,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanCdataSection(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -863,7 +873,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_cdataSectionTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -881,7 +891,7 @@ pub mod xmltok_impl_c {
                 end = ptr.offset(n as isize);
             }
         }
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             4 => {
                 ptr = ptr.offset(1);
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
@@ -905,7 +915,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return XML_TOK_PARTIAL_1;
                 }
-                if (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                     == BT_LF as c_int
                 {
                     ptr = ptr.offset(1isize);
@@ -921,7 +931,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -935,7 +945,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -949,7 +959,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -968,10 +978,10 @@ pub mod xmltok_impl_c {
             }
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     if (end.offset_from(ptr) as c_long) < 2
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isInvalid2
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -983,7 +993,7 @@ pub mod xmltok_impl_c {
                 }
                 6 => {
                     if (end.offset_from(ptr) as c_long) < 3
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isInvalid3
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -995,7 +1005,7 @@ pub mod xmltok_impl_c {
                 }
                 7 => {
                     if (end.offset_from(ptr) as c_long) < 4
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isInvalid4
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -1019,7 +1029,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanEndTag(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -1028,7 +1038,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_32: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -1043,11 +1053,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1062,11 +1072,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1081,11 +1091,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1109,7 +1119,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_73: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -1124,11 +1134,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1143,11 +1153,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1162,11 +1172,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1180,9 +1190,7 @@ pub mod xmltok_impl_c {
                 21 | 9 | 10 => {
                     ptr = ptr.offset(1);
                     while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
-                        {
+                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                             21 | 9 | 10 => {}
                             11 => {
                                 *nextTokPtr = ptr.offset(1);
@@ -1221,13 +1229,13 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanHexCharRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 25 | 24 => {}
                 _ => {
                     *nextTokPtr = ptr;
@@ -1236,7 +1244,7 @@ pub mod xmltok_impl_c {
             }
             ptr = ptr.offset(1);
             while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     25 | 24 => {}
                     18 => {
                         *nextTokPtr = ptr.offset(1);
@@ -1254,7 +1262,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanCharRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -1263,7 +1271,7 @@ pub mod xmltok_impl_c {
             if *ptr as c_int == 0x78 {
                 return normal_scanHexCharRef(enc, ptr.offset(1isize), end, nextTokPtr);
             }
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 25 => {}
                 _ => {
                     *nextTokPtr = ptr;
@@ -1272,7 +1280,7 @@ pub mod xmltok_impl_c {
             }
             ptr = ptr.offset(1);
             while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     25 => {}
                     18 => {
                         *nextTokPtr = ptr.offset(1);
@@ -1290,7 +1298,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -1299,7 +1307,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_33: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -1314,11 +1322,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1333,11 +1341,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1352,11 +1360,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1383,7 +1391,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_64: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -1398,11 +1406,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1417,11 +1425,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1436,11 +1444,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1471,7 +1479,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanAtts(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -1479,7 +1487,7 @@ pub mod xmltok_impl_c {
         let mut hadColon: c_int = 0;
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_186: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -1494,11 +1502,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1513,11 +1521,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1532,11 +1540,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1558,9 +1566,7 @@ pub mod xmltok_impl_c {
                         return XML_TOK_PARTIAL_1;
                     }
                     let mut current_block_64: u64;
-                    match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                        as c_int
-                    {
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                         29 => {
                             if 0 == 0 {
                                 *nextTokPtr = ptr;
@@ -1575,12 +1581,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if as_normal_encoding(enc)
                                 .isInvalid2
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || as_normal_encoding(enc)
                                     .isNmstrt2
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1596,12 +1602,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if as_normal_encoding(enc)
                                 .isInvalid3
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || as_normal_encoding(enc)
                                     .isNmstrt3
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1617,12 +1623,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if as_normal_encoding(enc)
                                 .isInvalid4
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || as_normal_encoding(enc)
                                     .isNmstrt4
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1654,8 +1660,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        t = (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int;
+                        t = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
                         if t == BT_EQUALS as c_int {
                             break;
                         }
@@ -1686,8 +1691,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        open = (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int;
+                        open = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
                         if open == BT_QUOT as c_int || open == BT_APOS as c_int {
                             break;
                         }
@@ -1705,8 +1709,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        t_0 = (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int;
+                        t_0 = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
                         if t_0 == open {
                             break;
                         }
@@ -1715,7 +1718,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid2
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1730,7 +1733,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid3
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1745,7 +1748,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid4
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1783,17 +1786,14 @@ pub mod xmltok_impl_c {
                     if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                         return XML_TOK_PARTIAL_1;
                     }
-                    match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                        as c_int
-                    {
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                         21 | 9 | 10 => {
                             loop {
                                 ptr = ptr.offset(1);
                                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                                     return XML_TOK_PARTIAL_1;
                                 }
-                                match (*(enc as *const normal_encoding)).type_0
-                                    [*ptr as c_uchar as usize]
+                                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
                                     as c_int
                                 {
                                     29 => {
@@ -1812,12 +1812,12 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 2 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if (*(enc as *const normal_encoding))
+                                        if as_normal_encoding(enc)
                                             .isInvalid2
                                             .expect("non-null function pointer")(
                                             enc, ptr
                                         ) != 0
-                                            || (*(enc as *const normal_encoding))
+                                            || as_normal_encoding(enc)
                                                 .isNmstrt2
                                                 .expect("non-null function pointer")(
                                                 enc, ptr
@@ -1834,12 +1834,12 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 3 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if (*(enc as *const normal_encoding))
+                                        if as_normal_encoding(enc)
                                             .isInvalid3
                                             .expect("non-null function pointer")(
                                             enc, ptr
                                         ) != 0
-                                            || (*(enc as *const normal_encoding))
+                                            || as_normal_encoding(enc)
                                                 .isNmstrt3
                                                 .expect("non-null function pointer")(
                                                 enc, ptr
@@ -1856,12 +1856,12 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 4 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if (*(enc as *const normal_encoding))
+                                        if as_normal_encoding(enc)
                                             .isInvalid4
                                             .expect("non-null function pointer")(
                                             enc, ptr
                                         ) != 0
-                                            || (*(enc as *const normal_encoding))
+                                            || as_normal_encoding(enc)
                                                 .isNmstrt4
                                                 .expect("non-null function pointer")(
                                                 enc, ptr
@@ -1942,7 +1942,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanLt(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -1952,7 +1952,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_45: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -1967,11 +1967,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1986,11 +1986,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2005,11 +2005,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2025,7 +2025,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return XML_TOK_PARTIAL_1;
                 }
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     27 => {
                         return normal_scanComment(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
@@ -2057,7 +2057,7 @@ pub mod xmltok_impl_c {
         hadColon = 0;
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_161: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -2072,11 +2072,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2091,11 +2091,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2110,11 +2110,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2136,9 +2136,7 @@ pub mod xmltok_impl_c {
                         return XML_TOK_PARTIAL_1;
                     }
                     let mut current_block_112: u64;
-                    match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                        as c_int
-                    {
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                         29 => {
                             if 0 == 0 {
                                 *nextTokPtr = ptr;
@@ -2153,12 +2151,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if as_normal_encoding(enc)
                                 .isInvalid2
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || as_normal_encoding(enc)
                                     .isNmstrt2
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -2174,12 +2172,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if as_normal_encoding(enc)
                                 .isInvalid3
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || as_normal_encoding(enc)
                                     .isNmstrt3
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -2195,12 +2193,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if as_normal_encoding(enc)
                                 .isInvalid4
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || as_normal_encoding(enc)
                                     .isNmstrt4
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -2232,9 +2230,7 @@ pub mod xmltok_impl_c {
                             current_block_161 = 13215501469961642988;
                             break;
                         }
-                        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
-                        {
+                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                             29 => {
                                 if 0 == 0 {
                                     *nextTokPtr = ptr;
@@ -2249,12 +2245,12 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid2
                                     .expect("non-null function pointer")(
                                     enc, ptr
                                 ) != 0
-                                    || (*(enc as *const normal_encoding))
+                                    || as_normal_encoding(enc)
                                         .isNmstrt2
                                         .expect("non-null function pointer")(
                                         enc, ptr
@@ -2270,12 +2266,12 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid3
                                     .expect("non-null function pointer")(
                                     enc, ptr
                                 ) != 0
-                                    || (*(enc as *const normal_encoding))
+                                    || as_normal_encoding(enc)
                                         .isNmstrt3
                                         .expect("non-null function pointer")(
                                         enc, ptr
@@ -2291,12 +2287,12 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if as_normal_encoding(enc)
                                     .isInvalid4
                                     .expect("non-null function pointer")(
                                     enc, ptr
                                 ) != 0
-                                    || (*(enc as *const normal_encoding))
+                                    || as_normal_encoding(enc)
                                         .isNmstrt4
                                         .expect("non-null function pointer")(
                                         enc, ptr
@@ -2377,7 +2373,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_contentTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -2395,7 +2391,7 @@ pub mod xmltok_impl_c {
                 end = ptr.offset(n as isize);
             }
         }
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             2 => {
                 return normal_scanLt(enc, ptr.offset(1isize), end, nextTokPtr);
             }
@@ -2407,7 +2403,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return XML_TOK_TRAILING_CR_1;
                 }
-                if (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                     == BT_LF as c_int
                 {
                     ptr = ptr.offset(1isize);
@@ -2441,7 +2437,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -2455,7 +2451,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -2469,7 +2465,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -2489,10 +2485,10 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_76: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     if (end.offset_from(ptr) as c_long) < 2
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isInvalid2
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -2505,7 +2501,7 @@ pub mod xmltok_impl_c {
                 }
                 6 => {
                     if (end.offset_from(ptr) as c_long) < 3
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isInvalid3
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -2518,7 +2514,7 @@ pub mod xmltok_impl_c {
                 }
                 7 => {
                     if (end.offset_from(ptr) as c_long) < 4
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isInvalid4
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -2570,7 +2566,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanPercent(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -2579,7 +2575,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_34: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -2594,11 +2590,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2613,11 +2609,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2632,11 +2628,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2664,7 +2660,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_65: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -2679,11 +2675,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2698,11 +2694,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2717,11 +2713,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2752,7 +2748,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_scanPoundName(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -2761,7 +2757,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_32: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -2776,11 +2772,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2795,11 +2791,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2814,11 +2810,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || as_normal_encoding(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2842,7 +2838,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_63: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -2857,11 +2853,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2876,11 +2872,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2895,11 +2891,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2931,20 +2927,19 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanLit(
         mut open: c_int,
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut t: c_int =
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int;
+            let mut t: c_int = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
             match t {
                 5 => {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -2958,7 +2953,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -2972,7 +2967,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -2993,9 +2988,7 @@ pub mod xmltok_impl_c {
                             return -XML_TOK_LITERAL_1;
                         }
                         *nextTokPtr = ptr;
-                        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
-                        {
+                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                             21 | 9 | 10 | 11 | 30 | 20 => return XML_TOK_LITERAL_1,
                             _ => return XML_TOK_INVALID_1,
                         }
@@ -3010,7 +3003,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_prologTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -3030,7 +3023,7 @@ pub mod xmltok_impl_c {
             }
         }
         let mut current_block_124: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
             12 => {
                 return normal_scanLit(BT_QUOT as c_int, enc, ptr.offset(1isize), end, nextTokPtr);
             }
@@ -3042,7 +3035,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return XML_TOK_PARTIAL_1;
                 }
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     16 => {
                         return normal_scanDecl(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
@@ -3105,7 +3098,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return -XML_TOK_CLOSE_PAREN_1;
                 }
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     33 => {
                         *nextTokPtr = ptr.offset(1);
                         return XML_TOK_CLOSE_PAREN_ASTERISK_1;
@@ -3142,7 +3135,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3150,14 +3143,14 @@ pub mod xmltok_impl_c {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isNmstrt2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
                 {
                     ptr = ptr.offset(2);
                     tok = XML_TOK_NAME;
-                } else if (*(enc as *const normal_encoding))
+                } else if as_normal_encoding(enc)
                     .isName2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3174,7 +3167,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3182,14 +3175,14 @@ pub mod xmltok_impl_c {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isNmstrt3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
                 {
                     ptr = ptr.offset(3);
                     tok = XML_TOK_NAME;
-                } else if (*(enc as *const normal_encoding))
+                } else if as_normal_encoding(enc)
                     .isName3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3206,7 +3199,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3214,14 +3207,14 @@ pub mod xmltok_impl_c {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if as_normal_encoding(enc)
                     .isNmstrt4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
                 {
                     ptr = ptr.offset(4);
                     tok = XML_TOK_NAME;
-                } else if (*(enc as *const normal_encoding))
+                } else if as_normal_encoding(enc)
                     .isName4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3258,9 +3251,7 @@ pub mod xmltok_impl_c {
                         break;
                     }
                     let mut current_block_32: u64;
-                    match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                        as c_int
-                    {
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                         21 | 10 => {
                             current_block_32 = 17500079516916021833;
                         }
@@ -3289,7 +3280,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_210: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -3304,11 +3295,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -3323,11 +3314,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -3342,11 +3333,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || as_normal_encoding(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -3370,9 +3361,7 @@ pub mod xmltok_impl_c {
                             }
                             tok = XML_TOK_PREFIXED_NAME;
                             let mut current_block_187: u64;
-                            match (*(enc as *const normal_encoding)).type_0
-                                [*ptr as c_uchar as usize]
-                                as c_int
+                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                             {
                                 29 => {
                                     if 0 == 0 {
@@ -3388,12 +3377,12 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 2 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if (*(enc as *const normal_encoding))
+                                    if as_normal_encoding(enc)
                                         .isInvalid2
                                         .expect("non-null function pointer")(
                                         enc, ptr
                                     ) != 0
-                                        || (*(enc as *const normal_encoding))
+                                        || as_normal_encoding(enc)
                                             .isName2
                                             .expect("non-null function pointer")(
                                             enc, ptr
@@ -3409,12 +3398,12 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 3 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if (*(enc as *const normal_encoding))
+                                    if as_normal_encoding(enc)
                                         .isInvalid3
                                         .expect("non-null function pointer")(
                                         enc, ptr
                                     ) != 0
-                                        || (*(enc as *const normal_encoding))
+                                        || as_normal_encoding(enc)
                                             .isName3
                                             .expect("non-null function pointer")(
                                             enc, ptr
@@ -3430,12 +3419,12 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 4 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if (*(enc as *const normal_encoding))
+                                    if as_normal_encoding(enc)
                                         .isInvalid4
                                         .expect("non-null function pointer")(
                                         enc, ptr
                                     ) != 0
-                                        || (*(enc as *const normal_encoding))
+                                        || as_normal_encoding(enc)
                                             .isName4
                                             .expect("non-null function pointer")(
                                             enc, ptr
@@ -3506,7 +3495,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_attributeValueTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -3519,7 +3508,7 @@ pub mod xmltok_impl_c {
         }
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     ptr = ptr.offset(2isize);
                 }
@@ -3554,8 +3543,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_TRAILING_CR_1;
                         }
-                        if (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
+                        if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                             == BT_LF as c_int
                         {
                             ptr = ptr.offset(1isize);
@@ -3584,7 +3572,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_entityValueTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -3597,7 +3585,7 @@ pub mod xmltok_impl_c {
         }
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     ptr = ptr.offset(2isize);
                 }
@@ -3641,8 +3629,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_TRAILING_CR_1;
                         }
-                        if (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
+                        if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                             == BT_LF as c_int
                         {
                             ptr = ptr.offset(1isize);
@@ -3663,7 +3650,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_ignoreSectionTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -3677,12 +3664,12 @@ pub mod xmltok_impl_c {
             }
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -3696,7 +3683,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -3710,7 +3697,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if as_normal_encoding(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -3769,7 +3756,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_isPublicId(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut badPtr: *mut *const c_char,
@@ -3778,7 +3765,7 @@ pub mod xmltok_impl_c {
         end = end.offset(-(1));
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_8: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
                 | 30 | 19 | 23 => {
                     current_block_8 = 5143058163439228106;
@@ -3817,7 +3804,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_getAtts(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut attsMax: c_int,
         mut atts: *mut ATTRIBUTE,
@@ -3827,7 +3814,7 @@ pub mod xmltok_impl_c {
         let mut open: c_int = 0;
         ptr = ptr.offset(1);
         loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     if state == other {
                         if nAtts < attsMax {
@@ -3919,8 +3906,7 @@ pub mod xmltok_impl_c {
                         && (ptr == (*atts.offset(nAtts as isize)).valuePtr
                             || *ptr as c_int != ASCII_SPACE
                             || *ptr.offset(1) as c_int == ASCII_SPACE
-                            || (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            || as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                                 == open)
                     {
@@ -3945,10 +3931,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe fn normal_charRefNumber(
-        mut _enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn normal_charRefNumber(_enc: &ENCODING, mut ptr: *const c_char) -> c_int {
         let mut result: c_int = 0;
         ptr = ptr.offset((2i32 * 1) as isize);
         if *ptr as c_int == 0x78 {
@@ -3991,7 +3974,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_predefinedEntityName(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
     ) -> c_int {
@@ -4049,7 +4032,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_nameMatchesAscii(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr1: *const c_char,
         mut end1: *const c_char,
         mut ptr2: *const c_char,
@@ -4067,13 +4050,10 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as c_int;
     }
 
-    pub(crate) unsafe fn normal_nameLength(
-        mut enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn normal_nameLength(enc: &ENCODING, mut ptr: *const c_char) -> c_int {
         let mut start: *const c_char = ptr;
         loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     ptr = ptr.offset(2isize);
                 }
@@ -4093,12 +4073,9 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe fn normal_skipS(
-        mut enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> *const c_char {
+    pub(crate) unsafe fn normal_skipS(enc: &ENCODING, mut ptr: *const c_char) -> *const c_char {
         loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 10 | 9 | 21 => {
                     ptr = ptr.offset(1isize);
                 }
@@ -4108,13 +4085,13 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn normal_updatePosition(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut pos: *mut POSITION,
     ) {
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     ptr = ptr.offset(2);
                     (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
@@ -4136,8 +4113,7 @@ pub mod xmltok_impl_c {
                     (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
                     ptr = ptr.offset(1);
                     if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long
-                        && (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
+                        && as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                             == BT_LF as c_int
                     {
                         ptr = ptr.offset(1isize);
@@ -4153,7 +4129,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanComment(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -4166,7 +4142,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -4220,7 +4196,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanDecl(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -4229,7 +4205,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -4251,7 +4227,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             's_129: {
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -4260,8 +4236,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         match if *ptr.offset(2).offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(2) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(2) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(2).offset(1), *ptr.offset(2).offset(0))
@@ -4291,7 +4266,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_checkPiTarget(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut tokPtr: *mut c_int,
@@ -4344,7 +4319,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanPi(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -4356,7 +4331,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -4422,7 +4397,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_118: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4483,8 +4458,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                         match if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
@@ -4561,7 +4535,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanCdataSection(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -4594,7 +4568,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_cdataSectionTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -4613,7 +4587,7 @@ pub mod xmltok_impl_c {
             }
         }
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -4641,7 +4615,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 if (if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 }) == BT_LF as c_int
@@ -4683,7 +4657,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4722,7 +4696,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanEndTag(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -4732,7 +4706,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -4798,7 +4772,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_73: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4855,8 +4829,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                         match if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
@@ -4898,14 +4871,14 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanHexCharRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4918,7 +4891,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -4939,7 +4912,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanCharRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -4949,7 +4922,7 @@ pub mod xmltok_impl_c {
                 return little2_scanHexCharRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4962,7 +4935,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -4983,7 +4956,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -4993,7 +4966,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_33: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -5062,7 +5035,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_64: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -5135,7 +5108,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanAtts(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -5144,7 +5117,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_186: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -5209,7 +5182,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_64: u64;
                     match if *ptr.offset(1) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
@@ -5284,8 +5257,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         t = if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
@@ -5320,8 +5292,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         open = if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
@@ -5343,8 +5314,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         t_0 = if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
@@ -5398,7 +5368,7 @@ pub mod xmltok_impl_c {
                         return XML_TOK_PARTIAL_1;
                     }
                     match if *ptr.offset(1) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
@@ -5409,8 +5379,7 @@ pub mod xmltok_impl_c {
                                     return XML_TOK_PARTIAL_1;
                                 }
                                 match if *ptr.offset(1) as c_int == 0 {
-                                    (*(enc as *const normal_encoding)).type_0
-                                        [*ptr as c_uchar as usize]
+                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
                                         as c_int
                                 } else {
                                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
@@ -5541,7 +5510,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanLt(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -5552,7 +5521,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_45: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -5610,7 +5579,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -5646,7 +5615,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_161: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -5711,7 +5680,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_112: u64;
                     match if *ptr.offset(1) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
@@ -5786,8 +5755,7 @@ pub mod xmltok_impl_c {
                             break;
                         }
                         match if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
@@ -5910,7 +5878,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_contentTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -5929,7 +5897,7 @@ pub mod xmltok_impl_c {
             }
         }
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -5945,7 +5913,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_TRAILING_CR_1;
                 }
                 if (if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 }) == BT_LF as c_int
@@ -6006,7 +5974,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_76: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6079,7 +6047,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanPercent(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -6089,7 +6057,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_34: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -6159,7 +6127,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_65: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6232,7 +6200,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_scanPoundName(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -6242,7 +6210,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -6308,7 +6276,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_63: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6382,14 +6350,14 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanLit(
         mut open: c_int,
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut t: c_int = if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             };
@@ -6424,8 +6392,7 @@ pub mod xmltok_impl_c {
                         }
                         *nextTokPtr = ptr;
                         match if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
@@ -6443,7 +6410,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_prologTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -6464,7 +6431,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_124: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -6480,7 +6447,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -6549,7 +6516,7 @@ pub mod xmltok_impl_c {
                     return -XML_TOK_CLOSE_PAREN_1;
                 }
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -6654,7 +6621,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_32: u64;
                     match if *ptr.offset(1) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
@@ -6691,7 +6658,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_210: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6758,8 +6725,7 @@ pub mod xmltok_impl_c {
                             tok = XML_TOK_PREFIXED_NAME;
                             let mut current_block_187: u64;
                             match if *ptr.offset(1) as c_int == 0 {
-                                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                    as c_int
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                             } else {
                                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                             } {
@@ -6872,7 +6838,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_attributeValueTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -6886,7 +6852,7 @@ pub mod xmltok_impl_c {
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6925,8 +6891,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_TRAILING_CR_1;
                         }
                         if (if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as c_int
@@ -6957,7 +6922,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_entityValueTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -6971,7 +6936,7 @@ pub mod xmltok_impl_c {
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7019,8 +6984,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_TRAILING_CR_1;
                         }
                         if (if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as c_int
@@ -7043,7 +7007,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_ignoreSectionTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -7058,7 +7022,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7129,7 +7093,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_isPublicId(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut badPtr: *mut *const c_char,
@@ -7139,7 +7103,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_8: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7193,7 +7157,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_getAtts(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut attsMax: c_int,
         mut atts: *mut ATTRIBUTE,
@@ -7204,7 +7168,7 @@ pub mod xmltok_impl_c {
         ptr = ptr.offset(2);
         loop {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7308,8 +7272,7 @@ pub mod xmltok_impl_c {
                                 -(1)
                             }) == ASCII_SPACE
                             || (if *ptr.offset(2).offset(1) as c_int == 0 {
-                                (*(enc as *const normal_encoding)).type_0
-                                    [*ptr.offset(2) as c_uchar as usize]
+                                as_normal_encoding(enc).type_0[*ptr.offset(2) as c_uchar as usize]
                                     as c_int
                             } else {
                                 unicode_byte_type(
@@ -7339,10 +7302,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe fn little2_charRefNumber(
-        mut _enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn little2_charRefNumber(_enc: &ENCODING, mut ptr: *const c_char) -> c_int {
         let mut result: c_int = 0;
         ptr = ptr.offset((2i32 * 2) as isize);
         if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x78 {
@@ -7393,7 +7353,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_predefinedEntityName(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
     ) -> c_int {
@@ -7463,7 +7423,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_nameMatchesAscii(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr1: *const c_char,
         mut end1: *const c_char,
         mut ptr2: *const c_char,
@@ -7481,14 +7441,11 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as c_int;
     }
 
-    pub(crate) unsafe fn little2_nameLength(
-        mut enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn little2_nameLength(enc: &ENCODING, mut ptr: *const c_char) -> c_int {
         let mut start: *const c_char = ptr;
         loop {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7511,13 +7468,10 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe fn little2_skipS(
-        mut enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> *const c_char {
+    pub(crate) unsafe fn little2_skipS(enc: &ENCODING, mut ptr: *const c_char) -> *const c_char {
         loop {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7530,14 +7484,14 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn little2_updatePosition(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut pos: *mut POSITION,
     ) {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7563,8 +7517,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long
                         && (if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as c_int
@@ -7582,7 +7535,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanComment(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -7595,8 +7548,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -7650,7 +7602,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanDecl(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -7659,7 +7611,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -7681,8 +7633,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             's_129: {
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -7691,7 +7642,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         match if *ptr.offset(2).offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
+                            as_normal_encoding(enc).type_0
                                 [*ptr.offset(2).offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
@@ -7722,7 +7673,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_checkPiTarget(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut tokPtr: *mut c_int,
@@ -7775,7 +7726,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanPi(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -7787,7 +7738,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -7853,8 +7804,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_118: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -7915,8 +7865,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                         match if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -7994,7 +7943,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanCdataSection(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -8027,7 +7976,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_cdataSectionTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -8046,7 +7995,7 @@ pub mod xmltok_impl_c {
             }
         }
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -8074,8 +8023,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 if (if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 }) == BT_LF as c_int
@@ -8117,8 +8065,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8157,7 +8104,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanEndTag(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -8167,7 +8114,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -8233,8 +8180,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_73: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8291,8 +8237,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                         match if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -8335,15 +8280,14 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanHexCharRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8356,8 +8300,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -8378,7 +8321,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanCharRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -8388,8 +8331,7 @@ pub mod xmltok_impl_c {
                 return big2_scanHexCharRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8402,8 +8344,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -8424,7 +8365,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanRef(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -8434,7 +8375,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_33: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -8503,8 +8444,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_64: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8577,7 +8517,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanAtts(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -8586,8 +8526,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_186: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8652,8 +8591,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_64: u64;
                     match if *ptr.offset(0) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize] as c_int
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
@@ -8728,8 +8666,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         t = if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -8765,8 +8702,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         open = if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -8789,8 +8725,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         t_0 = if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -8845,8 +8780,7 @@ pub mod xmltok_impl_c {
                         return XML_TOK_PARTIAL_1;
                     }
                     match if *ptr.offset(0) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize] as c_int
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
@@ -8857,7 +8791,7 @@ pub mod xmltok_impl_c {
                                     return XML_TOK_PARTIAL_1;
                                 }
                                 match if *ptr.offset(0) as c_int == 0 {
-                                    (*(enc as *const normal_encoding)).type_0
+                                    as_normal_encoding(enc).type_0
                                         [*ptr.offset(1) as c_uchar as usize]
                                         as c_int
                                 } else {
@@ -8989,7 +8923,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanLt(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -9000,7 +8934,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_45: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9058,8 +8992,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -9095,8 +9028,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_161: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -9161,8 +9093,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_112: u64;
                     match if *ptr.offset(0) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize] as c_int
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
@@ -9237,8 +9168,7 @@ pub mod xmltok_impl_c {
                             break;
                         }
                         match if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -9362,7 +9292,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_contentTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -9381,7 +9311,7 @@ pub mod xmltok_impl_c {
             }
         }
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9397,8 +9327,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_TRAILING_CR_1;
                 }
                 if (if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 }) == BT_LF as c_int
@@ -9459,8 +9388,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_76: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -9533,7 +9461,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanPercent(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -9543,7 +9471,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_34: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9613,8 +9541,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_65: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -9687,7 +9614,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_scanPoundName(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -9697,7 +9624,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9763,8 +9690,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_63: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -9838,15 +9764,14 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanLit(
         mut open: c_int,
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut t: c_int = if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             };
@@ -9881,8 +9806,7 @@ pub mod xmltok_impl_c {
                         }
                         *nextTokPtr = ptr;
                         match if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -9901,7 +9825,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_prologTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -9922,7 +9846,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_124: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9938,8 +9862,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -10008,8 +9931,7 @@ pub mod xmltok_impl_c {
                     return -XML_TOK_CLOSE_PAREN_1;
                 }
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -10114,8 +10036,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_32: u64;
                     match if *ptr.offset(0) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize] as c_int
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
@@ -10152,8 +10073,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_210: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10220,8 +10140,7 @@ pub mod xmltok_impl_c {
                             tok = XML_TOK_PREFIXED_NAME;
                             let mut current_block_187: u64;
                             match if *ptr.offset(0) as c_int == 0 {
-                                (*(enc as *const normal_encoding)).type_0
-                                    [*ptr.offset(1) as c_uchar as usize]
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                     as c_int
                             } else {
                                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -10335,7 +10254,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_attributeValueTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -10349,8 +10268,7 @@ pub mod xmltok_impl_c {
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10389,8 +10307,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_TRAILING_CR_1;
                         }
                         if (if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -10422,7 +10339,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_entityValueTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -10436,8 +10353,7 @@ pub mod xmltok_impl_c {
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10484,8 +10400,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_TRAILING_CR_1;
                         }
                         if (if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -10509,7 +10424,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_ignoreSectionTok(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
@@ -10524,8 +10439,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10596,7 +10510,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_isPublicId(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut badPtr: *mut *const c_char,
@@ -10606,8 +10520,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_8: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10661,7 +10574,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_getAtts(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut attsMax: c_int,
         mut atts: *mut ATTRIBUTE,
@@ -10672,8 +10585,7 @@ pub mod xmltok_impl_c {
         ptr = ptr.offset(2);
         loop {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10777,7 +10689,7 @@ pub mod xmltok_impl_c {
                                 -(1)
                             }) == ASCII_SPACE
                             || (if *ptr.offset(2).offset(0) as c_int == 0 {
-                                (*(enc as *const normal_encoding)).type_0
+                                as_normal_encoding(enc).type_0
                                     [*ptr.offset(2).offset(1) as c_uchar as usize]
                                     as c_int
                             } else {
@@ -10808,10 +10720,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe fn big2_charRefNumber(
-        mut _enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn big2_charRefNumber(_enc: &ENCODING, mut ptr: *const c_char) -> c_int {
         let mut result: c_int = 0;
         ptr = ptr.offset((2i32 * 2) as isize);
         if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x78 {
@@ -10862,7 +10771,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_predefinedEntityName(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
     ) -> c_int {
@@ -10932,7 +10841,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_nameMatchesAscii(
-        mut _enc: *const ENCODING,
+        _enc: &ENCODING,
         mut ptr1: *const c_char,
         mut end1: *const c_char,
         mut ptr2: *const c_char,
@@ -10950,15 +10859,11 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as c_int;
     }
 
-    pub(crate) unsafe fn big2_nameLength(
-        mut enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn big2_nameLength(enc: &ENCODING, mut ptr: *const c_char) -> c_int {
         let mut start: *const c_char = ptr;
         loop {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10981,14 +10886,10 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe fn big2_skipS(
-        mut enc: *const ENCODING,
-        mut ptr: *const c_char,
-    ) -> *const c_char {
+    pub(crate) unsafe fn big2_skipS(enc: &ENCODING, mut ptr: *const c_char) -> *const c_char {
         loop {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -11001,15 +10902,14 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) unsafe fn big2_updatePosition(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut pos: *mut POSITION,
     ) {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -11035,8 +10935,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long
                         && (if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -11058,7 +10957,6 @@ pub mod xmltok_impl_c {
     use crate::src::lib::xmltok::nametab_h::namePages;
     use crate::src::lib::xmltok::nametab_h::namingBitmap;
     use crate::src::lib::xmltok::nametab_h::nmstrtPages;
-    use crate::src::lib::xmltok::normal_encoding;
     use crate::src::lib::xmltok::unicode_byte_type;
 }
 
@@ -11082,14 +10980,14 @@ pub mod xmltok_ns_c {
     ];
 
     pub(crate) unsafe fn initScanProlog(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         return initScan(
             encodings.as_ptr() as *const *const ENCODING,
-            enc as *const INIT_ENCODING,
+            as_init_encoding(enc),
             XML_PROLOG_STATE,
             ptr,
             end,
@@ -11098,14 +10996,14 @@ pub mod xmltok_ns_c {
     }
 
     pub(crate) unsafe fn initScanContent(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         return initScan(
             encodings.as_ptr() as *const *const ENCODING,
-            enc as *const INIT_ENCODING,
+            as_init_encoding(enc),
             XML_CONTENT_STATE,
             ptr,
             end,
@@ -11123,28 +11021,18 @@ pub mod xmltok_ns_c {
         }
         (*p).initEnc.isUtf16 = i as c_char;
         (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = initScanProlog
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int;
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
         (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = initScanContent
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int;
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
         (*p).initEnc.updatePosition = initUpdatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> ();
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> ();
         (*p).encPtr = encPtr;
         *encPtr = &raw mut (*p).initEnc;
         return 1;
     }
 
     pub(crate) unsafe fn findEncoding(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
     ) -> *const ENCODING {
@@ -11183,7 +11071,7 @@ pub mod xmltok_ns_c {
     }
     pub(crate) unsafe fn XmlParseXmlDecl(
         mut isGeneralTextEntity: c_int,
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut badPtr: *mut *const c_char,
@@ -11196,7 +11084,7 @@ pub mod xmltok_ns_c {
         return doParseXmlDecl(
             Some(
                 findEncoding
-                    as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> *const ENCODING,
+                    as unsafe fn(&ENCODING, *const c_char, *const c_char) -> *const ENCODING,
             ),
             isGeneralTextEntity,
             enc,
@@ -11228,14 +11116,14 @@ pub mod xmltok_ns_c {
     ];
 
     pub(crate) unsafe fn initScanPrologNS(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         return initScan(
             encodingsNS.as_ptr() as *const *const ENCODING,
-            enc as *const INIT_ENCODING,
+            as_init_encoding(enc),
             XML_PROLOG_STATE,
             ptr,
             end,
@@ -11244,14 +11132,14 @@ pub mod xmltok_ns_c {
     }
 
     pub(crate) unsafe fn initScanContentNS(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         return initScan(
             encodingsNS.as_ptr() as *const *const ENCODING,
-            enc as *const INIT_ENCODING,
+            as_init_encoding(enc),
             XML_CONTENT_STATE,
             ptr,
             end,
@@ -11269,28 +11157,18 @@ pub mod xmltok_ns_c {
         }
         (*p).initEnc.isUtf16 = i as c_char;
         (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = initScanPrologNS
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int;
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
         (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = initScanContentNS
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int;
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
         (*p).initEnc.updatePosition = initUpdatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> ();
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> ();
         (*p).encPtr = encPtr;
         *encPtr = &raw mut (*p).initEnc;
         return 1;
     }
 
     pub(crate) unsafe fn findEncodingNS(
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
     ) -> *const ENCODING {
@@ -11329,7 +11207,7 @@ pub mod xmltok_ns_c {
     }
     pub(crate) unsafe fn XmlParseXmlDeclNS(
         mut isGeneralTextEntity: c_int,
-        mut enc: *const ENCODING,
+        enc: &ENCODING,
         mut ptr: *const c_char,
         mut end: *const c_char,
         mut badPtr: *mut *const c_char,
@@ -11342,7 +11220,7 @@ pub mod xmltok_ns_c {
         return doParseXmlDecl(
             Some(
                 findEncodingNS
-                    as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> *const ENCODING,
+                    as unsafe fn(&ENCODING, *const c_char, *const c_char) -> *const ENCODING,
             ),
             isGeneralTextEntity,
             enc,
@@ -11617,15 +11495,15 @@ pub(crate) use xmltok_impl_c::normal_updatePosition;
 pub struct normal_encoding {
     pub enc: ENCODING,
     pub type_0: [c_uchar; 256],
-    pub isName2: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isName3: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isName4: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt2: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt3: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt4: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isInvalid2: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isInvalid3: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
-    pub isInvalid4: Option<unsafe fn(*const ENCODING, *const c_char) -> c_int>,
+    pub isName2: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    pub isName3: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    pub isName4: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt2: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt3: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    pub isNmstrt4: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    pub isInvalid2: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    pub isInvalid3: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    pub isInvalid4: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
 }
 
 pub const UTF8_cval2: C2RustUnnamed_8 = 192;
@@ -11674,11 +11552,11 @@ pub type C2RustUnnamed_9 = c_int;
 
 pub const US_ASCII_ENC: C2RustUnnamed_9 = 1;
 
-unsafe fn isNever(mut _enc: *const ENCODING, mut _p: *const c_char) -> c_int {
+unsafe fn isNever(_enc: &ENCODING, mut _p: *const c_char) -> c_int {
     return 0;
 }
 
-unsafe fn utf8_isName2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isName2(_enc: &ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((namePages[(*(p as *const c_uchar).offset(0) as c_int >> 2 & 7) as usize]
         as c_int)
         << 3)
@@ -11687,7 +11565,7 @@ unsafe fn utf8_isName2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int
         & (1) << (*(p as *const c_uchar).offset(1) as c_int & 0x1f)) as c_int;
 }
 
-unsafe fn utf8_isName3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isName3(_enc: &ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((namePages[(((*(p as *const c_uchar).offset(0) as c_int & 0xf) << 4)
         + (*(p as *const c_uchar).offset(1) as c_int >> 2 & 0xf))
         as usize] as c_int)
@@ -11697,7 +11575,7 @@ unsafe fn utf8_isName3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int
         & (1) << (*(p as *const c_uchar).offset(2) as c_int & 0x1f)) as c_int;
 }
 
-unsafe fn utf8_isNmstrt2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isNmstrt2(_enc: &ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((nmstrtPages
         [(*(p as *const c_uchar).offset(0) as c_int >> 2 & 7) as usize]
         as c_int)
@@ -11707,7 +11585,7 @@ unsafe fn utf8_isNmstrt2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_i
         & (1) << (*(p as *const c_uchar).offset(1) as c_int & 0x1f)) as c_int;
 }
 
-unsafe fn utf8_isNmstrt3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isNmstrt3(_enc: &ENCODING, mut p: *const c_char) -> c_int {
     return (namingBitmap[(((nmstrtPages[(((*(p as *const c_uchar).offset(0) as c_int & 0xf) << 4)
         + (*(p as *const c_uchar).offset(1) as c_int >> 2 & 0xf))
         as usize] as c_int)
@@ -11717,13 +11595,13 @@ unsafe fn utf8_isNmstrt3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_i
         & (1) << (*(p as *const c_uchar).offset(2) as c_int & 0x1f)) as c_int;
 }
 
-unsafe fn utf8_isInvalid2(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isInvalid2(_enc: &ENCODING, mut p: *const c_char) -> c_int {
     return ((*(p as *const c_uchar) as c_int) < 0xc2
         || *(p as *const c_uchar).offset(1) as c_int & 0x80 == 0
         || *(p as *const c_uchar).offset(1) as c_int & 0xc0 == 0xc0) as c_int;
 }
 
-unsafe fn utf8_isInvalid3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isInvalid3(_enc: &ENCODING, mut p: *const c_char) -> c_int {
     return (*(p as *const c_uchar).offset(2) as c_int & 0x80 == 0
         || (if *(p as *const c_uchar) as c_int == 0xef
             && *(p as *const c_uchar).offset(1) as c_int == 0xbf
@@ -11745,7 +11623,7 @@ unsafe fn utf8_isInvalid3(mut _enc: *const ENCODING, mut p: *const c_char) -> c_
         }) != 0) as c_int;
 }
 
-unsafe fn utf8_isInvalid4(mut _enc: *const ENCODING, mut p: *const c_char) -> c_int {
+unsafe fn utf8_isInvalid4(_enc: &ENCODING, mut p: *const c_char) -> c_int {
     return (*(p as *const c_uchar).offset(3) as c_int & 0x80 == 0
         || *(p as *const c_uchar).offset(3) as c_int & 0xc0 == 0xc0
         || *(p as *const c_uchar).offset(2) as c_int & 0x80 == 0
@@ -11810,7 +11688,7 @@ unsafe fn internal_trim_to_complete_utf8_characters_test_shim(
 }
 
 unsafe fn utf8_toUtf8(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_char,
@@ -11847,7 +11725,7 @@ unsafe fn utf8_toUtf8(
 }
 
 unsafe fn utf8_toUtf16(
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_ushort,
@@ -11862,7 +11740,7 @@ unsafe fn utf8_toUtf16(
             current_block = 18317007320854588510;
             break;
         }
-        match (*(enc as *const normal_encoding)).type_0[*from as c_uchar as usize] as c_int {
+        match as_normal_encoding(enc).type_0[*from as c_uchar as usize] as c_int {
             5 => {
                 if (fromLim.offset_from(from) as c_long) < 2 {
                     res = XML_CONVERT_INPUT_INCOMPLETE;
@@ -11941,71 +11819,36 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: utf8_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -12013,7 +11856,7 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: utf8_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -12281,86 +12124,51 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName2: Some(utf8_isName2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isName3: Some(utf8_isName3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isName4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(&ENCODING, *const c_char) -> c_int),
 };
 
 static utf8_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: utf8_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -12368,7 +12176,7 @@ static utf8_encoding: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: utf8_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -12636,86 +12444,51 @@ static utf8_encoding: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName2: Some(utf8_isName2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isName3: Some(utf8_isName3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isName4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(&ENCODING, *const c_char) -> c_int),
 };
 
 static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: utf8_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -12723,7 +12496,7 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: utf8_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -12991,86 +12764,51 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName2: Some(utf8_isName2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isName3: Some(utf8_isName3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isName4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(&ENCODING, *const c_char) -> c_int),
 };
 
 static internal_utf8_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: utf8_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -13078,7 +12816,7 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: utf8_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -13346,19 +13084,19 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isNmstrt4: Some(isNever as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
-    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(*const ENCODING, *const c_char) -> c_int),
+    isName2: Some(utf8_isName2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isName3: Some(utf8_isName3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isName4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isNmstrt4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(&ENCODING, *const c_char) -> c_int),
 };
 
 unsafe fn latin1_toUtf8(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_char,
@@ -13395,7 +13133,7 @@ unsafe fn latin1_toUtf8(
 }
 
 unsafe fn latin1_toUtf16(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_ushort,
@@ -13419,71 +13157,36 @@ static latin1_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: latin1_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -13491,7 +13194,7 @@ static latin1_encoding_ns: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: latin1_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -13774,71 +13477,36 @@ static latin1_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: latin1_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -13846,7 +13514,7 @@ static latin1_encoding: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: latin1_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -14126,7 +13794,7 @@ static latin1_encoding: normal_encoding = normal_encoding {
 };
 
 unsafe fn ascii_toUtf8(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_char,
@@ -14150,71 +13818,36 @@ static ascii_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: ascii_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -14222,7 +13855,7 @@ static ascii_encoding_ns: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: latin1_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -14505,71 +14138,36 @@ static ascii_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             normal_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             normal_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             normal_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: normal_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: normal_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: normal_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: ascii_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -14577,7 +14175,7 @@ static ascii_encoding: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: latin1_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -14870,7 +14468,7 @@ unsafe fn unicode_byte_type(mut hi: c_char, mut lo: c_char) -> c_int {
 }
 
 unsafe fn little2_toUtf8(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_char,
@@ -14974,7 +14572,7 @@ unsafe fn little2_toUtf8(
 }
 
 unsafe fn little2_toUtf16(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_ushort,
@@ -15003,7 +14601,7 @@ unsafe fn little2_toUtf16(
 }
 
 unsafe fn big2_toUtf8(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_char,
@@ -15107,7 +14705,7 @@ unsafe fn big2_toUtf8(
 }
 
 unsafe fn big2_toUtf16(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_ushort,
@@ -15139,71 +14737,36 @@ static little2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             little2_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: little2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: little2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: little2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: little2_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: little2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: little2_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: little2_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: little2_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: little2_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -15211,7 +14774,7 @@ static little2_encoding_ns: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: little2_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -15494,71 +15057,36 @@ static little2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             little2_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: little2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: little2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: little2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: little2_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: little2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: little2_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: little2_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: little2_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: little2_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -15566,7 +15094,7 @@ static little2_encoding: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: little2_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -15849,71 +15377,36 @@ static internal_little2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             little2_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: little2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: little2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: little2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: little2_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: little2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: little2_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: little2_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: little2_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: little2_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -15921,7 +15414,7 @@ static internal_little2_encoding_ns: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: little2_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -16204,71 +15697,36 @@ static internal_little2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             little2_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             little2_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             little2_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: little2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: little2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: little2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: little2_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: little2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: little2_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: little2_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: little2_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: little2_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -16276,7 +15734,7 @@ static internal_little2_encoding: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: little2_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -16559,71 +16017,36 @@ static big2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             big2_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             big2_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             big2_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             big2_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             big2_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             big2_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: big2_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: big2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: big2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: big2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: big2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: big2_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: big2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: big2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: big2_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: big2_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: big2_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: big2_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -16631,7 +16054,7 @@ static big2_encoding_ns: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: big2_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -16914,71 +16337,36 @@ static big2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
             big2_prologTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             big2_contentTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             big2_cdataSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             big2_ignoreSectionTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         literalScanners: [
             big2_attributeValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
             big2_entityValueTok
-                as unsafe fn(
-                    *const ENCODING,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> c_int,
+                as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
         nameMatchesAscii: big2_nameMatchesAscii
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: big2_nameLength as unsafe fn(*const ENCODING, *const c_char) -> c_int,
-        skipS: big2_skipS as unsafe fn(*const ENCODING, *const c_char) -> *const c_char,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
+        nameLength: big2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
+        skipS: big2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
         getAtts: big2_getAtts
-            as unsafe fn(*const ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: big2_charRefNumber as unsafe fn(*const ENCODING, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
+        charRefNumber: big2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
         predefinedEntityName: big2_predefinedEntityName
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
         updatePosition: big2_updatePosition
-            as unsafe fn(*const ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
         isPublicId: big2_isPublicId
-            as unsafe fn(
-                *const ENCODING,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> c_int,
+            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         utf8Convert: big2_toUtf8
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_char,
@@ -16986,7 +16374,7 @@ static big2_encoding: normal_encoding = normal_encoding {
             ) -> XML_Convert_Result,
         utf16Convert: big2_toUtf16
             as unsafe fn(
-                *const ENCODING,
+                &ENCODING,
                 *mut *const c_char,
                 *const c_char,
                 *mut *mut c_ushort,
@@ -17290,19 +16678,15 @@ unsafe fn streqci(mut s1: *const c_char, mut s2: *const c_char) -> c_int {
 }
 
 unsafe fn initUpdatePosition(
-    mut _enc: *const ENCODING,
+    _enc: &ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
     mut pos: *mut POSITION,
 ) {
-    normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
+    normal_updatePosition(&utf8_encoding.enc, ptr, end, pos);
 }
 
-unsafe fn toAscii(
-    mut enc: *const ENCODING,
-    mut ptr: *const c_char,
-    mut end: *const c_char,
-) -> c_int {
+unsafe fn toAscii(enc: &ENCODING, mut ptr: *const c_char, mut end: *const c_char) -> c_int {
     let mut buf: [c_char; 1] = [0; 1];
     let mut p: *mut c_char = &raw mut buf as *mut c_char;
     (*enc).utf8Convert(enc, &raw mut ptr, end, &raw mut p, p.offset(1));
@@ -17322,7 +16706,7 @@ unsafe fn isSpace(mut c: c_int) -> c_int {
 }
 
 unsafe fn parsePseudoAttribute(
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
     mut namePtr: *mut *const c_char,
@@ -17464,10 +16848,10 @@ static KW_no: [c_char; 3] = [ASCII_n as c_char, ASCII_o as c_char, '\0' as c_cha
 
 unsafe fn doParseXmlDecl(
     mut encodingFinder: Option<
-        unsafe fn(*const ENCODING, *const c_char, *const c_char) -> *const ENCODING,
+        unsafe fn(&ENCODING, *const c_char, *const c_char) -> *const ENCODING,
     >,
     mut isGeneralTextEntity: c_int,
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut ptr: *const c_char,
     mut end: *const c_char,
     mut badPtr: *mut *const c_char,
@@ -17674,9 +17058,9 @@ pub(crate) unsafe fn XmlSizeOfUnknownEncoding() -> c_int {
     return size_of::<unknown_encoding>() as c_int;
 }
 
-unsafe fn unknown_isName(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+unsafe fn unknown_isName(enc: &ENCODING, mut p: *const c_char) -> c_int {
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
     if c & !(0xffff) != 0 {
         return 0i32;
     }
@@ -17685,9 +17069,9 @@ unsafe fn unknown_isName(mut enc: *const ENCODING, mut p: *const c_char) -> c_in
         & (1) << (c & 0xff & 0x1f)) as c_int;
 }
 
-unsafe fn unknown_isNmstrt(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+unsafe fn unknown_isNmstrt(enc: &ENCODING, mut p: *const c_char) -> c_int {
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
     if c & !(0xffff) != 0 {
         return 0i32;
     }
@@ -17696,20 +17080,20 @@ unsafe fn unknown_isNmstrt(mut enc: *const ENCODING, mut p: *const c_char) -> c_
         & (1) << (c & 0xff & 0x1f)) as c_int;
 }
 
-unsafe fn unknown_isInvalid(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+unsafe fn unknown_isInvalid(enc: &ENCODING, mut p: *const c_char) -> c_int {
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
     return (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as c_int;
 }
 
 unsafe fn unknown_toUtf8(
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_char,
     mut toLim: *const c_char,
 ) -> XML_Convert_Result {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
     let mut buf: [c_char; 4] = [0; 4];
     loop {
         let mut utf8: *const c_char = null::<c_char>();
@@ -17717,21 +17101,21 @@ unsafe fn unknown_toUtf8(
         if *fromP == fromLim {
             return XML_CONVERT_COMPLETED;
         }
-        utf8 = &raw const *(&raw const (*uenc).utf8 as *const [c_char; 4])
+        utf8 = &raw const *(&raw const uenc.utf8 as *const [c_char; 4])
             .offset(**fromP as c_uchar as isize) as *const c_char;
         let fresh61 = utf8;
         utf8 = utf8.offset(1);
         n = *fresh61 as c_int;
         if n == 0 {
             let mut c: c_int =
-                (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP);
+                uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP);
             n = XmlUtf8Encode(c, &raw mut buf as *mut c_char);
             if n as c_long > toLim.offset_from(*toP) as c_long {
                 return XML_CONVERT_OUTPUT_EXHAUSTED;
             }
             utf8 = &raw mut buf as *mut c_char;
             *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as c_uchar as usize] as c_int
+                (as_normal_encoding(enc).type_0[**fromP as c_uchar as usize] as c_int
                     - (BT_LEAD2 as c_int - 2i32)) as isize,
             );
         } else {
@@ -17746,20 +17130,19 @@ unsafe fn unknown_toUtf8(
 }
 
 unsafe fn unknown_toUtf16(
-    mut enc: *const ENCODING,
+    enc: &ENCODING,
     mut fromP: *mut *const c_char,
     mut fromLim: *const c_char,
     mut toP: *mut *mut c_ushort,
     mut toLim: *const c_ushort,
 ) -> XML_Convert_Result {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
     while *fromP < fromLim && *toP < toLim as *mut c_ushort {
-        let mut c: c_ushort = (*uenc).utf16[**fromP as c_uchar as usize];
+        let mut c: c_ushort = uenc.utf16[**fromP as c_uchar as usize];
         if c as c_int == 0 {
-            c = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP)
-                as c_ushort;
+            c = uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP) as c_ushort;
             *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as c_uchar as usize] as c_int
+                (as_normal_encoding(enc).type_0[**fromP as c_uchar as usize] as c_int
                     - (BT_LEAD2 as c_int - 2i32)) as isize,
             );
         } else {
@@ -17864,28 +17247,25 @@ pub(crate) unsafe fn XmlInitUnknownEncoding(
     (*e).userData = userData;
     (*e).convert = convert;
     if convert.is_some() {
-        (*e).normal.isName2 =
-            Some(unknown_isName as unsafe fn(*const ENCODING, *const c_char) -> c_int);
-        (*e).normal.isName3 =
-            Some(unknown_isName as unsafe fn(*const ENCODING, *const c_char) -> c_int);
-        (*e).normal.isName4 =
-            Some(unknown_isName as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+        (*e).normal.isName2 = Some(unknown_isName as unsafe fn(&ENCODING, *const c_char) -> c_int);
+        (*e).normal.isName3 = Some(unknown_isName as unsafe fn(&ENCODING, *const c_char) -> c_int);
+        (*e).normal.isName4 = Some(unknown_isName as unsafe fn(&ENCODING, *const c_char) -> c_int);
         (*e).normal.isNmstrt2 =
-            Some(unknown_isNmstrt as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isNmstrt as unsafe fn(&ENCODING, *const c_char) -> c_int);
         (*e).normal.isNmstrt3 =
-            Some(unknown_isNmstrt as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isNmstrt as unsafe fn(&ENCODING, *const c_char) -> c_int);
         (*e).normal.isNmstrt4 =
-            Some(unknown_isNmstrt as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isNmstrt as unsafe fn(&ENCODING, *const c_char) -> c_int);
         (*e).normal.isInvalid2 =
-            Some(unknown_isInvalid as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isInvalid as unsafe fn(&ENCODING, *const c_char) -> c_int);
         (*e).normal.isInvalid3 =
-            Some(unknown_isInvalid as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isInvalid as unsafe fn(&ENCODING, *const c_char) -> c_int);
         (*e).normal.isInvalid4 =
-            Some(unknown_isInvalid as unsafe fn(*const ENCODING, *const c_char) -> c_int);
+            Some(unknown_isInvalid as unsafe fn(&ENCODING, *const c_char) -> c_int);
     }
     (*e).normal.enc.utf8Convert = unknown_toUtf8
         as unsafe fn(
-            *const ENCODING,
+            &ENCODING,
             *mut *const c_char,
             *const c_char,
             *mut *mut c_char,
@@ -17893,7 +17273,7 @@ pub(crate) unsafe fn XmlInitUnknownEncoding(
         ) -> XML_Convert_Result;
     (*e).normal.enc.utf16Convert = unknown_toUtf16
         as unsafe fn(
-            *const ENCODING,
+            &ENCODING,
             *mut *const c_char,
             *const c_char,
             *mut *mut c_ushort,
@@ -17996,7 +17376,7 @@ unsafe fn getEncodingIndex(mut name: *const c_char) -> c_int {
 
 unsafe fn initScan(
     mut encodingTable: *const *const ENCODING,
-    mut enc: *const INIT_ENCODING,
+    enc: &INIT_ENCODING,
     mut state: c_int,
     mut ptr: *const c_char,
     mut end: *const c_char,
@@ -18006,16 +17386,16 @@ unsafe fn initScan(
     if ptr >= end {
         return XML_TOK_NONE_1;
     }
-    encPtr = (*enc).encPtr;
+    encPtr = enc.encPtr;
     if ptr.offset(1) == end {
-        match (*enc).initEnc.isUtf16 as c_int {
+        match enc.initEnc.isUtf16 as c_int {
             3 | 5 | 4 => return XML_TOK_PARTIAL_1,
             _ => {}
         }
         let mut current_block_5: u64;
         match *ptr as c_uchar as c_int {
             254 | 255 | 239 => {
-                if (*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE {
+                if enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE {
                     current_block_5 = 13183875560443969876;
                 } else {
                     current_block_5 = 6556540211831925522;
@@ -18036,27 +17416,23 @@ unsafe fn initScan(
         let mut current_block_26: u64;
         match (*ptr.offset(0) as c_uchar as c_int) << 8 | *ptr.offset(1) as c_uchar as c_int {
             65279 => {
-                if !((*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC
-                    && state == XML_CONTENT_STATE)
-                {
+                if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
                     *nextTokPtr = ptr.offset(2);
                     *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
                     return XML_TOK_BOM_1;
                 }
             }
             15360 => {
-                if !(((*enc).initEnc.isUtf16 as c_int == UTF_16BE_ENC
-                    || (*enc).initEnc.isUtf16 as c_int == UTF_16_ENC)
+                if !((enc.initEnc.isUtf16 as c_int == UTF_16BE_ENC
+                    || enc.initEnc.isUtf16 as c_int == UTF_16_ENC)
                     && state == XML_CONTENT_STATE)
                 {
                     *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                    return (**encPtr).scanners[state as usize](*encPtr, ptr, end, nextTokPtr);
+                    return (**encPtr).scanners[state as usize](&**encPtr, ptr, end, nextTokPtr);
                 }
             }
             65534 => {
-                if !((*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC
-                    && state == XML_CONTENT_STATE)
-                {
+                if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
                     *nextTokPtr = ptr.offset(2);
                     *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
                     return XML_TOK_BOM_1;
@@ -18064,7 +17440,7 @@ unsafe fn initScan(
             }
             61371 => {
                 if state == XML_CONTENT_STATE {
-                    let mut e: c_int = (*enc).initEnc.isUtf16 as c_int;
+                    let mut e: c_int = enc.initEnc.isUtf16 as c_int;
                     if e == ISO_8859_1_ENC
                         || e == UTF_16BE_ENC
                         || e == UTF_16LE_ENC
@@ -18093,23 +17469,26 @@ unsafe fn initScan(
             }
             _ => {
                 if *ptr.offset(0) as c_int == '\0' as i32 {
-                    if !(state == XML_CONTENT_STATE
-                        && (*enc).initEnc.isUtf16 as c_int == UTF_16LE_ENC)
+                    if !(state == XML_CONTENT_STATE && enc.initEnc.isUtf16 as c_int == UTF_16LE_ENC)
                     {
                         *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
-                        return (**encPtr).scanners[state as usize](*encPtr, ptr, end, nextTokPtr);
+                        return (**encPtr).scanners[state as usize](
+                            &**encPtr, ptr, end, nextTokPtr,
+                        );
                     }
                 } else if *ptr.offset(1) as c_int == '\0' as i32 {
                     if !(state == XML_CONTENT_STATE) {
                         *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                        return (**encPtr).scanners[state as usize](*encPtr, ptr, end, nextTokPtr);
+                        return (**encPtr).scanners[state as usize](
+                            &**encPtr, ptr, end, nextTokPtr,
+                        );
                     }
                 }
             }
         }
     }
-    *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as c_int as isize);
-    return (**encPtr).scanners[state as usize](*encPtr, ptr, end, nextTokPtr);
+    *encPtr = *encodingTable.offset(enc.initEnc.isUtf16 as c_int as isize);
+    return (**encPtr).scanners[state as usize](&**encPtr, ptr, end, nextTokPtr);
 }
 pub(crate) unsafe fn XmlInitUnknownEncodingNS(
     mut mem: *mut c_void,
