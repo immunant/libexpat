@@ -4271,14 +4271,6 @@ unsafe extern "C" fn doContent(
                         .expect("non-null function pointer")(
                         (*parser).m_handlerArg
                     );
-                } else if 0 != 0 && (*parser).m_characterDataHandler.is_some() {
-                    (*parser)
-                        .m_characterDataHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*parser).m_dataBuf,
-                        0i32,
-                    );
                 } else if (*parser).m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
                 }
@@ -5280,14 +5272,6 @@ unsafe extern "C" fn doCdataSection(
                         .m_endCdataSectionHandler
                         .expect("non-null function pointer")(
                         (*parser).m_handlerArg
-                    );
-                } else if 0 != 0 && (*parser).m_characterDataHandler.is_some() {
-                    (*parser)
-                        .m_characterDataHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*parser).m_dataBuf,
-                        0i32,
                     );
                 } else if (*parser).m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
