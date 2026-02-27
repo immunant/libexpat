@@ -20,7 +20,7 @@
 
 ## Build
 
-Use the pinned toolchain from `rust-toolchain.toml` (`nightly-2023-04-15`).
+Use the pinned toolchain from `rust-toolchain.toml` (`nightly-2025-08-01`).
 
 To build the project:
 
