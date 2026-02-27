@@ -9,239 +9,182 @@
 #![register_tool(c2rust)]
 #![feature(extern_types, raw_ref_op, register_tool)]
 pub mod expat_h {
-    pub type XML_Parser = *mut ::libexpat::expat_h::XML_ParserStruct;
+    use crate::expat_external_h::XML_Char;
+    use core::ffi::c_int;
+    use core::ffi::c_void;
+    pub type XML_Parser = *mut libexpat::expat_h::XML_ParserStruct;
 
-    pub type XML_Bool = ::core::ffi::c_uchar;
+    pub type XML_Bool = core::ffi::c_uchar;
 
-    pub type XML_StartElementHandler = Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            *mut *const crate::expat_external_h::XML_Char,
-        ) -> (),
-    >;
+    pub type XML_StartElementHandler =
+        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, *mut *const XML_Char) -> ()>;
 
-    pub type XML_EndElementHandler = Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-        ) -> (),
-    >;
+    pub type XML_EndElementHandler =
+        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
 
-    pub type XML_CharacterDataHandler = Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            ::core::ffi::c_int,
-        ) -> (),
-    >;
+    pub type XML_CharacterDataHandler =
+        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, c_int) -> ()>;
 
-    pub type XML_ProcessingInstructionHandler = Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
-        ) -> (),
-    >;
+    pub type XML_ProcessingInstructionHandler =
+        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char) -> ()>;
 
-    pub type XML_CommentHandler = Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-        ) -> (),
-    >;
+    pub type XML_CommentHandler = Option<unsafe extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
 
-    pub type XML_StartCdataSectionHandler =
-        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+    pub type XML_StartCdataSectionHandler = Option<unsafe extern "C" fn(*mut c_void) -> ()>;
 
-    pub type XML_EndCdataSectionHandler =
-        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+    pub type XML_EndCdataSectionHandler = Option<unsafe extern "C" fn(*mut c_void) -> ()>;
 
-    pub type XML_DefaultHandler = Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            ::core::ffi::c_int,
-        ) -> (),
-    >;
+    pub type XML_DefaultHandler =
+        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, c_int) -> ()>;
 
     pub type XML_StartDoctypeDeclHandler = Option<
         unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
-            ::core::ffi::c_int,
+            *mut c_void,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            c_int,
         ) -> (),
     >;
 
-    pub type XML_EndDoctypeDeclHandler =
-        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+    pub type XML_EndDoctypeDeclHandler = Option<unsafe extern "C" fn(*mut c_void) -> ()>;
 
     pub type XML_EntityDeclHandler = Option<
         unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            ::core::ffi::c_int,
-            *const crate::expat_external_h::XML_Char,
-            ::core::ffi::c_int,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
+            *mut c_void,
+            *const XML_Char,
+            c_int,
+            *const XML_Char,
+            c_int,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
         ) -> (),
     >;
 
     pub type XML_NotationDeclHandler = Option<
         unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
+            *mut c_void,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
+            *const XML_Char,
         ) -> (),
     >;
 
-    pub type XML_StartNamespaceDeclHandler = Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            *const crate::expat_external_h::XML_Char,
-        ) -> (),
-    >;
+    pub type XML_StartNamespaceDeclHandler =
+        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char) -> ()>;
 
-    pub type XML_EndNamespaceDeclHandler = Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-        ) -> (),
-    >;
+    pub type XML_EndNamespaceDeclHandler =
+        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
 
-    pub type XML_NotStandaloneHandler =
-        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int>;
+    pub type XML_NotStandaloneHandler = Option<unsafe extern "C" fn(*mut c_void) -> c_int>;
 
     pub type XML_UnknownEncodingHandler = Option<
         unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-            *mut ::libexpat::expat_h::XML_Encoding,
-        ) -> ::core::ffi::c_int,
+            *mut c_void,
+            *const XML_Char,
+            *mut libexpat::expat_h::XML_Encoding,
+        ) -> c_int,
     >;
 
-    pub type XML_ParamEntityParsing = ::core::ffi::c_uint;
+    pub type XML_ParamEntityParsing = core::ffi::c_uint;
 
-    pub type XML_FeatureEnum = ::core::ffi::c_uint;
+    pub type XML_FeatureEnum = core::ffi::c_uint;
 }
 pub mod expat_external_h {
-    pub type XML_Char = ::core::ffi::c_char;
+    use core::ffi::c_char;
+    use core::ffi::c_long;
+    pub type XML_Char = c_char;
 
-    pub type XML_LChar = ::core::ffi::c_char;
+    pub type XML_LChar = c_char;
 
-    pub type XML_Index = ::core::ffi::c_long;
+    pub type XML_Index = c_long;
 
-    pub type XML_Size = ::core::ffi::c_ulong;
+    pub type XML_Size = core::ffi::c_ulong;
 }
 pub mod __stddef_size_t_h {
     pub type size_t = usize;
 }
 pub mod xmlfile_h {
+    use core::ffi::c_int;
     extern "C" {
-        pub static mut g_read_size_bytes: ::core::ffi::c_int;
+        pub static mut g_read_size_bytes: c_int;
     }
 }
 pub mod stdlib {
+    use crate::__stddef_size_t_h::size_t;
+    use core::ffi::c_char;
+    use core::ffi::c_int;
+    use core::ffi::c_long;
+    use core::ffi::c_void;
     extern "C" {
-        pub static mut stdout: *mut crate::stdlib::FILE;
+        pub static mut stdout: *mut FILE;
 
-        pub static mut stderr: *mut crate::stdlib::FILE;
+        pub static mut stderr: *mut FILE;
 
-        pub fn remove(__filename: *const ::core::ffi::c_char) -> ::core::ffi::c_int;
+        pub fn remove(__filename: *const c_char) -> c_int;
 
-        pub fn fclose(__stream: *mut crate::stdlib::FILE) -> ::core::ffi::c_int;
+        pub fn fclose(__stream: *mut FILE) -> c_int;
 
-        pub fn fopen(
-            __filename: *const ::core::ffi::c_char,
-            __modes: *const ::core::ffi::c_char,
-        ) -> *mut crate::stdlib::FILE;
+        pub fn fopen(__filename: *const c_char, __modes: *const c_char) -> *mut FILE;
 
         pub fn setvbuf(
-            __stream: *mut crate::stdlib::FILE,
-            __buf: *mut ::core::ffi::c_char,
-            __modes: ::core::ffi::c_int,
-            __n: crate::__stddef_size_t_h::size_t,
-        ) -> ::core::ffi::c_int;
+            __stream: *mut FILE,
+            __buf: *mut c_char,
+            __modes: c_int,
+            __n: size_t,
+        ) -> c_int;
 
-        pub fn putc(
-            __c: ::core::ffi::c_int,
-            __stream: *mut crate::stdlib::FILE,
-        ) -> ::core::ffi::c_int;
+        pub fn putc(__c: c_int, __stream: *mut FILE) -> c_int;
 
-        pub fn fputs(
-            __s: *const ::core::ffi::c_char,
-            __stream: *mut crate::stdlib::FILE,
-        ) -> ::core::ffi::c_int;
-        pub fn strtof(
-            __nptr: *const ::core::ffi::c_char,
-            __endptr: *mut *mut ::core::ffi::c_char,
-        ) -> ::core::ffi::c_float;
+        pub fn fputs(__s: *const c_char, __stream: *mut FILE) -> c_int;
+        pub fn strtof(__nptr: *const c_char, __endptr: *mut *mut c_char) -> core::ffi::c_float;
 
         pub fn strtoull(
-            __nptr: *const ::core::ffi::c_char,
-            __endptr: *mut *mut ::core::ffi::c_char,
-            __base: ::core::ffi::c_int,
-        ) -> ::core::ffi::c_ulonglong;
+            __nptr: *const c_char,
+            __endptr: *mut *mut c_char,
+            __base: c_int,
+        ) -> core::ffi::c_ulonglong;
 
         pub fn qsort(
-            __base: *mut ::core::ffi::c_void,
-            __nmemb: crate::__stddef_size_t_h::size_t,
-            __size: crate::__stddef_size_t_h::size_t,
+            __base: *mut c_void,
+            __nmemb: size_t,
+            __size: size_t,
             __compar: crate::stdlib::__compar_fn_t,
         );
-        pub fn strcat(
-            __dest: *mut ::core::ffi::c_char,
-            __src: *const ::core::ffi::c_char,
-        ) -> *mut ::core::ffi::c_char;
+        pub fn strcat(__dest: *mut c_char, __src: *const c_char) -> *mut c_char;
 
-        pub fn strcmp(
-            __s1: *const ::core::ffi::c_char,
-            __s2: *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int;
+        pub fn strcmp(__s1: *const c_char, __s2: *const c_char) -> c_int;
 
-        pub fn strchr(
-            __s: *const ::core::ffi::c_char,
-            __c: ::core::ffi::c_int,
-        ) -> *mut ::core::ffi::c_char;
+        pub fn strchr(__s: *const c_char, __c: c_int) -> *mut c_char;
         pub type _IO_marker;
 
         pub type _IO_codecvt;
 
         pub type _IO_wide_data;
     }
-    pub type FILE = ::libexpat::stdlib::_IO_FILE;
-    pub const __ASSERT_FUNCTION: [::core::ffi::c_char; 46] = unsafe {
-        ::core::mem::transmute::<[u8; 46], [::core::ffi::c_char; 46]>(
+    pub type FILE = libexpat::stdlib::_IO_FILE;
+    pub const __ASSERT_FUNCTION: [c_char; 46] = unsafe {
+        core::mem::transmute::<[u8; 46], [c_char; 46]>(
             *b"void attributeValue(FILE *, const XML_Char *)\0",
         )
     };
-    pub const EINVAL: ::core::ffi::c_int = 22;
+    pub const EINVAL: c_int = 22;
 
-    pub const ERANGE: ::core::ffi::c_int = 34;
-    pub const _IOFBF: ::core::ffi::c_int = 0;
-    pub type __compar_fn_t = Option<
-        unsafe extern "C" fn(
-            *const ::core::ffi::c_void,
-            *const ::core::ffi::c_void,
-        ) -> ::core::ffi::c_int,
-    >;
+    pub const ERANGE: c_int = 34;
+    pub const _IOFBF: c_int = 0;
+    pub type __compar_fn_t = Option<unsafe extern "C" fn(*const c_void, *const c_void) -> c_int>;
     pub type _IO_lock_t = ();
     pub type __uint64_t = u64;
 
-    pub type __off_t = ::core::ffi::c_long;
+    pub type __off_t = c_long;
 
-    pub type __off64_t = ::core::ffi::c_long;
+    pub type __off64_t = c_long;
 }
 #[allow(unused_imports)]
-use ::libexpat;
+use libexpat;
 
 pub use crate::__stddef_size_t_h::size_t;
 
@@ -269,64 +212,64 @@ pub use crate::expat_h::XML_StartDoctypeDeclHandler;
 pub use crate::expat_h::XML_StartElementHandler;
 pub use crate::expat_h::XML_StartNamespaceDeclHandler;
 pub use crate::expat_h::XML_UnknownEncodingHandler;
-pub use ::libexpat::expat_h::XML_Encoding;
-pub use ::libexpat::expat_h::XML_Feature;
-pub use ::libexpat::expat_h::XML_ParserStruct;
-pub use ::libexpat::expat_h::XML_FALSE;
-pub use ::libexpat::expat_h::XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
-pub use ::libexpat::expat_h::XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
-pub use ::libexpat::expat_h::XML_FEATURE_ATTR_INFO;
-pub use ::libexpat::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
-pub use ::libexpat::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
-pub use ::libexpat::expat_h::XML_FEATURE_CONTEXT_BYTES;
-pub use ::libexpat::expat_h::XML_FEATURE_DTD;
-pub use ::libexpat::expat_h::XML_FEATURE_END;
-pub use ::libexpat::expat_h::XML_FEATURE_GE;
-pub use ::libexpat::expat_h::XML_FEATURE_LARGE_SIZE;
-pub use ::libexpat::expat_h::XML_FEATURE_MIN_SIZE;
-pub use ::libexpat::expat_h::XML_FEATURE_NS;
-pub use ::libexpat::expat_h::XML_FEATURE_SIZEOF_XML_CHAR;
-pub use ::libexpat::expat_h::XML_FEATURE_SIZEOF_XML_LCHAR;
-pub use ::libexpat::expat_h::XML_FEATURE_UNICODE;
-pub use ::libexpat::expat_h::XML_FEATURE_UNICODE_WCHAR_T;
-pub use ::libexpat::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS;
-pub use ::libexpat::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
-pub use ::libexpat::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE;
-pub use ::libexpat::expat_h::XML_TRUE;
-pub use ::libexpat::limits_h::INT_MAX;
-pub use ::libexpat::src::lib::xmlparse::XML_DefaultCurrent;
-pub use ::libexpat::src::lib::xmlparse::XML_ExpatVersion;
-pub use ::libexpat::src::lib::xmlparse::XML_GetBase;
-pub use ::libexpat::src::lib::xmlparse::XML_GetCurrentByteCount;
-pub use ::libexpat::src::lib::xmlparse::XML_GetCurrentByteIndex;
-pub use ::libexpat::src::lib::xmlparse::XML_GetCurrentColumnNumber;
-pub use ::libexpat::src::lib::xmlparse::XML_GetCurrentLineNumber;
-pub use ::libexpat::src::lib::xmlparse::XML_GetFeatureList;
-pub use ::libexpat::src::lib::xmlparse::XML_GetIdAttributeIndex;
-pub use ::libexpat::src::lib::xmlparse::XML_GetSpecifiedAttributeCount;
-pub use ::libexpat::src::lib::xmlparse::XML_ParserCreate;
-pub use ::libexpat::src::lib::xmlparse::XML_ParserCreateNS;
-pub use ::libexpat::src::lib::xmlparse::XML_ParserFree;
-pub use ::libexpat::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold;
-pub use ::libexpat::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification;
-pub use ::libexpat::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionActivationThreshold;
-pub use ::libexpat::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification;
-pub use ::libexpat::src::lib::xmlparse::XML_SetCdataSectionHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetCharacterDataHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetCommentHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetDefaultHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetDoctypeDeclHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetElementHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetEntityDeclHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetNamespaceDeclHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetNotStandaloneHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetNotationDeclHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetParamEntityParsing;
-pub use ::libexpat::src::lib::xmlparse::XML_SetProcessingInstructionHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetReparseDeferralEnabled;
-pub use ::libexpat::src::lib::xmlparse::XML_SetUnknownEncodingHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetUserData;
-pub use ::libexpat::src::lib::xmlparse::XML_UseParserAsHandlerArg;
+pub use libexpat::expat_h::XML_Encoding;
+pub use libexpat::expat_h::XML_Feature;
+pub use libexpat::expat_h::XML_ParserStruct;
+pub use libexpat::expat_h::XML_FALSE;
+pub use libexpat::expat_h::XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
+pub use libexpat::expat_h::XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use libexpat::expat_h::XML_FEATURE_ATTR_INFO;
+pub use libexpat::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
+pub use libexpat::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use libexpat::expat_h::XML_FEATURE_CONTEXT_BYTES;
+pub use libexpat::expat_h::XML_FEATURE_DTD;
+pub use libexpat::expat_h::XML_FEATURE_END;
+pub use libexpat::expat_h::XML_FEATURE_GE;
+pub use libexpat::expat_h::XML_FEATURE_LARGE_SIZE;
+pub use libexpat::expat_h::XML_FEATURE_MIN_SIZE;
+pub use libexpat::expat_h::XML_FEATURE_NS;
+pub use libexpat::expat_h::XML_FEATURE_SIZEOF_XML_CHAR;
+pub use libexpat::expat_h::XML_FEATURE_SIZEOF_XML_LCHAR;
+pub use libexpat::expat_h::XML_FEATURE_UNICODE;
+pub use libexpat::expat_h::XML_FEATURE_UNICODE_WCHAR_T;
+pub use libexpat::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS;
+pub use libexpat::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
+pub use libexpat::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE;
+pub use libexpat::expat_h::XML_TRUE;
+pub use libexpat::limits_h::INT_MAX;
+pub use libexpat::src::lib::xmlparse::XML_DefaultCurrent;
+pub use libexpat::src::lib::xmlparse::XML_ExpatVersion;
+pub use libexpat::src::lib::xmlparse::XML_GetBase;
+pub use libexpat::src::lib::xmlparse::XML_GetCurrentByteCount;
+pub use libexpat::src::lib::xmlparse::XML_GetCurrentByteIndex;
+pub use libexpat::src::lib::xmlparse::XML_GetCurrentColumnNumber;
+pub use libexpat::src::lib::xmlparse::XML_GetCurrentLineNumber;
+pub use libexpat::src::lib::xmlparse::XML_GetFeatureList;
+pub use libexpat::src::lib::xmlparse::XML_GetIdAttributeIndex;
+pub use libexpat::src::lib::xmlparse::XML_GetSpecifiedAttributeCount;
+pub use libexpat::src::lib::xmlparse::XML_ParserCreate;
+pub use libexpat::src::lib::xmlparse::XML_ParserCreateNS;
+pub use libexpat::src::lib::xmlparse::XML_ParserFree;
+pub use libexpat::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold;
+pub use libexpat::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification;
+pub use libexpat::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionActivationThreshold;
+pub use libexpat::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification;
+pub use libexpat::src::lib::xmlparse::XML_SetCdataSectionHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetCharacterDataHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetCommentHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetDefaultHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetDoctypeDeclHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetElementHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetEntityDeclHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetNamespaceDeclHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetNotStandaloneHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetNotationDeclHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetParamEntityParsing;
+pub use libexpat::src::lib::xmlparse::XML_SetProcessingInstructionHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetReparseDeferralEnabled;
+pub use libexpat::src::lib::xmlparse::XML_SetUnknownEncodingHandler;
+pub use libexpat::src::lib::xmlparse::XML_SetUserData;
+pub use libexpat::src::lib::xmlparse::XML_UseParserAsHandlerArg;
 
 pub use crate::stdlib::_IO_codecvt;
 pub use crate::stdlib::_IO_lock_t;
@@ -353,23 +296,23 @@ pub use crate::stdlib::ERANGE;
 pub use crate::stdlib::FILE;
 pub use crate::stdlib::_IOFBF;
 pub use crate::xmlfile_h::g_read_size_bytes;
-pub use ::libexpat::__stddef_null_h::NULL;
-pub use ::libexpat::internal::__INT_MAX__;
-pub use ::libexpat::src::xmlwf::xmlfile::XML_ProcessFile;
-pub use ::libexpat::src::xmlwf::xmlfile::XML_EXTERNAL_ENTITIES;
-pub use ::libexpat::src::xmlwf::xmlfile::XML_MAP_FILE;
-pub use ::libexpat::stdlib::exit;
-pub use ::libexpat::stdlib::fprintf;
-pub use ::libexpat::stdlib::free;
-pub use ::libexpat::stdlib::malloc;
+pub use libexpat::__stddef_null_h::NULL;
+pub use libexpat::internal::__INT_MAX__;
+pub use libexpat::src::xmlwf::xmlfile::XML_ProcessFile;
+pub use libexpat::src::xmlwf::xmlfile::XML_EXTERNAL_ENTITIES;
+pub use libexpat::src::xmlwf::xmlfile::XML_MAP_FILE;
+pub use libexpat::stdlib::exit;
+pub use libexpat::stdlib::fprintf;
+pub use libexpat::stdlib::free;
+pub use libexpat::stdlib::malloc;
 
-pub use ::libexpat::stdlib::perror;
+pub use libexpat::stdlib::perror;
 
 use crate::stdlib::strcmp;
-pub use ::libexpat::stdlib::_IO_FILE;
-use core::ffi::{c_char, c_int, c_longlong, c_uint, c_void};
+use core::ffi::{c_char, c_int, c_long, c_longlong, c_uint, c_void};
 use core::mem::{size_of, transmute};
 use core::ptr::{null, null_mut};
+pub use libexpat::stdlib::_IO_FILE;
 use libexpat::stdlib::{__errno_location, strlen, strrchr};
 
 pub type ExitCode = c_uint;
@@ -489,7 +432,7 @@ unsafe extern "C" fn startElement(
     while !(*p).is_null() {
         p = p.offset(1);
     }
-    nAtts = (p.offset_from(atts) as ::core::ffi::c_long >> 1) as c_int;
+    nAtts = (p.offset_from(atts) as c_long >> 1) as c_int;
     if nAtts > 1 {
         qsort(
             atts as *mut c_void,
@@ -554,7 +497,7 @@ unsafe extern "C" fn startElementNS(
     while !(*p).is_null() {
         p = p.offset(1);
     }
-    nAtts = (p.offset_from(atts) as ::core::ffi::c_long >> 1) as c_int;
+    nAtts = (p.offset_from(atts) as c_long >> 1) as c_int;
     if nAtts > 1 {
         qsort(
             atts as *mut c_void,
@@ -633,7 +576,7 @@ unsafe extern "C" fn xcsdup(mut s: *const XML_Char) -> *mut XML_Char {
     if result.is_null() {
         return null_mut::<XML_Char>();
     }
-    ::libexpat::stdlib::memcpy(result as *mut c_void, s as *const c_void, numBytes);
+    libexpat::stdlib::memcpy(result as *mut c_void, s as *const c_void, numBytes);
     return result;
 }
 
@@ -1201,7 +1144,7 @@ unsafe extern "C" fn metaEndNamespaceDecl(mut userData: *mut c_void, mut prefix:
 }
 
 unsafe extern "C" fn unknownEncodingConvert(mut data: *mut c_void, mut p: *const c_char) -> c_int {
-    return ::libexpat::src::xmlwf::codepage::codepageConvert(*(data as *mut c_int), p);
+    return libexpat::src::xmlwf::codepage::codepageConvert(*(data as *mut c_int), p);
 }
 
 unsafe extern "C" fn unknownEncoding(
@@ -1240,7 +1183,7 @@ unsafe extern "C" fn unknownEncoding(
         }
         i += 1;
     }
-    if ::libexpat::src::xmlwf::codepage::codepageMap(cp, &raw mut (*info).map as *mut c_int) == 0 {
+    if libexpat::src::xmlwf::codepage::codepageMap(cp, &raw mut (*info).map as *mut c_int) == 0 {
         return 0i32;
     }
     (*info).convert =
@@ -1335,8 +1278,8 @@ unsafe fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
     let mut requireStandalone: c_int = 0;
     let mut requiresNotations: c_int = 0;
     let mut continueOnError: c_int = 0;
-    let mut attackMaximumAmplification: ::core::ffi::c_float = -1.0;
-    let mut attackThresholdBytes: ::core::ffi::c_ulonglong = 0;
+    let mut attackMaximumAmplification: core::ffi::c_float = -1.0;
+    let mut attackThresholdBytes: core::ffi::c_ulonglong = 0;
     let mut attackThresholdGiven: XML_Bool = XML_FALSE;
     let mut disableDeferral: XML_Bool = XML_FALSE;
     let mut exitCode: c_int = XMLWF_EXIT_SUCCESS as c_int;
@@ -1684,7 +1627,7 @@ unsafe fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
                 perror(b"Could not allocate memory\0" as *const u8 as *const c_char);
                 exit(XMLWF_EXIT_INTERNAL_ERROR as c_int);
             }
-            ::libexpat::stdlib::strcpy(outName, outputDir);
+            libexpat::stdlib::strcpy(outName, outputDir);
             crate::stdlib::strcat(outName, delim);
             crate::stdlib::strcat(outName, file);
             userData.fp = fopen(outName, b"wb\0" as *const u8 as *const c_char);
@@ -2024,9 +1967,9 @@ unsafe fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
     return exitCode;
 }
 pub fn main() {
-    let mut args_strings: Vec<Vec<u8>> = ::std::env::args()
+    let mut args_strings: Vec<Vec<u8>> = std::env::args()
         .map(|arg| {
-            ::std::ffi::CString::new(arg)
+            std::ffi::CString::new(arg)
                 .expect("Failed to convert argument into CString.")
                 .into_bytes_with_nul()
         })
@@ -2034,10 +1977,10 @@ pub fn main() {
     let mut args_ptrs: Vec<*mut c_char> = args_strings
         .iter_mut()
         .map(|arg| arg.as_mut_ptr() as *mut c_char)
-        .chain(::core::iter::once(null_mut()))
+        .chain(core::iter::once(null_mut()))
         .collect();
     unsafe {
-        ::std::process::exit(main_0(
+        std::process::exit(main_0(
             (args_ptrs.len() - 1) as c_int,
             args_ptrs.as_mut_ptr(),
         ))
