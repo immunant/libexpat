@@ -211,7 +211,8 @@ pub struct ATTRIBUTE {
 
 pub type ENCODING = crate::src::lib::xmltok::encoding;
 
-pub type SCANNER = unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int;
+pub type ScannerResult = (c_int, *const c_char);
+pub type SCANNER = unsafe fn(&ENCODING, &[c_char]) -> ScannerResult;
 
 pub type XML_Convert_Result = c_uint;
 
@@ -220,6 +221,28 @@ pub const XML_CONVERT_COMPLETED: XML_Convert_Result = 0;
 pub const XML_CONVERT_INPUT_INCOMPLETE: XML_Convert_Result = 1;
 
 pub const XML_CONVERT_OUTPUT_EXHAUSTED: XML_Convert_Result = 2;
+
+pub(crate) type XmlInitEncodingResult = (c_int, *const ENCODING);
+pub(crate) type ParsePseudoAttributeResult = (
+    c_int,
+    *const c_char,
+    *const c_char,
+    *const c_char,
+    *const c_char,
+);
+pub(crate) type ParseXmlDeclResult = (
+    c_int,
+    *const c_char,
+    *const c_char,
+    *const c_char,
+    *const c_char,
+    *const ENCODING,
+    c_int,
+);
+pub(crate) type IsPublicIdResult = (c_int, *const c_char);
+pub(crate) type Utf8ConvertResult = (XML_Convert_Result, *const c_char, *mut c_char);
+pub(crate) type Utf16ConvertResult = (XML_Convert_Result, *const c_char, *mut c_ushort);
+pub(crate) type CheckPiTargetResult = (c_int, c_int);
 
 trait EncodingFunctions {
     unsafe fn nameMatchesAscii(&self, enc: &ENCODING, input: &[c_char], kw: *const c_char)
@@ -241,28 +264,23 @@ trait EncodingFunctions {
         input: &[c_char],
         pos: *mut crate::src::lib::xmltok::POSITION,
     );
-    unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int;
+    unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult;
     unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result;
+    ) -> Utf8ConvertResult;
     unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result;
+    ) -> Utf16ConvertResult;
 }
 
 #[derive(Copy, Clone)]
@@ -327,23 +345,18 @@ impl encoding {
         self.functions().updatePosition(enc, input, pos)
     }
 
-    pub(crate) unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int {
-        self.functions().isPublicId(enc, input, event_pp)
+    pub(crate) unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        self.functions().isPublicId(enc, input)
     }
 
     pub(crate) unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result {
+    ) -> Utf8ConvertResult {
         self.functions()
             .utf8Convert(enc, from_p, from_lim, to_p, to_lim)
     }
@@ -351,11 +364,11 @@ impl encoding {
     pub(crate) unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result {
+    ) -> Utf16ConvertResult {
         self.functions()
             .utf16Convert(enc, from_p, from_lim, to_p, to_lim)
     }
@@ -403,19 +416,2891 @@ pub mod xmltok_impl_c {
     use core::ffi::c_long;
     use core::ffi::c_uchar;
 
-    pub(crate) unsafe fn normal_scanComment(
-        enc: &ENCODING,
+    pub(crate) unsafe fn normal_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                if !(*ptr as c_int == 0x2d) {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                ptr = ptr.offset(1);
+                while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                        BT_LEAD2 => {
+                            if (end.offset_from(ptr) as c_long) < 2 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            ptr = ptr.offset(2isize);
+                        }
+                        BT_LEAD3 => {
+                            if (end.offset_from(ptr) as c_long) < 3 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            ptr = ptr.offset(3isize);
+                        }
+                        BT_LEAD4 => {
+                            if (end.offset_from(ptr) as c_long) < 4 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            ptr = ptr.offset(4isize);
+                        }
+                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        BT_MINUS => {
+                            ptr = ptr.offset(1);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            if *ptr as c_int == 0x2d {
+                                ptr = ptr.offset(1);
+                                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                    return XML_TOK_PARTIAL_1;
+                                }
+                                if !(*ptr as c_int == 0x3e) {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                *nextTokPtr = ptr.offset(1);
+                                return XML_TOK_COMMENT_1;
+                            }
+                        }
+                        _ => {
+                            ptr = ptr.offset(1isize);
+                        }
+                    }
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_MINUS => {
+                    return {
+                        let (tok_value, next_tok_value) = normal_scanComment(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.offset(1);
+                    return XML_TOK_COND_SECT_OPEN_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    ptr = ptr.offset(1isize);
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                's_129: {
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                        BT_PERCNT => {
+                            if !(end.offset_from(ptr) as c_long >= (2i32 * 1) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            match as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                as c_uint
+                            {
+                                BT_S | BT_CR | BT_LF | BT_PERCNT => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                _ => {}
+                            }
+                        }
+                        BT_S | BT_CR | BT_LF => {}
+                        BT_NMSTRT | BT_HEX => {
+                            ptr = ptr.offset(1);
+                            break 's_129;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DECL_OPEN_1;
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_checkPiTarget(
+        _enc: &ENCODING,
         input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            if !(*ptr as c_int == 0x2d) {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
+    ) -> CheckPiTargetResult {
+        let mut tok: c_int = 0;
+        let mut tokPtr: *mut c_int = &raw mut tok;
+        let result = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut upper: c_int = 0;
+            *tokPtr = XML_TOK_PI_1;
+            if end.offset_from(ptr) as c_long != (1i32 * 3) as c_long {
+                return 1i32;
+            }
+            match *ptr as c_int {
+                ASCII_x_1 => {}
+                ASCII_X_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
             }
             ptr = ptr.offset(1);
+            match *ptr as c_int {
+                ASCII_m_1 => {}
+                ASCII_M_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
+            }
+            ptr = ptr.offset(1);
+            match *ptr as c_int {
+                ASCII_l_1 => {}
+                ASCII_L_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
+            }
+            if upper != 0 {
+                return 0i32;
+            }
+            *tokPtr = XML_TOK_XML_DECL_1;
+            return 1;
+        })();
+        return (result, tok);
+    }
+
+    pub(crate) unsafe fn normal_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut tok: c_int = 0;
+            let mut target: *const c_char = ptr;
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 11470911313929454839;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(2);
+                    current_block_32 = 14763689060501151050;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(3);
+                    current_block_32 = 14763689060501151050;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(4);
+                    current_block_32 = 14763689060501151050;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                11470911313929454839 => {
+                    ptr = ptr.offset(1isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_118: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_118 = 8485341570193076947;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_118 = 13349765058737954042;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_118 = 13349765058737954042;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_118 = 13349765058737954042;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        if {
+                            let (ok_value, tok_value) =
+                                normal_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(1);
+                        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            {
+                                BT_LEAD2 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(2isize);
+                                }
+                                BT_LEAD3 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(3isize);
+                                }
+                                BT_LEAD4 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(4isize);
+                                }
+                                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_QUEST => {
+                                    ptr = ptr.offset(1);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    if *ptr as c_int == 0x3e {
+                                        *nextTokPtr = ptr.offset(1);
+                                        return tok;
+                                    }
+                                }
+                                _ => {
+                                    ptr = ptr.offset(1isize);
+                                }
+                            }
+                        }
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    BT_QUEST => {
+                        if {
+                            let (ok_value, tok_value) =
+                                normal_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr as c_int == 0x3e {
+                            *nextTokPtr = ptr.offset(1);
+                            return tok;
+                        }
+                        current_block_118 = 11310415194689177606;
+                    }
+                    _ => {
+                        current_block_118 = 11310415194689177606;
+                    }
+                }
+                match current_block_118 {
+                    11310415194689177606 => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    8485341570193076947 => {
+                        ptr = ptr.offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanCdataSection(
+        _enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            pub static CDATA_LSQB: [c_char; 6] = [
+                ASCII_C as c_char,
+                ASCII_D as c_char,
+                ASCII_A as c_char,
+                ASCII_T as c_char,
+                ASCII_A as c_char,
+                ASCII_LSQB as c_char,
+            ];
+            let mut i: c_int = 0;
+            if !(end.offset_from(ptr) as c_long >= (6i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            i = 0;
+            while i < 6 {
+                if !(*ptr as c_int == CDATA_LSQB[i as usize] as c_int) {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                i += 1;
+                ptr = ptr.offset(1);
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_CDATA_SECT_OPEN_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_cdataSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_RSQB => {
+                    ptr = ptr.offset(1);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    if *ptr as c_int == 0x5d {
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if !(*ptr as c_int == 0x3e) {
+                            ptr = ptr.offset(-(1isize));
+                        } else {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_CDATA_SECT_CLOSE_1;
+                        }
+                    }
+                }
+                BT_CR => {
+                    ptr = ptr.offset(1);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                        == BT_LF as c_int
+                    {
+                        ptr = ptr.offset(1isize);
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.offset(1);
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.offset(1isize);
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2
+                            || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3
+                            || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4
+                            || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(1isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 4324628675098861213;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(2);
+                    current_block_32 = 7056779235015430508;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(3);
+                    current_block_32 = 7056779235015430508;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(4);
+                    current_block_32 = 7056779235015430508;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                4324628675098861213 => {
+                    ptr = ptr.offset(1isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_73: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_73 = 14883924698754021420;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.offset(1);
+                        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            {
+                                BT_S | BT_CR | BT_LF => {}
+                                BT_GT => {
+                                    *nextTokPtr = ptr.offset(1);
+                                    return XML_TOK_END_TAG_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                            ptr = ptr.offset(1);
+                        }
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.offset(1);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_GT => {
+                        *nextTokPtr = ptr.offset(1);
+                        return XML_TOK_END_TAG_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_73 {
+                    14883924698754021420 => {
+                        ptr = ptr.offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_DIGIT | BT_HEX => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.offset(1);
+                while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                        BT_DIGIT | BT_HEX => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_CHAR_REF_1;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    ptr = ptr.offset(1);
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                if *ptr as c_int == 0x78 {
+                    return {
+                        let (tok_value, next_tok_value) = normal_scanHexCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_DIGIT => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.offset(1);
+                while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                        BT_DIGIT => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_CHAR_REF_1;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    ptr = ptr.offset(1);
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_33: u64;
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_33 = 8911980980495988282;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(2);
+                    current_block_33 = 14763689060501151050;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(3);
+                    current_block_33 = 14763689060501151050;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(4);
+                    current_block_33 = 14763689060501151050;
+                }
+                BT_NUM => {
+                    return {
+                        let (tok_value, next_tok_value) = normal_scanCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_33 {
+                8911980980495988282 => {
+                    ptr = ptr.offset(1isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_64: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_64 = 11948064939145634034;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_64 = 10930818133215224067;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_64 = 10930818133215224067;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_64 = 10930818133215224067;
+                    }
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.offset(1);
+                        return XML_TOK_ENTITY_REF_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_64 {
+                    11948064939145634034 => {
+                        ptr = ptr.offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut hadColon: c_int = 0;
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_186: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_186 = 3818392175876617014;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_64: u64;
+                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                            BT_NONASCII => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_64 = 7083593080606520045;
+                            }
+                            BT_LEAD2 => {
+                                if (end.offset_from(ptr) as c_long) < 2 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.offset(2);
+                                current_block_64 = 10930818133215224067;
+                            }
+                            BT_LEAD3 => {
+                                if (end.offset_from(ptr) as c_long) < 3 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.offset(3);
+                                current_block_64 = 10930818133215224067;
+                            }
+                            BT_LEAD4 => {
+                                if (end.offset_from(ptr) as c_long) < 4 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.offset(4);
+                                current_block_64 = 10930818133215224067;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_64 {
+                            7083593080606520045 => {
+                                ptr = ptr.offset(1isize);
+                            }
+                            _ => {}
+                        }
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        loop {
+                            let mut t: c_int = 0;
+                            ptr = ptr.offset(1);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            t = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
+                            if t == BT_EQUALS as c_int {
+                                break;
+                            }
+                            match t {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                        }
+                        current_block_186 = 10853015579903106591;
+                    }
+                    BT_EQUALS => {
+                        current_block_186 = 10853015579903106591;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_186 {
+                    10853015579903106591 => {
+                        let mut open: c_int = 0;
+                        hadColon = 0;
+                        loop {
+                            ptr = ptr.offset(1);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            open =
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
+                            if open == BT_QUOT as c_int || open == BT_APOS as c_int {
+                                break;
+                            }
+                            match open {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                        }
+                        ptr = ptr.offset(1);
+                        loop {
+                            let mut t_0: c_int = 0;
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            t_0 = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
+                            if t_0 == open {
+                                break;
+                            }
+                            match t_0 {
+                                5 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(2isize);
+                                }
+                                6 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(3isize);
+                                }
+                                7 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(4isize);
+                                }
+                                0 | 1 | 8 => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                3 => {
+                                    let mut tok: c_int = {
+                                        let (tok_value, next_tok_value) = normal_scanRef(
+                                            enc,
+                                            c_char_slice_from_ptr_end(ptr.offset(1), end),
+                                        );
+                                        ptr = next_tok_value;
+                                        tok_value
+                                    };
+                                    if tok <= 0 {
+                                        if tok == XML_TOK_INVALID_1 {
+                                            *nextTokPtr = ptr;
+                                        }
+                                        return tok;
+                                    }
+                                }
+                                2 => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                _ => {
+                                    ptr = ptr.offset(1isize);
+                                }
+                            }
+                        }
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                            BT_S | BT_CR | BT_LF => {
+                                loop {
+                                    ptr = ptr.offset(1);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
+                                        as c_uint
+                                    {
+                                        BT_NONASCII => {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        BT_NMSTRT | BT_HEX => {
+                                            current_block_186 = 11210999262882855128;
+                                            break;
+                                        }
+                                        BT_LEAD2 => {
+                                            if (end.offset_from(ptr) as c_long) < 2 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                                || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                return XML_TOK_INVALID_1;
+                                            }
+                                            ptr = ptr.offset(2);
+                                            current_block_186 = 1634947208139838470;
+                                            break;
+                                        }
+                                        BT_LEAD3 => {
+                                            if (end.offset_from(ptr) as c_long) < 3 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                                || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                return XML_TOK_INVALID_1;
+                                            }
+                                            ptr = ptr.offset(3);
+                                            current_block_186 = 1634947208139838470;
+                                            break;
+                                        }
+                                        BT_LEAD4 => {
+                                            if (end.offset_from(ptr) as c_long) < 4 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                                || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                return XML_TOK_INVALID_1;
+                                            }
+                                            ptr = ptr.offset(4);
+                                            current_block_186 = 1634947208139838470;
+                                            break;
+                                        }
+                                        BT_S | BT_CR | BT_LF => {}
+                                        BT_GT => {
+                                            current_block_186 = 2944436519209994553;
+                                            break;
+                                        }
+                                        BT_SOL => {
+                                            current_block_186 = 398073151373002430;
+                                            break;
+                                        }
+                                        _ => {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                    }
+                                }
+                                match current_block_186 {
+                                    2944436519209994553 => {}
+                                    398073151373002430 => {}
+                                    1634947208139838470 => {}
+                                    _ => {
+                                        ptr = ptr.offset(1);
+                                        current_block_186 = 1634947208139838470;
+                                    }
+                                }
+                            }
+                            BT_SOL => {
+                                current_block_186 = 398073151373002430;
+                            }
+                            BT_GT => {
+                                current_block_186 = 2944436519209994553;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_186 {
+                            1634947208139838470 => {}
+                            _ => match current_block_186 {
+                                398073151373002430 => {
+                                    ptr = ptr.offset(1);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    if !(*ptr as c_int == 0x3e) {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    *nextTokPtr = ptr.offset(1);
+                                    return XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr.offset(1);
+                                    return XML_TOK_START_TAG_WITH_ATTS_1;
+                                }
+                            },
+                        }
+                    }
+                    3818392175876617014 => {
+                        ptr = ptr.offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut hadColon: c_int = 0;
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_45: u64;
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_45 = 2165477741955893522;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(2);
+                    current_block_45 = 8180496224585318153;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(3);
+                    current_block_45 = 8180496224585318153;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(4);
+                    current_block_45 = 8180496224585318153;
+                }
+                BT_EXCL => {
+                    ptr = ptr.offset(1);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                        BT_MINUS => {
+                            return {
+                                let (tok_value, next_tok_value) = normal_scanComment(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_LSQB => {
+                            return {
+                                let (tok_value, next_tok_value) = normal_scanCdataSection(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_QUEST => {
+                    return {
+                        let (tok_value, next_tok_value) =
+                            normal_scanPi(enc, c_char_slice_from_ptr_end(ptr.offset(1isize), end));
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_SOL => {
+                    return {
+                        let (tok_value, next_tok_value) = normal_scanEndTag(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_45 {
+                2165477741955893522 => {
+                    ptr = ptr.offset(1isize);
+                }
+                _ => {}
+            }
+            hadColon = 0;
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_161: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_161 = 6701753098489376273;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_112: u64;
+                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                            BT_NONASCII => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_112 = 9169466483824547789;
+                            }
+                            BT_LEAD2 => {
+                                if (end.offset_from(ptr) as c_long) < 2 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.offset(2);
+                                current_block_112 = 2616667235040759262;
+                            }
+                            BT_LEAD3 => {
+                                if (end.offset_from(ptr) as c_long) < 3 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.offset(3);
+                                current_block_112 = 2616667235040759262;
+                            }
+                            BT_LEAD4 => {
+                                if (end.offset_from(ptr) as c_long) < 4 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.offset(4);
+                                current_block_112 = 2616667235040759262;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_112 {
+                            9169466483824547789 => {
+                                ptr = ptr.offset(1isize);
+                            }
+                            _ => {}
+                        }
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.offset(1);
+                        loop {
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                current_block_161 = 13215501469961642988;
+                                break;
+                            }
+                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            {
+                                BT_NONASCII => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_NMSTRT | BT_HEX => {
+                                    current_block_161 = 7939927167482451446;
+                                }
+                                BT_LEAD2 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                                    {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(2);
+                                    current_block_161 = 16314074004867283505;
+                                }
+                                BT_LEAD3 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                                    {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(3);
+                                    current_block_161 = 16314074004867283505;
+                                }
+                                BT_LEAD4 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                                    {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.offset(4);
+                                    current_block_161 = 16314074004867283505;
+                                }
+                                BT_GT => {
+                                    current_block_161 = 5640065479517572396;
+                                    break;
+                                }
+                                BT_SOL => {
+                                    current_block_161 = 12549409781983877175;
+                                    break;
+                                }
+                                BT_S | BT_CR | BT_LF => {
+                                    ptr = ptr.offset(1);
+                                    continue;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                            match current_block_161 {
+                                7939927167482451446 => {
+                                    ptr = ptr.offset(1isize);
+                                }
+                                _ => {}
+                            }
+                            return {
+                                let (tok_value, next_tok_value) =
+                                    normal_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        match current_block_161 {
+                            5640065479517572396 => {}
+                            12549409781983877175 => {}
+                            _ => return XML_TOK_PARTIAL_1,
+                        }
+                    }
+                    BT_GT => {
+                        current_block_161 = 5640065479517572396;
+                    }
+                    BT_SOL => {
+                        current_block_161 = 12549409781983877175;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_161 {
+                    12549409781983877175 => {
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if !(*ptr as c_int == 0x3e) {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(1);
+                        return XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
+                    }
+                    5640065479517572396 => {
+                        *nextTokPtr = ptr.offset(1);
+                        return XML_TOK_START_TAG_NO_ATTS_1;
+                    }
+                    6701753098489376273 => {
+                        ptr = ptr.offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_LT => {
+                    return {
+                        let (tok_value, next_tok_value) =
+                            normal_scanLt(enc, c_char_slice_from_ptr_end(ptr.offset(1isize), end));
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_AMP => {
+                    return {
+                        let (tok_value, next_tok_value) =
+                            normal_scanRef(enc, c_char_slice_from_ptr_end(ptr.offset(1isize), end));
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_CR => {
+                    ptr = ptr.offset(1);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                        return XML_TOK_TRAILING_CR_1;
+                    }
+                    if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                        == BT_LF as c_int
+                    {
+                        ptr = ptr.offset(1isize);
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.offset(1);
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.offset(1);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                        return XML_TOK_TRAILING_RSQB_1;
+                    }
+                    if *ptr as c_int == 0x5d {
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            return XML_TOK_TRAILING_RSQB_1;
+                        }
+                        if !(*ptr as c_int == 0x3e) {
+                            ptr = ptr.offset(-(1isize));
+                        } else {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.offset(1isize);
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_76: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2
+                            || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3
+                            || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4
+                            || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_RSQB => {
+                        if end.offset_from(ptr) as c_long >= (2i32 * 1) as c_long {
+                            if !(*ptr.offset(1) as c_int == 0x5d) {
+                                ptr = ptr.offset(1);
+                                current_block_76 = 7158658067966855297;
+                            } else if end.offset_from(ptr) as c_long >= (3i32 * 1) as c_long {
+                                if !(*ptr.offset((2i32 * 1) as isize) as c_int == 0x3e) {
+                                    ptr = ptr.offset(1isize);
+                                } else {
+                                    *nextTokPtr = ptr.offset((2i32 * 1) as isize);
+                                    return XML_TOK_INVALID_1;
+                                }
+                                current_block_76 = 7158658067966855297;
+                            } else {
+                                current_block_76 = 1999360611754201214;
+                            }
+                        } else {
+                            current_block_76 = 1999360611754201214;
+                        }
+                    }
+                    BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
+                        current_block_76 = 1999360611754201214;
+                    }
+                    _ => {
+                        ptr = ptr.offset(1);
+                        current_block_76 = 7158658067966855297;
+                    }
+                }
+                match current_block_76 {
+                    7158658067966855297 => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_34: u64;
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_34 = 12478441211659886388;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(2);
+                    current_block_34 = 4761528863920922185;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(3);
+                    current_block_34 = 4761528863920922185;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(4);
+                    current_block_34 = 4761528863920922185;
+                }
+                BT_S | BT_LF | BT_CR | BT_PERCNT => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_PERCENT_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_34 {
+                12478441211659886388 => {
+                    ptr = ptr.offset(1isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_65: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_65 = 7770117754142564343;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_65 = 16415152177862271243;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_65 = 16415152177862271243;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_65 = 16415152177862271243;
+                    }
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.offset(1);
+                        return XML_TOK_PARAM_ENTITY_REF_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_65 {
+                    7770117754142564343 => {
+                        ptr = ptr.offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 1867613116081924762;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(2);
+                    current_block_32 = 7056779235015430508;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(3);
+                    current_block_32 = 7056779235015430508;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.offset(4);
+                    current_block_32 = 7056779235015430508;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                1867613116081924762 => {
+                    ptr = ptr.offset(1isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_63: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_63 = 226587729178875444;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_63 = 10380409671385728102;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_63 = 10380409671385728102;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_63 = 10380409671385728102;
+                    }
+                    BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_POUND_NAME_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_63 {
+                    226587729178875444 => {
+                        ptr = ptr.offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            return -XML_TOK_POUND_NAME_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_scanLit(
+        mut open: c_int,
+        enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut t: c_int =
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
+                match t {
+                    5 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2isize);
+                    }
+                    6 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3isize);
+                    }
+                    7 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4isize);
+                    }
+                    0 | 1 | 8 => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    12 | 13 => {
+                        ptr = ptr.offset(1);
+                        if !(t != open) {
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                return -XML_TOK_LITERAL_1;
+                            }
+                            *nextTokPtr = ptr;
+                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            {
+                                BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
+                                    return XML_TOK_LITERAL_1
+                                }
+                                _ => return XML_TOK_INVALID_1,
+                            }
+                        }
+                    }
+                    _ => {
+                        ptr = ptr.offset(1isize);
+                    }
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut tok: c_int = 0;
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            let mut current_block_124: u64;
+            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_QUOT => {
+                    return {
+                        let (tok_value, next_tok_value) = normal_scanLit(
+                            BT_QUOT as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_APOS => {
+                    return {
+                        let (tok_value, next_tok_value) = normal_scanLit(
+                            BT_APOS as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LT => {
+                    ptr = ptr.offset(1);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                        BT_EXCL => {
+                            return {
+                                let (tok_value, next_tok_value) = normal_scanDecl(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_QUEST => {
+                            return {
+                                let (tok_value, next_tok_value) = normal_scanPi(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
+                            *nextTokPtr = ptr.offset(-(1));
+                            return XML_TOK_INSTANCE_START;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_CR => {
+                    if ptr.offset(1) == end {
+                        *nextTokPtr = end;
+                        return -XML_TOK_PROLOG_S_1;
+                    }
+                    current_block_124 = 6405334113228567422;
+                }
+                BT_S | BT_LF => {
+                    current_block_124 = 6405334113228567422;
+                }
+                BT_PERCNT => {
+                    return {
+                        let (tok_value, next_tok_value) = normal_scanPercent(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_COMMA => {
+                    *nextTokPtr = ptr.offset(1);
+                    return XML_TOK_COMMA_1;
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.offset(1);
+                    return XML_TOK_OPEN_BRACKET_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.offset(1);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                        return -XML_TOK_CLOSE_BRACKET_1;
+                    }
+                    if *ptr as c_int == 0x5d {
+                        if !(end.offset_from(ptr) as c_long >= (2i32 * 1) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr.offset(1) as c_int == 0x3e {
+                            *nextTokPtr = ptr.offset((2i32 * 1) as isize);
+                            return XML_TOK_COND_SECT_CLOSE_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_CLOSE_BRACKET_1;
+                }
+                BT_LPAR => {
+                    *nextTokPtr = ptr.offset(1);
+                    return XML_TOK_OPEN_PAREN_1;
+                }
+                BT_RPAR => {
+                    ptr = ptr.offset(1);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                        return -XML_TOK_CLOSE_PAREN_1;
+                    }
+                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                        BT_AST => {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_CLOSE_PAREN_ASTERISK_1;
+                        }
+                        BT_QUEST => {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_CLOSE_PAREN_QUESTION_1;
+                        }
+                        BT_PLUS => {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_CLOSE_PAREN_PLUS_1;
+                        }
+                        BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_CLOSE_PAREN_1;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_VERBAR => {
+                    *nextTokPtr = ptr.offset(1);
+                    return XML_TOK_OR_1;
+                }
+                BT_GT => {
+                    *nextTokPtr = ptr.offset(1);
+                    return XML_TOK_DECL_CLOSE_1;
+                }
+                BT_NUM => {
+                    return {
+                        let (tok_value, next_tok_value) = normal_scanPoundName(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    if as_normal_encoding(enc).isNmstrt2(enc, ptr) != 0 {
+                        ptr = ptr.offset(2);
+                        tok = XML_TOK_NAME;
+                    } else if as_normal_encoding(enc).isName2(enc, ptr) != 0 {
+                        ptr = ptr.offset(2);
+                        tok = XML_TOK_NMTOKEN_1;
+                    } else {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    if as_normal_encoding(enc).isNmstrt3(enc, ptr) != 0 {
+                        ptr = ptr.offset(3);
+                        tok = XML_TOK_NAME;
+                    } else if as_normal_encoding(enc).isName3(enc, ptr) != 0 {
+                        ptr = ptr.offset(3);
+                        tok = XML_TOK_NMTOKEN_1;
+                    } else {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    if as_normal_encoding(enc).isNmstrt4(enc, ptr) != 0 {
+                        ptr = ptr.offset(4);
+                        tok = XML_TOK_NAME;
+                    } else if as_normal_encoding(enc).isName4(enc, ptr) != 0 {
+                        ptr = ptr.offset(4);
+                        tok = XML_TOK_NMTOKEN_1;
+                    } else {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    tok = XML_TOK_NAME;
+                    ptr = ptr.offset(1);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
+                    tok = XML_TOK_NMTOKEN_1;
+                    ptr = ptr.offset(1);
+                    current_block_124 = 2956972668325154207;
+                }
+                29 | _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_124 {
+                2956972668325154207 => {}
+                _ => {
+                    loop {
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            break;
+                        }
+                        let mut current_block_32: u64;
+                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                            BT_S | BT_LF => {
+                                current_block_32 = 17500079516916021833;
+                            }
+                            BT_CR => {
+                                if ptr.offset(1) != end {
+                                    current_block_32 = 17500079516916021833;
+                                } else {
+                                    current_block_32 = 3687018382384043009;
+                                }
+                            }
+                            _ => {
+                                current_block_32 = 3687018382384043009;
+                            }
+                        }
+                        match current_block_32 {
+                            17500079516916021833 => {}
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_PROLOG_S_1;
+                            }
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_PROLOG_S_1;
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                let mut current_block_210: u64;
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_210 = 17210391895989911948;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
+                    | BT_LF => {
+                        *nextTokPtr = ptr;
+                        return tok;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.offset(1);
+                        match tok {
+                            XML_TOK_NAME => {
+                                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                    return XML_TOK_PARTIAL_1;
+                                }
+                                tok = XML_TOK_PREFIXED_NAME;
+                                let mut current_block_187: u64;
+                                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
+                                    as c_uint
+                                {
+                                    BT_NONASCII => {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                                        current_block_187 = 2692573546887820791;
+                                    }
+                                    BT_LEAD2 => {
+                                        if (end.offset_from(ptr) as c_long) < 2 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        ptr = ptr.offset(2);
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                    BT_LEAD3 => {
+                                        if (end.offset_from(ptr) as c_long) < 3 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        ptr = ptr.offset(3);
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                    BT_LEAD4 => {
+                                        if (end.offset_from(ptr) as c_long) < 4 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        ptr = ptr.offset(4);
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                    _ => {
+                                        tok = XML_TOK_NMTOKEN_1;
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                }
+                                match current_block_187 {
+                                    2692573546887820791 => {
+                                        ptr = ptr.offset(1isize);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            XML_TOK_PREFIXED_NAME => {
+                                tok = XML_TOK_NMTOKEN_1;
+                            }
+                            _ => {}
+                        }
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_PLUS => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(1);
+                        return XML_TOK_NAME_PLUS_1;
+                    }
+                    BT_AST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(1);
+                        return XML_TOK_NAME_ASTERISK_1;
+                    }
+                    BT_QUEST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(1);
+                        return XML_TOK_NAME_QUESTION_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_210 {
+                    17210391895989911948 => {
+                        ptr = ptr.offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            return -tok;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_attributeValueTok(
+        enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            } else if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_LEAD2 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            return {
+                                let (tok_value, next_tok_value) = normal_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LT => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.offset(1);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                return XML_TOK_TRAILING_CR_1;
+                            }
+                            if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                                == BT_LF as c_int
+                            {
+                                ptr = ptr.offset(1isize);
+                            }
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_S => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_ATTRIBUTE_VALUE_S_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(1isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            } else if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
+                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                    BT_LEAD2 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            return {
+                                let (tok_value, next_tok_value) = normal_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_PERCNT => {
+                        if ptr == start {
+                            let mut tok: c_int = {
+                                let (tok_value, next_tok_value) = normal_scanPercent(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(1), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                            return if tok == XML_TOK_PERCENT_1 {
+                                XML_TOK_INVALID_1
+                            } else {
+                                tok
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(1);
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.offset(1);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                return XML_TOK_TRAILING_CR_1;
+                            }
+                            if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                                == BT_LF as c_int
+                            {
+                                ptr = ptr.offset(1isize);
+                            }
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(1isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn normal_ignoreSectionTok(
+        enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut level: c_int = 0;
             while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
                 match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
                     BT_LEAD2 => {
@@ -452,22 +3337,40 @@ pub mod xmltok_impl_c {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
-                    BT_MINUS => {
+                    BT_LT => {
                         ptr = ptr.offset(1);
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr as c_int == 0x2d {
+                        if *ptr as c_int == 0x21 {
                             ptr = ptr.offset(1);
                             if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                                 return XML_TOK_PARTIAL_1;
                             }
-                            if !(*ptr as c_int == 0x3e) {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
+                            if *ptr as c_int == 0x5b {
+                                level += 1;
+                                ptr = ptr.offset(1isize);
                             }
-                            *nextTokPtr = ptr.offset(1);
-                            return XML_TOK_COMMENT_1;
+                        }
+                    }
+                    BT_RSQB => {
+                        ptr = ptr.offset(1);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr as c_int == 0x5d {
+                            ptr = ptr.offset(1);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            if *ptr as c_int == 0x3e {
+                                ptr = ptr.offset(1);
+                                if level == 0 {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_IGNORE_SECT_1;
+                                }
+                                level -= 1;
+                            }
                         }
                     }
                     _ => {
@@ -475,2810 +3378,14 @@ pub mod xmltok_impl_c {
                     }
                 }
             }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_scanDecl(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
             return XML_TOK_PARTIAL_1;
-        }
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_MINUS => {
-                return normal_scanComment(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LSQB => {
-                *nextTokPtr = ptr.offset(1);
-                return XML_TOK_COND_SECT_OPEN_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                ptr = ptr.offset(1isize);
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            's_129: {
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_PERCNT => {
-                        if !(end.offset_from(ptr) as c_long >= (2i32 * 1) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        match as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                            as c_uint
-                        {
-                            BT_S | BT_CR | BT_LF | BT_PERCNT => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            _ => {}
-                        }
-                    }
-                    BT_S | BT_CR | BT_LF => {}
-                    BT_NMSTRT | BT_HEX => {
-                        ptr = ptr.offset(1);
-                        break 's_129;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DECL_OPEN_1;
-            }
-        }
-        return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
     }
 
-    pub(crate) unsafe fn normal_checkPiTarget(
-        _enc: &ENCODING,
-        input: &[c_char],
-        mut tokPtr: *mut c_int,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut upper: c_int = 0;
-        *tokPtr = XML_TOK_PI_1;
-        if end.offset_from(ptr) as c_long != (1i32 * 3) as c_long {
-            return 1i32;
-        }
-        match *ptr as c_int {
-            ASCII_x_1 => {}
-            ASCII_X_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        ptr = ptr.offset(1);
-        match *ptr as c_int {
-            ASCII_m_1 => {}
-            ASCII_M_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        ptr = ptr.offset(1);
-        match *ptr as c_int {
-            ASCII_l_1 => {}
-            ASCII_L_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        if upper != 0 {
-            return 0i32;
-        }
-        *tokPtr = XML_TOK_XML_DECL_1;
-        return 1;
-    }
-
-    pub(crate) unsafe fn normal_scanPi(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut tok: c_int = 0;
-        let mut target: *const c_char = ptr;
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_NONASCII => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 11470911313929454839;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(2);
-                current_block_32 = 14763689060501151050;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(3);
-                current_block_32 = 14763689060501151050;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(4);
-                current_block_32 = 14763689060501151050;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            11470911313929454839 => {
-                ptr = ptr.offset(1isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_118: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_NONASCII => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_118 = 8485341570193076947;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_118 = 13349765058737954042;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_118 = 13349765058737954042;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_118 = 13349765058737954042;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    if normal_checkPiTarget(
-                        enc,
-                        c_char_slice_from_ptr_end(target, ptr),
-                        &raw mut tok,
-                    ) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(1);
-                    while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(2isize);
-                            }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(3isize);
-                            }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(4isize);
-                            }
-                            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_QUEST => {
-                                ptr = ptr.offset(1);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr as c_int == 0x3e {
-                                    *nextTokPtr = ptr.offset(1);
-                                    return tok;
-                                }
-                            }
-                            _ => {
-                                ptr = ptr.offset(1isize);
-                            }
-                        }
-                    }
-                    return XML_TOK_PARTIAL_1;
-                }
-                BT_QUEST => {
-                    if normal_checkPiTarget(
-                        enc,
-                        c_char_slice_from_ptr_end(target, ptr),
-                        &raw mut tok,
-                    ) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr as c_int == 0x3e {
-                        *nextTokPtr = ptr.offset(1);
-                        return tok;
-                    }
-                    current_block_118 = 11310415194689177606;
-                }
-                _ => {
-                    current_block_118 = 11310415194689177606;
-                }
-            }
-            match current_block_118 {
-                11310415194689177606 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                8485341570193076947 => {
-                    ptr = ptr.offset(1isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_scanCdataSection(
-        _enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        pub static CDATA_LSQB: [c_char; 6] = [
-            ASCII_C as c_char,
-            ASCII_D as c_char,
-            ASCII_A as c_char,
-            ASCII_T as c_char,
-            ASCII_A as c_char,
-            ASCII_LSQB as c_char,
-        ];
-        let mut i: c_int = 0;
-        if !(end.offset_from(ptr) as c_long >= (6i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        i = 0;
-        while i < 6 {
-            if !(*ptr as c_int == CDATA_LSQB[i as usize] as c_int) {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            i += 1;
-            ptr = ptr.offset(1);
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_CDATA_SECT_OPEN_1;
-    }
-
-    pub(crate) unsafe fn normal_cdataSectionTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_RSQB => {
-                ptr = ptr.offset(1);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                if *ptr as c_int == 0x5d {
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if !(*ptr as c_int == 0x3e) {
-                        ptr = ptr.offset(-(1isize));
-                    } else {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_CDATA_SECT_CLOSE_1;
-                    }
-                }
-            }
-            BT_CR => {
-                ptr = ptr.offset(1);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                    == BT_LF as c_int
-                {
-                    ptr = ptr.offset(1isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LF => {
-                *nextTokPtr = ptr.offset(1);
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(2isize);
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(3isize);
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(4isize);
-            }
-            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                ptr = ptr.offset(1isize);
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2
-                        || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3
-                        || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4
-                        || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(1isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn normal_scanEndTag(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_NONASCII => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 4324628675098861213;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(2);
-                current_block_32 = 7056779235015430508;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(3);
-                current_block_32 = 7056779235015430508;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(4);
-                current_block_32 = 7056779235015430508;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            4324628675098861213 => {
-                ptr = ptr.offset(1isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_73: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_NONASCII => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_73 = 14883924698754021420;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_73 = 981995395831942902;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_73 = 981995395831942902;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_73 = 981995395831942902;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    ptr = ptr.offset(1);
-                    while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_S | BT_CR | BT_LF => {}
-                            BT_GT => {
-                                *nextTokPtr = ptr.offset(1);
-                                return XML_TOK_END_TAG_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(1);
-                    }
-                    return XML_TOK_PARTIAL_1;
-                }
-                BT_COLON_0 => {
-                    ptr = ptr.offset(1);
-                    current_block_73 = 981995395831942902;
-                }
-                BT_GT => {
-                    *nextTokPtr = ptr.offset(1);
-                    return XML_TOK_END_TAG_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_73 {
-                14883924698754021420 => {
-                    ptr = ptr.offset(1isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_scanHexCharRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_DIGIT | BT_HEX => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            ptr = ptr.offset(1);
-            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_DIGIT | BT_HEX => {}
-                    BT_SEMI => {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_CHAR_REF_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                ptr = ptr.offset(1);
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_scanCharRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            if *ptr as c_int == 0x78 {
-                return normal_scanHexCharRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_DIGIT => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            ptr = ptr.offset(1);
-            while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_DIGIT => {}
-                    BT_SEMI => {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_CHAR_REF_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                ptr = ptr.offset(1);
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_scanRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_33: u64;
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_NONASCII => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_33 = 8911980980495988282;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(2);
-                current_block_33 = 14763689060501151050;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(3);
-                current_block_33 = 14763689060501151050;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(4);
-                current_block_33 = 14763689060501151050;
-            }
-            BT_NUM => {
-                return normal_scanCharRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_33 {
-            8911980980495988282 => {
-                ptr = ptr.offset(1isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_64: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_NONASCII => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_64 = 11948064939145634034;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_64 = 10930818133215224067;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_64 = 10930818133215224067;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_64 = 10930818133215224067;
-                }
-                BT_SEMI => {
-                    *nextTokPtr = ptr.offset(1);
-                    return XML_TOK_ENTITY_REF_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_64 {
-                11948064939145634034 => {
-                    ptr = ptr.offset(1isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_scanAtts(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut hadColon: c_int = 0;
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_186: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_NONASCII => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_186 = 3818392175876617014;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_186 = 1634947208139838470;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_186 = 1634947208139838470;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_186 = 1634947208139838470;
-                }
-                BT_COLON_0 => {
-                    if hadColon != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    hadColon = 1;
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    let mut current_block_64: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_NMSTRT | BT_HEX => {
-                            current_block_64 = 7083593080606520045;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_64 = 10930818133215224067;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_64 = 10930818133215224067;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_64 = 10930818133215224067;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_64 {
-                        7083593080606520045 => {
-                            ptr = ptr.offset(1isize);
-                        }
-                        _ => {}
-                    }
-                    current_block_186 = 1634947208139838470;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    loop {
-                        let mut t: c_int = 0;
-                        ptr = ptr.offset(1);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        t = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
-                        if t == BT_EQUALS as c_int {
-                            break;
-                        }
-                        match t {
-                            21 | 10 | 9 => {}
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    current_block_186 = 10853015579903106591;
-                }
-                BT_EQUALS => {
-                    current_block_186 = 10853015579903106591;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_186 {
-                10853015579903106591 => {
-                    let mut open: c_int = 0;
-                    hadColon = 0;
-                    loop {
-                        ptr = ptr.offset(1);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        open = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
-                        if open == BT_QUOT as c_int || open == BT_APOS as c_int {
-                            break;
-                        }
-                        match open {
-                            21 | 10 | 9 => {}
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    ptr = ptr.offset(1);
-                    loop {
-                        let mut t_0: c_int = 0;
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        t_0 = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
-                        if t_0 == open {
-                            break;
-                        }
-                        match t_0 {
-                            5 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(2isize);
-                            }
-                            6 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(3isize);
-                            }
-                            7 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(4isize);
-                            }
-                            0 | 1 | 8 => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            3 => {
-                                let mut tok: c_int = normal_scanRef(
-                                    enc,
-                                    c_char_slice_from_ptr_end(ptr.offset(1), end),
-                                    &raw mut ptr,
-                                );
-                                if tok <= 0 {
-                                    if tok == XML_TOK_INVALID_1 {
-                                        *nextTokPtr = ptr;
-                                    }
-                                    return tok;
-                                }
-                            }
-                            2 => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            _ => {
-                                ptr = ptr.offset(1isize);
-                            }
-                        }
-                    }
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_S | BT_CR | BT_LF => {
-                            loop {
-                                ptr = ptr.offset(1);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                    as c_uint
-                                {
-                                    BT_NONASCII => {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    BT_NMSTRT | BT_HEX => {
-                                        current_block_186 = 11210999262882855128;
-                                        break;
-                                    }
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(2);
-                                        current_block_186 = 1634947208139838470;
-                                        break;
-                                    }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(3);
-                                        current_block_186 = 1634947208139838470;
-                                        break;
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(4);
-                                        current_block_186 = 1634947208139838470;
-                                        break;
-                                    }
-                                    BT_S | BT_CR | BT_LF => {}
-                                    BT_GT => {
-                                        current_block_186 = 2944436519209994553;
-                                        break;
-                                    }
-                                    BT_SOL => {
-                                        current_block_186 = 398073151373002430;
-                                        break;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                }
-                            }
-                            match current_block_186 {
-                                2944436519209994553 => {}
-                                398073151373002430 => {}
-                                1634947208139838470 => {}
-                                _ => {
-                                    ptr = ptr.offset(1);
-                                    current_block_186 = 1634947208139838470;
-                                }
-                            }
-                        }
-                        BT_SOL => {
-                            current_block_186 = 398073151373002430;
-                        }
-                        BT_GT => {
-                            current_block_186 = 2944436519209994553;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_186 {
-                        1634947208139838470 => {}
-                        _ => match current_block_186 {
-                            398073151373002430 => {
-                                ptr = ptr.offset(1);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                if !(*ptr as c_int == 0x3e) {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                *nextTokPtr = ptr.offset(1);
-                                return XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr.offset(1);
-                                return XML_TOK_START_TAG_WITH_ATTS_1;
-                            }
-                        },
-                    }
-                }
-                3818392175876617014 => {
-                    ptr = ptr.offset(1isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_scanLt(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut hadColon: c_int = 0;
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_45: u64;
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_NONASCII => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_45 = 2165477741955893522;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(2);
-                current_block_45 = 8180496224585318153;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(3);
-                current_block_45 = 8180496224585318153;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(4);
-                current_block_45 = 8180496224585318153;
-            }
-            BT_EXCL => {
-                ptr = ptr.offset(1);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_MINUS => {
-                        return normal_scanComment(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_LSQB => {
-                        return normal_scanCdataSection(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_QUEST => {
-                return normal_scanPi(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_SOL => {
-                return normal_scanEndTag(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_45 {
-            2165477741955893522 => {
-                ptr = ptr.offset(1isize);
-            }
-            _ => {}
-        }
-        hadColon = 0;
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_161: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_NONASCII => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_161 = 6701753098489376273;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_161 = 14714495436747744489;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_161 = 14714495436747744489;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_161 = 14714495436747744489;
-                }
-                BT_COLON_0 => {
-                    if hadColon != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    hadColon = 1;
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    let mut current_block_112: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_NMSTRT | BT_HEX => {
-                            current_block_112 = 9169466483824547789;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_112 = 2616667235040759262;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_112 = 2616667235040759262;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_112 = 2616667235040759262;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_112 {
-                        9169466483824547789 => {
-                            ptr = ptr.offset(1isize);
-                        }
-                        _ => {}
-                    }
-                    current_block_161 = 14714495436747744489;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    ptr = ptr.offset(1);
-                    loop {
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            current_block_161 = 13215501469961642988;
-                            break;
-                        }
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_NONASCII => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_NMSTRT | BT_HEX => {
-                                current_block_161 = 7939927167482451446;
-                            }
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(2);
-                                current_block_161 = 16314074004867283505;
-                            }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(3);
-                                current_block_161 = 16314074004867283505;
-                            }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(4);
-                                current_block_161 = 16314074004867283505;
-                            }
-                            BT_GT => {
-                                current_block_161 = 5640065479517572396;
-                                break;
-                            }
-                            BT_SOL => {
-                                current_block_161 = 12549409781983877175;
-                                break;
-                            }
-                            BT_S | BT_CR | BT_LF => {
-                                ptr = ptr.offset(1);
-                                continue;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                        match current_block_161 {
-                            7939927167482451446 => {
-                                ptr = ptr.offset(1isize);
-                            }
-                            _ => {}
-                        }
-                        return normal_scanAtts(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr, end),
-                            nextTokPtr,
-                        );
-                    }
-                    match current_block_161 {
-                        5640065479517572396 => {}
-                        12549409781983877175 => {}
-                        _ => return XML_TOK_PARTIAL_1,
-                    }
-                }
-                BT_GT => {
-                    current_block_161 = 5640065479517572396;
-                }
-                BT_SOL => {
-                    current_block_161 = 12549409781983877175;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_161 {
-                12549409781983877175 => {
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if !(*ptr as c_int == 0x3e) {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(1);
-                    return XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
-                }
-                5640065479517572396 => {
-                    *nextTokPtr = ptr.offset(1);
-                    return XML_TOK_START_TAG_NO_ATTS_1;
-                }
-                6701753098489376273 => {
-                    ptr = ptr.offset(1isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_contentTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_LT => {
-                return normal_scanLt(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_AMP => {
-                return normal_scanRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_CR => {
-                ptr = ptr.offset(1);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                    return XML_TOK_TRAILING_CR_1;
-                }
-                if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                    == BT_LF as c_int
-                {
-                    ptr = ptr.offset(1isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LF => {
-                *nextTokPtr = ptr.offset(1);
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_RSQB => {
-                ptr = ptr.offset(1);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                    return XML_TOK_TRAILING_RSQB_1;
-                }
-                if *ptr as c_int == 0x5d {
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_TRAILING_RSQB_1;
-                    }
-                    if !(*ptr as c_int == 0x3e) {
-                        ptr = ptr.offset(-(1isize));
-                    } else {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(2isize);
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(3isize);
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(4isize);
-            }
-            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                ptr = ptr.offset(1isize);
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_76: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2
-                        || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3
-                        || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4
-                        || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_RSQB => {
-                    if end.offset_from(ptr) as c_long >= (2i32 * 1) as c_long {
-                        if !(*ptr.offset(1) as c_int == 0x5d) {
-                            ptr = ptr.offset(1);
-                            current_block_76 = 7158658067966855297;
-                        } else if end.offset_from(ptr) as c_long >= (3i32 * 1) as c_long {
-                            if !(*ptr.offset((2i32 * 1) as isize) as c_int == 0x3e) {
-                                ptr = ptr.offset(1isize);
-                            } else {
-                                *nextTokPtr = ptr.offset((2i32 * 1) as isize);
-                                return XML_TOK_INVALID_1;
-                            }
-                            current_block_76 = 7158658067966855297;
-                        } else {
-                            current_block_76 = 1999360611754201214;
-                        }
-                    } else {
-                        current_block_76 = 1999360611754201214;
-                    }
-                }
-                BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
-                    current_block_76 = 1999360611754201214;
-                }
-                _ => {
-                    ptr = ptr.offset(1);
-                    current_block_76 = 7158658067966855297;
-                }
-            }
-            match current_block_76 {
-                7158658067966855297 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn normal_scanPercent(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_34: u64;
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_NONASCII => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_34 = 12478441211659886388;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(2);
-                current_block_34 = 4761528863920922185;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(3);
-                current_block_34 = 4761528863920922185;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(4);
-                current_block_34 = 4761528863920922185;
-            }
-            BT_S | BT_LF | BT_CR | BT_PERCNT => {
-                *nextTokPtr = ptr;
-                return XML_TOK_PERCENT_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_34 {
-            12478441211659886388 => {
-                ptr = ptr.offset(1isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_65: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_NONASCII => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_65 = 7770117754142564343;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_65 = 16415152177862271243;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_65 = 16415152177862271243;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_65 = 16415152177862271243;
-                }
-                BT_SEMI => {
-                    *nextTokPtr = ptr.offset(1);
-                    return XML_TOK_PARAM_ENTITY_REF_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_65 {
-                7770117754142564343 => {
-                    ptr = ptr.offset(1isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_scanPoundName(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_NONASCII => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 1867613116081924762;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(2);
-                current_block_32 = 7056779235015430508;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(3);
-                current_block_32 = 7056779235015430508;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                ptr = ptr.offset(4);
-                current_block_32 = 7056779235015430508;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            1867613116081924762 => {
-                ptr = ptr.offset(1isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_63: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_NONASCII => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_63 = 226587729178875444;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_63 = 10380409671385728102;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_63 = 10380409671385728102;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_63 = 10380409671385728102;
-                }
-                BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_POUND_NAME_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_63 {
-                226587729178875444 => {
-                    ptr = ptr.offset(1isize);
-                }
-                _ => {}
-            }
-        }
-        return -XML_TOK_POUND_NAME_1;
-    }
-
-    pub(crate) unsafe fn normal_scanLit(
-        mut open: c_int,
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut t: c_int = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
-            match t {
-                5 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                12 | 13 => {
-                    ptr = ptr.offset(1);
-                    if !(t != open) {
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            return -XML_TOK_LITERAL_1;
-                        }
-                        *nextTokPtr = ptr;
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
-                                return XML_TOK_LITERAL_1
-                            }
-                            _ => return XML_TOK_INVALID_1,
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(1isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_prologTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut tok: c_int = 0;
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        let mut current_block_124: u64;
-        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-            BT_QUOT => {
-                return normal_scanLit(
-                    BT_QUOT as c_int,
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_APOS => {
-                return normal_scanLit(
-                    BT_APOS as c_int,
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LT => {
-                ptr = ptr.offset(1);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_EXCL => {
-                        return normal_scanDecl(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_QUEST => {
-                        return normal_scanPi(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
-                        *nextTokPtr = ptr.offset(-(1));
-                        return XML_TOK_INSTANCE_START;
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_CR => {
-                if ptr.offset(1) == end {
-                    *nextTokPtr = end;
-                    return -XML_TOK_PROLOG_S_1;
-                }
-                current_block_124 = 6405334113228567422;
-            }
-            BT_S | BT_LF => {
-                current_block_124 = 6405334113228567422;
-            }
-            BT_PERCNT => {
-                return normal_scanPercent(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_COMMA => {
-                *nextTokPtr = ptr.offset(1);
-                return XML_TOK_COMMA_1;
-            }
-            BT_LSQB => {
-                *nextTokPtr = ptr.offset(1);
-                return XML_TOK_OPEN_BRACKET_1;
-            }
-            BT_RSQB => {
-                ptr = ptr.offset(1);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                    return -XML_TOK_CLOSE_BRACKET_1;
-                }
-                if *ptr as c_int == 0x5d {
-                    if !(end.offset_from(ptr) as c_long >= (2i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(1) as c_int == 0x3e {
-                        *nextTokPtr = ptr.offset((2i32 * 1) as isize);
-                        return XML_TOK_COND_SECT_CLOSE_1;
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_CLOSE_BRACKET_1;
-            }
-            BT_LPAR => {
-                *nextTokPtr = ptr.offset(1);
-                return XML_TOK_OPEN_PAREN_1;
-            }
-            BT_RPAR => {
-                ptr = ptr.offset(1);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                    return -XML_TOK_CLOSE_PAREN_1;
-                }
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_AST => {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_CLOSE_PAREN_ASTERISK_1;
-                    }
-                    BT_QUEST => {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_CLOSE_PAREN_QUESTION_1;
-                    }
-                    BT_PLUS => {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_CLOSE_PAREN_PLUS_1;
-                    }
-                    BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_CLOSE_PAREN_1;
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_VERBAR => {
-                *nextTokPtr = ptr.offset(1);
-                return XML_TOK_OR_1;
-            }
-            BT_GT => {
-                *nextTokPtr = ptr.offset(1);
-                return XML_TOK_DECL_CLOSE_1;
-            }
-            BT_NUM => {
-                return normal_scanPoundName(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                if as_normal_encoding(enc).isNmstrt2(enc, ptr) != 0 {
-                    ptr = ptr.offset(2);
-                    tok = XML_TOK_NAME;
-                } else if as_normal_encoding(enc).isName2(enc, ptr) != 0 {
-                    ptr = ptr.offset(2);
-                    tok = XML_TOK_NMTOKEN_1;
-                } else {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_124 = 2956972668325154207;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                if as_normal_encoding(enc).isNmstrt3(enc, ptr) != 0 {
-                    ptr = ptr.offset(3);
-                    tok = XML_TOK_NAME;
-                } else if as_normal_encoding(enc).isName3(enc, ptr) != 0 {
-                    ptr = ptr.offset(3);
-                    tok = XML_TOK_NMTOKEN_1;
-                } else {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_124 = 2956972668325154207;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                if as_normal_encoding(enc).isNmstrt4(enc, ptr) != 0 {
-                    ptr = ptr.offset(4);
-                    tok = XML_TOK_NAME;
-                } else if as_normal_encoding(enc).isName4(enc, ptr) != 0 {
-                    ptr = ptr.offset(4);
-                    tok = XML_TOK_NMTOKEN_1;
-                } else {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_124 = 2956972668325154207;
-            }
-            BT_NMSTRT | BT_HEX => {
-                tok = XML_TOK_NAME;
-                ptr = ptr.offset(1);
-                current_block_124 = 2956972668325154207;
-            }
-            BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
-                tok = XML_TOK_NMTOKEN_1;
-                ptr = ptr.offset(1);
-                current_block_124 = 2956972668325154207;
-            }
-            29 | _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_124 {
-            2956972668325154207 => {}
-            _ => {
-                loop {
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        break;
-                    }
-                    let mut current_block_32: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_S | BT_LF => {
-                            current_block_32 = 17500079516916021833;
-                        }
-                        BT_CR => {
-                            if ptr.offset(1) != end {
-                                current_block_32 = 17500079516916021833;
-                            } else {
-                                current_block_32 = 3687018382384043009;
-                            }
-                        }
-                        _ => {
-                            current_block_32 = 3687018382384043009;
-                        }
-                    }
-                    match current_block_32 {
-                        17500079516916021833 => {}
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_PROLOG_S_1;
-                        }
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_PROLOG_S_1;
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut current_block_210: u64;
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_NONASCII => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_210 = 17210391895989911948;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_210 = 14244298717249035578;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_210 = 14244298717249035578;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_210 = 14244298717249035578;
-                }
-                BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
-                | BT_LF => {
-                    *nextTokPtr = ptr;
-                    return tok;
-                }
-                BT_COLON_0 => {
-                    ptr = ptr.offset(1);
-                    match tok {
-                        XML_TOK_NAME => {
-                            if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                                return XML_TOK_PARTIAL_1;
-                            }
-                            tok = XML_TOK_PREFIXED_NAME;
-                            let mut current_block_187: u64;
-                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                            {
-                                BT_NONASCII => {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                                    current_block_187 = 2692573546887820791;
-                                }
-                                BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    ptr = ptr.offset(2);
-                                    current_block_187 = 9812798724717783973;
-                                }
-                                BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    ptr = ptr.offset(3);
-                                    current_block_187 = 9812798724717783973;
-                                }
-                                BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    ptr = ptr.offset(4);
-                                    current_block_187 = 9812798724717783973;
-                                }
-                                _ => {
-                                    tok = XML_TOK_NMTOKEN_1;
-                                    current_block_187 = 9812798724717783973;
-                                }
-                            }
-                            match current_block_187 {
-                                2692573546887820791 => {
-                                    ptr = ptr.offset(1isize);
-                                }
-                                _ => {}
-                            }
-                        }
-                        XML_TOK_PREFIXED_NAME => {
-                            tok = XML_TOK_NMTOKEN_1;
-                        }
-                        _ => {}
-                    }
-                    current_block_210 = 14244298717249035578;
-                }
-                BT_PLUS => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(1);
-                    return XML_TOK_NAME_PLUS_1;
-                }
-                BT_AST => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(1);
-                    return XML_TOK_NAME_ASTERISK_1;
-                }
-                BT_QUEST => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(1);
-                    return XML_TOK_NAME_QUESTION_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_210 {
-                17210391895989911948 => {
-                    ptr = ptr.offset(1isize);
-                }
-                _ => {}
-            }
-        }
-        return -tok;
-    }
-
-    pub(crate) unsafe fn normal_attributeValueTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut start: *const c_char = null::<c_char>();
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        } else if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        start = ptr;
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_LEAD2 => {
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    ptr = ptr.offset(4isize);
-                }
-                BT_AMP => {
-                    if ptr == start {
-                        return normal_scanRef(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_LT => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LF => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_CR => {
-                    if ptr == start {
-                        ptr = ptr.offset(1);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            return XML_TOK_TRAILING_CR_1;
-                        }
-                        if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                            == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(1isize);
-                        }
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_S => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_ATTRIBUTE_VALUE_S_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(1isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn normal_entityValueTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut start: *const c_char = null::<c_char>();
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        } else if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        start = ptr;
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_LEAD2 => {
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    ptr = ptr.offset(4isize);
-                }
-                BT_AMP => {
-                    if ptr == start {
-                        return normal_scanRef(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_PERCNT => {
-                    if ptr == start {
-                        let mut tok: c_int = normal_scanPercent(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(1), end),
-                            nextTokPtr,
-                        );
-                        return if tok == XML_TOK_PERCENT_1 {
-                            XML_TOK_INVALID_1
-                        } else {
-                            tok
-                        };
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_LF => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(1);
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_CR => {
-                    if ptr == start {
-                        ptr = ptr.offset(1);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            return XML_TOK_TRAILING_CR_1;
-                        }
-                        if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                            == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(1isize);
-                        }
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(1isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn normal_ignoreSectionTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut level: c_int = 0;
-        while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LT => {
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr as c_int == 0x21 {
-                        ptr = ptr.offset(1);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr as c_int == 0x5b {
-                            level += 1;
-                            ptr = ptr.offset(1isize);
-                        }
-                    }
-                }
-                BT_RSQB => {
-                    ptr = ptr.offset(1);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr as c_int == 0x5d {
-                        ptr = ptr.offset(1);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr as c_int == 0x3e {
-                            ptr = ptr.offset(1);
-                            if level == 0 {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_IGNORE_SECT_1;
-                            }
-                            level -= 1;
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(1isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn normal_isPublicId(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut badPtr: *mut *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn normal_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        let mut badPtrVal: *const c_char = null::<c_char>();
+        let mut badPtr: *mut *const c_char = &raw mut badPtrVal;
         let mut ptr = input.as_ptr();
         let mut end = ptr.add(input.len());
         ptr = ptr.offset(1);
@@ -3293,7 +3400,7 @@ pub mod xmltok_impl_c {
                 BT_S => {
                     if *ptr as c_int == 0x9 {
                         *badPtr = ptr;
-                        return 0i32;
+                        return (0i32, badPtrVal);
                     }
                     current_block_8 = 5143058163439228106;
                 }
@@ -3313,14 +3420,14 @@ pub mod xmltok_impl_c {
                     36 | 64 => {}
                     _ => {
                         *badPtr = ptr;
-                        return 0i32;
+                        return (0i32, badPtrVal);
                     }
                 },
                 _ => {}
             }
             ptr = ptr.offset(1);
         }
-        return 1;
+        return (1, badPtrVal);
     }
 
     pub(crate) unsafe fn normal_getAtts(
@@ -3648,19 +3755,2890 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe fn little2_scanComment(
-        enc: &ENCODING,
+    pub(crate) unsafe fn little2_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x2d) {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                ptr = ptr.offset(2);
+                while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                    match if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    } {
+                        BT_LEAD2 => {
+                            if (end.offset_from(ptr) as c_long) < 2 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            ptr = ptr.offset(2isize);
+                        }
+                        BT_LEAD3 => {
+                            if (end.offset_from(ptr) as c_long) < 3 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            ptr = ptr.offset(3isize);
+                        }
+                        BT_LEAD4 => {
+                            if (end.offset_from(ptr) as c_long) < 4 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            ptr = ptr.offset(4isize);
+                        }
+                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        BT_MINUS => {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x2d {
+                                ptr = ptr.offset(2);
+                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                    return XML_TOK_PARTIAL_1;
+                                }
+                                if !(*ptr.offset(1) as c_int == 0
+                                    && *ptr.offset(0) as c_int == 0x3e)
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                *nextTokPtr = ptr.offset(2);
+                                return XML_TOK_COMMENT_1;
+                            }
+                        }
+                        _ => {
+                            ptr = ptr.offset(2isize);
+                        }
+                    }
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_MINUS => {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanComment(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_COND_SECT_OPEN_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                's_129: {
+                    match if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    } {
+                        BT_PERCNT => {
+                            if !(end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            match if *ptr.offset(2).offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(2) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(
+                                    *ptr.offset(2).offset(1),
+                                    *ptr.offset(2).offset(0),
+                                ) as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF | BT_PERCNT => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                _ => {}
+                            }
+                        }
+                        BT_S | BT_CR | BT_LF => {}
+                        BT_NMSTRT | BT_HEX => {
+                            ptr = ptr.offset(2);
+                            break 's_129;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DECL_OPEN_1;
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_checkPiTarget(
+        _enc: &ENCODING,
         input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x2d) {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
+    ) -> CheckPiTargetResult {
+        let mut tok: c_int = 0;
+        let mut tokPtr: *mut c_int = &raw mut tok;
+        let result = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut upper: c_int = 0;
+            *tokPtr = XML_TOK_PI_1;
+            if end.offset_from(ptr) as c_long != (2i32 * 3) as c_long {
+                return 1i32;
+            }
+            match if *ptr.offset(1) as c_int == 0 {
+                *ptr.offset(0) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_x_1 => {}
+                ASCII_X_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
             }
             ptr = ptr.offset(2);
+            match if *ptr.offset(1) as c_int == 0 {
+                *ptr.offset(0) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_m_1 => {}
+                ASCII_M_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
+            }
+            ptr = ptr.offset(2);
+            match if *ptr.offset(1) as c_int == 0 {
+                *ptr.offset(0) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_l_1 => {}
+                ASCII_L_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
+            }
+            if upper != 0 {
+                return 0i32;
+            }
+            *tokPtr = XML_TOK_XML_DECL_1;
+            return 1;
+        })();
+        return (result, tok);
+    }
+
+    pub(crate) unsafe fn little2_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut tok: c_int = 0;
+            let mut target: *const c_char = ptr;
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 14358794669692889688;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 14358794669692889688;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                14358794669692889688 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_118: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_118 = 15890151712677504458;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_118 = 15890151712677504458;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        if {
+                            let (ok_value, tok_value) =
+                                little2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                            match if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                            } {
+                                BT_LEAD2 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(2isize);
+                                }
+                                BT_LEAD3 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(3isize);
+                                }
+                                BT_LEAD4 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(4isize);
+                                }
+                                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_QUEST => {
+                                    ptr = ptr.offset(2);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    if *ptr.offset(1) as c_int == 0
+                                        && *ptr.offset(0) as c_int == 0x3e
+                                    {
+                                        *nextTokPtr = ptr.offset(2);
+                                        return tok;
+                                    }
+                                }
+                                _ => {
+                                    ptr = ptr.offset(2isize);
+                                }
+                            }
+                        }
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    BT_QUEST => {
+                        if {
+                            let (ok_value, tok_value) =
+                                little2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e {
+                            *nextTokPtr = ptr.offset(2);
+                            return tok;
+                        }
+                        current_block_118 = 7312756018063861309;
+                    }
+                    _ => {
+                        current_block_118 = 7312756018063861309;
+                    }
+                }
+                match current_block_118 {
+                    7312756018063861309 => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    15890151712677504458 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanCdataSection(
+        _enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            pub static CDATA_LSQB: [c_char; 6] = [
+                ASCII_C as c_char,
+                ASCII_D as c_char,
+                ASCII_A as c_char,
+                ASCII_T as c_char,
+                ASCII_A as c_char,
+                ASCII_LSQB as c_char,
+            ];
+            let mut i: c_int = 0;
+            if !(end.offset_from(ptr) as c_long >= (6i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            i = 0;
+            while i < 6 {
+                if !(*ptr.offset(1) as c_int == 0
+                    && *ptr.offset(0) as c_int == CDATA_LSQB[i as usize] as c_int)
+                {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                i += 1;
+                ptr = ptr.offset(2);
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_CDATA_SECT_OPEN_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_cdataSectionTok(
+        enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = end.offset_from(ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.offset(n as isize);
+                }
+            }
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_RSQB => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
+                            ptr = ptr.offset(-(2isize));
+                        } else {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CDATA_SECT_CLOSE_1;
+                        }
+                    }
+                }
+                BT_CR => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    if (if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
+                    }) == BT_LF as c_int
+                    {
+                        ptr = ptr.offset(2isize);
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.offset(2isize);
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(2isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 8654814784450400207;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 8654814784450400207;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                8654814784450400207 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_73: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_73 = 16411184819389759620;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_73 = 16411184819389759620;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.offset(2);
+                        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                            match if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF => {}
+                                BT_GT => {
+                                    *nextTokPtr = ptr.offset(2);
+                                    return XML_TOK_END_TAG_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                            ptr = ptr.offset(2);
+                        }
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.offset(2);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_GT => {
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_END_TAG_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_73 {
+                    16411184819389759620 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_DIGIT | BT_HEX => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.offset(2);
+                while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                    match if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    } {
+                        BT_DIGIT | BT_HEX => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CHAR_REF_1;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    ptr = ptr.offset(2);
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x78 {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanHexCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_DIGIT => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.offset(2);
+                while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                    match if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    } {
+                        BT_DIGIT => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CHAR_REF_1;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    ptr = ptr.offset(2);
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_33: u64;
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_33 = 6679362556518655255;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_33 = 6679362556518655255;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NUM => {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_33 {
+                6679362556518655255 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_64: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_64 = 405996089697802199;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_64 = 405996089697802199;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_ENTITY_REF_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_64 {
+                    405996089697802199 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut hadColon: c_int = 0;
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_186: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_186 = 17747718632989559416;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_186 = 17747718632989559416;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_64: u64;
+                        match if *ptr.offset(1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                        } else {
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                        } {
+                            BT_NONASCII => {
+                                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
+                                    as c_int)
+                                    << 3)
+                                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                                    as usize]
+                                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                                    == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                current_block_64 = 12531724302225488581;
+                            }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_64 = 12531724302225488581;
+                            }
+                            BT_LEAD2 => {
+                                if (end.offset_from(ptr) as c_long) < 2 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD3 => {
+                                if (end.offset_from(ptr) as c_long) < 3 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD4 => {
+                                if (end.offset_from(ptr) as c_long) < 4 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_64 {
+                            12531724302225488581 => {
+                                ptr = ptr.offset(2isize);
+                            }
+                            _ => {}
+                        }
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        loop {
+                            let mut t: c_int = 0;
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            t = if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
+                            };
+                            if t == BT_EQUALS as c_int {
+                                break;
+                            }
+                            match t {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                        }
+                        current_block_186 = 10853015579903106591;
+                    }
+                    BT_EQUALS => {
+                        current_block_186 = 10853015579903106591;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_186 {
+                    10853015579903106591 => {
+                        let mut open: c_int = 0;
+                        hadColon = 0;
+                        loop {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            open = if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
+                            };
+                            if open == BT_QUOT as c_int || open == BT_APOS as c_int {
+                                break;
+                            }
+                            match open {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                        }
+                        ptr = ptr.offset(2);
+                        loop {
+                            let mut t_0: c_int = 0;
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            t_0 = if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
+                            };
+                            if t_0 == open {
+                                break;
+                            }
+                            match t_0 {
+                                5 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(2isize);
+                                }
+                                6 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(3isize);
+                                }
+                                7 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(4isize);
+                                }
+                                0 | 1 | 8 => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                3 => {
+                                    let mut tok: c_int = {
+                                        let (tok_value, next_tok_value) = little2_scanRef(
+                                            enc,
+                                            c_char_slice_from_ptr_end(ptr.offset(2), end),
+                                        );
+                                        ptr = next_tok_value;
+                                        tok_value
+                                    };
+                                    if tok <= 0 {
+                                        if tok == XML_TOK_INVALID_1 {
+                                            *nextTokPtr = ptr;
+                                        }
+                                        return tok;
+                                    }
+                                }
+                                2 => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                _ => {
+                                    ptr = ptr.offset(2isize);
+                                }
+                            }
+                        }
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        match if *ptr.offset(1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                        } else {
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                        } {
+                            BT_S | BT_CR | BT_LF => {
+                                loop {
+                                    ptr = ptr.offset(2);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    match if *ptr.offset(1) as c_int == 0 {
+                                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
+                                            as c_uint
+                                    } else {
+                                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                                    } {
+                                        BT_NONASCII => {
+                                            if namingBitmap[(((nmstrtPages
+                                                [*ptr.offset(1) as c_uchar as usize]
+                                                as c_int)
+                                                << 3)
+                                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                                                as usize]
+                                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                                                == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                return XML_TOK_INVALID_1;
+                                            }
+                                            current_block_186 = 923465642386550266;
+                                            break;
+                                        }
+                                        BT_NMSTRT | BT_HEX => {
+                                            current_block_186 = 923465642386550266;
+                                            break;
+                                        }
+                                        BT_LEAD2 => {
+                                            if (end.offset_from(ptr) as c_long) < 2 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        BT_LEAD3 => {
+                                            if (end.offset_from(ptr) as c_long) < 3 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        BT_LEAD4 => {
+                                            if (end.offset_from(ptr) as c_long) < 4 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        BT_S | BT_CR | BT_LF => {}
+                                        BT_GT => {
+                                            current_block_186 = 15103464935601583148;
+                                            break;
+                                        }
+                                        BT_SOL => {
+                                            current_block_186 = 619033562305054167;
+                                            break;
+                                        }
+                                        _ => {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                    }
+                                }
+                                match current_block_186 {
+                                    15103464935601583148 => {}
+                                    619033562305054167 => {}
+                                    1634947208139838470 => {}
+                                    _ => {
+                                        ptr = ptr.offset(2);
+                                        current_block_186 = 1634947208139838470;
+                                    }
+                                }
+                            }
+                            BT_SOL => {
+                                current_block_186 = 619033562305054167;
+                            }
+                            BT_GT => {
+                                current_block_186 = 15103464935601583148;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_186 {
+                            1634947208139838470 => {}
+                            _ => match current_block_186 {
+                                619033562305054167 => {
+                                    ptr = ptr.offset(2);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    if !(*ptr.offset(1) as c_int == 0
+                                        && *ptr.offset(0) as c_int == 0x3e)
+                                    {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    *nextTokPtr = ptr.offset(2);
+                                    return XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr.offset(2);
+                                    return XML_TOK_START_TAG_WITH_ATTS_1;
+                                }
+                            },
+                        }
+                    }
+                    17747718632989559416 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut hadColon: c_int = 0;
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_45: u64;
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_45 = 18046087305847344724;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_45 = 18046087305847344724;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_EXCL => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    match if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    } {
+                        BT_MINUS => {
+                            return {
+                                let (tok_value, next_tok_value) = little2_scanComment(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_LSQB => {
+                            return {
+                                let (tok_value, next_tok_value) = little2_scanCdataSection(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_QUEST => {
+                    return {
+                        let (tok_value, next_tok_value) =
+                            little2_scanPi(enc, c_char_slice_from_ptr_end(ptr.offset(2isize), end));
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_SOL => {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanEndTag(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_45 {
+                18046087305847344724 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            hadColon = 0;
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_161: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_161 = 8998928240368606981;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_161 = 8998928240368606981;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_112: u64;
+                        match if *ptr.offset(1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                        } else {
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                        } {
+                            BT_NONASCII => {
+                                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
+                                    as c_int)
+                                    << 3)
+                                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                                    as usize]
+                                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                                    == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                current_block_112 = 14391208795021697965;
+                            }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_112 = 14391208795021697965;
+                            }
+                            BT_LEAD2 => {
+                                if (end.offset_from(ptr) as c_long) < 2 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD3 => {
+                                if (end.offset_from(ptr) as c_long) < 3 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD4 => {
+                                if (end.offset_from(ptr) as c_long) < 4 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_112 {
+                            14391208795021697965 => {
+                                ptr = ptr.offset(2isize);
+                            }
+                            _ => {}
+                        }
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.offset(2);
+                        loop {
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                current_block_161 = 13215501469961642988;
+                                break;
+                            }
+                            match if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                            } {
+                                BT_NONASCII => {
+                                    if namingBitmap[(((nmstrtPages
+                                        [*ptr.offset(1) as c_uchar as usize]
+                                        as c_int)
+                                        << 3)
+                                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                                        as usize]
+                                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                                        == 0
+                                    {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    current_block_161 = 2369392326157537288;
+                                }
+                                BT_NMSTRT | BT_HEX => {
+                                    current_block_161 = 2369392326157537288;
+                                }
+                                BT_LEAD2 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_LEAD3 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_LEAD4 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_GT => {
+                                    current_block_161 = 1918622160084604696;
+                                    break;
+                                }
+                                BT_SOL => {
+                                    current_block_161 = 1114269873380682160;
+                                    break;
+                                }
+                                BT_S | BT_CR | BT_LF => {
+                                    ptr = ptr.offset(2);
+                                    continue;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                            match current_block_161 {
+                                2369392326157537288 => {
+                                    ptr = ptr.offset(2isize);
+                                }
+                                _ => {}
+                            }
+                            return {
+                                let (tok_value, next_tok_value) =
+                                    little2_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        match current_block_161 {
+                            1918622160084604696 => {}
+                            1114269873380682160 => {}
+                            _ => return XML_TOK_PARTIAL_1,
+                        }
+                    }
+                    BT_GT => {
+                        current_block_161 = 1918622160084604696;
+                    }
+                    BT_SOL => {
+                        current_block_161 = 1114269873380682160;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_161 {
+                    1114269873380682160 => {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
+                    }
+                    1918622160084604696 => {
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_START_TAG_NO_ATTS_1;
+                    }
+                    8998928240368606981 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = end.offset_from(ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.offset(n as isize);
+                }
+            }
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_LT => {
+                    return {
+                        let (tok_value, next_tok_value) =
+                            little2_scanLt(enc, c_char_slice_from_ptr_end(ptr.offset(2isize), end));
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_AMP => {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_CR => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_TRAILING_CR_1;
+                    }
+                    if (if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
+                    }) == BT_LF as c_int
+                    {
+                        ptr = ptr.offset(2isize);
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_TRAILING_RSQB_1;
+                    }
+                    if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_TRAILING_RSQB_1;
+                        }
+                        if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
+                            ptr = ptr.offset(-(2isize));
+                        } else {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.offset(2isize);
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_76: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_RSQB => {
+                        if end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long {
+                            if !(*ptr.offset(2).offset(1) as c_int == 0
+                                && *ptr.offset(2).offset(0) as c_int == 0x5d)
+                            {
+                                ptr = ptr.offset(2);
+                                current_block_76 = 7158658067966855297;
+                            } else if end.offset_from(ptr) as c_long >= (3i32 * 2) as c_long {
+                                if !(*ptr.offset((2i32 * 2) as isize).offset(1) as c_int == 0
+                                    && *ptr.offset((2i32 * 2) as isize).offset(0) as c_int == 0x3e)
+                                {
+                                    ptr = ptr.offset(2isize);
+                                } else {
+                                    *nextTokPtr = ptr.offset((2i32 * 2) as isize);
+                                    return XML_TOK_INVALID_1;
+                                }
+                                current_block_76 = 7158658067966855297;
+                            } else {
+                                current_block_76 = 17804070343020517427;
+                            }
+                        } else {
+                            current_block_76 = 17804070343020517427;
+                        }
+                    }
+                    BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
+                        current_block_76 = 17804070343020517427;
+                    }
+                    _ => {
+                        ptr = ptr.offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                }
+                match current_block_76 {
+                    7158658067966855297 => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_34: u64;
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_34 = 27123471380826226;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_34 = 27123471380826226;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_S | BT_LF | BT_CR | BT_PERCNT => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_PERCENT_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_34 {
+                27123471380826226 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_65: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_65 = 8394962855094477842;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_65 = 8394962855094477842;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_PARAM_ENTITY_REF_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_65 {
+                    8394962855094477842 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 14940290876465470105;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 14940290876465470105;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                14940290876465470105 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_63: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_63 = 11497795575834122789;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_63 = 11497795575834122789;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_POUND_NAME_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_63 {
+                    11497795575834122789 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return -XML_TOK_POUND_NAME_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_scanLit(
+        mut open: c_int,
+        enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut t: c_int = if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
+                };
+                match t {
+                    5 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.offset(2isize);
+                    }
+                    6 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.offset(3isize);
+                    }
+                    7 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.offset(4isize);
+                    }
+                    0 | 1 | 8 => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    12 | 13 => {
+                        ptr = ptr.offset(2);
+                        if !(t != open) {
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return -XML_TOK_LITERAL_1;
+                            }
+                            *nextTokPtr = ptr;
+                            match if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
+                                    return XML_TOK_LITERAL_1
+                                }
+                                _ => return XML_TOK_INVALID_1,
+                            }
+                        }
+                    }
+                    _ => {
+                        ptr = ptr.offset(2isize);
+                    }
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut tok: c_int = 0;
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = end.offset_from(ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.offset(n as isize);
+                }
+            }
+            let mut current_block_124: u64;
+            match if *ptr.offset(1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+            } {
+                BT_QUOT => {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanLit(
+                            BT_QUOT as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_APOS => {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanLit(
+                            BT_APOS as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LT => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    match if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    } {
+                        BT_EXCL => {
+                            return {
+                                let (tok_value, next_tok_value) = little2_scanDecl(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_QUEST => {
+                            return {
+                                let (tok_value, next_tok_value) = little2_scanPi(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
+                            *nextTokPtr = ptr.offset(-(2));
+                            return XML_TOK_INSTANCE_START;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_CR => {
+                    if ptr.offset(2) == end {
+                        *nextTokPtr = end;
+                        return -XML_TOK_PROLOG_S_1;
+                    }
+                    current_block_124 = 17513858719706519675;
+                }
+                BT_S | BT_LF => {
+                    current_block_124 = 17513858719706519675;
+                }
+                BT_PERCNT => {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanPercent(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_COMMA => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_COMMA_1;
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_OPEN_BRACKET_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return -XML_TOK_CLOSE_BRACKET_1;
+                    }
+                    if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
+                        if !(end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr.offset(2).offset(1) as c_int == 0
+                            && *ptr.offset(2).offset(0) as c_int == 0x3e
+                        {
+                            *nextTokPtr = ptr.offset((2i32 * 2) as isize);
+                            return XML_TOK_COND_SECT_CLOSE_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_CLOSE_BRACKET_1;
+                }
+                BT_LPAR => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_OPEN_PAREN_1;
+                }
+                BT_RPAR => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return -XML_TOK_CLOSE_PAREN_1;
+                    }
+                    match if *ptr.offset(1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    } {
+                        BT_AST => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CLOSE_PAREN_ASTERISK_1;
+                        }
+                        BT_QUEST => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CLOSE_PAREN_QUESTION_1;
+                        }
+                        BT_PLUS => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CLOSE_PAREN_PLUS_1;
+                        }
+                        BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_CLOSE_PAREN_1;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_VERBAR => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_OR_1;
+                }
+                BT_GT => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_DECL_CLOSE_1;
+                }
+                BT_NUM => {
+                    return {
+                        let (tok_value, next_tok_value) = little2_scanPoundName(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    tok = XML_TOK_NAME;
+                    ptr = ptr.offset(2);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
+                    tok = XML_TOK_NMTOKEN_1;
+                    ptr = ptr.offset(2);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                        != 0
+                    {
+                        ptr = ptr.offset(2);
+                        tok = XML_TOK_NAME;
+                        current_block_124 = 2956972668325154207;
+                    } else if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                        != 0
+                    {
+                        ptr = ptr.offset(2);
+                        tok = XML_TOK_NMTOKEN_1;
+                        current_block_124 = 2956972668325154207;
+                    } else {
+                        current_block_124 = 2543942683527618915;
+                    }
+                }
+                _ => {
+                    current_block_124 = 2543942683527618915;
+                }
+            }
+            match current_block_124 {
+                2956972668325154207 => {}
+                17513858719706519675 => {
+                    loop {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            break;
+                        }
+                        let mut current_block_32: u64;
+                        match if *ptr.offset(1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                        } else {
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                        } {
+                            BT_S | BT_LF => {
+                                current_block_32 = 17500079516916021833;
+                            }
+                            BT_CR => {
+                                if ptr.offset(2) != end {
+                                    current_block_32 = 17500079516916021833;
+                                } else {
+                                    current_block_32 = 17471725448347076649;
+                                }
+                            }
+                            _ => {
+                                current_block_32 = 17471725448347076649;
+                            }
+                        }
+                        match current_block_32 {
+                            17500079516916021833 => {}
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_PROLOG_S_1;
+                            }
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_PROLOG_S_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_210: u64;
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_210 = 786388639404123072;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_210 = 786388639404123072;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
+                    | BT_LF => {
+                        *nextTokPtr = ptr;
+                        return tok;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.offset(2);
+                        match tok {
+                            XML_TOK_NAME => {
+                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                    return XML_TOK_PARTIAL_1;
+                                }
+                                tok = XML_TOK_PREFIXED_NAME;
+                                let mut current_block_187: u64;
+                                match if *ptr.offset(1) as c_int == 0 {
+                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
+                                        as c_uint
+                                } else {
+                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                                } {
+                                    BT_NONASCII => {
+                                        if namingBitmap[(((namePages
+                                            [*ptr.offset(1) as c_uchar as usize]
+                                            as c_int)
+                                            << 3)
+                                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                                            as usize]
+                                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                                            == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        current_block_187 = 16869951820887225088;
+                                    }
+                                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                                        current_block_187 = 16869951820887225088;
+                                    }
+                                    BT_LEAD2 => {
+                                        if (end.offset_from(ptr) as c_long) < 2 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    BT_LEAD3 => {
+                                        if (end.offset_from(ptr) as c_long) < 3 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    BT_LEAD4 => {
+                                        if (end.offset_from(ptr) as c_long) < 4 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    _ => {
+                                        tok = XML_TOK_NMTOKEN_1;
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                }
+                                match current_block_187 {
+                                    16869951820887225088 => {
+                                        ptr = ptr.offset(2isize);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            XML_TOK_PREFIXED_NAME => {
+                                tok = XML_TOK_NMTOKEN_1;
+                            }
+                            _ => {}
+                        }
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_PLUS => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_NAME_PLUS_1;
+                    }
+                    BT_AST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_NAME_ASTERISK_1;
+                    }
+                    BT_QUEST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_NAME_QUESTION_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_210 {
+                    786388639404123072 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return -tok;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_attributeValueTok(
+        enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            } else if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            return {
+                                let (tok_value, next_tok_value) = little2_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LT => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_TRAILING_CR_1;
+                            }
+                            if (if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
+                            }) == BT_LF as c_int
+                            {
+                                ptr = ptr.offset(2isize);
+                            }
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_S => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_ATTRIBUTE_VALUE_S_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(2isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            } else if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                match if *ptr.offset(1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            return {
+                                let (tok_value, next_tok_value) = little2_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_PERCNT => {
+                        if ptr == start {
+                            let mut tok: c_int = {
+                                let (tok_value, next_tok_value) = little2_scanPercent(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                            return if tok == XML_TOK_PERCENT_1 {
+                                XML_TOK_INVALID_1
+                            } else {
+                                tok
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_TRAILING_CR_1;
+                            }
+                            if (if *ptr.offset(1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
+                            }) == BT_LF as c_int
+                            {
+                                ptr = ptr.offset(2isize);
+                            }
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(2isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn little2_ignoreSectionTok(
+        enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut level: c_int = 0;
+            {
+                let mut n: size_t = end.offset_from(ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    end = ptr.offset(n as isize);
+                }
+            }
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(1) as c_int == 0 {
                     as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
@@ -3689,22 +6667,40 @@ pub mod xmltok_impl_c {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
-                    BT_MINUS => {
+                    BT_LT => {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x2d {
+                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x21 {
                             ptr = ptr.offset(2);
                             if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
                                 return XML_TOK_PARTIAL_1;
                             }
-                            if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
+                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5b {
+                                level += 1;
+                                ptr = ptr.offset(2isize);
                             }
-                            *nextTokPtr = ptr.offset(2);
-                            return XML_TOK_COMMENT_1;
+                        }
+                    }
+                    BT_RSQB => {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e {
+                                ptr = ptr.offset(2);
+                                if level == 0 {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_IGNORE_SECT_1;
+                                }
+                                level -= 1;
+                            }
                         }
                     }
                     _ => {
@@ -3712,2794 +6708,14 @@ pub mod xmltok_impl_c {
                     }
                 }
             }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_scanDecl(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
             return XML_TOK_PARTIAL_1;
-        }
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_MINUS => {
-                return little2_scanComment(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LSQB => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_COND_SECT_OPEN_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            's_129: {
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_PERCNT => {
-                        if !(end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        match if *ptr.offset(2).offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(2) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(2).offset(1), *ptr.offset(2).offset(0))
-                                as c_uint
-                        } {
-                            BT_S | BT_CR | BT_LF | BT_PERCNT => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            _ => {}
-                        }
-                    }
-                    BT_S | BT_CR | BT_LF => {}
-                    BT_NMSTRT | BT_HEX => {
-                        ptr = ptr.offset(2);
-                        break 's_129;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DECL_OPEN_1;
-            }
-        }
-        return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
     }
 
-    pub(crate) unsafe fn little2_checkPiTarget(
-        _enc: &ENCODING,
-        input: &[c_char],
-        mut tokPtr: *mut c_int,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut upper: c_int = 0;
-        *tokPtr = XML_TOK_PI_1;
-        if end.offset_from(ptr) as c_long != (2i32 * 3) as c_long {
-            return 1i32;
-        }
-        match if *ptr.offset(1) as c_int == 0 {
-            *ptr.offset(0) as c_int
-        } else {
-            -(1)
-        } {
-            ASCII_x_1 => {}
-            ASCII_X_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        ptr = ptr.offset(2);
-        match if *ptr.offset(1) as c_int == 0 {
-            *ptr.offset(0) as c_int
-        } else {
-            -(1)
-        } {
-            ASCII_m_1 => {}
-            ASCII_M_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        ptr = ptr.offset(2);
-        match if *ptr.offset(1) as c_int == 0 {
-            *ptr.offset(0) as c_int
-        } else {
-            -(1)
-        } {
-            ASCII_l_1 => {}
-            ASCII_L_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        if upper != 0 {
-            return 0i32;
-        }
-        *tokPtr = XML_TOK_XML_DECL_1;
-        return 1;
-    }
-
-    pub(crate) unsafe fn little2_scanPi(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut tok: c_int = 0;
-        let mut target: *const c_char = ptr;
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_32 = 14358794669692889688;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 14358794669692889688;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            14358794669692889688 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_118: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_118 = 15890151712677504458;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_118 = 15890151712677504458;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    if little2_checkPiTarget(
-                        enc,
-                        c_char_slice_from_ptr_end(target, ptr),
-                        &raw mut tok,
-                    ) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(2isize);
-                            }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(3isize);
-                            }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(4isize);
-                            }
-                            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_QUEST => {
-                                ptr = ptr.offset(2);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e {
-                                    *nextTokPtr = ptr.offset(2);
-                                    return tok;
-                                }
-                            }
-                            _ => {
-                                ptr = ptr.offset(2isize);
-                            }
-                        }
-                    }
-                    return XML_TOK_PARTIAL_1;
-                }
-                BT_QUEST => {
-                    if little2_checkPiTarget(
-                        enc,
-                        c_char_slice_from_ptr_end(target, ptr),
-                        &raw mut tok,
-                    ) == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e {
-                        *nextTokPtr = ptr.offset(2);
-                        return tok;
-                    }
-                    current_block_118 = 7312756018063861309;
-                }
-                _ => {
-                    current_block_118 = 7312756018063861309;
-                }
-            }
-            match current_block_118 {
-                7312756018063861309 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                15890151712677504458 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_scanCdataSection(
-        _enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        pub static CDATA_LSQB: [c_char; 6] = [
-            ASCII_C as c_char,
-            ASCII_D as c_char,
-            ASCII_A as c_char,
-            ASCII_T as c_char,
-            ASCII_A as c_char,
-            ASCII_LSQB as c_char,
-        ];
-        let mut i: c_int = 0;
-        if !(end.offset_from(ptr) as c_long >= (6i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        i = 0;
-        while i < 6 {
-            if !(*ptr.offset(1) as c_int == 0
-                && *ptr.offset(0) as c_int == CDATA_LSQB[i as usize] as c_int)
-            {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            i += 1;
-            ptr = ptr.offset(2);
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_CDATA_SECT_OPEN_1;
-    }
-
-    pub(crate) unsafe fn little2_cdataSectionTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        {
-            let mut n: size_t = end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1) as size_t != 0 {
-                n &= !(2i32 - 1) as size_t;
-                if n == 0 {
-                    return XML_TOK_PARTIAL_1;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_RSQB => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
-                        ptr = ptr.offset(-(2isize));
-                    } else {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CDATA_SECT_CLOSE_1;
-                    }
-                }
-            }
-            BT_CR => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                if (if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                }) == BT_LF as c_int
-                {
-                    ptr = ptr.offset(2isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LF => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(2isize);
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(3isize);
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(4isize);
-            }
-            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                ptr = ptr.offset(2isize);
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn little2_scanEndTag(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_32 = 8654814784450400207;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 8654814784450400207;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            8654814784450400207 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_73: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_73 = 16411184819389759620;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_73 = 16411184819389759620;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_S | BT_CR | BT_LF => {}
-                            BT_GT => {
-                                *nextTokPtr = ptr.offset(2);
-                                return XML_TOK_END_TAG_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(2);
-                    }
-                    return XML_TOK_PARTIAL_1;
-                }
-                BT_COLON_0 => {
-                    ptr = ptr.offset(2);
-                    current_block_73 = 981995395831942902;
-                }
-                BT_GT => {
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_END_TAG_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_73 {
-                16411184819389759620 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_scanHexCharRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_DIGIT | BT_HEX => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            ptr = ptr.offset(2);
-            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_DIGIT | BT_HEX => {}
-                    BT_SEMI => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CHAR_REF_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                ptr = ptr.offset(2);
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_scanCharRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x78 {
-                return little2_scanHexCharRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_DIGIT => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            ptr = ptr.offset(2);
-            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_DIGIT => {}
-                    BT_SEMI => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CHAR_REF_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                ptr = ptr.offset(2);
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_scanRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_33: u64;
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_33 = 6679362556518655255;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_33 = 6679362556518655255;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NUM => {
-                return little2_scanCharRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_33 {
-            6679362556518655255 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_64: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_64 = 405996089697802199;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_64 = 405996089697802199;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_SEMI => {
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_ENTITY_REF_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_64 {
-                405996089697802199 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_scanAtts(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut hadColon: c_int = 0;
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_186: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_186 = 17747718632989559416;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_186 = 17747718632989559416;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_COLON_0 => {
-                    if hadColon != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    hadColon = 1;
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    let mut current_block_64: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            current_block_64 = 12531724302225488581;
-                        }
-                        BT_NMSTRT | BT_HEX => {
-                            current_block_64 = 12531724302225488581;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_64 {
-                        12531724302225488581 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
-                    }
-                    current_block_186 = 1634947208139838470;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    loop {
-                        let mut t: c_int = 0;
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        t = if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                        };
-                        if t == BT_EQUALS as c_int {
-                            break;
-                        }
-                        match t {
-                            21 | 10 | 9 => {}
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    current_block_186 = 10853015579903106591;
-                }
-                BT_EQUALS => {
-                    current_block_186 = 10853015579903106591;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_186 {
-                10853015579903106591 => {
-                    let mut open: c_int = 0;
-                    hadColon = 0;
-                    loop {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        open = if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                        };
-                        if open == BT_QUOT as c_int || open == BT_APOS as c_int {
-                            break;
-                        }
-                        match open {
-                            21 | 10 | 9 => {}
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    ptr = ptr.offset(2);
-                    loop {
-                        let mut t_0: c_int = 0;
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        t_0 = if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                        };
-                        if t_0 == open {
-                            break;
-                        }
-                        match t_0 {
-                            5 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(2isize);
-                            }
-                            6 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(3isize);
-                            }
-                            7 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(4isize);
-                            }
-                            0 | 1 | 8 => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            3 => {
-                                let mut tok: c_int = little2_scanRef(
-                                    enc,
-                                    c_char_slice_from_ptr_end(ptr.offset(2), end),
-                                    &raw mut ptr,
-                                );
-                                if tok <= 0 {
-                                    if tok == XML_TOK_INVALID_1 {
-                                        *nextTokPtr = ptr;
-                                    }
-                                    return tok;
-                                }
-                            }
-                            2 => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            _ => {
-                                ptr = ptr.offset(2isize);
-                            }
-                        }
-                    }
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_S | BT_CR | BT_LF => {
-                            loop {
-                                ptr = ptr.offset(2);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                match if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                                } {
-                                    BT_NONASCII => {
-                                        if namingBitmap[(((nmstrtPages
-                                            [*ptr.offset(1) as c_uchar as usize]
-                                            as c_int)
-                                            << 3)
-                                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                            as usize]
-                                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                            == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return XML_TOK_INVALID_1;
-                                        }
-                                        current_block_186 = 923465642386550266;
-                                        break;
-                                    }
-                                    BT_NMSTRT | BT_HEX => {
-                                        current_block_186 = 923465642386550266;
-                                        break;
-                                    }
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    BT_S | BT_CR | BT_LF => {}
-                                    BT_GT => {
-                                        current_block_186 = 15103464935601583148;
-                                        break;
-                                    }
-                                    BT_SOL => {
-                                        current_block_186 = 619033562305054167;
-                                        break;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                }
-                            }
-                            match current_block_186 {
-                                15103464935601583148 => {}
-                                619033562305054167 => {}
-                                1634947208139838470 => {}
-                                _ => {
-                                    ptr = ptr.offset(2);
-                                    current_block_186 = 1634947208139838470;
-                                }
-                            }
-                        }
-                        BT_SOL => {
-                            current_block_186 = 619033562305054167;
-                        }
-                        BT_GT => {
-                            current_block_186 = 15103464935601583148;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_186 {
-                        1634947208139838470 => {}
-                        _ => match current_block_186 {
-                            619033562305054167 => {
-                                ptr = ptr.offset(2);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                if !(*ptr.offset(1) as c_int == 0
-                                    && *ptr.offset(0) as c_int == 0x3e)
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                *nextTokPtr = ptr.offset(2);
-                                return XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr.offset(2);
-                                return XML_TOK_START_TAG_WITH_ATTS_1;
-                            }
-                        },
-                    }
-                }
-                17747718632989559416 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_scanLt(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut hadColon: c_int = 0;
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_45: u64;
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_45 = 18046087305847344724;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_45 = 18046087305847344724;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_EXCL => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_MINUS => {
-                        return little2_scanComment(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_LSQB => {
-                        return little2_scanCdataSection(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_QUEST => {
-                return little2_scanPi(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_SOL => {
-                return little2_scanEndTag(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_45 {
-            18046087305847344724 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        hadColon = 0;
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_161: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_161 = 8998928240368606981;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_161 = 8998928240368606981;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_COLON_0 => {
-                    if hadColon != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    hadColon = 1;
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    let mut current_block_112: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            current_block_112 = 14391208795021697965;
-                        }
-                        BT_NMSTRT | BT_HEX => {
-                            current_block_112 = 14391208795021697965;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_112 {
-                        14391208795021697965 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
-                    }
-                    current_block_161 = 14714495436747744489;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    ptr = ptr.offset(2);
-                    loop {
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            current_block_161 = 13215501469961642988;
-                            break;
-                        }
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_NONASCII => {
-                                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
-                                    as c_int)
-                                    << 3)
-                                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                    as usize]
-                                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                    == 0
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                current_block_161 = 2369392326157537288;
-                            }
-                            BT_NMSTRT | BT_HEX => {
-                                current_block_161 = 2369392326157537288;
-                            }
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_GT => {
-                                current_block_161 = 1918622160084604696;
-                                break;
-                            }
-                            BT_SOL => {
-                                current_block_161 = 1114269873380682160;
-                                break;
-                            }
-                            BT_S | BT_CR | BT_LF => {
-                                ptr = ptr.offset(2);
-                                continue;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                        match current_block_161 {
-                            2369392326157537288 => {
-                                ptr = ptr.offset(2isize);
-                            }
-                            _ => {}
-                        }
-                        return little2_scanAtts(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr, end),
-                            nextTokPtr,
-                        );
-                    }
-                    match current_block_161 {
-                        1918622160084604696 => {}
-                        1114269873380682160 => {}
-                        _ => return XML_TOK_PARTIAL_1,
-                    }
-                }
-                BT_GT => {
-                    current_block_161 = 1918622160084604696;
-                }
-                BT_SOL => {
-                    current_block_161 = 1114269873380682160;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_161 {
-                1114269873380682160 => {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
-                }
-                1918622160084604696 => {
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_START_TAG_NO_ATTS_1;
-                }
-                8998928240368606981 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_contentTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        {
-            let mut n: size_t = end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1) as size_t != 0 {
-                n &= !(2i32 - 1) as size_t;
-                if n == 0 {
-                    return XML_TOK_PARTIAL_1;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_LT => {
-                return little2_scanLt(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_AMP => {
-                return little2_scanRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_CR => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_TRAILING_CR_1;
-                }
-                if (if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                }) == BT_LF as c_int
-                {
-                    ptr = ptr.offset(2isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LF => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_RSQB => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_TRAILING_RSQB_1;
-                }
-                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_TRAILING_RSQB_1;
-                    }
-                    if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
-                        ptr = ptr.offset(-(2isize));
-                    } else {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(2isize);
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(3isize);
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(4isize);
-            }
-            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                ptr = ptr.offset(2isize);
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_76: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_RSQB => {
-                    if end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long {
-                        if !(*ptr.offset(2).offset(1) as c_int == 0
-                            && *ptr.offset(2).offset(0) as c_int == 0x5d)
-                        {
-                            ptr = ptr.offset(2);
-                            current_block_76 = 7158658067966855297;
-                        } else if end.offset_from(ptr) as c_long >= (3i32 * 2) as c_long {
-                            if !(*ptr.offset((2i32 * 2) as isize).offset(1) as c_int == 0
-                                && *ptr.offset((2i32 * 2) as isize).offset(0) as c_int == 0x3e)
-                            {
-                                ptr = ptr.offset(2isize);
-                            } else {
-                                *nextTokPtr = ptr.offset((2i32 * 2) as isize);
-                                return XML_TOK_INVALID_1;
-                            }
-                            current_block_76 = 7158658067966855297;
-                        } else {
-                            current_block_76 = 17804070343020517427;
-                        }
-                    } else {
-                        current_block_76 = 17804070343020517427;
-                    }
-                }
-                BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
-                    current_block_76 = 17804070343020517427;
-                }
-                _ => {
-                    ptr = ptr.offset(2);
-                    current_block_76 = 7158658067966855297;
-                }
-            }
-            match current_block_76 {
-                7158658067966855297 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn little2_scanPercent(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_34: u64;
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_34 = 27123471380826226;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_34 = 27123471380826226;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_S | BT_LF | BT_CR | BT_PERCNT => {
-                *nextTokPtr = ptr;
-                return XML_TOK_PERCENT_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_34 {
-            27123471380826226 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_65: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_65 = 8394962855094477842;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_65 = 8394962855094477842;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_SEMI => {
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_PARAM_ENTITY_REF_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_65 {
-                8394962855094477842 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_scanPoundName(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_32 = 14940290876465470105;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 14940290876465470105;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            14940290876465470105 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_63: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_63 = 11497795575834122789;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_63 = 11497795575834122789;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_POUND_NAME_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_63 {
-                11497795575834122789 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return -XML_TOK_POUND_NAME_1;
-    }
-
-    pub(crate) unsafe fn little2_scanLit(
-        mut open: c_int,
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut t: c_int = if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-            };
-            match t {
-                5 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                12 | 13 => {
-                    ptr = ptr.offset(2);
-                    if !(t != open) {
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return -XML_TOK_LITERAL_1;
-                        }
-                        *nextTokPtr = ptr;
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
-                                return XML_TOK_LITERAL_1
-                            }
-                            _ => return XML_TOK_INVALID_1,
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_prologTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut tok: c_int = 0;
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        {
-            let mut n: size_t = end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1) as size_t != 0 {
-                n &= !(2i32 - 1) as size_t;
-                if n == 0 {
-                    return XML_TOK_PARTIAL_1;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        let mut current_block_124: u64;
-        match if *ptr.offset(1) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-        } {
-            BT_QUOT => {
-                return little2_scanLit(
-                    BT_QUOT as c_int,
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_APOS => {
-                return little2_scanLit(
-                    BT_APOS as c_int,
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LT => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_EXCL => {
-                        return little2_scanDecl(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_QUEST => {
-                        return little2_scanPi(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
-                        *nextTokPtr = ptr.offset(-(2));
-                        return XML_TOK_INSTANCE_START;
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_CR => {
-                if ptr.offset(2) == end {
-                    *nextTokPtr = end;
-                    return -XML_TOK_PROLOG_S_1;
-                }
-                current_block_124 = 17513858719706519675;
-            }
-            BT_S | BT_LF => {
-                current_block_124 = 17513858719706519675;
-            }
-            BT_PERCNT => {
-                return little2_scanPercent(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_COMMA => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_COMMA_1;
-            }
-            BT_LSQB => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_OPEN_BRACKET_1;
-            }
-            BT_RSQB => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return -XML_TOK_CLOSE_BRACKET_1;
-                }
-                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
-                    if !(end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(2).offset(1) as c_int == 0
-                        && *ptr.offset(2).offset(0) as c_int == 0x3e
-                    {
-                        *nextTokPtr = ptr.offset((2i32 * 2) as isize);
-                        return XML_TOK_COND_SECT_CLOSE_1;
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_CLOSE_BRACKET_1;
-            }
-            BT_LPAR => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_OPEN_PAREN_1;
-            }
-            BT_RPAR => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return -XML_TOK_CLOSE_PAREN_1;
-                }
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_AST => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CLOSE_PAREN_ASTERISK_1;
-                    }
-                    BT_QUEST => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CLOSE_PAREN_QUESTION_1;
-                    }
-                    BT_PLUS => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CLOSE_PAREN_PLUS_1;
-                    }
-                    BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_CLOSE_PAREN_1;
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_VERBAR => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_OR_1;
-            }
-            BT_GT => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_DECL_CLOSE_1;
-            }
-            BT_NUM => {
-                return little2_scanPoundName(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                tok = XML_TOK_NAME;
-                ptr = ptr.offset(2);
-                current_block_124 = 2956972668325154207;
-            }
-            BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
-                tok = XML_TOK_NMTOKEN_1;
-                ptr = ptr.offset(2);
-                current_block_124 = 2956972668325154207;
-            }
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                    != 0
-                {
-                    ptr = ptr.offset(2);
-                    tok = XML_TOK_NAME;
-                    current_block_124 = 2956972668325154207;
-                } else if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                    << 3)
-                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                    != 0
-                {
-                    ptr = ptr.offset(2);
-                    tok = XML_TOK_NMTOKEN_1;
-                    current_block_124 = 2956972668325154207;
-                } else {
-                    current_block_124 = 2543942683527618915;
-                }
-            }
-            _ => {
-                current_block_124 = 2543942683527618915;
-            }
-        }
-        match current_block_124 {
-            2956972668325154207 => {}
-            17513858719706519675 => {
-                loop {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        break;
-                    }
-                    let mut current_block_32: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_S | BT_LF => {
-                            current_block_32 = 17500079516916021833;
-                        }
-                        BT_CR => {
-                            if ptr.offset(2) != end {
-                                current_block_32 = 17500079516916021833;
-                            } else {
-                                current_block_32 = 17471725448347076649;
-                            }
-                        }
-                        _ => {
-                            current_block_32 = 17471725448347076649;
-                        }
-                    }
-                    match current_block_32 {
-                        17500079516916021833 => {}
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_PROLOG_S_1;
-                        }
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_PROLOG_S_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_210: u64;
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_210 = 786388639404123072;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_210 = 786388639404123072;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
-                | BT_LF => {
-                    *nextTokPtr = ptr;
-                    return tok;
-                }
-                BT_COLON_0 => {
-                    ptr = ptr.offset(2);
-                    match tok {
-                        XML_TOK_NAME => {
-                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                                return XML_TOK_PARTIAL_1;
-                            }
-                            tok = XML_TOK_PREFIXED_NAME;
-                            let mut current_block_187: u64;
-                            match if *ptr.offset(1) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                            } else {
-                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                            } {
-                                BT_NONASCII => {
-                                    if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                        as c_int)
-                                        << 3)
-                                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                        as usize]
-                                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                        == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    current_block_187 = 16869951820887225088;
-                                }
-                                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                                    current_block_187 = 16869951820887225088;
-                                }
-                                BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                _ => {
-                                    tok = XML_TOK_NMTOKEN_1;
-                                    current_block_187 = 9812798724717783973;
-                                }
-                            }
-                            match current_block_187 {
-                                16869951820887225088 => {
-                                    ptr = ptr.offset(2isize);
-                                }
-                                _ => {}
-                            }
-                        }
-                        XML_TOK_PREFIXED_NAME => {
-                            tok = XML_TOK_NMTOKEN_1;
-                        }
-                        _ => {}
-                    }
-                    current_block_210 = 14244298717249035578;
-                }
-                BT_PLUS => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_NAME_PLUS_1;
-                }
-                BT_AST => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_NAME_ASTERISK_1;
-                }
-                BT_QUEST => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_NAME_QUESTION_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_210 {
-                786388639404123072 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return -tok;
-    }
-
-    pub(crate) unsafe fn little2_attributeValueTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut start: *const c_char = null::<c_char>();
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        } else if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        start = ptr;
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    ptr = ptr.offset(4isize);
-                }
-                BT_AMP => {
-                    if ptr == start {
-                        return little2_scanRef(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_LT => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LF => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_CR => {
-                    if ptr == start {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_TRAILING_CR_1;
-                        }
-                        if (if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                        }) == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(2isize);
-                        }
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_S => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_ATTRIBUTE_VALUE_S_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn little2_entityValueTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut start: *const c_char = null::<c_char>();
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        } else if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        start = ptr;
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    ptr = ptr.offset(4isize);
-                }
-                BT_AMP => {
-                    if ptr == start {
-                        return little2_scanRef(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_PERCNT => {
-                    if ptr == start {
-                        let mut tok: c_int = little2_scanPercent(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2), end),
-                            nextTokPtr,
-                        );
-                        return if tok == XML_TOK_PERCENT_1 {
-                            XML_TOK_INVALID_1
-                        } else {
-                            tok
-                        };
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_LF => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_CR => {
-                    if ptr == start {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_TRAILING_CR_1;
-                        }
-                        if (if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                        }) == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(2isize);
-                        }
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn little2_ignoreSectionTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut level: c_int = 0;
-        {
-            let mut n: size_t = end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1) as size_t != 0 {
-                n &= !(2i32 - 1) as size_t;
-                end = ptr.offset(n as isize);
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(1) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LT => {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x21 {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5b {
-                            level += 1;
-                            ptr = ptr.offset(2isize);
-                        }
-                    }
-                }
-                BT_RSQB => {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e {
-                            ptr = ptr.offset(2);
-                            if level == 0 {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_IGNORE_SECT_1;
-                            }
-                            level -= 1;
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn little2_isPublicId(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut badPtr: *mut *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn little2_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        let mut badPtrVal: *const c_char = null::<c_char>();
+        let mut badPtr: *mut *const c_char = &raw mut badPtrVal;
         let mut ptr = input.as_ptr();
         let mut end = ptr.add(input.len());
         ptr = ptr.offset(2);
@@ -6518,7 +6734,7 @@ pub mod xmltok_impl_c {
                 BT_S => {
                     if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x9 {
                         *badPtr = ptr;
-                        return 0i32;
+                        return (0i32, badPtrVal);
                     }
                     current_block_8 = 5143058163439228106;
                 }
@@ -6549,7 +6765,7 @@ pub mod xmltok_impl_c {
                         36 | 64 => {}
                         _ => {
                             *badPtr = ptr;
-                            return 0i32;
+                            return (0i32, badPtrVal);
                         }
                     }
                 }
@@ -6557,7 +6773,7 @@ pub mod xmltok_impl_c {
             }
             ptr = ptr.offset(2);
         }
-        return 1;
+        return (1, badPtrVal);
     }
 
     pub(crate) unsafe fn little2_getAtts(
@@ -6938,19 +7154,2892 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub(crate) unsafe fn big2_scanComment(
-        enc: &ENCODING,
+    pub(crate) unsafe fn big2_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x2d) {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                ptr = ptr.offset(2);
+                while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                    match if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    } {
+                        BT_LEAD2 => {
+                            if (end.offset_from(ptr) as c_long) < 2 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            ptr = ptr.offset(2isize);
+                        }
+                        BT_LEAD3 => {
+                            if (end.offset_from(ptr) as c_long) < 3 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            ptr = ptr.offset(3isize);
+                        }
+                        BT_LEAD4 => {
+                            if (end.offset_from(ptr) as c_long) < 4 {
+                                return XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            ptr = ptr.offset(4isize);
+                        }
+                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        BT_MINUS => {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x2d {
+                                ptr = ptr.offset(2);
+                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                    return XML_TOK_PARTIAL_1;
+                                }
+                                if !(*ptr.offset(0) as c_int == 0
+                                    && *ptr.offset(1) as c_int == 0x3e)
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                *nextTokPtr = ptr.offset(2);
+                                return XML_TOK_COMMENT_1;
+                            }
+                        }
+                        _ => {
+                            ptr = ptr.offset(2isize);
+                        }
+                    }
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_MINUS => {
+                    return {
+                        let (tok_value, next_tok_value) = big2_scanComment(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_COND_SECT_OPEN_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                's_129: {
+                    match if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    } {
+                        BT_PERCNT => {
+                            if !(end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            match if *ptr.offset(2).offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [*ptr.offset(2).offset(1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(
+                                    *ptr.offset(2).offset(0),
+                                    *ptr.offset(2).offset(1),
+                                ) as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF | BT_PERCNT => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                _ => {}
+                            }
+                        }
+                        BT_S | BT_CR | BT_LF => {}
+                        BT_NMSTRT | BT_HEX => {
+                            ptr = ptr.offset(2);
+                            break 's_129;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DECL_OPEN_1;
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_checkPiTarget(
+        _enc: &ENCODING,
         input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x2d) {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
+    ) -> CheckPiTargetResult {
+        let mut tok: c_int = 0;
+        let mut tokPtr: *mut c_int = &raw mut tok;
+        let result = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut upper: c_int = 0;
+            *tokPtr = XML_TOK_PI_1;
+            if end.offset_from(ptr) as c_long != (2i32 * 3) as c_long {
+                return 1i32;
+            }
+            match if *ptr.offset(0) as c_int == 0 {
+                *ptr.offset(1) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_x_1 => {}
+                ASCII_X_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
             }
             ptr = ptr.offset(2);
+            match if *ptr.offset(0) as c_int == 0 {
+                *ptr.offset(1) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_m_1 => {}
+                ASCII_M_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
+            }
+            ptr = ptr.offset(2);
+            match if *ptr.offset(0) as c_int == 0 {
+                *ptr.offset(1) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_l_1 => {}
+                ASCII_L_1 => {
+                    upper = 1i32;
+                }
+                _ => return 1,
+            }
+            if upper != 0 {
+                return 0i32;
+            }
+            *tokPtr = XML_TOK_XML_DECL_1;
+            return 1;
+        })();
+        return (result, tok);
+    }
+
+    pub(crate) unsafe fn big2_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut tok: c_int = 0;
+            let mut target: *const c_char = ptr;
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 2802485987355401260;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 2802485987355401260;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                2802485987355401260 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_118: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_118 = 11190361564366887465;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_118 = 11190361564366887465;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        if {
+                            let (ok_value, tok_value) =
+                                big2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                            match if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                            } {
+                                BT_LEAD2 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(2isize);
+                                }
+                                BT_LEAD3 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(3isize);
+                                }
+                                BT_LEAD4 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(4isize);
+                                }
+                                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_QUEST => {
+                                    ptr = ptr.offset(2);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    if *ptr.offset(0) as c_int == 0
+                                        && *ptr.offset(1) as c_int == 0x3e
+                                    {
+                                        *nextTokPtr = ptr.offset(2);
+                                        return tok;
+                                    }
+                                }
+                                _ => {
+                                    ptr = ptr.offset(2isize);
+                                }
+                            }
+                        }
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    BT_QUEST => {
+                        if {
+                            let (ok_value, tok_value) =
+                                big2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e {
+                            *nextTokPtr = ptr.offset(2);
+                            return tok;
+                        }
+                        current_block_118 = 161625824724629686;
+                    }
+                    _ => {
+                        current_block_118 = 161625824724629686;
+                    }
+                }
+                match current_block_118 {
+                    161625824724629686 => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    11190361564366887465 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanCdataSection(_enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            pub static CDATA_LSQB: [c_char; 6] = [
+                ASCII_C as c_char,
+                ASCII_D as c_char,
+                ASCII_A as c_char,
+                ASCII_T as c_char,
+                ASCII_A as c_char,
+                ASCII_LSQB as c_char,
+            ];
+            let mut i: c_int = 0;
+            if !(end.offset_from(ptr) as c_long >= (6i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            i = 0;
+            while i < 6 {
+                if !(*ptr.offset(0) as c_int == 0
+                    && *ptr.offset(1) as c_int == CDATA_LSQB[i as usize] as c_int)
+                {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                i += 1;
+                ptr = ptr.offset(2);
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_CDATA_SECT_OPEN_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_cdataSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = end.offset_from(ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.offset(n as isize);
+                }
+            }
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_RSQB => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
+                            ptr = ptr.offset(-(2isize));
+                        } else {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CDATA_SECT_CLOSE_1;
+                        }
+                    }
+                }
+                BT_CR => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    if (if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
+                    }) == BT_LF as c_int
+                    {
+                        ptr = ptr.offset(2isize);
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.offset(2isize);
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(2isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 12738221189273011712;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 12738221189273011712;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                12738221189273011712 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_73: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_73 = 1281007054303163758;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_73 = 1281007054303163758;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.offset(2);
+                        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                            match if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF => {}
+                                BT_GT => {
+                                    *nextTokPtr = ptr.offset(2);
+                                    return XML_TOK_END_TAG_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                            ptr = ptr.offset(2);
+                        }
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.offset(2);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_GT => {
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_END_TAG_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_73 {
+                    1281007054303163758 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_DIGIT | BT_HEX => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.offset(2);
+                while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                    match if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    } {
+                        BT_DIGIT | BT_HEX => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CHAR_REF_1;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    ptr = ptr.offset(2);
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x78 {
+                    return {
+                        let (tok_value, next_tok_value) = big2_scanHexCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_DIGIT => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.offset(2);
+                while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                    match if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    } {
+                        BT_DIGIT => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CHAR_REF_1;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                    ptr = ptr.offset(2);
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_33: u64;
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_33 = 17794167657114565097;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_33 = 17794167657114565097;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NUM => {
+                    return {
+                        let (tok_value, next_tok_value) = big2_scanCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_33 {
+                17794167657114565097 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_64: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_64 = 17251590314240005670;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_64 = 17251590314240005670;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_ENTITY_REF_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_64 {
+                    17251590314240005670 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut hadColon: c_int = 0;
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_186: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_186 = 6092917267242331817;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_186 = 6092917267242331817;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_64: u64;
+                        match if *ptr.offset(0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                as c_uint
+                        } else {
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                        } {
+                            BT_NONASCII => {
+                                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
+                                    as c_int)
+                                    << 3)
+                                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                                    as usize]
+                                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                                    == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                current_block_64 = 6604085902723260545;
+                            }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_64 = 6604085902723260545;
+                            }
+                            BT_LEAD2 => {
+                                if (end.offset_from(ptr) as c_long) < 2 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD3 => {
+                                if (end.offset_from(ptr) as c_long) < 3 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD4 => {
+                                if (end.offset_from(ptr) as c_long) < 4 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_64 {
+                            6604085902723260545 => {
+                                ptr = ptr.offset(2isize);
+                            }
+                            _ => {}
+                        }
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        loop {
+                            let mut t: c_int = 0;
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            t = if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
+                            };
+                            if t == BT_EQUALS as c_int {
+                                break;
+                            }
+                            match t {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                        }
+                        current_block_186 = 10853015579903106591;
+                    }
+                    BT_EQUALS => {
+                        current_block_186 = 10853015579903106591;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_186 {
+                    10853015579903106591 => {
+                        let mut open: c_int = 0;
+                        hadColon = 0;
+                        loop {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            open = if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
+                            };
+                            if open == BT_QUOT as c_int || open == BT_APOS as c_int {
+                                break;
+                            }
+                            match open {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                        }
+                        ptr = ptr.offset(2);
+                        loop {
+                            let mut t_0: c_int = 0;
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            t_0 = if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
+                            };
+                            if t_0 == open {
+                                break;
+                            }
+                            match t_0 {
+                                5 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(2isize);
+                                }
+                                6 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(3isize);
+                                }
+                                7 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.offset(4isize);
+                                }
+                                0 | 1 | 8 => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                3 => {
+                                    let mut tok: c_int = {
+                                        let (tok_value, next_tok_value) = big2_scanRef(
+                                            enc,
+                                            c_char_slice_from_ptr_end(ptr.offset(2), end),
+                                        );
+                                        ptr = next_tok_value;
+                                        tok_value
+                                    };
+                                    if tok <= 0 {
+                                        if tok == XML_TOK_INVALID_1 {
+                                            *nextTokPtr = ptr;
+                                        }
+                                        return tok;
+                                    }
+                                }
+                                2 => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                _ => {
+                                    ptr = ptr.offset(2isize);
+                                }
+                            }
+                        }
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        match if *ptr.offset(0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                as c_uint
+                        } else {
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                        } {
+                            BT_S | BT_CR | BT_LF => {
+                                loop {
+                                    ptr = ptr.offset(2);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    match if *ptr.offset(0) as c_int == 0 {
+                                        as_normal_encoding(enc).type_0
+                                            [*ptr.offset(1) as c_uchar as usize]
+                                            as c_uint
+                                    } else {
+                                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                                    } {
+                                        BT_NONASCII => {
+                                            if namingBitmap[(((nmstrtPages
+                                                [*ptr.offset(0) as c_uchar as usize]
+                                                as c_int)
+                                                << 3)
+                                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                                                as usize]
+                                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                                                == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                return XML_TOK_INVALID_1;
+                                            }
+                                            current_block_186 = 7794494472231011433;
+                                            break;
+                                        }
+                                        BT_NMSTRT | BT_HEX => {
+                                            current_block_186 = 7794494472231011433;
+                                            break;
+                                        }
+                                        BT_LEAD2 => {
+                                            if (end.offset_from(ptr) as c_long) < 2 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        BT_LEAD3 => {
+                                            if (end.offset_from(ptr) as c_long) < 3 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        BT_LEAD4 => {
+                                            if (end.offset_from(ptr) as c_long) < 4 {
+                                                return XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        BT_S | BT_CR | BT_LF => {}
+                                        BT_GT => {
+                                            current_block_186 = 1783713129665224809;
+                                            break;
+                                        }
+                                        BT_SOL => {
+                                            current_block_186 = 18153789983347219713;
+                                            break;
+                                        }
+                                        _ => {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                    }
+                                }
+                                match current_block_186 {
+                                    1783713129665224809 => {}
+                                    18153789983347219713 => {}
+                                    1634947208139838470 => {}
+                                    _ => {
+                                        ptr = ptr.offset(2);
+                                        current_block_186 = 1634947208139838470;
+                                    }
+                                }
+                            }
+                            BT_SOL => {
+                                current_block_186 = 18153789983347219713;
+                            }
+                            BT_GT => {
+                                current_block_186 = 1783713129665224809;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_186 {
+                            1634947208139838470 => {}
+                            _ => match current_block_186 {
+                                18153789983347219713 => {
+                                    ptr = ptr.offset(2);
+                                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                        return XML_TOK_PARTIAL_1;
+                                    }
+                                    if !(*ptr.offset(0) as c_int == 0
+                                        && *ptr.offset(1) as c_int == 0x3e)
+                                    {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    *nextTokPtr = ptr.offset(2);
+                                    return XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr.offset(2);
+                                    return XML_TOK_START_TAG_WITH_ATTS_1;
+                                }
+                            },
+                        }
+                    }
+                    6092917267242331817 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut hadColon: c_int = 0;
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_45: u64;
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_45 = 6477200489819026004;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_45 = 6477200489819026004;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_EXCL => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    match if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    } {
+                        BT_MINUS => {
+                            return {
+                                let (tok_value, next_tok_value) = big2_scanComment(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_LSQB => {
+                            return {
+                                let (tok_value, next_tok_value) = big2_scanCdataSection(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_QUEST => {
+                    return {
+                        let (tok_value, next_tok_value) =
+                            big2_scanPi(enc, c_char_slice_from_ptr_end(ptr.offset(2isize), end));
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_SOL => {
+                    return {
+                        let (tok_value, next_tok_value) = big2_scanEndTag(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_45 {
+                6477200489819026004 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            hadColon = 0;
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_161: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_161 = 18151815167355992796;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_161 = 18151815167355992796;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_112: u64;
+                        match if *ptr.offset(0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                as c_uint
+                        } else {
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                        } {
+                            BT_NONASCII => {
+                                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
+                                    as c_int)
+                                    << 3)
+                                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                                    as usize]
+                                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                                    == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                current_block_112 = 16337619596932156899;
+                            }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_112 = 16337619596932156899;
+                            }
+                            BT_LEAD2 => {
+                                if (end.offset_from(ptr) as c_long) < 2 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD3 => {
+                                if (end.offset_from(ptr) as c_long) < 3 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD4 => {
+                                if (end.offset_from(ptr) as c_long) < 4 {
+                                    return XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_112 {
+                            16337619596932156899 => {
+                                ptr = ptr.offset(2isize);
+                            }
+                            _ => {}
+                        }
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.offset(2);
+                        loop {
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                current_block_161 = 13215501469961642988;
+                                break;
+                            }
+                            match if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                            } {
+                                BT_NONASCII => {
+                                    if namingBitmap[(((nmstrtPages
+                                        [*ptr.offset(0) as c_uchar as usize]
+                                        as c_int)
+                                        << 3)
+                                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                                        as usize]
+                                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                                        == 0
+                                    {
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    current_block_161 = 11066148936714919733;
+                                }
+                                BT_NMSTRT | BT_HEX => {
+                                    current_block_161 = 11066148936714919733;
+                                }
+                                BT_LEAD2 => {
+                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_LEAD3 => {
+                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_LEAD4 => {
+                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                        return XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                                BT_GT => {
+                                    current_block_161 = 13089361350718158941;
+                                    break;
+                                }
+                                BT_SOL => {
+                                    current_block_161 = 11384015785330443424;
+                                    break;
+                                }
+                                BT_S | BT_CR | BT_LF => {
+                                    ptr = ptr.offset(2);
+                                    continue;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_INVALID_1;
+                                }
+                            }
+                            match current_block_161 {
+                                11066148936714919733 => {
+                                    ptr = ptr.offset(2isize);
+                                }
+                                _ => {}
+                            }
+                            return {
+                                let (tok_value, next_tok_value) =
+                                    big2_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        match current_block_161 {
+                            13089361350718158941 => {}
+                            11384015785330443424 => {}
+                            _ => return XML_TOK_PARTIAL_1,
+                        }
+                    }
+                    BT_GT => {
+                        current_block_161 = 13089361350718158941;
+                    }
+                    BT_SOL => {
+                        current_block_161 = 11384015785330443424;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_161 {
+                    11384015785330443424 => {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
+                    }
+                    13089361350718158941 => {
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_START_TAG_NO_ATTS_1;
+                    }
+                    18151815167355992796 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = end.offset_from(ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.offset(n as isize);
+                }
+            }
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_LT => {
+                    return {
+                        let (tok_value, next_tok_value) =
+                            big2_scanLt(enc, c_char_slice_from_ptr_end(ptr.offset(2isize), end));
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_AMP => {
+                    return {
+                        let (tok_value, next_tok_value) =
+                            big2_scanRef(enc, c_char_slice_from_ptr_end(ptr.offset(2isize), end));
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_CR => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_TRAILING_CR_1;
+                    }
+                    if (if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
+                    }) == BT_LF as c_int
+                    {
+                        ptr = ptr.offset(2isize);
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_TRAILING_RSQB_1;
+                    }
+                    if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_TRAILING_RSQB_1;
+                        }
+                        if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
+                            ptr = ptr.offset(-(2isize));
+                        } else {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                    }
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.offset(2isize);
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_76: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(3);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.offset(4);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_RSQB => {
+                        if end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long {
+                            if !(*ptr.offset(2).offset(0) as c_int == 0
+                                && *ptr.offset(2).offset(1) as c_int == 0x5d)
+                            {
+                                ptr = ptr.offset(2);
+                                current_block_76 = 7158658067966855297;
+                            } else if end.offset_from(ptr) as c_long >= (3i32 * 2) as c_long {
+                                if !(*ptr.offset((2i32 * 2) as isize).offset(0) as c_int == 0
+                                    && *ptr.offset((2i32 * 2) as isize).offset(1) as c_int == 0x3e)
+                                {
+                                    ptr = ptr.offset(2isize);
+                                } else {
+                                    *nextTokPtr = ptr.offset((2i32 * 2) as isize);
+                                    return XML_TOK_INVALID_1;
+                                }
+                                current_block_76 = 7158658067966855297;
+                            } else {
+                                current_block_76 = 11890188771060868767;
+                            }
+                        } else {
+                            current_block_76 = 11890188771060868767;
+                        }
+                    }
+                    BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
+                        current_block_76 = 11890188771060868767;
+                    }
+                    _ => {
+                        ptr = ptr.offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                }
+                match current_block_76 {
+                    7158658067966855297 => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_34: u64;
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_34 = 9652455934050855438;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_34 = 9652455934050855438;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_S | BT_LF | BT_CR | BT_PERCNT => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_PERCENT_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_34 {
+                9652455934050855438 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_65: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_65 = 3947837075391501242;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_65 = 3947837075391501242;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_PARAM_ENTITY_REF_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_65 {
+                    3947837075391501242 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 12219479933348349998;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 12219479933348349998;
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_32 {
+                12219479933348349998 => {
+                    ptr = ptr.offset(2isize);
+                }
+                _ => {}
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_63: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_63 = 1647491770914889697;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_63 = 1647491770914889697;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_POUND_NAME_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_63 {
+                    1647491770914889697 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return -XML_TOK_POUND_NAME_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_scanLit(
+        mut open: c_int,
+        enc: &ENCODING,
+        input: &[c_char],
+    ) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut t: c_int = if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
+                };
+                match t {
+                    5 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.offset(2isize);
+                    }
+                    6 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.offset(3isize);
+                    }
+                    7 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.offset(4isize);
+                    }
+                    0 | 1 | 8 => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    12 | 13 => {
+                        ptr = ptr.offset(2);
+                        if !(t != open) {
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return -XML_TOK_LITERAL_1;
+                            }
+                            *nextTokPtr = ptr;
+                            match if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
+                                    return XML_TOK_LITERAL_1
+                                }
+                                _ => return XML_TOK_INVALID_1,
+                            }
+                        }
+                    }
+                    _ => {
+                        ptr = ptr.offset(2isize);
+                    }
+                }
+            }
+            return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut tok: c_int = 0;
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = end.offset_from(ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.offset(n as isize);
+                }
+            }
+            let mut current_block_124: u64;
+            match if *ptr.offset(0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+            } {
+                BT_QUOT => {
+                    return {
+                        let (tok_value, next_tok_value) = big2_scanLit(
+                            BT_QUOT as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_APOS => {
+                    return {
+                        let (tok_value, next_tok_value) = big2_scanLit(
+                            BT_APOS as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LT => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return XML_TOK_PARTIAL_1;
+                    }
+                    match if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    } {
+                        BT_EXCL => {
+                            return {
+                                let (tok_value, next_tok_value) = big2_scanDecl(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_QUEST => {
+                            return {
+                                let (tok_value, next_tok_value) = big2_scanPi(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
+                            *nextTokPtr = ptr.offset(-(2));
+                            return XML_TOK_INSTANCE_START;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_CR => {
+                    if ptr.offset(2) == end {
+                        *nextTokPtr = end;
+                        return -XML_TOK_PROLOG_S_1;
+                    }
+                    current_block_124 = 16869865525854146339;
+                }
+                BT_S | BT_LF => {
+                    current_block_124 = 16869865525854146339;
+                }
+                BT_PERCNT => {
+                    return {
+                        let (tok_value, next_tok_value) = big2_scanPercent(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_COMMA => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_COMMA_1;
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_OPEN_BRACKET_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return -XML_TOK_CLOSE_BRACKET_1;
+                    }
+                    if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
+                        if !(end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr.offset(2).offset(0) as c_int == 0
+                            && *ptr.offset(2).offset(1) as c_int == 0x3e
+                        {
+                            *nextTokPtr = ptr.offset((2i32 * 2) as isize);
+                            return XML_TOK_COND_SECT_CLOSE_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_CLOSE_BRACKET_1;
+                }
+                BT_LPAR => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_OPEN_PAREN_1;
+                }
+                BT_RPAR => {
+                    ptr = ptr.offset(2);
+                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                        return -XML_TOK_CLOSE_PAREN_1;
+                    }
+                    match if *ptr.offset(0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    } {
+                        BT_AST => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CLOSE_PAREN_ASTERISK_1;
+                        }
+                        BT_QUEST => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CLOSE_PAREN_QUESTION_1;
+                        }
+                        BT_PLUS => {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_CLOSE_PAREN_PLUS_1;
+                        }
+                        BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_CLOSE_PAREN_1;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_VERBAR => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_OR_1;
+                }
+                BT_GT => {
+                    *nextTokPtr = ptr.offset(2);
+                    return XML_TOK_DECL_CLOSE_1;
+                }
+                BT_NUM => {
+                    return {
+                        let (tok_value, next_tok_value) = big2_scanPoundName(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    };
+                }
+                BT_LEAD2 => {
+                    if (end.offset_from(ptr) as c_long) < 2 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (end.offset_from(ptr) as c_long) < 3 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (end.offset_from(ptr) as c_long) < 4 {
+                        return XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    tok = XML_TOK_NAME;
+                    ptr = ptr.offset(2);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
+                    tok = XML_TOK_NMTOKEN_1;
+                    ptr = ptr.offset(2);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                        << 3)
+                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                        != 0
+                    {
+                        ptr = ptr.offset(2);
+                        tok = XML_TOK_NAME;
+                        current_block_124 = 2956972668325154207;
+                    } else if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                        != 0
+                    {
+                        ptr = ptr.offset(2);
+                        tok = XML_TOK_NMTOKEN_1;
+                        current_block_124 = 2956972668325154207;
+                    } else {
+                        current_block_124 = 6428058487030868344;
+                    }
+                }
+                _ => {
+                    current_block_124 = 6428058487030868344;
+                }
+            }
+            match current_block_124 {
+                2956972668325154207 => {}
+                16869865525854146339 => {
+                    loop {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            break;
+                        }
+                        let mut current_block_32: u64;
+                        match if *ptr.offset(0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                as c_uint
+                        } else {
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                        } {
+                            BT_S | BT_LF => {
+                                current_block_32 = 17500079516916021833;
+                            }
+                            BT_CR => {
+                                if ptr.offset(2) != end {
+                                    current_block_32 = 17500079516916021833;
+                                } else {
+                                    current_block_32 = 11299462660638600073;
+                                }
+                            }
+                            _ => {
+                                current_block_32 = 11299462660638600073;
+                            }
+                        }
+                        match current_block_32 {
+                            17500079516916021833 => {}
+                            _ => {
+                                *nextTokPtr = ptr;
+                                return XML_TOK_PROLOG_S_1;
+                            }
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    return XML_TOK_PROLOG_S_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    return XML_TOK_INVALID_1;
+                }
+            }
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                let mut current_block_210: u64;
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
+                            << 3)
+                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        current_block_210 = 9794574411605359176;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_210 = 9794574411605359176;
+                    }
+                    BT_LEAD2 => {
+                        if (end.offset_from(ptr) as c_long) < 2 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (end.offset_from(ptr) as c_long) < 3 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (end.offset_from(ptr) as c_long) < 4 {
+                            return XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
+                    | BT_LF => {
+                        *nextTokPtr = ptr;
+                        return tok;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.offset(2);
+                        match tok {
+                            XML_TOK_NAME => {
+                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                    return XML_TOK_PARTIAL_1;
+                                }
+                                tok = XML_TOK_PREFIXED_NAME;
+                                let mut current_block_187: u64;
+                                match if *ptr.offset(0) as c_int == 0 {
+                                    as_normal_encoding(enc).type_0
+                                        [*ptr.offset(1) as c_uchar as usize]
+                                        as c_uint
+                                } else {
+                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                                } {
+                                    BT_NONASCII => {
+                                        if namingBitmap[(((namePages
+                                            [*ptr.offset(0) as c_uchar as usize]
+                                            as c_int)
+                                            << 3)
+                                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                                            as usize]
+                                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                                            == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            return XML_TOK_INVALID_1;
+                                        }
+                                        current_block_187 = 17275381528970576968;
+                                    }
+                                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                                        current_block_187 = 17275381528970576968;
+                                    }
+                                    BT_LEAD2 => {
+                                        if (end.offset_from(ptr) as c_long) < 2 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    BT_LEAD3 => {
+                                        if (end.offset_from(ptr) as c_long) < 3 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    BT_LEAD4 => {
+                                        if (end.offset_from(ptr) as c_long) < 4 {
+                                            return XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        return XML_TOK_INVALID_1;
+                                    }
+                                    _ => {
+                                        tok = XML_TOK_NMTOKEN_1;
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                }
+                                match current_block_187 {
+                                    17275381528970576968 => {
+                                        ptr = ptr.offset(2isize);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            XML_TOK_PREFIXED_NAME => {
+                                tok = XML_TOK_NMTOKEN_1;
+                            }
+                            _ => {}
+                        }
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_PLUS => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_NAME_PLUS_1;
+                    }
+                    BT_AST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_NAME_ASTERISK_1;
+                    }
+                    BT_QUEST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            return XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.offset(2);
+                        return XML_TOK_NAME_QUESTION_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_210 {
+                    9794574411605359176 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            return -tok;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_attributeValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            } else if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            return {
+                                let (tok_value, next_tok_value) = big2_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LT => {
+                        *nextTokPtr = ptr;
+                        return XML_TOK_INVALID_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_TRAILING_CR_1;
+                            }
+                            if (if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
+                            }) == BT_LF as c_int
+                            {
+                                ptr = ptr.offset(2isize);
+                            }
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_S => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_ATTRIBUTE_VALUE_S_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(2isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                return XML_TOK_NONE_1;
+            } else if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                return XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
+                match if *ptr.offset(0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        ptr = ptr.offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            return {
+                                let (tok_value, next_tok_value) = big2_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_PERCNT => {
+                        if ptr == start {
+                            let mut tok: c_int = {
+                                let (tok_value, next_tok_value) = big2_scanPercent(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.offset(2), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                            return if tok == XML_TOK_PERCENT_1 {
+                                XML_TOK_INVALID_1
+                            } else {
+                                tok
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.offset(2);
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_TRAILING_CR_1;
+                            }
+                            if (if *ptr.offset(0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
+                            }) == BT_LF as c_int
+                            {
+                                ptr = ptr.offset(2isize);
+                            }
+                            *nextTokPtr = ptr;
+                            return XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        return XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.offset(2isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            return XML_TOK_DATA_CHARS_1;
+        })();
+        return (tok, next_tok);
+    }
+
+    pub(crate) unsafe fn big2_ignoreSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let tok = (|| -> c_int {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.add(input.len());
+            let mut level: c_int = 0;
+            {
+                let mut n: size_t = end.offset_from(ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    end = ptr.offset(n as isize);
+                }
+            }
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(0) as c_int == 0 {
                     as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
@@ -6979,22 +10068,40 @@ pub mod xmltok_impl_c {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
-                    BT_MINUS => {
+                    BT_LT => {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x2d {
+                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x21 {
                             ptr = ptr.offset(2);
                             if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
                                 return XML_TOK_PARTIAL_1;
                             }
-                            if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
+                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5b {
+                                level += 1;
+                                ptr = ptr.offset(2isize);
                             }
-                            *nextTokPtr = ptr.offset(2);
-                            return XML_TOK_COMMENT_1;
+                        }
+                    }
+                    BT_RSQB => {
+                        ptr = ptr.offset(2);
+                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                            return XML_TOK_PARTIAL_1;
+                        }
+                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
+                            ptr = ptr.offset(2);
+                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e {
+                                ptr = ptr.offset(2);
+                                if level == 0 {
+                                    *nextTokPtr = ptr;
+                                    return XML_TOK_IGNORE_SECT_1;
+                                }
+                                level -= 1;
+                            }
                         }
                     }
                     _ => {
@@ -7002,2796 +10109,14 @@ pub mod xmltok_impl_c {
                     }
                 }
             }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_scanDecl(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
             return XML_TOK_PARTIAL_1;
-        }
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_MINUS => {
-                return big2_scanComment(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LSQB => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_COND_SECT_OPEN_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            's_129: {
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_PERCNT => {
-                        if !(end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        match if *ptr.offset(2).offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0
-                                [*ptr.offset(2).offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(2).offset(0), *ptr.offset(2).offset(1))
-                                as c_uint
-                        } {
-                            BT_S | BT_CR | BT_LF | BT_PERCNT => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            _ => {}
-                        }
-                    }
-                    BT_S | BT_CR | BT_LF => {}
-                    BT_NMSTRT | BT_HEX => {
-                        ptr = ptr.offset(2);
-                        break 's_129;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DECL_OPEN_1;
-            }
-        }
-        return XML_TOK_PARTIAL_1;
+        })();
+        return (tok, next_tok);
     }
 
-    pub(crate) unsafe fn big2_checkPiTarget(
-        _enc: &ENCODING,
-        input: &[c_char],
-        mut tokPtr: *mut c_int,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut upper: c_int = 0;
-        *tokPtr = XML_TOK_PI_1;
-        if end.offset_from(ptr) as c_long != (2i32 * 3) as c_long {
-            return 1i32;
-        }
-        match if *ptr.offset(0) as c_int == 0 {
-            *ptr.offset(1) as c_int
-        } else {
-            -(1)
-        } {
-            ASCII_x_1 => {}
-            ASCII_X_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        ptr = ptr.offset(2);
-        match if *ptr.offset(0) as c_int == 0 {
-            *ptr.offset(1) as c_int
-        } else {
-            -(1)
-        } {
-            ASCII_m_1 => {}
-            ASCII_M_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        ptr = ptr.offset(2);
-        match if *ptr.offset(0) as c_int == 0 {
-            *ptr.offset(1) as c_int
-        } else {
-            -(1)
-        } {
-            ASCII_l_1 => {}
-            ASCII_L_1 => {
-                upper = 1i32;
-            }
-            _ => return 1,
-        }
-        if upper != 0 {
-            return 0i32;
-        }
-        *tokPtr = XML_TOK_XML_DECL_1;
-        return 1;
-    }
-
-    pub(crate) unsafe fn big2_scanPi(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut tok: c_int = 0;
-        let mut target: *const c_char = ptr;
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_32 = 2802485987355401260;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 2802485987355401260;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            2802485987355401260 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_118: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_118 = 11190361564366887465;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_118 = 11190361564366887465;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    if big2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr), &raw mut tok)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(2isize);
-                            }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(3isize);
-                            }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(4isize);
-                            }
-                            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_QUEST => {
-                                ptr = ptr.offset(2);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e {
-                                    *nextTokPtr = ptr.offset(2);
-                                    return tok;
-                                }
-                            }
-                            _ => {
-                                ptr = ptr.offset(2isize);
-                            }
-                        }
-                    }
-                    return XML_TOK_PARTIAL_1;
-                }
-                BT_QUEST => {
-                    if big2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr), &raw mut tok)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e {
-                        *nextTokPtr = ptr.offset(2);
-                        return tok;
-                    }
-                    current_block_118 = 161625824724629686;
-                }
-                _ => {
-                    current_block_118 = 161625824724629686;
-                }
-            }
-            match current_block_118 {
-                161625824724629686 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                11190361564366887465 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_scanCdataSection(
-        _enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        pub static CDATA_LSQB: [c_char; 6] = [
-            ASCII_C as c_char,
-            ASCII_D as c_char,
-            ASCII_A as c_char,
-            ASCII_T as c_char,
-            ASCII_A as c_char,
-            ASCII_LSQB as c_char,
-        ];
-        let mut i: c_int = 0;
-        if !(end.offset_from(ptr) as c_long >= (6i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        i = 0;
-        while i < 6 {
-            if !(*ptr.offset(0) as c_int == 0
-                && *ptr.offset(1) as c_int == CDATA_LSQB[i as usize] as c_int)
-            {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            i += 1;
-            ptr = ptr.offset(2);
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_CDATA_SECT_OPEN_1;
-    }
-
-    pub(crate) unsafe fn big2_cdataSectionTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        {
-            let mut n: size_t = end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1) as size_t != 0 {
-                n &= !(2i32 - 1) as size_t;
-                if n == 0 {
-                    return XML_TOK_PARTIAL_1;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_RSQB => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
-                        ptr = ptr.offset(-(2isize));
-                    } else {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CDATA_SECT_CLOSE_1;
-                    }
-                }
-            }
-            BT_CR => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                if (if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                }) == BT_LF as c_int
-                {
-                    ptr = ptr.offset(2isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LF => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(2isize);
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(3isize);
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(4isize);
-            }
-            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                ptr = ptr.offset(2isize);
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn big2_scanEndTag(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_32 = 12738221189273011712;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 12738221189273011712;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            12738221189273011712 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_73: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_73 = 1281007054303163758;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_73 = 1281007054303163758;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_S | BT_CR | BT_LF => {}
-                            BT_GT => {
-                                *nextTokPtr = ptr.offset(2);
-                                return XML_TOK_END_TAG_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(2);
-                    }
-                    return XML_TOK_PARTIAL_1;
-                }
-                BT_COLON_0 => {
-                    ptr = ptr.offset(2);
-                    current_block_73 = 981995395831942902;
-                }
-                BT_GT => {
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_END_TAG_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_73 {
-                1281007054303163758 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_scanHexCharRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_DIGIT | BT_HEX => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            ptr = ptr.offset(2);
-            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_DIGIT | BT_HEX => {}
-                    BT_SEMI => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CHAR_REF_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                ptr = ptr.offset(2);
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_scanCharRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x78 {
-                return big2_scanHexCharRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_DIGIT => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            ptr = ptr.offset(2);
-            while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_DIGIT => {}
-                    BT_SEMI => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CHAR_REF_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-                ptr = ptr.offset(2);
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_scanRef(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_33: u64;
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_33 = 17794167657114565097;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_33 = 17794167657114565097;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NUM => {
-                return big2_scanCharRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_33 {
-            17794167657114565097 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_64: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_64 = 17251590314240005670;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_64 = 17251590314240005670;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_SEMI => {
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_ENTITY_REF_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_64 {
-                17251590314240005670 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_scanAtts(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut hadColon: c_int = 0;
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_186: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_186 = 6092917267242331817;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_186 = 6092917267242331817;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_COLON_0 => {
-                    if hadColon != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    hadColon = 1;
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    let mut current_block_64: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            current_block_64 = 6604085902723260545;
-                        }
-                        BT_NMSTRT | BT_HEX => {
-                            current_block_64 = 6604085902723260545;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_64 {
-                        6604085902723260545 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
-                    }
-                    current_block_186 = 1634947208139838470;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    loop {
-                        let mut t: c_int = 0;
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        t = if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                        };
-                        if t == BT_EQUALS as c_int {
-                            break;
-                        }
-                        match t {
-                            21 | 10 | 9 => {}
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    current_block_186 = 10853015579903106591;
-                }
-                BT_EQUALS => {
-                    current_block_186 = 10853015579903106591;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_186 {
-                10853015579903106591 => {
-                    let mut open: c_int = 0;
-                    hadColon = 0;
-                    loop {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        open = if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                        };
-                        if open == BT_QUOT as c_int || open == BT_APOS as c_int {
-                            break;
-                        }
-                        match open {
-                            21 | 10 | 9 => {}
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    ptr = ptr.offset(2);
-                    loop {
-                        let mut t_0: c_int = 0;
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        t_0 = if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                        };
-                        if t_0 == open {
-                            break;
-                        }
-                        match t_0 {
-                            5 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(2isize);
-                            }
-                            6 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(3isize);
-                            }
-                            7 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(4isize);
-                            }
-                            0 | 1 | 8 => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            3 => {
-                                let mut tok: c_int = big2_scanRef(
-                                    enc,
-                                    c_char_slice_from_ptr_end(ptr.offset(2), end),
-                                    &raw mut ptr,
-                                );
-                                if tok <= 0 {
-                                    if tok == XML_TOK_INVALID_1 {
-                                        *nextTokPtr = ptr;
-                                    }
-                                    return tok;
-                                }
-                            }
-                            2 => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            _ => {
-                                ptr = ptr.offset(2isize);
-                            }
-                        }
-                    }
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_S | BT_CR | BT_LF => {
-                            loop {
-                                ptr = ptr.offset(2);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                match if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                                } {
-                                    BT_NONASCII => {
-                                        if namingBitmap[(((nmstrtPages
-                                            [*ptr.offset(0) as c_uchar as usize]
-                                            as c_int)
-                                            << 3)
-                                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                            as usize]
-                                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                            == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return XML_TOK_INVALID_1;
-                                        }
-                                        current_block_186 = 7794494472231011433;
-                                        break;
-                                    }
-                                    BT_NMSTRT | BT_HEX => {
-                                        current_block_186 = 7794494472231011433;
-                                        break;
-                                    }
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            return XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    BT_S | BT_CR | BT_LF => {}
-                                    BT_GT => {
-                                        current_block_186 = 1783713129665224809;
-                                        break;
-                                    }
-                                    BT_SOL => {
-                                        current_block_186 = 18153789983347219713;
-                                        break;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                }
-                            }
-                            match current_block_186 {
-                                1783713129665224809 => {}
-                                18153789983347219713 => {}
-                                1634947208139838470 => {}
-                                _ => {
-                                    ptr = ptr.offset(2);
-                                    current_block_186 = 1634947208139838470;
-                                }
-                            }
-                        }
-                        BT_SOL => {
-                            current_block_186 = 18153789983347219713;
-                        }
-                        BT_GT => {
-                            current_block_186 = 1783713129665224809;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_186 {
-                        1634947208139838470 => {}
-                        _ => match current_block_186 {
-                            18153789983347219713 => {
-                                ptr = ptr.offset(2);
-                                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                                    return XML_TOK_PARTIAL_1;
-                                }
-                                if !(*ptr.offset(0) as c_int == 0
-                                    && *ptr.offset(1) as c_int == 0x3e)
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                *nextTokPtr = ptr.offset(2);
-                                return XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr.offset(2);
-                                return XML_TOK_START_TAG_WITH_ATTS_1;
-                            }
-                        },
-                    }
-                }
-                6092917267242331817 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_scanLt(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut hadColon: c_int = 0;
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_45: u64;
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_45 = 6477200489819026004;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_45 = 6477200489819026004;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_EXCL => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_MINUS => {
-                        return big2_scanComment(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_LSQB => {
-                        return big2_scanCdataSection(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_QUEST => {
-                return big2_scanPi(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_SOL => {
-                return big2_scanEndTag(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_45 {
-            6477200489819026004 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        hadColon = 0;
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_161: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_161 = 18151815167355992796;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_161 = 18151815167355992796;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_COLON_0 => {
-                    if hadColon != 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    hadColon = 1;
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    let mut current_block_112: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            current_block_112 = 16337619596932156899;
-                        }
-                        BT_NMSTRT | BT_HEX => {
-                            current_block_112 = 16337619596932156899;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                return XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_112 {
-                        16337619596932156899 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
-                    }
-                    current_block_161 = 14714495436747744489;
-                }
-                BT_S | BT_CR | BT_LF => {
-                    ptr = ptr.offset(2);
-                    loop {
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            current_block_161 = 13215501469961642988;
-                            break;
-                        }
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_NONASCII => {
-                                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
-                                    as c_int)
-                                    << 3)
-                                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                    as usize]
-                                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                    == 0
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                current_block_161 = 11066148936714919733;
-                            }
-                            BT_NMSTRT | BT_HEX => {
-                                current_block_161 = 11066148936714919733;
-                            }
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    return XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                            BT_GT => {
-                                current_block_161 = 13089361350718158941;
-                                break;
-                            }
-                            BT_SOL => {
-                                current_block_161 = 11384015785330443424;
-                                break;
-                            }
-                            BT_S | BT_CR | BT_LF => {
-                                ptr = ptr.offset(2);
-                                continue;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID_1;
-                            }
-                        }
-                        match current_block_161 {
-                            11066148936714919733 => {
-                                ptr = ptr.offset(2isize);
-                            }
-                            _ => {}
-                        }
-                        return big2_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end), nextTokPtr);
-                    }
-                    match current_block_161 {
-                        13089361350718158941 => {}
-                        11384015785330443424 => {}
-                        _ => return XML_TOK_PARTIAL_1,
-                    }
-                }
-                BT_GT => {
-                    current_block_161 = 13089361350718158941;
-                }
-                BT_SOL => {
-                    current_block_161 = 11384015785330443424;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_161 {
-                11384015785330443424 => {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
-                }
-                13089361350718158941 => {
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_START_TAG_NO_ATTS_1;
-                }
-                18151815167355992796 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_contentTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        {
-            let mut n: size_t = end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1) as size_t != 0 {
-                n &= !(2i32 - 1) as size_t;
-                if n == 0 {
-                    return XML_TOK_PARTIAL_1;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_LT => {
-                return big2_scanLt(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_AMP => {
-                return big2_scanRef(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_CR => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_TRAILING_CR_1;
-                }
-                if (if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                }) == BT_LF as c_int
-                {
-                    ptr = ptr.offset(2isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_LF => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_DATA_NEWLINE_1;
-            }
-            BT_RSQB => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_TRAILING_RSQB_1;
-                }
-                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_TRAILING_RSQB_1;
-                    }
-                    if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
-                        ptr = ptr.offset(-(2isize));
-                    } else {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                }
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(2isize);
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(3isize);
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                ptr = ptr.offset(4isize);
-            }
-            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                ptr = ptr.offset(2isize);
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_76: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(2);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(3);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS_1;
-                    }
-                    ptr = ptr.offset(4);
-                    current_block_76 = 7158658067966855297;
-                }
-                BT_RSQB => {
-                    if end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long {
-                        if !(*ptr.offset(2).offset(0) as c_int == 0
-                            && *ptr.offset(2).offset(1) as c_int == 0x5d)
-                        {
-                            ptr = ptr.offset(2);
-                            current_block_76 = 7158658067966855297;
-                        } else if end.offset_from(ptr) as c_long >= (3i32 * 2) as c_long {
-                            if !(*ptr.offset((2i32 * 2) as isize).offset(0) as c_int == 0
-                                && *ptr.offset((2i32 * 2) as isize).offset(1) as c_int == 0x3e)
-                            {
-                                ptr = ptr.offset(2isize);
-                            } else {
-                                *nextTokPtr = ptr.offset((2i32 * 2) as isize);
-                                return XML_TOK_INVALID_1;
-                            }
-                            current_block_76 = 7158658067966855297;
-                        } else {
-                            current_block_76 = 11890188771060868767;
-                        }
-                    } else {
-                        current_block_76 = 11890188771060868767;
-                    }
-                }
-                BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
-                    current_block_76 = 11890188771060868767;
-                }
-                _ => {
-                    ptr = ptr.offset(2);
-                    current_block_76 = 7158658067966855297;
-                }
-            }
-            match current_block_76 {
-                7158658067966855297 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn big2_scanPercent(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_34: u64;
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_34 = 9652455934050855438;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_34 = 9652455934050855438;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_S | BT_LF | BT_CR | BT_PERCNT => {
-                *nextTokPtr = ptr;
-                return XML_TOK_PERCENT_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_34 {
-            9652455934050855438 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_65: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_65 = 3947837075391501242;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_65 = 3947837075391501242;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_SEMI => {
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_PARAM_ENTITY_REF_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_65 {
-                3947837075391501242 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_scanPoundName(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        let mut current_block_32: u64;
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                    == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                current_block_32 = 12219479933348349998;
-            }
-            BT_NMSTRT | BT_HEX => {
-                current_block_32 = 12219479933348349998;
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        match current_block_32 {
-            12219479933348349998 => {
-                ptr = ptr.offset(2isize);
-            }
-            _ => {}
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_63: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_63 = 1647491770914889697;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_63 = 1647491770914889697;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_POUND_NAME_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_63 {
-                1647491770914889697 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return -XML_TOK_POUND_NAME_1;
-    }
-
-    pub(crate) unsafe fn big2_scanLit(
-        mut open: c_int,
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut t: c_int = if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-            };
-            match t {
-                5 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                12 | 13 => {
-                    ptr = ptr.offset(2);
-                    if !(t != open) {
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return -XML_TOK_LITERAL_1;
-                        }
-                        *nextTokPtr = ptr;
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
-                                return XML_TOK_LITERAL_1
-                            }
-                            _ => return XML_TOK_INVALID_1,
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_prologTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut tok: c_int = 0;
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        }
-        {
-            let mut n: size_t = end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1) as size_t != 0 {
-                n &= !(2i32 - 1) as size_t;
-                if n == 0 {
-                    return XML_TOK_PARTIAL_1;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        let mut current_block_124: u64;
-        match if *ptr.offset(0) as c_int == 0 {
-            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-        } else {
-            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-        } {
-            BT_QUOT => {
-                return big2_scanLit(
-                    BT_QUOT as c_int,
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_APOS => {
-                return big2_scanLit(
-                    BT_APOS as c_int,
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LT => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return XML_TOK_PARTIAL_1;
-                }
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_EXCL => {
-                        return big2_scanDecl(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_QUEST => {
-                        return big2_scanPi(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
-                        *nextTokPtr = ptr.offset(-(2));
-                        return XML_TOK_INSTANCE_START;
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_CR => {
-                if ptr.offset(2) == end {
-                    *nextTokPtr = end;
-                    return -XML_TOK_PROLOG_S_1;
-                }
-                current_block_124 = 16869865525854146339;
-            }
-            BT_S | BT_LF => {
-                current_block_124 = 16869865525854146339;
-            }
-            BT_PERCNT => {
-                return big2_scanPercent(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_COMMA => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_COMMA_1;
-            }
-            BT_LSQB => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_OPEN_BRACKET_1;
-            }
-            BT_RSQB => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return -XML_TOK_CLOSE_BRACKET_1;
-                }
-                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
-                    if !(end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(2).offset(0) as c_int == 0
-                        && *ptr.offset(2).offset(1) as c_int == 0x3e
-                    {
-                        *nextTokPtr = ptr.offset((2i32 * 2) as isize);
-                        return XML_TOK_COND_SECT_CLOSE_1;
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_CLOSE_BRACKET_1;
-            }
-            BT_LPAR => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_OPEN_PAREN_1;
-            }
-            BT_RPAR => {
-                ptr = ptr.offset(2);
-                if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                    return -XML_TOK_CLOSE_PAREN_1;
-                }
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_AST => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CLOSE_PAREN_ASTERISK_1;
-                    }
-                    BT_QUEST => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CLOSE_PAREN_QUESTION_1;
-                    }
-                    BT_PLUS => {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_CLOSE_PAREN_PLUS_1;
-                    }
-                    BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_CLOSE_PAREN_1;
-                    }
-                    _ => {}
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_VERBAR => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_OR_1;
-            }
-            BT_GT => {
-                *nextTokPtr = ptr.offset(2);
-                return XML_TOK_DECL_CLOSE_1;
-            }
-            BT_NUM => {
-                return big2_scanPoundName(
-                    enc,
-                    c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                    nextTokPtr,
-                );
-            }
-            BT_LEAD2 => {
-                if (end.offset_from(ptr) as c_long) < 2 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD3 => {
-                if (end.offset_from(ptr) as c_long) < 3 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_LEAD4 => {
-                if (end.offset_from(ptr) as c_long) < 4 {
-                    return XML_TOK_PARTIAL_CHAR_1;
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-            BT_NMSTRT | BT_HEX => {
-                tok = XML_TOK_NAME;
-                ptr = ptr.offset(2);
-                current_block_124 = 2956972668325154207;
-            }
-            BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
-                tok = XML_TOK_NMTOKEN_1;
-                ptr = ptr.offset(2);
-                current_block_124 = 2956972668325154207;
-            }
-            BT_NONASCII => {
-                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize] as c_int) << 3)
-                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                    != 0
-                {
-                    ptr = ptr.offset(2);
-                    tok = XML_TOK_NAME;
-                    current_block_124 = 2956972668325154207;
-                } else if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                    << 3)
-                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                    as usize]
-                    & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                    != 0
-                {
-                    ptr = ptr.offset(2);
-                    tok = XML_TOK_NMTOKEN_1;
-                    current_block_124 = 2956972668325154207;
-                } else {
-                    current_block_124 = 6428058487030868344;
-                }
-            }
-            _ => {
-                current_block_124 = 6428058487030868344;
-            }
-        }
-        match current_block_124 {
-            2956972668325154207 => {}
-            16869865525854146339 => {
-                loop {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        break;
-                    }
-                    let mut current_block_32: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_S | BT_LF => {
-                            current_block_32 = 17500079516916021833;
-                        }
-                        BT_CR => {
-                            if ptr.offset(2) != end {
-                                current_block_32 = 17500079516916021833;
-                            } else {
-                                current_block_32 = 11299462660638600073;
-                            }
-                        }
-                        _ => {
-                            current_block_32 = 11299462660638600073;
-                        }
-                    }
-                    match current_block_32 {
-                        17500079516916021833 => {}
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return XML_TOK_PROLOG_S_1;
-                        }
-                    }
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_PROLOG_S_1;
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID_1;
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            let mut current_block_210: u64;
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_NONASCII => {
-                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize] as c_int)
-                        << 3)
-                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                        as usize]
-                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                        == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    current_block_210 = 9794574411605359176;
-                }
-                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                    current_block_210 = 9794574411605359176;
-                }
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
-                | BT_LF => {
-                    *nextTokPtr = ptr;
-                    return tok;
-                }
-                BT_COLON_0 => {
-                    ptr = ptr.offset(2);
-                    match tok {
-                        XML_TOK_NAME => {
-                            if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                                return XML_TOK_PARTIAL_1;
-                            }
-                            tok = XML_TOK_PREFIXED_NAME;
-                            let mut current_block_187: u64;
-                            match if *ptr.offset(0) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                    as c_uint
-                            } else {
-                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                            } {
-                                BT_NONASCII => {
-                                    if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                        as c_int)
-                                        << 3)
-                                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                        as usize]
-                                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                        == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        return XML_TOK_INVALID_1;
-                                    }
-                                    current_block_187 = 17275381528970576968;
-                                }
-                                BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                                    current_block_187 = 17275381528970576968;
-                                }
-                                BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
-                                        return XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID_1;
-                                }
-                                _ => {
-                                    tok = XML_TOK_NMTOKEN_1;
-                                    current_block_187 = 9812798724717783973;
-                                }
-                            }
-                            match current_block_187 {
-                                17275381528970576968 => {
-                                    ptr = ptr.offset(2isize);
-                                }
-                                _ => {}
-                            }
-                        }
-                        XML_TOK_PREFIXED_NAME => {
-                            tok = XML_TOK_NMTOKEN_1;
-                        }
-                        _ => {}
-                    }
-                    current_block_210 = 14244298717249035578;
-                }
-                BT_PLUS => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_NAME_PLUS_1;
-                }
-                BT_AST => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_NAME_ASTERISK_1;
-                }
-                BT_QUEST => {
-                    if tok == XML_TOK_NMTOKEN_1 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2);
-                    return XML_TOK_NAME_QUESTION_1;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-            }
-            match current_block_210 {
-                9794574411605359176 => {
-                    ptr = ptr.offset(2isize);
-                }
-                _ => {}
-            }
-        }
-        return -tok;
-    }
-
-    pub(crate) unsafe fn big2_attributeValueTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut start: *const c_char = null::<c_char>();
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        } else if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        start = ptr;
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    ptr = ptr.offset(4isize);
-                }
-                BT_AMP => {
-                    if ptr == start {
-                        return big2_scanRef(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_LT => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LF => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_CR => {
-                    if ptr == start {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_TRAILING_CR_1;
-                        }
-                        if (if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                        }) == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(2isize);
-                        }
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_S => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_ATTRIBUTE_VALUE_S_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn big2_entityValueTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut start: *const c_char = null::<c_char>();
-        if ptr >= end {
-            return XML_TOK_NONE_1;
-        } else if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-            return XML_TOK_PARTIAL_1;
-        }
-        start = ptr;
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    ptr = ptr.offset(4isize);
-                }
-                BT_AMP => {
-                    if ptr == start {
-                        return big2_scanRef(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            nextTokPtr,
-                        );
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_PERCNT => {
-                    if ptr == start {
-                        let mut tok: c_int = big2_scanPercent(
-                            enc,
-                            c_char_slice_from_ptr_end(ptr.offset(2), end),
-                            nextTokPtr,
-                        );
-                        return if tok == XML_TOK_PERCENT_1 {
-                            XML_TOK_INVALID_1
-                        } else {
-                            tok
-                        };
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_LF => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(2);
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                BT_CR => {
-                    if ptr == start {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_TRAILING_CR_1;
-                        }
-                        if (if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                        }) == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(2isize);
-                        }
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS_1;
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS_1;
-    }
-
-    pub(crate) unsafe fn big2_ignoreSectionTok(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let mut level: c_int = 0;
-        {
-            let mut n: size_t = end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1) as size_t != 0 {
-                n &= !(2i32 - 1) as size_t;
-                end = ptr.offset(n as isize);
-            }
-        }
-        while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
-            match if *ptr.offset(0) as c_int == 0 {
-                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-            } else {
-                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-            } {
-                BT_LEAD2 => {
-                    if (end.offset_from(ptr) as c_long) < 2 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(2isize);
-                }
-                BT_LEAD3 => {
-                    if (end.offset_from(ptr) as c_long) < 3 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(3isize);
-                }
-                BT_LEAD4 => {
-                    if (end.offset_from(ptr) as c_long) < 4 {
-                        return XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    ptr = ptr.offset(4isize);
-                }
-                BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID_1;
-                }
-                BT_LT => {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x21 {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5b {
-                            level += 1;
-                            ptr = ptr.offset(2isize);
-                        }
-                    }
-                }
-                BT_RSQB => {
-                    ptr = ptr.offset(2);
-                    if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                        return XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
-                        ptr = ptr.offset(2);
-                        if !(end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long) {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e {
-                            ptr = ptr.offset(2);
-                            if level == 0 {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_IGNORE_SECT_1;
-                            }
-                            level -= 1;
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(2isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL_1;
-    }
-
-    pub(crate) unsafe fn big2_isPublicId(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut badPtr: *mut *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn big2_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        let mut badPtrVal: *const c_char = null::<c_char>();
+        let mut badPtr: *mut *const c_char = &raw mut badPtrVal;
         let mut ptr = input.as_ptr();
         let mut end = ptr.add(input.len());
         ptr = ptr.offset(2);
@@ -9810,7 +10135,7 @@ pub mod xmltok_impl_c {
                 BT_S => {
                     if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x9 {
                         *badPtr = ptr;
-                        return 0i32;
+                        return (0i32, badPtrVal);
                     }
                     current_block_8 = 5143058163439228106;
                 }
@@ -9841,7 +10166,7 @@ pub mod xmltok_impl_c {
                         36 | 64 => {}
                         _ => {
                             *badPtr = ptr;
-                            return 0i32;
+                            return (0i32, badPtrVal);
                         }
                     }
                 }
@@ -9849,7 +10174,7 @@ pub mod xmltok_impl_c {
             }
             ptr = ptr.offset(2);
         }
-        return 1;
+        return (1, badPtrVal);
     }
 
     pub(crate) unsafe fn big2_getAtts(
@@ -10258,52 +10583,39 @@ pub mod xmltok_ns_c {
         &crate::src::lib::xmltok::utf8_encoding.enc,
     ];
 
-    pub(crate) unsafe fn initScanProlog(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn initScanProlog(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         return initScan(
             encodings.as_ptr() as *const *const ENCODING,
             as_init_encoding(enc),
             XML_PROLOG_STATE,
             input,
-            nextTokPtr,
         );
     }
 
-    pub(crate) unsafe fn initScanContent(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn initScanContent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         return initScan(
             encodings.as_ptr() as *const *const ENCODING,
             as_init_encoding(enc),
             XML_CONTENT_STATE,
             input,
-            nextTokPtr,
         );
     }
     pub(crate) unsafe fn XmlInitEncoding(
         mut p: *mut INIT_ENCODING,
         mut encPtr: *mut *const ENCODING,
         mut name: *const c_char,
-    ) -> c_int {
+    ) -> XmlInitEncodingResult {
         let mut i: c_int = getEncodingIndex(name);
         if i == UNKNOWN_ENC {
-            return 0i32;
+            return (0, null::<ENCODING>());
         }
         (*p).initEnc = utf8_encoding.enc;
         (*p).initEnc.functions = &INIT_ENCODING_FUNCTIONS;
         (*p).initEnc.isUtf16 = i as c_char;
-        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] =
-            initScanProlog as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int;
-        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] =
-            initScanContent as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int;
+        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = initScanProlog as SCANNER;
+        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = initScanContent as SCANNER;
         (*p).encPtr = encPtr;
-        *encPtr = &raw mut (*p).initEnc;
-        return 1;
+        return (1, &raw mut (*p).initEnc);
     }
 
     pub(crate) unsafe fn findEncoding(enc: &ENCODING, input: &[c_char]) -> *const ENCODING {
@@ -10317,13 +10629,7 @@ pub mod xmltok_ns_c {
         );
         let mut p: *mut c_char = &raw mut buf as *mut c_char;
         let mut i: c_int = 0;
-        (*enc).utf8Convert(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(128).offset(-(1)),
-        );
+        (_, ptr, p) = (*enc).utf8Convert(enc, ptr, end, p, p.offset(128).offset(-(1)));
         if ptr != end {
             return null::<ENCODING>();
         }
@@ -10346,24 +10652,12 @@ pub mod xmltok_ns_c {
         mut isGeneralTextEntity: c_int,
         enc: &ENCODING,
         input: &[c_char],
-        mut badPtr: *mut *const c_char,
-        mut versionPtr: *mut *const c_char,
-        mut versionEndPtr: *mut *const c_char,
-        mut encodingName: *mut *const c_char,
-        mut encoding: *mut *const ENCODING,
-        mut standalone: *mut c_int,
-    ) -> c_int {
+    ) -> ParseXmlDeclResult {
         return doParseXmlDecl(
             Some(findEncoding as unsafe fn(&ENCODING, &[c_char]) -> *const ENCODING),
             isGeneralTextEntity,
             enc,
             input,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
         );
     }
     pub(crate) unsafe fn XmlGetUtf8InternalEncodingNS() -> *const ENCODING {
@@ -10383,52 +10677,39 @@ pub mod xmltok_ns_c {
         &crate::src::lib::xmltok::utf8_encoding_ns.enc,
     ];
 
-    pub(crate) unsafe fn initScanPrologNS(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn initScanPrologNS(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         return initScan(
             encodingsNS.as_ptr() as *const *const ENCODING,
             as_init_encoding(enc),
             XML_PROLOG_STATE,
             input,
-            nextTokPtr,
         );
     }
 
-    pub(crate) unsafe fn initScanContentNS(
-        enc: &ENCODING,
-        input: &[c_char],
-        mut nextTokPtr: *mut *const c_char,
-    ) -> c_int {
+    pub(crate) unsafe fn initScanContentNS(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         return initScan(
             encodingsNS.as_ptr() as *const *const ENCODING,
             as_init_encoding(enc),
             XML_CONTENT_STATE,
             input,
-            nextTokPtr,
         );
     }
     pub(crate) unsafe fn XmlInitEncodingNS(
         mut p: *mut INIT_ENCODING,
         mut encPtr: *mut *const ENCODING,
         mut name: *const c_char,
-    ) -> c_int {
+    ) -> XmlInitEncodingResult {
         let mut i: c_int = getEncodingIndex(name);
         if i == UNKNOWN_ENC {
-            return 0i32;
+            return (0, null::<ENCODING>());
         }
         (*p).initEnc = utf8_encoding_ns.enc;
         (*p).initEnc.functions = &INIT_ENCODING_FUNCTIONS;
         (*p).initEnc.isUtf16 = i as c_char;
-        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] =
-            initScanPrologNS as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int;
-        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] =
-            initScanContentNS as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int;
+        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = initScanPrologNS as SCANNER;
+        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = initScanContentNS as SCANNER;
         (*p).encPtr = encPtr;
-        *encPtr = &raw mut (*p).initEnc;
-        return 1;
+        return (1, &raw mut (*p).initEnc);
     }
 
     pub(crate) unsafe fn findEncodingNS(enc: &ENCODING, input: &[c_char]) -> *const ENCODING {
@@ -10442,13 +10723,7 @@ pub mod xmltok_ns_c {
         );
         let mut p: *mut c_char = &raw mut buf as *mut c_char;
         let mut i: c_int = 0;
-        (*enc).utf8Convert(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(128).offset(-(1)),
-        );
+        (_, ptr, p) = (*enc).utf8Convert(enc, ptr, end, p, p.offset(128).offset(-(1)));
         if ptr != end {
             return null::<ENCODING>();
         }
@@ -10471,24 +10746,12 @@ pub mod xmltok_ns_c {
         mut isGeneralTextEntity: c_int,
         enc: &ENCODING,
         input: &[c_char],
-        mut badPtr: *mut *const c_char,
-        mut versionPtr: *mut *const c_char,
-        mut versionEndPtr: *mut *const c_char,
-        mut encodingName: *mut *const c_char,
-        mut encoding: *mut *const ENCODING,
-        mut standalone: *mut c_int,
-    ) -> c_int {
+    ) -> ParseXmlDeclResult {
         return doParseXmlDecl(
             Some(findEncodingNS as unsafe fn(&ENCODING, &[c_char]) -> *const ENCODING),
             isGeneralTextEntity,
             enc,
             input,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
         );
     }
 
@@ -11080,9 +11343,8 @@ impl NormalEncodingCheckFunctions for MissingNormalEncodingCheckFunctions {
 
 pub(crate) unsafe fn _INTERNAL_trim_to_complete_utf8_characters(
     mut from: *const c_char,
-    mut fromLimRef: *mut *const c_char,
-) {
-    let mut fromLim: *const c_char = *fromLimRef;
+    mut fromLim: *const c_char,
+) -> *const c_char {
     let mut walked: size_t = 0;
     while fromLim > from {
         let prev: c_uchar = *fromLim.offset(-1) as c_uchar;
@@ -11113,7 +11375,7 @@ pub(crate) unsafe fn _INTERNAL_trim_to_complete_utf8_characters(
         fromLim = fromLim.offset(-1);
         walked = walked.wrapping_add(1);
     }
-    *fromLimRef = fromLim;
+    return fromLim;
 }
 
 #[cfg(feature = "expat_test_shims")]
@@ -11122,16 +11384,20 @@ unsafe fn internal_trim_to_complete_utf8_characters_test_shim(
     from: *const c_char,
     fromLimRef: *mut *const c_char,
 ) {
-    _INTERNAL_trim_to_complete_utf8_characters(from, fromLimRef);
+    *fromLimRef = _INTERNAL_trim_to_complete_utf8_characters(from, *fromLimRef);
 }
 
 unsafe fn utf8_toUtf8(
     _enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_char,
+    toP: *mut c_char,
     mut toLim: *const c_char,
-) -> XML_Convert_Result {
+) -> Utf8ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_char = &raw mut to_cursor;
     let mut input_incomplete: bool = false_0 != 0;
     let mut output_exhausted: bool = false_0 != 0;
     let bytesAvailable: ptrdiff_t = fromLim.offset_from(*fromP);
@@ -11141,7 +11407,7 @@ unsafe fn utf8_toUtf8(
         output_exhausted = true_0 != 0;
     }
     let fromLimBefore: *const c_char = fromLim;
-    _INTERNAL_trim_to_complete_utf8_characters(*fromP, &raw mut fromLim);
+    fromLim = _INTERNAL_trim_to_complete_utf8_characters(*fromP, fromLim);
     if fromLim < fromLimBefore {
         input_incomplete = true_0 != 0;
     }
@@ -11153,22 +11419,27 @@ unsafe fn utf8_toUtf8(
     );
     *fromP = (*fromP).offset(bytesToCopy);
     *toP = (*toP).offset(bytesToCopy);
-    if output_exhausted {
-        return XML_CONVERT_OUTPUT_EXHAUSTED;
+    let res = if output_exhausted {
+        XML_CONVERT_OUTPUT_EXHAUSTED
     } else if input_incomplete {
-        return XML_CONVERT_INPUT_INCOMPLETE;
+        XML_CONVERT_INPUT_INCOMPLETE
     } else {
-        return XML_CONVERT_COMPLETED;
+        XML_CONVERT_COMPLETED
     };
+    return (res, from_cursor, to_cursor);
 }
 
 unsafe fn utf8_toUtf16(
     enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_ushort,
+    toP: *mut c_ushort,
     mut toLim: *const c_ushort,
-) -> XML_Convert_Result {
+) -> Utf16ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
     let mut current_block: u64;
     let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
     let mut to: *mut c_ushort = *toP;
@@ -11250,7 +11521,7 @@ unsafe fn utf8_toUtf16(
     }
     *fromP = from;
     *toP = to;
-    return res;
+    return (res, from_cursor, to_cursor);
 }
 
 struct Utf8EncodingFunctions;
@@ -11295,34 +11566,29 @@ impl EncodingFunctions for Utf8EncodingFunctions {
         normal_updatePosition(enc, input, pos);
     }
 
-    unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int {
-        normal_isPublicId(enc, input, event_pp)
+    unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        normal_isPublicId(enc, input)
     }
 
     unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result {
+    ) -> Utf8ConvertResult {
         utf8_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result {
+    ) -> Utf16ConvertResult {
         utf8_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
@@ -11369,34 +11635,29 @@ impl EncodingFunctions for Latin1EncodingFunctions {
         normal_updatePosition(enc, input, pos);
     }
 
-    unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int {
-        normal_isPublicId(enc, input, event_pp)
+    unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        normal_isPublicId(enc, input)
     }
 
     unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result {
+    ) -> Utf8ConvertResult {
         latin1_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result {
+    ) -> Utf16ConvertResult {
         latin1_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
@@ -11443,34 +11704,29 @@ impl EncodingFunctions for AsciiEncodingFunctions {
         normal_updatePosition(enc, input, pos);
     }
 
-    unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int {
-        normal_isPublicId(enc, input, event_pp)
+    unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        normal_isPublicId(enc, input)
     }
 
     unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result {
+    ) -> Utf8ConvertResult {
         ascii_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result {
+    ) -> Utf16ConvertResult {
         latin1_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
@@ -11517,34 +11773,29 @@ impl EncodingFunctions for Little2EncodingFunctions {
         little2_updatePosition(enc, input, pos);
     }
 
-    unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int {
-        little2_isPublicId(enc, input, event_pp)
+    unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        little2_isPublicId(enc, input)
     }
 
     unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result {
+    ) -> Utf8ConvertResult {
         little2_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result {
+    ) -> Utf16ConvertResult {
         little2_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
@@ -11591,34 +11842,29 @@ impl EncodingFunctions for Big2EncodingFunctions {
         big2_updatePosition(enc, input, pos);
     }
 
-    unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int {
-        big2_isPublicId(enc, input, event_pp)
+    unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        big2_isPublicId(enc, input)
     }
 
     unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result {
+    ) -> Utf8ConvertResult {
         big2_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result {
+    ) -> Utf16ConvertResult {
         big2_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
@@ -11665,34 +11911,29 @@ impl EncodingFunctions for InitEncodingFunctions {
         initUpdatePosition(enc, input, pos);
     }
 
-    unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int {
-        normal_isPublicId(enc, input, event_pp)
+    unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        normal_isPublicId(enc, input)
     }
 
     unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result {
+    ) -> Utf8ConvertResult {
         utf8_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result {
+    ) -> Utf16ConvertResult {
         utf8_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
@@ -11739,34 +11980,29 @@ impl EncodingFunctions for UnknownEncodingFunctions {
         normal_updatePosition(enc, input, pos);
     }
 
-    unsafe fn isPublicId(
-        &self,
-        enc: &ENCODING,
-        input: &[c_char],
-        event_pp: *mut *const c_char,
-    ) -> c_int {
-        normal_isPublicId(enc, input, event_pp)
+    unsafe fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        normal_isPublicId(enc, input)
     }
 
     unsafe fn utf8Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_char,
+        to_p: *mut c_char,
         to_lim: *const c_char,
-    ) -> XML_Convert_Result {
+    ) -> Utf8ConvertResult {
         unknown_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     unsafe fn utf16Convert(
         &self,
         enc: &ENCODING,
-        from_p: *mut *const c_char,
+        from_p: *const c_char,
         from_lim: *const c_char,
-        to_p: *mut *mut c_ushort,
+        to_p: *mut c_ushort,
         to_lim: *const c_ushort,
-    ) -> XML_Convert_Result {
+    ) -> Utf16ConvertResult {
         unknown_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
@@ -11788,15 +12024,14 @@ static MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS: MissingNormalEncodingCheckFuncti
 static utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            normal_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_prologTok as SCANNER,
+            normal_contentTok as SCANNER,
+            normal_cdataSectionTok as SCANNER,
+            normal_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            normal_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_attributeValueTok as SCANNER,
+            normal_entityValueTok as SCANNER,
         ],
         functions: &UTF8_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
@@ -12067,15 +12302,14 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
 static utf8_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            normal_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_prologTok as SCANNER,
+            normal_contentTok as SCANNER,
+            normal_cdataSectionTok as SCANNER,
+            normal_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            normal_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_attributeValueTok as SCANNER,
+            normal_entityValueTok as SCANNER,
         ],
         functions: &UTF8_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
@@ -12346,15 +12580,14 @@ static utf8_encoding: normal_encoding = normal_encoding {
 static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            normal_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_prologTok as SCANNER,
+            normal_contentTok as SCANNER,
+            normal_cdataSectionTok as SCANNER,
+            normal_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            normal_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_attributeValueTok as SCANNER,
+            normal_entityValueTok as SCANNER,
         ],
         functions: &UTF8_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
@@ -12625,15 +12858,14 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
 static internal_utf8_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            normal_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_prologTok as SCANNER,
+            normal_contentTok as SCANNER,
+            normal_cdataSectionTok as SCANNER,
+            normal_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            normal_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_attributeValueTok as SCANNER,
+            normal_entityValueTok as SCANNER,
         ],
         functions: &UTF8_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
@@ -12903,20 +13135,24 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
 
 unsafe fn latin1_toUtf8(
     _enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_char,
+    toP: *mut c_char,
     mut toLim: *const c_char,
-) -> XML_Convert_Result {
+) -> Utf8ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_char = &raw mut to_cursor;
     loop {
         let mut c: c_uchar = 0;
         if *fromP == fromLim {
-            return XML_CONVERT_COMPLETED;
+            return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
         }
         c = **fromP as c_uchar;
         if c as c_int & 0x80 != 0 {
             if (toLim.offset_from(*toP) as c_long) < 2 {
-                return XML_CONVERT_OUTPUT_EXHAUSTED;
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
             }
             let fresh6 = *toP;
             *toP = (*toP).offset(1);
@@ -12927,7 +13163,7 @@ unsafe fn latin1_toUtf8(
             *fromP = (*fromP).offset(1);
         } else {
             if *toP == toLim as *mut c_char {
-                return XML_CONVERT_OUTPUT_EXHAUSTED;
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
             }
             let fresh8 = *fromP;
             *fromP = (*fromP).offset(1);
@@ -12940,11 +13176,15 @@ unsafe fn latin1_toUtf8(
 
 unsafe fn latin1_toUtf16(
     _enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_ushort,
+    toP: *mut c_ushort,
     mut toLim: *const c_ushort,
-) -> XML_Convert_Result {
+) -> Utf16ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
     while *fromP < fromLim && *toP < toLim as *mut c_ushort {
         let fresh4 = *fromP;
         *fromP = (*fromP).offset(1);
@@ -12953,24 +13193,23 @@ unsafe fn latin1_toUtf16(
         *fresh5 = *fresh4 as c_uchar as c_ushort;
     }
     if *toP == toLim as *mut c_ushort && *fromP < fromLim {
-        return XML_CONVERT_OUTPUT_EXHAUSTED;
+        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
     } else {
-        return XML_CONVERT_COMPLETED;
+        return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
     };
 }
 
 static latin1_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            normal_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_prologTok as SCANNER,
+            normal_contentTok as SCANNER,
+            normal_cdataSectionTok as SCANNER,
+            normal_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            normal_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_attributeValueTok as SCANNER,
+            normal_entityValueTok as SCANNER,
         ],
         functions: &LATIN1_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
@@ -13241,15 +13480,14 @@ static latin1_encoding_ns: normal_encoding = normal_encoding {
 static latin1_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            normal_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_prologTok as SCANNER,
+            normal_contentTok as SCANNER,
+            normal_cdataSectionTok as SCANNER,
+            normal_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            normal_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_attributeValueTok as SCANNER,
+            normal_entityValueTok as SCANNER,
         ],
         functions: &LATIN1_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
@@ -13519,11 +13757,15 @@ static latin1_encoding: normal_encoding = normal_encoding {
 
 unsafe fn ascii_toUtf8(
     _enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_char,
+    toP: *mut c_char,
     mut toLim: *const c_char,
-) -> XML_Convert_Result {
+) -> Utf8ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_char = &raw mut to_cursor;
     while *fromP < fromLim && *toP < toLim as *mut c_char {
         let fresh56 = *fromP;
         *fromP = (*fromP).offset(1);
@@ -13532,24 +13774,23 @@ unsafe fn ascii_toUtf8(
         *fresh57 = *fresh56;
     }
     if *toP == toLim as *mut c_char && *fromP < fromLim {
-        return XML_CONVERT_OUTPUT_EXHAUSTED;
+        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
     } else {
-        return XML_CONVERT_COMPLETED;
+        return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
     };
 }
 
 static ascii_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            normal_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_prologTok as SCANNER,
+            normal_contentTok as SCANNER,
+            normal_cdataSectionTok as SCANNER,
+            normal_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            normal_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_attributeValueTok as SCANNER,
+            normal_entityValueTok as SCANNER,
         ],
         functions: &ASCII_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
@@ -13820,15 +14061,14 @@ static ascii_encoding_ns: normal_encoding = normal_encoding {
 static ascii_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            normal_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_prologTok as SCANNER,
+            normal_contentTok as SCANNER,
+            normal_cdataSectionTok as SCANNER,
+            normal_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            normal_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            normal_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            normal_attributeValueTok as SCANNER,
+            normal_entityValueTok as SCANNER,
         ],
         functions: &ASCII_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
@@ -14111,11 +14351,15 @@ unsafe fn unicode_byte_type(mut hi: c_char, mut lo: c_char) -> c_int {
 
 unsafe fn little2_toUtf8(
     _enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_char,
+    toP: *mut c_char,
     mut toLim: *const c_char,
-) -> XML_Convert_Result {
+) -> Utf8ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_char = &raw mut to_cursor;
     let mut from: *const c_char = *fromP;
     fromLim = from.offset(((fromLim.offset_from(from) as c_long >> 1) << 1) as isize);
     while from < fromLim {
@@ -14129,7 +14373,7 @@ unsafe fn little2_toUtf8(
                 if (lo as c_int) < 0x80 {
                     if *toP == toLim as *mut c_char {
                         *fromP = from;
-                        return XML_CONVERT_OUTPUT_EXHAUSTED;
+                        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                     }
                     let fresh19 = *toP;
                     *toP = (*toP).offset(1);
@@ -14145,11 +14389,11 @@ unsafe fn little2_toUtf8(
             216 | 217 | 218 | 219 => {
                 if (toLim.offset_from(*toP) as c_long) < 4 {
                     *fromP = from;
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                 }
                 if (fromLim.offset_from(from) as c_long) < 4 {
                     *fromP = from;
-                    return XML_CONVERT_INPUT_INCOMPLETE;
+                    return (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor);
                 }
                 plane = ((hi as c_int & 0x3) << 2 | lo as c_int >> 6 & 0x3) + 1;
                 let fresh25 = *toP;
@@ -14174,7 +14418,7 @@ unsafe fn little2_toUtf8(
             _ => {
                 if (toLim.offset_from(*toP) as c_long) < 3 {
                     *fromP = from;
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                 }
                 let fresh22 = *toP;
                 *toP = (*toP).offset(1);
@@ -14192,7 +14436,7 @@ unsafe fn little2_toUtf8(
             9261908759940751603 => {
                 if (toLim.offset_from(*toP) as c_long) < 2 {
                     *fromP = from;
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                 }
                 let fresh20 = *toP;
                 *toP = (*toP).offset(1);
@@ -14207,19 +14451,23 @@ unsafe fn little2_toUtf8(
     }
     *fromP = from;
     if from < fromLim {
-        return XML_CONVERT_INPUT_INCOMPLETE;
+        return (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor);
     } else {
-        return XML_CONVERT_COMPLETED;
+        return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
     };
 }
 
 unsafe fn little2_toUtf16(
     _enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_ushort,
+    toP: *mut c_ushort,
     mut toLim: *const c_ushort,
-) -> XML_Convert_Result {
+) -> Utf16ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
     let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
     fromLim = (*fromP).offset(((fromLim.offset_from(*fromP) as c_long >> 1) << 1) as isize);
     if fromLim.offset_from(*fromP) as c_long > (toLim.offset_from(*toP) as c_long) << 1
@@ -14236,19 +14484,23 @@ unsafe fn little2_toUtf16(
         *fromP = (*fromP).offset(2);
     }
     if *toP == toLim as *mut c_ushort && *fromP < fromLim {
-        return XML_CONVERT_OUTPUT_EXHAUSTED;
+        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
     } else {
-        return res;
+        return (res, from_cursor, to_cursor);
     };
 }
 
 unsafe fn big2_toUtf8(
     _enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_char,
+    toP: *mut c_char,
     mut toLim: *const c_char,
-) -> XML_Convert_Result {
+) -> Utf8ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_char = &raw mut to_cursor;
     let mut from: *const c_char = *fromP;
     fromLim = from.offset(((fromLim.offset_from(from) as c_long >> 1) << 1) as isize);
     while from < fromLim {
@@ -14262,7 +14514,7 @@ unsafe fn big2_toUtf8(
                 if (lo as c_int) < 0x80 {
                     if *toP == toLim as *mut c_char {
                         *fromP = from;
-                        return XML_CONVERT_OUTPUT_EXHAUSTED;
+                        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                     }
                     let fresh38 = *toP;
                     *toP = (*toP).offset(1);
@@ -14278,11 +14530,11 @@ unsafe fn big2_toUtf8(
             216 | 217 | 218 | 219 => {
                 if (toLim.offset_from(*toP) as c_long) < 4 {
                     *fromP = from;
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                 }
                 if (fromLim.offset_from(from) as c_long) < 4 {
                     *fromP = from;
-                    return XML_CONVERT_INPUT_INCOMPLETE;
+                    return (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor);
                 }
                 plane = ((hi as c_int & 0x3) << 2 | lo as c_int >> 6 & 0x3) + 1;
                 let fresh44 = *toP;
@@ -14307,7 +14559,7 @@ unsafe fn big2_toUtf8(
             _ => {
                 if (toLim.offset_from(*toP) as c_long) < 3 {
                     *fromP = from;
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                 }
                 let fresh41 = *toP;
                 *toP = (*toP).offset(1);
@@ -14325,7 +14577,7 @@ unsafe fn big2_toUtf8(
             4084411463441859965 => {
                 if (toLim.offset_from(*toP) as c_long) < 2 {
                     *fromP = from;
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
+                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                 }
                 let fresh39 = *toP;
                 *toP = (*toP).offset(1);
@@ -14340,19 +14592,23 @@ unsafe fn big2_toUtf8(
     }
     *fromP = from;
     if from < fromLim {
-        return XML_CONVERT_INPUT_INCOMPLETE;
+        return (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor);
     } else {
-        return XML_CONVERT_COMPLETED;
+        return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
     };
 }
 
 unsafe fn big2_toUtf16(
     _enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_ushort,
+    toP: *mut c_ushort,
     mut toLim: *const c_ushort,
-) -> XML_Convert_Result {
+) -> Utf16ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
     let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
     fromLim = (*fromP).offset(((fromLim.offset_from(*fromP) as c_long >> 1) << 1) as isize);
     if fromLim.offset_from(*fromP) as c_long > (toLim.offset_from(*toP) as c_long) << 1
@@ -14369,25 +14625,23 @@ unsafe fn big2_toUtf16(
         *fromP = (*fromP).offset(2);
     }
     if *toP == toLim as *mut c_ushort && *fromP < fromLim {
-        return XML_CONVERT_OUTPUT_EXHAUSTED;
+        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
     } else {
-        return res;
+        return (res, from_cursor, to_cursor);
     };
 }
 
 static little2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            little2_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_ignoreSectionTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            little2_prologTok as SCANNER,
+            little2_contentTok as SCANNER,
+            little2_cdataSectionTok as SCANNER,
+            little2_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            little2_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            little2_attributeValueTok as SCANNER,
+            little2_entityValueTok as SCANNER,
         ],
         functions: &LITTLE2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
@@ -14658,16 +14912,14 @@ static little2_encoding_ns: normal_encoding = normal_encoding {
 static little2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            little2_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_ignoreSectionTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            little2_prologTok as SCANNER,
+            little2_contentTok as SCANNER,
+            little2_cdataSectionTok as SCANNER,
+            little2_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            little2_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            little2_attributeValueTok as SCANNER,
+            little2_entityValueTok as SCANNER,
         ],
         functions: &LITTLE2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
@@ -14938,16 +15190,14 @@ static little2_encoding: normal_encoding = normal_encoding {
 static internal_little2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            little2_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_ignoreSectionTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            little2_prologTok as SCANNER,
+            little2_contentTok as SCANNER,
+            little2_cdataSectionTok as SCANNER,
+            little2_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            little2_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            little2_attributeValueTok as SCANNER,
+            little2_entityValueTok as SCANNER,
         ],
         functions: &LITTLE2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
@@ -15218,16 +15468,14 @@ static internal_little2_encoding_ns: normal_encoding = normal_encoding {
 static internal_little2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            little2_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_ignoreSectionTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            little2_prologTok as SCANNER,
+            little2_contentTok as SCANNER,
+            little2_cdataSectionTok as SCANNER,
+            little2_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            little2_attributeValueTok
-                as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            little2_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            little2_attributeValueTok as SCANNER,
+            little2_entityValueTok as SCANNER,
         ],
         functions: &LITTLE2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
@@ -15498,14 +15746,14 @@ static internal_little2_encoding: normal_encoding = normal_encoding {
 static big2_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            big2_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            big2_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            big2_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            big2_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            big2_prologTok as SCANNER,
+            big2_contentTok as SCANNER,
+            big2_cdataSectionTok as SCANNER,
+            big2_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            big2_attributeValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            big2_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            big2_attributeValueTok as SCANNER,
+            big2_entityValueTok as SCANNER,
         ],
         functions: &BIG2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
@@ -15776,14 +16024,14 @@ static big2_encoding_ns: normal_encoding = normal_encoding {
 static big2_encoding: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
-            big2_prologTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            big2_contentTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            big2_cdataSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            big2_ignoreSectionTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            big2_prologTok as SCANNER,
+            big2_contentTok as SCANNER,
+            big2_cdataSectionTok as SCANNER,
+            big2_ignoreSectionTok as SCANNER,
         ],
         literalScanners: [
-            big2_attributeValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
-            big2_entityValueTok as unsafe fn(&ENCODING, &[c_char], *mut *const c_char) -> c_int,
+            big2_attributeValueTok as SCANNER,
+            big2_entityValueTok as SCANNER,
         ],
         functions: &BIG2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
@@ -16084,7 +16332,7 @@ unsafe fn toAscii(enc: &ENCODING, input: &[c_char]) -> c_int {
     let end = ptr.add(input.len());
     let mut buf: [c_char; 1] = [0; 1];
     let mut p: *mut c_char = &raw mut buf as *mut c_char;
-    (*enc).utf8Convert(enc, &raw mut ptr, end, &raw mut p, p.offset(1));
+    (_, ptr, p) = (*enc).utf8Convert(enc, ptr, end, p, p.offset(1));
     if p == &raw mut buf as *mut c_char {
         return -(1i32);
     } else {
@@ -16100,25 +16348,19 @@ unsafe fn isSpace(mut c: c_int) -> c_int {
     return 0;
 }
 
-unsafe fn parsePseudoAttribute(
-    enc: &ENCODING,
-    input: &[c_char],
-    mut namePtr: *mut *const c_char,
-    mut nameEndPtr: *mut *const c_char,
-    mut valPtr: *mut *const c_char,
-    mut nextTokPtr: *mut *const c_char,
-) -> c_int {
+unsafe fn parsePseudoAttribute(enc: &ENCODING, input: &[c_char]) -> ParsePseudoAttributeResult {
     let mut ptr = input.as_ptr();
     let mut end = ptr.add(input.len());
     let mut c: c_int = 0;
     let mut open: c_char = 0;
+    let mut name: *const c_char = null::<c_char>();
+    let mut nameEnd: *const c_char = null::<c_char>();
+    let mut val: *const c_char = null::<c_char>();
     if ptr == end {
-        *namePtr = null::<c_char>();
-        return 1i32;
+        return (1, null::<c_char>(), null::<c_char>(), null::<c_char>(), ptr);
     }
     if isSpace(toAscii(enc, c_char_slice_from_ptr_end(ptr, end))) == 0 {
-        *nextTokPtr = ptr;
-        return 0i32;
+        return (0, name, nameEnd, val, ptr);
     }
     loop {
         ptr = ptr.offset((*enc).minBytesPerChar as isize);
@@ -16127,21 +16369,19 @@ unsafe fn parsePseudoAttribute(
         }
     }
     if ptr == end {
-        *namePtr = null::<c_char>();
-        return 1i32;
+        return (1, null::<c_char>(), null::<c_char>(), null::<c_char>(), ptr);
     }
-    *namePtr = ptr;
+    name = ptr;
     loop {
         c = toAscii(enc, c_char_slice_from_ptr_end(ptr, end));
         if c == -(1) {
-            *nextTokPtr = ptr;
-            return 0i32;
+            return (0, name, nameEnd, val, ptr);
         }
         if c == ASCII_EQUALS {
-            *nameEndPtr = ptr;
+            nameEnd = ptr;
             break;
         } else if isSpace(c) != 0 {
-            *nameEndPtr = ptr;
+            nameEnd = ptr;
             loop {
                 ptr = ptr.offset((*enc).minBytesPerChar as isize);
                 c = toAscii(enc, c_char_slice_from_ptr_end(ptr, end));
@@ -16150,17 +16390,15 @@ unsafe fn parsePseudoAttribute(
                 }
             }
             if c != ASCII_EQUALS {
-                *nextTokPtr = ptr;
-                return 0i32;
+                return (0, name, nameEnd, val, ptr);
             }
             break;
         } else {
             ptr = ptr.offset((*enc).minBytesPerChar as isize);
         }
     }
-    if ptr == *namePtr {
-        *nextTokPtr = ptr;
-        return 0i32;
+    if ptr == name {
+        return (0, name, nameEnd, val, ptr);
     }
     ptr = ptr.offset((*enc).minBytesPerChar as isize);
     c = toAscii(enc, c_char_slice_from_ptr_end(ptr, end));
@@ -16169,12 +16407,11 @@ unsafe fn parsePseudoAttribute(
         c = toAscii(enc, c_char_slice_from_ptr_end(ptr, end));
     }
     if c != ASCII_QUOT && c != ASCII_APOS {
-        *nextTokPtr = ptr;
-        return 0i32;
+        return (0, name, nameEnd, val, ptr);
     }
     open = c as c_char;
     ptr = ptr.offset((*enc).minBytesPerChar as isize);
-    *valPtr = ptr;
+    val = ptr;
     loop {
         c = toAscii(enc, c_char_slice_from_ptr_end(ptr, end));
         if c == open as c_int {
@@ -16187,13 +16424,17 @@ unsafe fn parsePseudoAttribute(
             && c != ASCII_MINUS
             && c != ASCII_UNDERSCORE
         {
-            *nextTokPtr = ptr;
-            return 0i32;
+            return (0, name, nameEnd, val, ptr);
         }
         ptr = ptr.offset((*enc).minBytesPerChar as isize);
     }
-    *nextTokPtr = ptr.offset((*enc).minBytesPerChar as isize);
-    return 1;
+    return (
+        1,
+        name,
+        nameEnd,
+        val,
+        ptr.offset((*enc).minBytesPerChar as isize),
+    );
 }
 
 static KW_version: [c_char; 8] = [
@@ -16247,32 +16488,33 @@ unsafe fn doParseXmlDecl(
     mut isGeneralTextEntity: c_int,
     enc: &ENCODING,
     input: &[c_char],
-    mut badPtr: *mut *const c_char,
-    mut versionPtr: *mut *const c_char,
-    mut versionEndPtr: *mut *const c_char,
-    mut encodingName: *mut *const c_char,
-    mut encoding: *mut *const ENCODING,
-    mut standalone: *mut c_int,
-) -> c_int {
+) -> ParseXmlDeclResult {
     let mut ptr = input.as_ptr();
     let mut end = ptr.add(input.len());
     let mut val: *const c_char = null::<c_char>();
     let mut name: *const c_char = null::<c_char>();
     let mut nameEnd: *const c_char = null::<c_char>();
+    let mut badPtr: *const c_char = null::<c_char>();
+    let mut versionPtr: *const c_char = null::<c_char>();
+    let mut versionEndPtr: *const c_char = null::<c_char>();
+    let mut encodingName: *const c_char = null::<c_char>();
+    let mut encoding: *const ENCODING = null::<ENCODING>();
+    let mut standalone: c_int = -(1);
+    let mut ok: c_int = 0;
     ptr = ptr.offset((5i32 * (*enc).minBytesPerChar) as isize);
     end = end.offset(-((2i32 * (*enc).minBytesPerChar) as isize));
-    if parsePseudoAttribute(
-        enc,
-        c_char_slice_from_ptr_end(ptr, end),
-        &raw mut name,
-        &raw mut nameEnd,
-        &raw mut val,
-        &raw mut ptr,
-    ) == 0
-        || name.is_null()
-    {
-        *badPtr = ptr;
-        return 0i32;
+    (ok, name, nameEnd, val, ptr) = parsePseudoAttribute(enc, c_char_slice_from_ptr_end(ptr, end));
+    if ok == 0 || name.is_null() {
+        badPtr = ptr;
+        return (
+            0,
+            badPtr,
+            versionPtr,
+            versionEndPtr,
+            encodingName,
+            encoding,
+            standalone,
+        );
     }
     if (*enc).nameMatchesAscii(
         enc,
@@ -16281,34 +16523,56 @@ unsafe fn doParseXmlDecl(
     ) == 0
     {
         if isGeneralTextEntity == 0 {
-            *badPtr = name;
-            return 0i32;
+            badPtr = name;
+            return (
+                0,
+                badPtr,
+                versionPtr,
+                versionEndPtr,
+                encodingName,
+                encoding,
+                standalone,
+            );
         }
     } else {
-        if !versionPtr.is_null() {
-            *versionPtr = val;
-        }
-        if !versionEndPtr.is_null() {
-            *versionEndPtr = ptr;
-        }
-        if parsePseudoAttribute(
-            enc,
-            c_char_slice_from_ptr_end(ptr, end),
-            &raw mut name,
-            &raw mut nameEnd,
-            &raw mut val,
-            &raw mut ptr,
-        ) == 0
-        {
-            *badPtr = ptr;
-            return 0i32;
+        versionPtr = val;
+        versionEndPtr = ptr;
+        (ok, name, nameEnd, val, ptr) =
+            parsePseudoAttribute(enc, c_char_slice_from_ptr_end(ptr, end));
+        if ok == 0 {
+            badPtr = ptr;
+            return (
+                0,
+                badPtr,
+                versionPtr,
+                versionEndPtr,
+                encodingName,
+                encoding,
+                standalone,
+            );
         }
         if name.is_null() {
             if isGeneralTextEntity != 0 {
-                *badPtr = ptr;
-                return 0i32;
+                badPtr = ptr;
+                return (
+                    0,
+                    badPtr,
+                    versionPtr,
+                    versionEndPtr,
+                    encodingName,
+                    encoding,
+                    standalone,
+                );
             }
-            return 1i32;
+            return (
+                1,
+                badPtr,
+                versionPtr,
+                versionEndPtr,
+                encodingName,
+                encoding,
+                standalone,
+            );
         }
     }
     if (*enc).nameMatchesAscii(
@@ -16319,32 +16583,46 @@ unsafe fn doParseXmlDecl(
     {
         let mut c: c_int = toAscii(enc, c_char_slice_from_ptr_end(val, end));
         if !(ASCII_a_1 <= c && c <= ASCII_z) && !(ASCII_A <= c && c <= ASCII_Z) {
-            *badPtr = val;
-            return 0i32;
-        }
-        if !encodingName.is_null() {
-            *encodingName = val;
-        }
-        if !encoding.is_null() {
-            *encoding = encodingFinder.expect("non-null function pointer")(
-                enc,
-                c_char_slice_from_ptr_end(val, ptr.offset(-((*enc).minBytesPerChar as isize))),
+            badPtr = val;
+            return (
+                0,
+                badPtr,
+                versionPtr,
+                versionEndPtr,
+                encodingName,
+                encoding,
+                standalone,
             );
         }
-        if parsePseudoAttribute(
+        encodingName = val;
+        encoding = encodingFinder.expect("non-null function pointer")(
             enc,
-            c_char_slice_from_ptr_end(ptr, end),
-            &raw mut name,
-            &raw mut nameEnd,
-            &raw mut val,
-            &raw mut ptr,
-        ) == 0
-        {
-            *badPtr = ptr;
-            return 0i32;
+            c_char_slice_from_ptr_end(val, ptr.offset(-((*enc).minBytesPerChar as isize))),
+        );
+        (ok, name, nameEnd, val, ptr) =
+            parsePseudoAttribute(enc, c_char_slice_from_ptr_end(ptr, end));
+        if ok == 0 {
+            badPtr = ptr;
+            return (
+                0,
+                badPtr,
+                versionPtr,
+                versionEndPtr,
+                encodingName,
+                encoding,
+                standalone,
+            );
         }
         if name.is_null() {
-            return 1i32;
+            return (
+                1,
+                badPtr,
+                versionPtr,
+                versionEndPtr,
+                encodingName,
+                encoding,
+                standalone,
+            );
         }
     }
     if (*enc).nameMatchesAscii(
@@ -16354,8 +16632,16 @@ unsafe fn doParseXmlDecl(
     ) == 0
         || isGeneralTextEntity != 0
     {
-        *badPtr = name;
-        return 0i32;
+        badPtr = name;
+        return (
+            0,
+            badPtr,
+            versionPtr,
+            versionEndPtr,
+            encodingName,
+            encoding,
+            standalone,
+        );
     }
     if (*enc).nameMatchesAscii(
         enc,
@@ -16363,30 +16649,50 @@ unsafe fn doParseXmlDecl(
         &raw const KW_yes as *const c_char,
     ) != 0
     {
-        if !standalone.is_null() {
-            *standalone = 1i32;
-        }
+        standalone = 1i32;
     } else if (*enc).nameMatchesAscii(
         enc,
         c_char_slice_from_ptr_end(val, ptr.offset(-((*enc).minBytesPerChar as isize))),
         &raw const KW_no as *const c_char,
     ) != 0
     {
-        if !standalone.is_null() {
-            *standalone = 0i32;
-        }
+        standalone = 0i32;
     } else {
-        *badPtr = val;
-        return 0i32;
+        badPtr = val;
+        return (
+            0,
+            badPtr,
+            versionPtr,
+            versionEndPtr,
+            encodingName,
+            encoding,
+            standalone,
+        );
     }
     while isSpace(toAscii(enc, c_char_slice_from_ptr_end(ptr, end))) != 0 {
         ptr = ptr.offset((*enc).minBytesPerChar as isize);
     }
     if ptr != end {
-        *badPtr = ptr;
-        return 0i32;
+        badPtr = ptr;
+        return (
+            0,
+            badPtr,
+            versionPtr,
+            versionEndPtr,
+            encodingName,
+            encoding,
+            standalone,
+        );
     }
-    return 1;
+    return (
+        1,
+        badPtr,
+        versionPtr,
+        versionEndPtr,
+        encodingName,
+        encoding,
+        standalone,
+    );
 }
 
 unsafe fn checkCharRefNumber(mut result: c_int) -> c_int {
@@ -16486,18 +16792,22 @@ unsafe fn unknown_isInvalid(enc: &ENCODING, mut p: *const c_char) -> c_int {
 
 unsafe fn unknown_toUtf8(
     enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_char,
+    toP: *mut c_char,
     mut toLim: *const c_char,
-) -> XML_Convert_Result {
+) -> Utf8ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_char = &raw mut to_cursor;
     let uenc: &unknown_encoding = as_unknown_encoding(enc);
     let mut buf: [c_char; 4] = [0; 4];
     loop {
         let mut utf8: *const c_char = null::<c_char>();
         let mut n: c_int = 0;
         if *fromP == fromLim {
-            return XML_CONVERT_COMPLETED;
+            return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
         }
         utf8 = &raw const *(&raw const uenc.utf8 as *const [c_char; 4])
             .offset(**fromP as c_uchar as isize) as *const c_char;
@@ -16509,7 +16819,7 @@ unsafe fn unknown_toUtf8(
                 uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP);
             n = XmlUtf8Encode(c, &raw mut buf as *mut c_char);
             if n as c_long > toLim.offset_from(*toP) as c_long {
-                return XML_CONVERT_OUTPUT_EXHAUSTED;
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
             }
             utf8 = &raw mut buf as *mut c_char;
             *fromP = (*fromP).offset(
@@ -16518,7 +16828,7 @@ unsafe fn unknown_toUtf8(
             );
         } else {
             if n as c_long > toLim.offset_from(*toP) as c_long {
-                return XML_CONVERT_OUTPUT_EXHAUSTED;
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
             }
             *fromP = (*fromP).offset(1);
         }
@@ -16529,11 +16839,15 @@ unsafe fn unknown_toUtf8(
 
 unsafe fn unknown_toUtf16(
     enc: &ENCODING,
-    mut fromP: *mut *const c_char,
+    fromP: *const c_char,
     mut fromLim: *const c_char,
-    mut toP: *mut *mut c_ushort,
+    toP: *mut c_ushort,
     mut toLim: *const c_ushort,
-) -> XML_Convert_Result {
+) -> Utf16ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let mut fromP: *mut *const c_char = &raw mut from_cursor;
+    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
     let uenc: &unknown_encoding = as_unknown_encoding(enc);
     while *fromP < fromLim && *toP < toLim as *mut c_ushort {
         let mut c: c_ushort = uenc.utf16[**fromP as c_uchar as usize];
@@ -16551,9 +16865,9 @@ unsafe fn unknown_toUtf16(
         *fresh60 = c;
     }
     if *toP == toLim as *mut c_ushort && *fromP < fromLim {
-        return XML_CONVERT_OUTPUT_EXHAUSTED;
+        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
     } else {
-        return XML_CONVERT_COMPLETED;
+        return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
     };
 }
 pub(crate) unsafe fn XmlInitUnknownEncoding(
@@ -16748,129 +17062,151 @@ unsafe fn initScan(
     enc: &INIT_ENCODING,
     mut state: c_int,
     input: &[c_char],
-    mut nextTokPtr: *mut *const c_char,
-) -> c_int {
-    let mut ptr = input.as_ptr();
-    let mut end = ptr.add(input.len());
-    let mut encPtr: *mut *const ENCODING = null_mut::<*const ENCODING>();
-    if ptr >= end {
-        return XML_TOK_NONE_1;
-    }
-    encPtr = enc.encPtr;
-    if ptr.offset(1) == end {
-        match enc.initEnc.isUtf16 as c_int {
-            3 | 5 | 4 => return XML_TOK_PARTIAL_1,
-            _ => {}
+) -> ScannerResult {
+    let mut next_tok: *const c_char = input.as_ptr();
+    let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+    let tok = (|| -> c_int {
+        let mut ptr = input.as_ptr();
+        let mut end = ptr.add(input.len());
+        let mut encPtr: *mut *const ENCODING = null_mut::<*const ENCODING>();
+        if ptr >= end {
+            return XML_TOK_NONE_1;
         }
-        let mut current_block_5: u64;
-        match *ptr as c_uchar as c_int {
-            254 | 255 | 239 => {
-                if enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE {
-                    current_block_5 = 13183875560443969876;
-                } else {
+        encPtr = enc.encPtr;
+        if ptr.offset(1) == end {
+            match enc.initEnc.isUtf16 as c_int {
+                3 | 5 | 4 => return XML_TOK_PARTIAL_1,
+                _ => {}
+            }
+            let mut current_block_5: u64;
+            match *ptr as c_uchar as c_int {
+                254 | 255 | 239 => {
+                    if enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE
+                    {
+                        current_block_5 = 13183875560443969876;
+                    } else {
+                        current_block_5 = 6556540211831925522;
+                    }
+                }
+                0 | 60 => {
                     current_block_5 = 6556540211831925522;
                 }
-            }
-            0 | 60 => {
-                current_block_5 = 6556540211831925522;
-            }
-            _ => {
-                current_block_5 = 13183875560443969876;
-            }
-        }
-        match current_block_5 {
-            13183875560443969876 => {}
-            _ => return XML_TOK_PARTIAL_1,
-        }
-    } else {
-        let mut current_block_26: u64;
-        match (*ptr.offset(0) as c_uchar as c_int) << 8 | *ptr.offset(1) as c_uchar as c_int {
-            65279 => {
-                if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
-                    *nextTokPtr = ptr.offset(2);
-                    *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
-                    return XML_TOK_BOM_1;
+                _ => {
+                    current_block_5 = 13183875560443969876;
                 }
             }
-            15360 => {
-                if !((enc.initEnc.isUtf16 as c_int == UTF_16BE_ENC
-                    || enc.initEnc.isUtf16 as c_int == UTF_16_ENC)
-                    && state == XML_CONTENT_STATE)
-                {
-                    *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                    return (**encPtr).scanners[state as usize](
-                        &**encPtr,
-                        c_char_slice_from_ptr_end(ptr, end),
-                        nextTokPtr,
-                    );
-                }
+            match current_block_5 {
+                13183875560443969876 => {}
+                _ => return XML_TOK_PARTIAL_1,
             }
-            65534 => {
-                if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
-                    *nextTokPtr = ptr.offset(2);
-                    *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                    return XML_TOK_BOM_1;
-                }
-            }
-            61371 => {
-                if state == XML_CONTENT_STATE {
-                    let mut e: c_int = enc.initEnc.isUtf16 as c_int;
-                    if e == ISO_8859_1_ENC
-                        || e == UTF_16BE_ENC
-                        || e == UTF_16LE_ENC
-                        || e == UTF_16_ENC
+        } else {
+            let mut current_block_26: u64;
+            match (*ptr.offset(0) as c_uchar as c_int) << 8 | *ptr.offset(1) as c_uchar as c_int {
+                65279 => {
+                    if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC
+                        && state == XML_CONTENT_STATE)
                     {
-                        current_block_26 = 2604890879466389055;
+                        *nextTokPtr = ptr.offset(2);
+                        *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
+                        return XML_TOK_BOM_1;
+                    }
+                }
+                15360 => {
+                    if !((enc.initEnc.isUtf16 as c_int == UTF_16BE_ENC
+                        || enc.initEnc.isUtf16 as c_int == UTF_16_ENC)
+                        && state == XML_CONTENT_STATE)
+                    {
+                        *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
+                        return {
+                            let (tok_value, next_tok_value) = (**encPtr).scanners[state as usize](
+                                &**encPtr,
+                                c_char_slice_from_ptr_end(ptr, end),
+                            );
+                            *nextTokPtr = next_tok_value;
+                            tok_value
+                        };
+                    }
+                }
+                65534 => {
+                    if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC
+                        && state == XML_CONTENT_STATE)
+                    {
+                        *nextTokPtr = ptr.offset(2);
+                        *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
+                        return XML_TOK_BOM_1;
+                    }
+                }
+                61371 => {
+                    if state == XML_CONTENT_STATE {
+                        let mut e: c_int = enc.initEnc.isUtf16 as c_int;
+                        if e == ISO_8859_1_ENC
+                            || e == UTF_16BE_ENC
+                            || e == UTF_16LE_ENC
+                            || e == UTF_16_ENC
+                        {
+                            current_block_26 = 2604890879466389055;
+                        } else {
+                            current_block_26 = 11307063007268554308;
+                        }
                     } else {
                         current_block_26 = 11307063007268554308;
                     }
-                } else {
-                    current_block_26 = 11307063007268554308;
-                }
-                match current_block_26 {
-                    2604890879466389055 => {}
-                    _ => {
-                        if ptr.offset(2) == end {
-                            return XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(2) as c_uchar as c_int == 0xbf {
-                            *nextTokPtr = ptr.offset(3);
-                            *encPtr = *encodingTable.offset(UTF_8_ENC as isize);
-                            return XML_TOK_BOM_1;
+                    match current_block_26 {
+                        2604890879466389055 => {}
+                        _ => {
+                            if ptr.offset(2) == end {
+                                return XML_TOK_PARTIAL_1;
+                            }
+                            if *ptr.offset(2) as c_uchar as c_int == 0xbf {
+                                *nextTokPtr = ptr.offset(3);
+                                *encPtr = *encodingTable.offset(UTF_8_ENC as isize);
+                                return XML_TOK_BOM_1;
+                            }
                         }
                     }
                 }
-            }
-            _ => {
-                if *ptr.offset(0) as c_int == '\0' as i32 {
-                    if !(state == XML_CONTENT_STATE && enc.initEnc.isUtf16 as c_int == UTF_16LE_ENC)
-                    {
-                        *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
-                        return (**encPtr).scanners[state as usize](
-                            &**encPtr,
-                            c_char_slice_from_ptr_end(ptr, end),
-                            nextTokPtr,
-                        );
-                    }
-                } else if *ptr.offset(1) as c_int == '\0' as i32 {
-                    if !(state == XML_CONTENT_STATE) {
-                        *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                        return (**encPtr).scanners[state as usize](
-                            &**encPtr,
-                            c_char_slice_from_ptr_end(ptr, end),
-                            nextTokPtr,
-                        );
+                _ => {
+                    if *ptr.offset(0) as c_int == '\0' as i32 {
+                        if !(state == XML_CONTENT_STATE
+                            && enc.initEnc.isUtf16 as c_int == UTF_16LE_ENC)
+                        {
+                            *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
+                            return {
+                                let (tok_value, next_tok_value) = (**encPtr).scanners
+                                    [state as usize](
+                                    &**encPtr,
+                                    c_char_slice_from_ptr_end(ptr, end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
+                    } else if *ptr.offset(1) as c_int == '\0' as i32 {
+                        if !(state == XML_CONTENT_STATE) {
+                            *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
+                            return {
+                                let (tok_value, next_tok_value) = (**encPtr).scanners
+                                    [state as usize](
+                                    &**encPtr,
+                                    c_char_slice_from_ptr_end(ptr, end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                        }
                     }
                 }
             }
         }
-    }
-    *encPtr = *encodingTable.offset(enc.initEnc.isUtf16 as c_int as isize);
-    return (**encPtr).scanners[state as usize](
-        &**encPtr,
-        c_char_slice_from_ptr_end(ptr, end),
-        nextTokPtr,
-    );
+        *encPtr = *encodingTable.offset(enc.initEnc.isUtf16 as c_int as isize);
+        return {
+            let (tok_value, next_tok_value) =
+                (**encPtr).scanners[state as usize](&**encPtr, c_char_slice_from_ptr_end(ptr, end));
+            *nextTokPtr = next_tok_value;
+            tok_value
+        };
+    })();
+    return (tok, next_tok);
 }
 pub(crate) unsafe fn XmlInitUnknownEncodingNS(
     mut mem: *mut c_void,
