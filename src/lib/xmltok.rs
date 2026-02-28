@@ -418,7 +418,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -495,7 +495,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -566,7 +566,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> CheckPiTargetResult {
         let mut tok: c_int = 0;
-        let mut tokPtr: *mut c_int = &raw mut tok;
+        let tokPtr = &mut tok;
         let result = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -609,7 +609,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -838,7 +838,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -871,7 +871,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_cdataSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -998,7 +998,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -1159,7 +1159,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -1194,7 +1194,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -1239,7 +1239,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -1387,7 +1387,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -1768,7 +1768,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -2137,7 +2137,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -2311,7 +2311,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -2453,7 +2453,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -2595,7 +2595,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -2665,7 +2665,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -3114,7 +3114,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -3200,7 +3200,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -3296,7 +3296,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -3385,7 +3385,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn normal_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
         let mut badPtrVal: *const c_char = null::<c_char>();
-        let mut badPtr: *mut *const c_char = &raw mut badPtrVal;
+        let badPtr = &mut badPtrVal;
         let mut ptr = input.as_ptr();
         let mut end = ptr.add(input.len());
         ptr = ptr.offset(1);
@@ -3757,7 +3757,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -3828,7 +3828,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -3913,7 +3913,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> CheckPiTargetResult {
         let mut tok: c_int = 0;
-        let mut tokPtr: *mut c_int = &raw mut tok;
+        let tokPtr = &mut tok;
         let result = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -3968,7 +3968,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -4180,7 +4180,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -4218,7 +4218,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -4348,7 +4348,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -4502,7 +4502,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -4545,7 +4545,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -4598,7 +4598,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -4736,7 +4736,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -5107,7 +5107,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -5462,7 +5462,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -5645,7 +5645,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -5777,7 +5777,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -5909,7 +5909,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -5973,7 +5973,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -6431,7 +6431,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -6524,7 +6524,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -6627,7 +6627,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -6715,7 +6715,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn little2_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
         let mut badPtrVal: *const c_char = null::<c_char>();
-        let mut badPtr: *mut *const c_char = &raw mut badPtrVal;
+        let badPtr = &mut badPtrVal;
         let mut ptr = input.as_ptr();
         let mut end = ptr.add(input.len());
         ptr = ptr.offset(2);
@@ -7156,7 +7156,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7227,7 +7227,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7313,7 +7313,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> CheckPiTargetResult {
         let mut tok: c_int = 0;
-        let mut tokPtr: *mut c_int = &raw mut tok;
+        let tokPtr = &mut tok;
         let result = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7368,7 +7368,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7578,7 +7578,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanCdataSection(_enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7613,7 +7613,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_cdataSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7743,7 +7743,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7898,7 +7898,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7941,7 +7941,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -7994,7 +7994,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -8132,7 +8132,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -8509,7 +8509,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -8866,7 +8866,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -9047,7 +9047,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -9179,7 +9179,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -9311,7 +9311,7 @@ pub mod xmltok_impl_c {
         input: &[c_char],
     ) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -9376,7 +9376,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -9833,7 +9833,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_attributeValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -9927,7 +9927,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -10028,7 +10028,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_ignoreSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
         let mut next_tok: *const c_char = input.as_ptr();
-        let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+        let nextTokPtr = &mut next_tok;
         let tok = (|| -> c_int {
             let mut ptr = input.as_ptr();
             let mut end = ptr.add(input.len());
@@ -10116,7 +10116,7 @@ pub mod xmltok_impl_c {
 
     pub(crate) unsafe fn big2_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
         let mut badPtrVal: *const c_char = null::<c_char>();
-        let mut badPtr: *mut *const c_char = &raw mut badPtrVal;
+        let badPtr = &mut badPtrVal;
         let mut ptr = input.as_ptr();
         let mut end = ptr.add(input.len());
         ptr = ptr.offset(2);
@@ -10627,22 +10627,20 @@ pub mod xmltok_ns_c {
         >(
             *b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
         );
-        let mut p: *mut c_char = &raw mut buf as *mut c_char;
+        let buf_start = buf.as_mut_ptr();
+        let mut p: *mut c_char = buf_start;
         let mut i: c_int = 0;
         (_, ptr, p) = (*enc).utf8Convert(enc, ptr, end, p, p.offset(128).offset(-(1)));
         if ptr != end {
             return null::<ENCODING>();
         }
         *p = 0;
-        if streqci(
-            &raw mut buf as *mut c_char,
-            &raw const KW_UTF_16 as *const c_char,
-        ) != 0
+        if streqci(buf.as_ptr(), &raw const KW_UTF_16 as *const c_char) != 0
             && (*enc).minBytesPerChar == 2
         {
             return enc;
         }
-        i = getEncodingIndex(&raw mut buf as *mut c_char);
+        i = getEncodingIndex(buf.as_ptr());
         if i == UNKNOWN_ENC {
             return null::<ENCODING>();
         }
@@ -10721,22 +10719,20 @@ pub mod xmltok_ns_c {
         >(
             *b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
         );
-        let mut p: *mut c_char = &raw mut buf as *mut c_char;
+        let buf_start = buf.as_mut_ptr();
+        let mut p: *mut c_char = buf_start;
         let mut i: c_int = 0;
         (_, ptr, p) = (*enc).utf8Convert(enc, ptr, end, p, p.offset(128).offset(-(1)));
         if ptr != end {
             return null::<ENCODING>();
         }
         *p = 0;
-        if streqci(
-            &raw mut buf as *mut c_char,
-            &raw const KW_UTF_16 as *const c_char,
-        ) != 0
+        if streqci(buf.as_ptr(), &raw const KW_UTF_16 as *const c_char) != 0
             && (*enc).minBytesPerChar == 2
         {
             return enc;
         }
-        i = getEncodingIndex(&raw mut buf as *mut c_char);
+        i = getEncodingIndex(buf.as_ptr());
         if i == UNKNOWN_ENC {
             return null::<ENCODING>();
         }
@@ -11396,8 +11392,8 @@ unsafe fn utf8_toUtf8(
 ) -> Utf8ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_char = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_char = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     let mut input_incomplete: bool = false_0 != 0;
     let mut output_exhausted: bool = false_0 != 0;
     let bytesAvailable: ptrdiff_t = fromLim.offset_from(*fromP);
@@ -11438,8 +11434,8 @@ unsafe fn utf8_toUtf16(
 ) -> Utf16ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_ushort = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     let mut current_block: u64;
     let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
     let mut to: *mut c_ushort = *toP;
@@ -13142,8 +13138,8 @@ unsafe fn latin1_toUtf8(
 ) -> Utf8ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_char = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_char = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     loop {
         let mut c: c_uchar = 0;
         if *fromP == fromLim {
@@ -13183,8 +13179,8 @@ unsafe fn latin1_toUtf16(
 ) -> Utf16ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_ushort = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     while *fromP < fromLim && *toP < toLim as *mut c_ushort {
         let fresh4 = *fromP;
         *fromP = (*fromP).offset(1);
@@ -13764,8 +13760,8 @@ unsafe fn ascii_toUtf8(
 ) -> Utf8ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_char = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_char = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     while *fromP < fromLim && *toP < toLim as *mut c_char {
         let fresh56 = *fromP;
         *fromP = (*fromP).offset(1);
@@ -14358,8 +14354,8 @@ unsafe fn little2_toUtf8(
 ) -> Utf8ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_char = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_char = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     let mut from: *const c_char = *fromP;
     fromLim = from.offset(((fromLim.offset_from(from) as c_long >> 1) << 1) as isize);
     while from < fromLim {
@@ -14466,8 +14462,8 @@ unsafe fn little2_toUtf16(
 ) -> Utf16ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_ushort = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
     fromLim = (*fromP).offset(((fromLim.offset_from(*fromP) as c_long >> 1) << 1) as isize);
     if fromLim.offset_from(*fromP) as c_long > (toLim.offset_from(*toP) as c_long) << 1
@@ -14499,8 +14495,8 @@ unsafe fn big2_toUtf8(
 ) -> Utf8ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_char = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_char = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     let mut from: *const c_char = *fromP;
     fromLim = from.offset(((fromLim.offset_from(from) as c_long >> 1) << 1) as isize);
     while from < fromLim {
@@ -14607,8 +14603,8 @@ unsafe fn big2_toUtf16(
 ) -> Utf16ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_ushort = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
     fromLim = (*fromP).offset(((fromLim.offset_from(*fromP) as c_long >> 1) << 1) as isize);
     if fromLim.offset_from(*fromP) as c_long > (toLim.offset_from(*toP) as c_long) << 1
@@ -16331,9 +16327,10 @@ unsafe fn toAscii(enc: &ENCODING, input: &[c_char]) -> c_int {
     let mut ptr = input.as_ptr();
     let end = ptr.add(input.len());
     let mut buf: [c_char; 1] = [0; 1];
-    let mut p: *mut c_char = &raw mut buf as *mut c_char;
+    let buf_start = buf.as_mut_ptr();
+    let mut p: *mut c_char = buf_start;
     (_, ptr, p) = (*enc).utf8Convert(enc, ptr, end, p, p.offset(1));
-    if p == &raw mut buf as *mut c_char {
+    if p == buf_start {
         return -(1i32);
     } else {
         return buf[0usize] as c_int;
@@ -16799,8 +16796,8 @@ unsafe fn unknown_toUtf8(
 ) -> Utf8ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_char = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_char = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     let uenc: &unknown_encoding = as_unknown_encoding(enc);
     let mut buf: [c_char; 4] = [0; 4];
     loop {
@@ -16846,8 +16843,8 @@ unsafe fn unknown_toUtf16(
 ) -> Utf16ConvertResult {
     let mut from_cursor: *const c_char = fromP;
     let mut to_cursor: *mut c_ushort = toP;
-    let mut fromP: *mut *const c_char = &raw mut from_cursor;
-    let mut toP: *mut *mut c_ushort = &raw mut to_cursor;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
     let uenc: &unknown_encoding = as_unknown_encoding(enc);
     while *fromP < fromLim && *toP < toLim as *mut c_ushort {
         let mut c: c_ushort = uenc.utf16[**fromP as c_uchar as usize];
@@ -17064,7 +17061,7 @@ unsafe fn initScan(
     input: &[c_char],
 ) -> ScannerResult {
     let mut next_tok: *const c_char = input.as_ptr();
-    let mut nextTokPtr: *mut *const c_char = &raw mut next_tok;
+    let nextTokPtr = &mut next_tok;
     let tok = (|| -> c_int {
         let mut ptr = input.as_ptr();
         let mut end = ptr.add(input.len());
