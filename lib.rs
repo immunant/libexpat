@@ -536,12 +536,11 @@ pub mod expat_h {
         pub children: *mut crate::expat_h::XML_Content,
     }
 
-    pub type XML_ElementDeclHandler = Option<
-        unsafe extern "C" fn(*mut c_void, *const XML_Char, *mut crate::expat_h::XML_Content) -> (),
-    >;
+    pub type XML_ElementDeclHandler =
+        Option<extern "C" fn(*mut c_void, *const XML_Char, *mut crate::expat_h::XML_Content) -> ()>;
 
     pub type XML_AttlistDeclHandler = Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *mut c_void,
             *const XML_Char,
             *const XML_Char,
@@ -552,52 +551,44 @@ pub mod expat_h {
     >;
 
     pub type XML_XmlDeclHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char, c_int) -> ()>;
+        Option<extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char, c_int) -> ()>;
 
     #[derive(Copy, Clone)]
     #[repr(C)]
 
     pub struct XML_Memory_Handling_Suite {
-        pub malloc_fcn: Option<unsafe extern "C" fn(size_t) -> *mut c_void>,
-        pub realloc_fcn: Option<unsafe extern "C" fn(*mut c_void, size_t) -> *mut c_void>,
-        pub free_fcn: Option<unsafe extern "C" fn(*mut c_void) -> ()>,
+        pub malloc_fcn: Option<extern "C" fn(size_t) -> *mut c_void>,
+        pub realloc_fcn: Option<extern "C" fn(*mut c_void, size_t) -> *mut c_void>,
+        pub free_fcn: Option<extern "C" fn(*mut c_void) -> ()>,
     }
 
     pub type XML_StartElementHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, *mut *const XML_Char) -> ()>;
+        Option<extern "C" fn(*mut c_void, *const XML_Char, *mut *const XML_Char) -> ()>;
 
-    pub type XML_EndElementHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
+    pub type XML_EndElementHandler = Option<extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
 
     pub type XML_CharacterDataHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, c_int) -> ()>;
+        Option<extern "C" fn(*mut c_void, *const XML_Char, c_int) -> ()>;
 
     pub type XML_ProcessingInstructionHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char) -> ()>;
+        Option<extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char) -> ()>;
 
-    pub type XML_CommentHandler = Option<unsafe extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
+    pub type XML_CommentHandler = Option<extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
 
-    pub type XML_StartCdataSectionHandler = Option<unsafe extern "C" fn(*mut c_void) -> ()>;
+    pub type XML_StartCdataSectionHandler = Option<extern "C" fn(*mut c_void) -> ()>;
 
-    pub type XML_EndCdataSectionHandler = Option<unsafe extern "C" fn(*mut c_void) -> ()>;
+    pub type XML_EndCdataSectionHandler = Option<extern "C" fn(*mut c_void) -> ()>;
 
-    pub type XML_DefaultHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, c_int) -> ()>;
+    pub type XML_DefaultHandler = Option<extern "C" fn(*mut c_void, *const XML_Char, c_int) -> ()>;
 
     pub type XML_StartDoctypeDeclHandler = Option<
-        unsafe extern "C" fn(
-            *mut c_void,
-            *const XML_Char,
-            *const XML_Char,
-            *const XML_Char,
-            c_int,
-        ) -> (),
+        extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char, *const XML_Char, c_int) -> (),
     >;
 
-    pub type XML_EndDoctypeDeclHandler = Option<unsafe extern "C" fn(*mut c_void) -> ()>;
+    pub type XML_EndDoctypeDeclHandler = Option<extern "C" fn(*mut c_void) -> ()>;
 
     pub type XML_EntityDeclHandler = Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *mut c_void,
             *const XML_Char,
             c_int,
@@ -611,7 +602,7 @@ pub mod expat_h {
     >;
 
     pub type XML_UnparsedEntityDeclHandler = Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *mut c_void,
             *const XML_Char,
             *const XML_Char,
@@ -622,7 +613,7 @@ pub mod expat_h {
     >;
 
     pub type XML_NotationDeclHandler = Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *mut c_void,
             *const XML_Char,
             *const XML_Char,
@@ -632,15 +623,15 @@ pub mod expat_h {
     >;
 
     pub type XML_StartNamespaceDeclHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char) -> ()>;
+        Option<extern "C" fn(*mut c_void, *const XML_Char, *const XML_Char) -> ()>;
 
     pub type XML_EndNamespaceDeclHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
+        Option<extern "C" fn(*mut c_void, *const XML_Char) -> ()>;
 
-    pub type XML_NotStandaloneHandler = Option<unsafe extern "C" fn(*mut c_void) -> c_int>;
+    pub type XML_NotStandaloneHandler = Option<extern "C" fn(*mut c_void) -> c_int>;
 
     pub type XML_ExternalEntityRefHandler = Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             crate::expat_h::XML_Parser,
             *const XML_Char,
             *const XML_Char,
@@ -650,7 +641,7 @@ pub mod expat_h {
     >;
 
     pub type XML_SkippedEntityHandler =
-        Option<unsafe extern "C" fn(*mut c_void, *const XML_Char, c_int) -> ()>;
+        Option<extern "C" fn(*mut c_void, *const XML_Char, c_int) -> ()>;
 
     #[derive(Copy, Clone)]
     #[repr(C)]
@@ -658,16 +649,12 @@ pub mod expat_h {
     pub struct XML_Encoding {
         pub map: [c_int; 256],
         pub data: *mut c_void,
-        pub convert: Option<unsafe extern "C" fn(*mut c_void, *const c_char) -> c_int>,
-        pub release: Option<unsafe extern "C" fn(*mut c_void) -> ()>,
+        pub convert: Option<extern "C" fn(*mut c_void, *const c_char) -> c_int>,
+        pub release: Option<extern "C" fn(*mut c_void) -> ()>,
     }
 
     pub type XML_UnknownEncodingHandler = Option<
-        unsafe extern "C" fn(
-            *mut c_void,
-            *const XML_Char,
-            *mut crate::expat_h::XML_Encoding,
-        ) -> c_int,
+        extern "C" fn(*mut c_void, *const XML_Char, *mut crate::expat_h::XML_Encoding) -> c_int,
     >;
 
     pub type XML_Parsing = c_uint;
