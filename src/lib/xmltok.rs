@@ -436,11 +436,7 @@ pub mod xmltok_impl_c {
                         if (end.offset_from(ptr) as c_long) < 2 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc)
-                            .isInvalid2
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
-                        {
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                             *nextTokPtr = ptr;
                             return XML_TOK_INVALID_1;
                         }
@@ -450,11 +446,7 @@ pub mod xmltok_impl_c {
                         if (end.offset_from(ptr) as c_long) < 3 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc)
-                            .isInvalid3
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
-                        {
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                             *nextTokPtr = ptr;
                             return XML_TOK_INVALID_1;
                         }
@@ -464,11 +456,7 @@ pub mod xmltok_impl_c {
                         if (end.offset_from(ptr) as c_long) < 4 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc)
-                            .isInvalid4
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
-                        {
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                             *nextTokPtr = ptr;
                             return XML_TOK_INVALID_1;
                         }
@@ -629,14 +617,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt2
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -648,14 +630,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt3
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -667,14 +643,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt4
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -707,14 +677,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -726,14 +690,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -745,14 +703,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -772,12 +724,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid2
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
+                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
                                 }
@@ -787,12 +734,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid3
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
+                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
                                 }
@@ -802,12 +744,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid4
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
+                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
                                 }
@@ -947,11 +884,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
@@ -961,11 +894,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
@@ -975,11 +904,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
@@ -997,10 +922,7 @@ pub mod xmltok_impl_c {
             match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
                 BT_LEAD2 => {
                     if (end.offset_from(ptr) as c_long) < 2
-                        || as_normal_encoding(enc)
-                            .isInvalid2
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
+                        || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
@@ -1009,10 +931,7 @@ pub mod xmltok_impl_c {
                 }
                 BT_LEAD3 => {
                     if (end.offset_from(ptr) as c_long) < 3
-                        || as_normal_encoding(enc)
-                            .isInvalid3
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
+                        || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
@@ -1021,10 +940,7 @@ pub mod xmltok_impl_c {
                 }
                 BT_LEAD4 => {
                     if (end.offset_from(ptr) as c_long) < 4
-                        || as_normal_encoding(enc)
-                            .isInvalid4
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
+                        || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
@@ -1066,14 +982,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt2
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -1085,14 +995,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt3
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -1104,14 +1008,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt4
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -1144,14 +1042,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1163,14 +1055,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1182,14 +1068,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1329,14 +1209,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt2
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -1348,14 +1222,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt3
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -1367,14 +1235,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt4
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -1410,14 +1272,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1429,14 +1285,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1448,14 +1298,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1503,14 +1347,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1522,14 +1360,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1541,14 +1373,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -1579,16 +1405,8 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if as_normal_encoding(enc)
-                                .isInvalid2
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || as_normal_encoding(enc)
-                                    .isNmstrt2
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
+                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                             {
                                 *nextTokPtr = ptr;
                                 return XML_TOK_INVALID_1;
@@ -1600,16 +1418,8 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if as_normal_encoding(enc)
-                                .isInvalid3
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || as_normal_encoding(enc)
-                                    .isNmstrt3
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
+                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                             {
                                 *nextTokPtr = ptr;
                                 return XML_TOK_INVALID_1;
@@ -1621,16 +1431,8 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if as_normal_encoding(enc)
-                                .isInvalid4
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || as_normal_encoding(enc)
-                                    .isNmstrt4
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
+                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                             {
                                 *nextTokPtr = ptr;
                                 return XML_TOK_INVALID_1;
@@ -1716,12 +1518,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid2
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
+                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
                                 }
@@ -1731,12 +1528,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid3
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
+                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
                                 }
@@ -1746,12 +1538,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid4
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
+                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
                                 }
@@ -1806,16 +1593,8 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 2 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if as_normal_encoding(enc)
-                                            .isInvalid2
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) != 0
-                                            || as_normal_encoding(enc)
-                                                .isNmstrt2
-                                                .expect("non-null function pointer")(
-                                                enc, ptr
-                                            ) == 0
+                                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                                         {
                                             *nextTokPtr = ptr;
                                             return XML_TOK_INVALID_1;
@@ -1828,16 +1607,8 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 3 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if as_normal_encoding(enc)
-                                            .isInvalid3
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) != 0
-                                            || as_normal_encoding(enc)
-                                                .isNmstrt3
-                                                .expect("non-null function pointer")(
-                                                enc, ptr
-                                            ) == 0
+                                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                                         {
                                             *nextTokPtr = ptr;
                                             return XML_TOK_INVALID_1;
@@ -1850,16 +1621,8 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 4 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if as_normal_encoding(enc)
-                                            .isInvalid4
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) != 0
-                                            || as_normal_encoding(enc)
-                                                .isNmstrt4
-                                                .expect("non-null function pointer")(
-                                                enc, ptr
-                                            ) == 0
+                                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                                         {
                                             *nextTokPtr = ptr;
                                             return XML_TOK_INVALID_1;
@@ -1958,14 +1721,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt2
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -1977,14 +1734,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt3
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -1996,14 +1747,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt4
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -2060,14 +1805,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2079,14 +1818,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2098,14 +1831,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2136,16 +1863,8 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if as_normal_encoding(enc)
-                                .isInvalid2
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || as_normal_encoding(enc)
-                                    .isNmstrt2
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
+                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                             {
                                 *nextTokPtr = ptr;
                                 return XML_TOK_INVALID_1;
@@ -2157,16 +1876,8 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if as_normal_encoding(enc)
-                                .isInvalid3
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || as_normal_encoding(enc)
-                                    .isNmstrt3
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
+                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                             {
                                 *nextTokPtr = ptr;
                                 return XML_TOK_INVALID_1;
@@ -2178,16 +1889,8 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if as_normal_encoding(enc)
-                                .isInvalid4
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || as_normal_encoding(enc)
-                                    .isNmstrt4
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
+                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                             {
                                 *nextTokPtr = ptr;
                                 return XML_TOK_INVALID_1;
@@ -2227,16 +1930,8 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid2
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt2
-                                        .expect("non-null function pointer")(
-                                        enc, ptr
-                                    ) == 0
+                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                                 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
@@ -2248,16 +1943,8 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid3
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt3
-                                        .expect("non-null function pointer")(
-                                        enc, ptr
-                                    ) == 0
+                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                                 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
@@ -2269,16 +1956,8 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc)
-                                    .isInvalid4
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt4
-                                        .expect("non-null function pointer")(
-                                        enc, ptr
-                                    ) == 0
+                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                                 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
@@ -2409,11 +2088,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
@@ -2423,11 +2098,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
@@ -2437,11 +2108,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
@@ -2460,10 +2127,7 @@ pub mod xmltok_impl_c {
             match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
                 BT_LEAD2 => {
                     if (end.offset_from(ptr) as c_long) < 2
-                        || as_normal_encoding(enc)
-                            .isInvalid2
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
+                        || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
@@ -2473,10 +2137,7 @@ pub mod xmltok_impl_c {
                 }
                 BT_LEAD3 => {
                     if (end.offset_from(ptr) as c_long) < 3
-                        || as_normal_encoding(enc)
-                            .isInvalid3
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
+                        || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
@@ -2486,10 +2147,7 @@ pub mod xmltok_impl_c {
                 }
                 BT_LEAD4 => {
                     if (end.offset_from(ptr) as c_long) < 4
-                        || as_normal_encoding(enc)
-                            .isInvalid4
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
+                        || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
@@ -2559,14 +2217,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt2
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -2578,14 +2230,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt3
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -2597,14 +2243,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt4
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -2641,14 +2281,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2660,14 +2294,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2679,14 +2307,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2735,14 +2357,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt2
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -2754,14 +2370,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt3
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -2773,14 +2383,8 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || as_normal_encoding(enc)
-                        .isNmstrt4
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
                 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
@@ -2813,14 +2417,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2832,14 +2430,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2851,14 +2443,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -2899,11 +2485,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
@@ -2913,11 +2495,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
@@ -2927,11 +2505,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
@@ -3087,26 +2661,14 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if as_normal_encoding(enc)
-                    .isNmstrt2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isNmstrt2(enc, ptr) != 0 {
                     ptr = ptr.offset(2);
                     tok = XML_TOK_NAME;
-                } else if as_normal_encoding(enc)
-                    .isName2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                } else if as_normal_encoding(enc).isName2(enc, ptr) != 0 {
                     ptr = ptr.offset(2);
                     tok = XML_TOK_NMTOKEN_1;
                 } else {
@@ -3119,26 +2681,14 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if as_normal_encoding(enc)
-                    .isNmstrt3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isNmstrt3(enc, ptr) != 0 {
                     ptr = ptr.offset(3);
                     tok = XML_TOK_NAME;
-                } else if as_normal_encoding(enc)
-                    .isName3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                } else if as_normal_encoding(enc).isName3(enc, ptr) != 0 {
                     ptr = ptr.offset(3);
                     tok = XML_TOK_NMTOKEN_1;
                 } else {
@@ -3151,26 +2701,14 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if as_normal_encoding(enc)
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if as_normal_encoding(enc)
-                    .isNmstrt4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                if as_normal_encoding(enc).isNmstrt4(enc, ptr) != 0 {
                     ptr = ptr.offset(4);
                     tok = XML_TOK_NAME;
-                } else if as_normal_encoding(enc)
-                    .isName4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
+                } else if as_normal_encoding(enc).isName4(enc, ptr) != 0 {
                     ptr = ptr.offset(4);
                     tok = XML_TOK_NMTOKEN_1;
                 } else {
@@ -3244,14 +2782,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -3263,14 +2795,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -3282,14 +2808,8 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || as_normal_encoding(enc)
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -3324,16 +2844,8 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 2 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid2
-                                        .expect("non-null function pointer")(
-                                        enc, ptr
-                                    ) != 0
-                                        || as_normal_encoding(enc)
-                                            .isName2
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) == 0
+                                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                        || as_normal_encoding(enc).isName2(enc, ptr) == 0
                                     {
                                         *nextTokPtr = ptr;
                                         return XML_TOK_INVALID_1;
@@ -3345,16 +2857,8 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 3 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid3
-                                        .expect("non-null function pointer")(
-                                        enc, ptr
-                                    ) != 0
-                                        || as_normal_encoding(enc)
-                                            .isName3
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) == 0
+                                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                        || as_normal_encoding(enc).isName3(enc, ptr) == 0
                                     {
                                         *nextTokPtr = ptr;
                                         return XML_TOK_INVALID_1;
@@ -3366,16 +2870,8 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 4 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid4
-                                        .expect("non-null function pointer")(
-                                        enc, ptr
-                                    ) != 0
-                                        || as_normal_encoding(enc)
-                                            .isName4
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) == 0
+                                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                        || as_normal_encoding(enc).isName4(enc, ptr) == 0
                                     {
                                         *nextTokPtr = ptr;
                                         return XML_TOK_INVALID_1;
@@ -3609,11 +3105,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
@@ -3623,11 +3115,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
@@ -3637,11 +3125,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc)
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
                     }
@@ -10974,21 +10458,76 @@ pub(crate) use xmltok_impl_c::normal_predefinedEntityName;
 pub(crate) use xmltok_impl_c::normal_prologTok;
 pub(crate) use xmltok_impl_c::normal_skipS;
 pub(crate) use xmltok_impl_c::normal_updatePosition;
+trait NormalEncodingCheckFunctions {
+    unsafe fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
-
 pub struct normal_encoding {
     pub enc: ENCODING,
     pub type_0: [c_uchar; 256],
-    pub isName2: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
-    pub isName3: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
-    pub isName4: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt2: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt3: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
-    pub isNmstrt4: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
-    pub isInvalid2: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
-    pub isInvalid3: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
-    pub isInvalid4: Option<unsafe fn(&ENCODING, *const c_char) -> c_int>,
+    check_functions: &'static (dyn NormalEncodingCheckFunctions + Sync),
+}
+
+impl normal_encoding {
+    #[inline]
+    unsafe fn checkFunctions(&self) -> &(dyn NormalEncodingCheckFunctions + Sync) {
+        self.check_functions
+    }
+
+    #[inline]
+    unsafe fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isName2(enc, ptr)
+    }
+
+    #[inline]
+    unsafe fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isName3(enc, ptr)
+    }
+
+    #[inline]
+    unsafe fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isName4(enc, ptr)
+    }
+
+    #[inline]
+    unsafe fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isNmstrt2(enc, ptr)
+    }
+
+    #[inline]
+    unsafe fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isNmstrt3(enc, ptr)
+    }
+
+    #[inline]
+    unsafe fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isNmstrt4(enc, ptr)
+    }
+
+    #[inline]
+    unsafe fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isInvalid2(enc, ptr)
+    }
+
+    #[inline]
+    unsafe fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isInvalid3(enc, ptr)
+    }
+
+    #[inline]
+    unsafe fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        self.checkFunctions().isInvalid4(enc, ptr)
+    }
 }
 
 pub const UTF8_cval2: C2RustUnnamed_8 = 192;
@@ -11125,6 +10664,133 @@ unsafe fn utf8_isInvalid4(_enc: &ENCODING, mut p: *const c_char) -> c_int {
                 }) != 0) as c_int
         }) != 0) as c_int;
 }
+
+#[inline(never)]
+#[cold]
+fn missingNormalEncodingFunction() -> ! {
+    panic!("non-null function pointer");
+}
+
+struct Utf8NormalEncodingCheckFunctions;
+
+impl NormalEncodingCheckFunctions for Utf8NormalEncodingCheckFunctions {
+    unsafe fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        utf8_isName2(enc, ptr)
+    }
+
+    unsafe fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        utf8_isName3(enc, ptr)
+    }
+
+    unsafe fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        isNever(enc, ptr)
+    }
+
+    unsafe fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        utf8_isNmstrt2(enc, ptr)
+    }
+
+    unsafe fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        utf8_isNmstrt3(enc, ptr)
+    }
+
+    unsafe fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        isNever(enc, ptr)
+    }
+
+    unsafe fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        utf8_isInvalid2(enc, ptr)
+    }
+
+    unsafe fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        utf8_isInvalid3(enc, ptr)
+    }
+
+    unsafe fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        utf8_isInvalid4(enc, ptr)
+    }
+}
+
+struct UnknownNormalEncodingCheckFunctions;
+
+impl NormalEncodingCheckFunctions for UnknownNormalEncodingCheckFunctions {
+    unsafe fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isName(enc, ptr)
+    }
+
+    unsafe fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isName(enc, ptr)
+    }
+
+    unsafe fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isName(enc, ptr)
+    }
+
+    unsafe fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isNmstrt(enc, ptr)
+    }
+
+    unsafe fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isNmstrt(enc, ptr)
+    }
+
+    unsafe fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isNmstrt(enc, ptr)
+    }
+
+    unsafe fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isInvalid(enc, ptr)
+    }
+
+    unsafe fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isInvalid(enc, ptr)
+    }
+
+    unsafe fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        unknown_isInvalid(enc, ptr)
+    }
+}
+
+struct MissingNormalEncodingCheckFunctions;
+
+impl NormalEncodingCheckFunctions for MissingNormalEncodingCheckFunctions {
+    unsafe fn isName2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+
+    unsafe fn isName3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+
+    unsafe fn isName4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+
+    unsafe fn isNmstrt2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+
+    unsafe fn isNmstrt3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+
+    unsafe fn isNmstrt4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+
+    unsafe fn isInvalid2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+
+    unsafe fn isInvalid3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+
+    unsafe fn isInvalid4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+        missingNormalEncodingFunction()
+    }
+}
+
 pub(crate) unsafe fn _INTERNAL_trim_to_complete_utf8_characters(
     mut from: *const c_char,
     mut fromLimRef: *mut *const c_char,
@@ -11916,6 +11582,12 @@ static LITTLE2_ENCODING_FUNCTIONS: Little2EncodingFunctions = Little2EncodingFun
 static BIG2_ENCODING_FUNCTIONS: Big2EncodingFunctions = Big2EncodingFunctions;
 static INIT_ENCODING_FUNCTIONS: InitEncodingFunctions = InitEncodingFunctions;
 static UNKNOWN_ENCODING_FUNCTIONS: UnknownEncodingFunctions = UnknownEncodingFunctions;
+static UTF8_NORMAL_ENCODING_CHECK_FUNCTIONS: Utf8NormalEncodingCheckFunctions =
+    Utf8NormalEncodingCheckFunctions;
+static UNKNOWN_NORMAL_ENCODING_CHECK_FUNCTIONS: UnknownNormalEncodingCheckFunctions =
+    UnknownNormalEncodingCheckFunctions;
+static MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS: MissingNormalEncodingCheckFunctions =
+    MissingNormalEncodingCheckFunctions;
 
 static utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
@@ -12198,15 +11870,7 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    check_functions: &UTF8_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static utf8_encoding: normal_encoding = normal_encoding {
@@ -12490,15 +12154,7 @@ static utf8_encoding: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    check_functions: &UTF8_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
@@ -12782,15 +12438,7 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    check_functions: &UTF8_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static internal_utf8_encoding: normal_encoding = normal_encoding {
@@ -13074,15 +12722,7 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
         BT_MALFORM as c_uchar,
         BT_MALFORM as c_uchar,
     ],
-    isName2: Some(utf8_isName2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isName3: Some(utf8_isName3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isName4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt2: Some(utf8_isNmstrt2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt3: Some(utf8_isNmstrt3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isNmstrt4: Some(isNever as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid2: Some(utf8_isInvalid2 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid3: Some(utf8_isInvalid3 as unsafe fn(&ENCODING, *const c_char) -> c_int),
-    isInvalid4: Some(utf8_isInvalid4 as unsafe fn(&ENCODING, *const c_char) -> c_int),
+    check_functions: &UTF8_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 unsafe fn latin1_toUtf8(
@@ -13424,15 +13064,7 @@ static latin1_encoding_ns: normal_encoding = normal_encoding {
         BT_NMSTRT as c_uchar,
         BT_NMSTRT as c_uchar,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static latin1_encoding: normal_encoding = normal_encoding {
@@ -13716,15 +13348,7 @@ static latin1_encoding: normal_encoding = normal_encoding {
         BT_NMSTRT as c_uchar,
         BT_NMSTRT as c_uchar,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 unsafe fn ascii_toUtf8(
@@ -14029,15 +13653,7 @@ static ascii_encoding_ns: normal_encoding = normal_encoding {
         0,
         0,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static ascii_encoding: normal_encoding = normal_encoding {
@@ -14321,15 +13937,7 @@ static ascii_encoding: normal_encoding = normal_encoding {
         0,
         0,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 unsafe fn unicode_byte_type(mut hi: c_char, mut lo: c_char) -> c_int {
@@ -14892,15 +14500,7 @@ static little2_encoding_ns: normal_encoding = normal_encoding {
         BT_NMSTRT as c_uchar,
         BT_NMSTRT as c_uchar,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static little2_encoding: normal_encoding = normal_encoding {
@@ -15184,15 +14784,7 @@ static little2_encoding: normal_encoding = normal_encoding {
         BT_NMSTRT as c_uchar,
         BT_NMSTRT as c_uchar,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static internal_little2_encoding_ns: normal_encoding = normal_encoding {
@@ -15476,15 +15068,7 @@ static internal_little2_encoding_ns: normal_encoding = normal_encoding {
         BT_NMSTRT as c_uchar,
         BT_NMSTRT as c_uchar,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static internal_little2_encoding: normal_encoding = normal_encoding {
@@ -15768,15 +15352,7 @@ static internal_little2_encoding: normal_encoding = normal_encoding {
         BT_NMSTRT as c_uchar,
         BT_NMSTRT as c_uchar,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static big2_encoding_ns: normal_encoding = normal_encoding {
@@ -16060,15 +15636,7 @@ static big2_encoding_ns: normal_encoding = normal_encoding {
         BT_NMSTRT as c_uchar,
         BT_NMSTRT as c_uchar,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 static big2_encoding: normal_encoding = normal_encoding {
@@ -16352,15 +15920,7 @@ static big2_encoding: normal_encoding = normal_encoding {
         BT_NMSTRT as c_uchar,
         BT_NMSTRT as c_uchar,
     ],
-    isName2: None,
-    isName3: None,
-    isName4: None,
-    isNmstrt2: None,
-    isNmstrt3: None,
-    isNmstrt4: None,
-    isInvalid2: None,
-    isInvalid3: None,
-    isInvalid4: None,
+    check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
 
 unsafe fn streqci(mut s1: *const c_char, mut s2: *const c_char) -> c_int {
@@ -16957,21 +16517,7 @@ pub(crate) unsafe fn XmlInitUnknownEncoding(
     (*e).userData = userData;
     (*e).convert = convert;
     if convert.is_some() {
-        (*e).normal.isName2 = Some(unknown_isName as unsafe fn(&ENCODING, *const c_char) -> c_int);
-        (*e).normal.isName3 = Some(unknown_isName as unsafe fn(&ENCODING, *const c_char) -> c_int);
-        (*e).normal.isName4 = Some(unknown_isName as unsafe fn(&ENCODING, *const c_char) -> c_int);
-        (*e).normal.isNmstrt2 =
-            Some(unknown_isNmstrt as unsafe fn(&ENCODING, *const c_char) -> c_int);
-        (*e).normal.isNmstrt3 =
-            Some(unknown_isNmstrt as unsafe fn(&ENCODING, *const c_char) -> c_int);
-        (*e).normal.isNmstrt4 =
-            Some(unknown_isNmstrt as unsafe fn(&ENCODING, *const c_char) -> c_int);
-        (*e).normal.isInvalid2 =
-            Some(unknown_isInvalid as unsafe fn(&ENCODING, *const c_char) -> c_int);
-        (*e).normal.isInvalid3 =
-            Some(unknown_isInvalid as unsafe fn(&ENCODING, *const c_char) -> c_int);
-        (*e).normal.isInvalid4 =
-            Some(unknown_isInvalid as unsafe fn(&ENCODING, *const c_char) -> c_int);
+        (*e).normal.check_functions = &UNKNOWN_NORMAL_ENCODING_CHECK_FUNCTIONS;
     }
     (*e).normal.enc.functions = &UNKNOWN_ENCODING_FUNCTIONS;
     return &raw mut (*e).normal.enc;
