@@ -16,6 +16,7 @@
         + avoid unwinding across FFI boundaries
     + pass the test suite,
     + pass formatting checks
+    + preserve performance (use `bench.sh` to compare Rust performance to C baseline)
 - Each commit message should clearly summarize the changes made.
 
 ## Build
@@ -50,4 +51,18 @@ For behavioral comparison/debugging against the C implementation:
 
 ```bash
 ./test.sh c
+```
+
+###  Performance testing
+
+To measure Rust performance
+
+```bash
+./bench.sh r
+```
+
+To measure C performance:
+
+```bash
+./bench.sh c
 ```
