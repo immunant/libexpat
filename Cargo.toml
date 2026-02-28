@@ -16,6 +16,10 @@ crate-type = ["staticlib", "rlib"]
 [[bin]]
 path = "src/xmlwf/xmlwf.rs"
 name = "xmlwf"
+
+[features]
+default = []
+xml-testing = []
+
 [dependencies]
 c2rust-bitfields = "0.22.1"
-

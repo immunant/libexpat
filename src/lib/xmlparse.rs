@@ -1059,11 +1059,14 @@ pub const INIT_BUFFER_SIZE: ::core::ffi::c_int = 1024;
 pub const EXPAND_SPARE: ::core::ffi::c_int = 24;
 
 pub const INIT_SCAFFOLD_ELEMENTS: ::core::ffi::c_int = 32;
+#[cfg(feature = "xml-testing")]
 #[no_mangle]
-
 pub static mut g_reparseDeferralEnabledDefault: XML_Bool = XML_TRUE;
+#[cfg(not(feature = "xml-testing"))]
 #[no_mangle]
-
+pub static g_reparseDeferralEnabledDefault: XML_Bool = XML_TRUE;
+#[cfg(feature = "xml-testing")]
+#[no_mangle]
 pub static mut g_bytesScanned: ::core::ffi::c_uint = 0;
 
 unsafe extern "C" fn expat_heap_stat(
@@ -1160,8 +1163,7 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
     }
     return tolerable;
 }
-#[no_mangle]
-
+#[cfg_attr(feature = "xml-testing", no_mangle)]
 pub unsafe extern "C" fn expat_malloc(
     mut parser: XML_Parser,
     mut size: size_t,
@@ -1229,8 +1231,7 @@ pub unsafe extern "C" fn expat_malloc(
         .offset(::core::mem::size_of::<size_t>() as isize)
         .offset(EXPAT_MALLOC_PADDING as isize) as *mut ::core::ffi::c_void;
 }
-#[no_mangle]
-
+#[cfg_attr(feature = "xml-testing", no_mangle)]
 pub unsafe extern "C" fn expat_free(
     mut parser: XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
@@ -1298,8 +1299,7 @@ pub unsafe extern "C" fn expat_free(
     }
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(mallocedPtr);
 }
-#[no_mangle]
-
+#[cfg_attr(feature = "xml-testing", no_mangle)]
 pub unsafe extern "C" fn expat_realloc(
     mut parser: XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
@@ -1720,7 +1720,10 @@ unsafe extern "C" fn callProcessor(
             return XML_ERROR_NONE;
         }
     }
-    g_bytesScanned = g_bytesScanned.wrapping_add(have_now as ::core::ffi::c_uint);
+    #[cfg(feature = "xml-testing")]
+    {
+        g_bytesScanned = g_bytesScanned.wrapping_add(have_now as ::core::ffi::c_uint);
+    }
     let mut ret: XML_Error = XML_ERROR_NONE;
     *endPtr = start;
     loop {

@@ -39,7 +39,7 @@ run_rust_xmlwf_regression_tests() {
   xmlwf_bin="${repo_root}/target/debug/xmlwf"
   xmlwf_dir="${repo_root}/target/xmlwf-regression"
 
-  cargo build --bin xmlwf
+  cargo build --bin xmlwf --features xml-testing
 
   rm -rf "${xmlwf_dir}"
   mkdir -p "${xmlwf_dir}/wellformed" "${xmlwf_dir}/notwellformed"
@@ -83,7 +83,7 @@ build_expat_runtests() {
 
   if [ "$mode" = "rust" ]; then
     local ldadd='../../target/debug/liblibexpat.a'
-    cargo build
+    cargo build --features xml-testing
     make -C expat/tests \
       runtests \
       runtests_cxx \
