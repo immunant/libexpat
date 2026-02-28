@@ -17,7 +17,7 @@ run_benchmarks() {
   make -s -C expat/tests/benchmark clean
 
   if [ "$mode" = "rust" ]; then
-    rust_lib="${repo_root}/target/release/liblibexpat.a"
+    rust_lib="${repo_root}/target/release/libexpat.a"
 
     cargo build -q --release
 

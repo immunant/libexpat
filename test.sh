@@ -16,7 +16,7 @@ run_perl_xml_parser_tests() {
   xml_parser_ref="${XML_PARSER_REF:-2.47}"
   expat_include_dir="${repo_root}/expat/lib"
   rust_lib_dir="${repo_root}/target/debug/perl-link"
-  rust_lib="${repo_root}/target/debug/liblibexpat.a"
+  rust_lib="${repo_root}/target/debug/libexpat.a"
 
   rm -rf "${xml_parser_dir}"
   git clone --depth 1 --branch "${xml_parser_ref}" https://github.com/cpan-authors/XML-Parser "${xml_parser_dir}"
@@ -82,7 +82,7 @@ build_expat_runtests() {
   rm -f expat/tests/runtests expat/tests/runtests_cxx
 
   if [ "$mode" = "rust" ]; then
-    local ldadd='../../target/debug/liblibexpat.a'
+    local ldadd='../../target/debug/libexpat.a'
     cargo build --features xml-testing
     make -C expat/tests \
       runtests \

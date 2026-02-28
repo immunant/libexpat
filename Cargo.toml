@@ -10,7 +10,7 @@ edition = "2021"
 autobins = false
 
 [lib]
-name = "libexpat"
+name = "expat"
 path = "lib.rs"
 crate-type = ["staticlib", "rlib"]
 [[bin]]
