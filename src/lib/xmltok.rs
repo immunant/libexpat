@@ -12866,7 +12866,7 @@ unsafe extern "C" fn utf8_toUtf16(
     return res;
 }
 
-static mut utf8_encoding_ns: normal_encoding = unsafe {
+static mut utf8_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -13342,7 +13342,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
     }
 };
 
-static mut utf8_encoding: normal_encoding = unsafe {
+static mut utf8_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -13818,7 +13818,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
     }
 };
 
-static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
+static mut internal_utf8_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -14294,7 +14294,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
     }
 };
 
-static mut internal_utf8_encoding: normal_encoding = unsafe {
+static mut internal_utf8_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -14829,7 +14829,7 @@ unsafe extern "C" fn latin1_toUtf16(
     };
 }
 
-static mut latin1_encoding_ns: normal_encoding = unsafe {
+static mut latin1_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -15251,7 +15251,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
     }
 };
 
-static mut latin1_encoding: normal_encoding = unsafe {
+static mut latin1_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -15694,7 +15694,7 @@ unsafe extern "C" fn ascii_toUtf8(
     };
 }
 
-static mut ascii_encoding_ns: normal_encoding = unsafe {
+static mut ascii_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -16116,7 +16116,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
     }
 };
 
-static mut ascii_encoding: normal_encoding = unsafe {
+static mut ascii_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -16848,7 +16848,7 @@ unsafe extern "C" fn big2_toUtf16(
     };
 }
 
-static mut little2_encoding_ns: normal_encoding = unsafe {
+static mut little2_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -17270,7 +17270,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
     }
 };
 
-static mut little2_encoding: normal_encoding = unsafe {
+static mut little2_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -17692,7 +17692,7 @@ static mut little2_encoding: normal_encoding = unsafe {
     }
 };
 
-static mut internal_little2_encoding_ns: normal_encoding = unsafe {
+static mut internal_little2_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -18114,7 +18114,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
     }
 };
 
-static mut internal_little2_encoding: normal_encoding = unsafe {
+static mut internal_little2_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -18536,7 +18536,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
     }
 };
 
-static mut big2_encoding_ns: normal_encoding = unsafe {
+static mut big2_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -18958,7 +18958,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
     }
 };
 
-static mut big2_encoding: normal_encoding = unsafe {
+static mut big2_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -20206,7 +20206,7 @@ static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
 ];
 
 unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    static mut encodingNames: [*const ::core::ffi::c_char; 6] = unsafe {
+    static mut encodingNames: [*const ::core::ffi::c_char; 6] = {
         [
             &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
             &raw const KW_US_ASCII as *const ::core::ffi::c_char,
