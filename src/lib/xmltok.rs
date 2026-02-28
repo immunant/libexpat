@@ -220,51 +220,81 @@ pub const XML_CONVERT_COMPLETED: XML_Convert_Result = 0;
 pub const XML_CONVERT_INPUT_INCOMPLETE: XML_Convert_Result = 1;
 
 pub const XML_CONVERT_OUTPUT_EXHAUSTED: XML_Convert_Result = 2;
+
+trait EncodingFunctions {
+    unsafe fn nameMatchesAscii(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int;
+    unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char;
+    unsafe fn getAtts(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        n: c_int,
+        atts: *mut crate::src::lib::xmltok::ATTRIBUTE,
+    ) -> c_int;
+    unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    unsafe fn predefinedEntityName(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int;
+    unsafe fn updatePosition(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        pos: *mut crate::src::lib::xmltok::POSITION,
+    );
+    unsafe fn isPublicId(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int;
+    unsafe fn utf8Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
+    ) -> XML_Convert_Result;
+    unsafe fn utf16Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
+    ) -> XML_Convert_Result;
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
 pub struct encoding {
     pub scanners: [crate::src::lib::xmltok::SCANNER; 4],
     pub literalScanners: [crate::src::lib::xmltok::SCANNER; 2],
-    pub nameMatchesAscii:
-        unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-    pub nameLength: unsafe fn(&ENCODING, *const c_char) -> c_int,
-    pub skipS: unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-    pub getAtts: unsafe fn(
-        &ENCODING,
-        *const c_char,
-        c_int,
-        *mut crate::src::lib::xmltok::ATTRIBUTE,
-    ) -> c_int,
-    pub charRefNumber: unsafe fn(&ENCODING, *const c_char) -> c_int,
-    pub predefinedEntityName: unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-    pub updatePosition: unsafe fn(
-        &ENCODING,
-        *const c_char,
-        *const c_char,
-        *mut crate::src::lib::xmltok::POSITION,
-    ) -> (),
-    pub isPublicId: unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-    pub utf8Convert: unsafe fn(
-        &ENCODING,
-        *mut *const c_char,
-        *const c_char,
-        *mut *mut c_char,
-        *const c_char,
-    ) -> XML_Convert_Result,
-    pub utf16Convert: unsafe fn(
-        &ENCODING,
-        *mut *const c_char,
-        *const c_char,
-        *mut *mut c_ushort,
-        *const c_ushort,
-    ) -> XML_Convert_Result,
+    functions: &'static (dyn EncodingFunctions + Sync),
     pub minBytesPerChar: c_int,
     pub isUtf8: c_char,
     pub isUtf16: c_char,
 }
 
 impl encoding {
+    #[inline]
+    unsafe fn functions(&self) -> &(dyn EncodingFunctions + Sync) {
+        self.functions
+    }
+
     pub(crate) unsafe fn nameMatchesAscii(
         &self,
         enc: &ENCODING,
@@ -272,15 +302,15 @@ impl encoding {
         end: *const c_char,
         kw: *const c_char,
     ) -> c_int {
-        (self.nameMatchesAscii)(enc, ptr, end, kw)
+        self.functions().nameMatchesAscii(enc, ptr, end, kw)
     }
 
     pub(crate) unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        (self.nameLength)(enc, ptr)
+        self.functions().nameLength(enc, ptr)
     }
 
     pub(crate) unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        (self.skipS)(enc, ptr)
+        self.functions().skipS(enc, ptr)
     }
 
     pub(crate) unsafe fn getAtts(
@@ -290,11 +320,11 @@ impl encoding {
         n: c_int,
         atts: *mut crate::src::lib::xmltok::ATTRIBUTE,
     ) -> c_int {
-        (self.getAtts)(enc, ptr, n, atts)
+        self.functions().getAtts(enc, ptr, n, atts)
     }
 
     pub(crate) unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        (self.charRefNumber)(enc, ptr)
+        self.functions().charRefNumber(enc, ptr)
     }
 
     pub(crate) unsafe fn predefinedEntityName(
@@ -303,7 +333,7 @@ impl encoding {
         ptr: *const c_char,
         end: *const c_char,
     ) -> c_int {
-        (self.predefinedEntityName)(enc, ptr, end)
+        self.functions().predefinedEntityName(enc, ptr, end)
     }
 
     pub(crate) unsafe fn updatePosition(
@@ -313,7 +343,7 @@ impl encoding {
         end: *const c_char,
         pos: *mut crate::src::lib::xmltok::POSITION,
     ) {
-        (self.updatePosition)(enc, ptr, end, pos)
+        self.functions().updatePosition(enc, ptr, end, pos)
     }
 
     pub(crate) unsafe fn isPublicId(
@@ -323,7 +353,7 @@ impl encoding {
         end: *const c_char,
         event_pp: *mut *const c_char,
     ) -> c_int {
-        (self.isPublicId)(enc, ptr, end, event_pp)
+        self.functions().isPublicId(enc, ptr, end, event_pp)
     }
 
     pub(crate) unsafe fn utf8Convert(
@@ -334,7 +364,8 @@ impl encoding {
         to_p: *mut *mut c_char,
         to_lim: *const c_char,
     ) -> XML_Convert_Result {
-        (self.utf8Convert)(enc, from_p, from_lim, to_p, to_lim)
+        self.functions()
+            .utf8Convert(enc, from_p, from_lim, to_p, to_lim)
     }
 
     pub(crate) unsafe fn utf16Convert(
@@ -345,7 +376,8 @@ impl encoding {
         to_p: *mut *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> XML_Convert_Result {
-        (self.utf16Convert)(enc, from_p, from_lim, to_p, to_lim)
+        self.functions()
+            .utf16Convert(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 #[derive(Copy, Clone)]
@@ -10473,13 +10505,13 @@ pub mod xmltok_ns_c {
         if i == UNKNOWN_ENC {
             return 0i32;
         }
+        (*p).initEnc = utf8_encoding.enc;
+        (*p).initEnc.functions = &INIT_ENCODING_FUNCTIONS;
         (*p).initEnc.isUtf16 = i as c_char;
         (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = initScanProlog
             as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
         (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = initScanContent
             as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
-        (*p).initEnc.updatePosition = initUpdatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> ();
         (*p).encPtr = encPtr;
         *encPtr = &raw mut (*p).initEnc;
         return 1;
@@ -10609,13 +10641,13 @@ pub mod xmltok_ns_c {
         if i == UNKNOWN_ENC {
             return 0i32;
         }
+        (*p).initEnc = utf8_encoding_ns.enc;
+        (*p).initEnc.functions = &INIT_ENCODING_FUNCTIONS;
         (*p).initEnc.isUtf16 = i as c_char;
         (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = initScanPrologNS
             as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
         (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = initScanContentNS
             as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int;
-        (*p).initEnc.updatePosition = initUpdatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> ();
         (*p).encPtr = encPtr;
         *encPtr = &raw mut (*p).initEnc;
         return 1;
@@ -10692,7 +10724,6 @@ pub mod xmltok_ns_c {
     use crate::src::lib::xmltok::doParseXmlDecl;
     use crate::src::lib::xmltok::getEncodingIndex;
     use crate::src::lib::xmltok::initScan;
-    use crate::src::lib::xmltok::initUpdatePosition;
     use crate::src::lib::xmltok::internal_little2_encoding;
     use crate::src::lib::xmltok::internal_little2_encoding_ns;
     use crate::src::lib::xmltok::internal_utf8_encoding;
@@ -11269,6 +11300,623 @@ unsafe fn utf8_toUtf16(
     return res;
 }
 
+struct Utf8EncodingFunctions;
+
+impl EncodingFunctions for Utf8EncodingFunctions {
+    unsafe fn nameMatchesAscii(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int {
+        normal_nameMatchesAscii(enc, ptr, end, kw)
+    }
+
+    unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_nameLength(enc, ptr)
+    }
+
+    unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
+        normal_skipS(enc, ptr)
+    }
+
+    unsafe fn getAtts(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        n: c_int,
+        atts: *mut ATTRIBUTE,
+    ) -> c_int {
+        normal_getAtts(enc, ptr, n, atts)
+    }
+
+    unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_charRefNumber(enc, ptr)
+    }
+
+    unsafe fn predefinedEntityName(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int {
+        normal_predefinedEntityName(enc, ptr, end)
+    }
+
+    unsafe fn updatePosition(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        pos: *mut POSITION,
+    ) {
+        normal_updatePosition(enc, ptr, end, pos);
+    }
+
+    unsafe fn isPublicId(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int {
+        normal_isPublicId(enc, ptr, end, event_pp)
+    }
+
+    unsafe fn utf8Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
+    ) -> XML_Convert_Result {
+        utf8_toUtf8(enc, from_p, from_lim, to_p, to_lim)
+    }
+
+    unsafe fn utf16Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
+    ) -> XML_Convert_Result {
+        utf8_toUtf16(enc, from_p, from_lim, to_p, to_lim)
+    }
+}
+
+struct Latin1EncodingFunctions;
+
+impl EncodingFunctions for Latin1EncodingFunctions {
+    unsafe fn nameMatchesAscii(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int {
+        normal_nameMatchesAscii(enc, ptr, end, kw)
+    }
+
+    unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_nameLength(enc, ptr)
+    }
+
+    unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
+        normal_skipS(enc, ptr)
+    }
+
+    unsafe fn getAtts(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        n: c_int,
+        atts: *mut ATTRIBUTE,
+    ) -> c_int {
+        normal_getAtts(enc, ptr, n, atts)
+    }
+
+    unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_charRefNumber(enc, ptr)
+    }
+
+    unsafe fn predefinedEntityName(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int {
+        normal_predefinedEntityName(enc, ptr, end)
+    }
+
+    unsafe fn updatePosition(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        pos: *mut POSITION,
+    ) {
+        normal_updatePosition(enc, ptr, end, pos);
+    }
+
+    unsafe fn isPublicId(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int {
+        normal_isPublicId(enc, ptr, end, event_pp)
+    }
+
+    unsafe fn utf8Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
+    ) -> XML_Convert_Result {
+        latin1_toUtf8(enc, from_p, from_lim, to_p, to_lim)
+    }
+
+    unsafe fn utf16Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
+    ) -> XML_Convert_Result {
+        latin1_toUtf16(enc, from_p, from_lim, to_p, to_lim)
+    }
+}
+
+struct AsciiEncodingFunctions;
+
+impl EncodingFunctions for AsciiEncodingFunctions {
+    unsafe fn nameMatchesAscii(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int {
+        normal_nameMatchesAscii(enc, ptr, end, kw)
+    }
+
+    unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_nameLength(enc, ptr)
+    }
+
+    unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
+        normal_skipS(enc, ptr)
+    }
+
+    unsafe fn getAtts(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        n: c_int,
+        atts: *mut ATTRIBUTE,
+    ) -> c_int {
+        normal_getAtts(enc, ptr, n, atts)
+    }
+
+    unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_charRefNumber(enc, ptr)
+    }
+
+    unsafe fn predefinedEntityName(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int {
+        normal_predefinedEntityName(enc, ptr, end)
+    }
+
+    unsafe fn updatePosition(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        pos: *mut POSITION,
+    ) {
+        normal_updatePosition(enc, ptr, end, pos);
+    }
+
+    unsafe fn isPublicId(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int {
+        normal_isPublicId(enc, ptr, end, event_pp)
+    }
+
+    unsafe fn utf8Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
+    ) -> XML_Convert_Result {
+        ascii_toUtf8(enc, from_p, from_lim, to_p, to_lim)
+    }
+
+    unsafe fn utf16Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
+    ) -> XML_Convert_Result {
+        latin1_toUtf16(enc, from_p, from_lim, to_p, to_lim)
+    }
+}
+
+struct Little2EncodingFunctions;
+
+impl EncodingFunctions for Little2EncodingFunctions {
+    unsafe fn nameMatchesAscii(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int {
+        little2_nameMatchesAscii(enc, ptr, end, kw)
+    }
+
+    unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        little2_nameLength(enc, ptr)
+    }
+
+    unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
+        little2_skipS(enc, ptr)
+    }
+
+    unsafe fn getAtts(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        n: c_int,
+        atts: *mut ATTRIBUTE,
+    ) -> c_int {
+        little2_getAtts(enc, ptr, n, atts)
+    }
+
+    unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        little2_charRefNumber(enc, ptr)
+    }
+
+    unsafe fn predefinedEntityName(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int {
+        little2_predefinedEntityName(enc, ptr, end)
+    }
+
+    unsafe fn updatePosition(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        pos: *mut POSITION,
+    ) {
+        little2_updatePosition(enc, ptr, end, pos);
+    }
+
+    unsafe fn isPublicId(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int {
+        little2_isPublicId(enc, ptr, end, event_pp)
+    }
+
+    unsafe fn utf8Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
+    ) -> XML_Convert_Result {
+        little2_toUtf8(enc, from_p, from_lim, to_p, to_lim)
+    }
+
+    unsafe fn utf16Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
+    ) -> XML_Convert_Result {
+        little2_toUtf16(enc, from_p, from_lim, to_p, to_lim)
+    }
+}
+
+struct Big2EncodingFunctions;
+
+impl EncodingFunctions for Big2EncodingFunctions {
+    unsafe fn nameMatchesAscii(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int {
+        big2_nameMatchesAscii(enc, ptr, end, kw)
+    }
+
+    unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        big2_nameLength(enc, ptr)
+    }
+
+    unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
+        big2_skipS(enc, ptr)
+    }
+
+    unsafe fn getAtts(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        n: c_int,
+        atts: *mut ATTRIBUTE,
+    ) -> c_int {
+        big2_getAtts(enc, ptr, n, atts)
+    }
+
+    unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        big2_charRefNumber(enc, ptr)
+    }
+
+    unsafe fn predefinedEntityName(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int {
+        big2_predefinedEntityName(enc, ptr, end)
+    }
+
+    unsafe fn updatePosition(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        pos: *mut POSITION,
+    ) {
+        big2_updatePosition(enc, ptr, end, pos);
+    }
+
+    unsafe fn isPublicId(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int {
+        big2_isPublicId(enc, ptr, end, event_pp)
+    }
+
+    unsafe fn utf8Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
+    ) -> XML_Convert_Result {
+        big2_toUtf8(enc, from_p, from_lim, to_p, to_lim)
+    }
+
+    unsafe fn utf16Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
+    ) -> XML_Convert_Result {
+        big2_toUtf16(enc, from_p, from_lim, to_p, to_lim)
+    }
+}
+
+struct InitEncodingFunctions;
+
+impl EncodingFunctions for InitEncodingFunctions {
+    unsafe fn nameMatchesAscii(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int {
+        normal_nameMatchesAscii(enc, ptr, end, kw)
+    }
+
+    unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_nameLength(enc, ptr)
+    }
+
+    unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
+        normal_skipS(enc, ptr)
+    }
+
+    unsafe fn getAtts(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        n: c_int,
+        atts: *mut ATTRIBUTE,
+    ) -> c_int {
+        normal_getAtts(enc, ptr, n, atts)
+    }
+
+    unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_charRefNumber(enc, ptr)
+    }
+
+    unsafe fn predefinedEntityName(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int {
+        normal_predefinedEntityName(enc, ptr, end)
+    }
+
+    unsafe fn updatePosition(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        pos: *mut POSITION,
+    ) {
+        initUpdatePosition(enc, ptr, end, pos);
+    }
+
+    unsafe fn isPublicId(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int {
+        normal_isPublicId(enc, ptr, end, event_pp)
+    }
+
+    unsafe fn utf8Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
+    ) -> XML_Convert_Result {
+        utf8_toUtf8(enc, from_p, from_lim, to_p, to_lim)
+    }
+
+    unsafe fn utf16Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
+    ) -> XML_Convert_Result {
+        utf8_toUtf16(enc, from_p, from_lim, to_p, to_lim)
+    }
+}
+
+struct UnknownEncodingFunctions;
+
+impl EncodingFunctions for UnknownEncodingFunctions {
+    unsafe fn nameMatchesAscii(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        kw: *const c_char,
+    ) -> c_int {
+        normal_nameMatchesAscii(enc, ptr, end, kw)
+    }
+
+    unsafe fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_nameLength(enc, ptr)
+    }
+
+    unsafe fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
+        normal_skipS(enc, ptr)
+    }
+
+    unsafe fn getAtts(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        n: c_int,
+        atts: *mut ATTRIBUTE,
+    ) -> c_int {
+        normal_getAtts(enc, ptr, n, atts)
+    }
+
+    unsafe fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
+        normal_charRefNumber(enc, ptr)
+    }
+
+    unsafe fn predefinedEntityName(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+    ) -> c_int {
+        normal_predefinedEntityName(enc, ptr, end)
+    }
+
+    unsafe fn updatePosition(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        pos: *mut POSITION,
+    ) {
+        normal_updatePosition(enc, ptr, end, pos);
+    }
+
+    unsafe fn isPublicId(
+        &self,
+        enc: &ENCODING,
+        ptr: *const c_char,
+        end: *const c_char,
+        event_pp: *mut *const c_char,
+    ) -> c_int {
+        normal_isPublicId(enc, ptr, end, event_pp)
+    }
+
+    unsafe fn utf8Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_char,
+        to_lim: *const c_char,
+    ) -> XML_Convert_Result {
+        unknown_toUtf8(enc, from_p, from_lim, to_p, to_lim)
+    }
+
+    unsafe fn utf16Convert(
+        &self,
+        enc: &ENCODING,
+        from_p: *mut *const c_char,
+        from_lim: *const c_char,
+        to_p: *mut *mut c_ushort,
+        to_lim: *const c_ushort,
+    ) -> XML_Convert_Result {
+        unknown_toUtf16(enc, from_p, from_lim, to_p, to_lim)
+    }
+}
+
+static UTF8_ENCODING_FUNCTIONS: Utf8EncodingFunctions = Utf8EncodingFunctions;
+static LATIN1_ENCODING_FUNCTIONS: Latin1EncodingFunctions = Latin1EncodingFunctions;
+static ASCII_ENCODING_FUNCTIONS: AsciiEncodingFunctions = AsciiEncodingFunctions;
+static LITTLE2_ENCODING_FUNCTIONS: Little2EncodingFunctions = Little2EncodingFunctions;
+static BIG2_ENCODING_FUNCTIONS: Big2EncodingFunctions = Big2EncodingFunctions;
+static INIT_ENCODING_FUNCTIONS: InitEncodingFunctions = InitEncodingFunctions;
+static UNKNOWN_ENCODING_FUNCTIONS: UnknownEncodingFunctions = UnknownEncodingFunctions;
+
 static utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
         scanners: [
@@ -11287,35 +11935,7 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
             normal_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: normal_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: normal_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: normal_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: utf8_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: utf8_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &UTF8_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
         isUtf8: 1i8,
         isUtf16: 0i8,
@@ -11607,35 +12227,7 @@ static utf8_encoding: normal_encoding = normal_encoding {
             normal_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: normal_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: normal_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: normal_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: utf8_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: utf8_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &UTF8_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
         isUtf8: 1i8,
         isUtf16: 0i8,
@@ -11927,35 +12519,7 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
             normal_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: normal_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: normal_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: normal_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: utf8_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: utf8_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &UTF8_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
         isUtf8: 1i8,
         isUtf16: 0i8,
@@ -12247,35 +12811,7 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
             normal_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: normal_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: normal_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: normal_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: utf8_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: utf8_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &UTF8_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
         isUtf8: 1i8,
         isUtf16: 0i8,
@@ -12625,35 +13161,7 @@ static latin1_encoding_ns: normal_encoding = normal_encoding {
             normal_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: normal_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: normal_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: normal_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: latin1_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: latin1_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &LATIN1_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
         isUtf8: 0i8,
         isUtf16: 0i8,
@@ -12945,35 +13453,7 @@ static latin1_encoding: normal_encoding = normal_encoding {
             normal_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: normal_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: normal_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: normal_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: latin1_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: latin1_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &LATIN1_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
         isUtf8: 0i8,
         isUtf16: 0i8,
@@ -13286,35 +13766,7 @@ static ascii_encoding_ns: normal_encoding = normal_encoding {
             normal_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: normal_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: normal_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: normal_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: ascii_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: latin1_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &ASCII_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
         isUtf8: 1i8,
         isUtf16: 0i8,
@@ -13606,35 +14058,7 @@ static ascii_encoding: normal_encoding = normal_encoding {
             normal_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: normal_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: normal_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: normal_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: normal_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: normal_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: normal_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: normal_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: normal_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: ascii_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: latin1_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &ASCII_ENCODING_FUNCTIONS,
         minBytesPerChar: 1,
         isUtf8: 1i8,
         isUtf16: 0i8,
@@ -14205,35 +14629,7 @@ static little2_encoding_ns: normal_encoding = normal_encoding {
             little2_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: little2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: little2_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: little2_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: little2_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: little2_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: little2_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: little2_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &LITTLE2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
         isUtf8: 0i8,
         isUtf16: 1i8,
@@ -14525,35 +14921,7 @@ static little2_encoding: normal_encoding = normal_encoding {
             little2_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: little2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: little2_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: little2_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: little2_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: little2_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: little2_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: little2_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &LITTLE2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
         isUtf8: 0i8,
         isUtf16: 1i8,
@@ -14845,35 +15213,7 @@ static internal_little2_encoding_ns: normal_encoding = normal_encoding {
             little2_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: little2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: little2_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: little2_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: little2_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: little2_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: little2_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: little2_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &LITTLE2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
         isUtf8: 0i8,
         isUtf16: 1i8,
@@ -15165,35 +15505,7 @@ static internal_little2_encoding: normal_encoding = normal_encoding {
             little2_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: little2_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: little2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: little2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: little2_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: little2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: little2_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: little2_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: little2_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: little2_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: little2_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &LITTLE2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
         isUtf8: 0i8,
         isUtf16: 1i8,
@@ -15485,35 +15797,7 @@ static big2_encoding_ns: normal_encoding = normal_encoding {
             big2_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: big2_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: big2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: big2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: big2_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: big2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: big2_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: big2_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: big2_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: big2_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: big2_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &BIG2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
         isUtf8: 0i8,
         isUtf16: 0i8,
@@ -15805,35 +16089,7 @@ static big2_encoding: normal_encoding = normal_encoding {
             big2_entityValueTok
                 as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
         ],
-        nameMatchesAscii: big2_nameMatchesAscii
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *const c_char) -> c_int,
-        nameLength: big2_nameLength as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        skipS: big2_skipS as unsafe fn(&ENCODING, *const c_char) -> *const c_char,
-        getAtts: big2_getAtts
-            as unsafe fn(&ENCODING, *const c_char, c_int, *mut ATTRIBUTE) -> c_int,
-        charRefNumber: big2_charRefNumber as unsafe fn(&ENCODING, *const c_char) -> c_int,
-        predefinedEntityName: big2_predefinedEntityName
-            as unsafe fn(&ENCODING, *const c_char, *const c_char) -> c_int,
-        updatePosition: big2_updatePosition
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut POSITION) -> (),
-        isPublicId: big2_isPublicId
-            as unsafe fn(&ENCODING, *const c_char, *const c_char, *mut *const c_char) -> c_int,
-        utf8Convert: big2_toUtf8
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_char,
-                *const c_char,
-            ) -> XML_Convert_Result,
-        utf16Convert: big2_toUtf16
-            as unsafe fn(
-                &ENCODING,
-                *mut *const c_char,
-                *const c_char,
-                *mut *mut c_ushort,
-                *const c_ushort,
-            ) -> XML_Convert_Result,
+        functions: &BIG2_ENCODING_FUNCTIONS,
         minBytesPerChar: 2,
         isUtf8: 0i8,
         isUtf16: 0i8,
@@ -16717,22 +16973,7 @@ pub(crate) unsafe fn XmlInitUnknownEncoding(
         (*e).normal.isInvalid4 =
             Some(unknown_isInvalid as unsafe fn(&ENCODING, *const c_char) -> c_int);
     }
-    (*e).normal.enc.utf8Convert = unknown_toUtf8
-        as unsafe fn(
-            &ENCODING,
-            *mut *const c_char,
-            *const c_char,
-            *mut *mut c_char,
-            *const c_char,
-        ) -> XML_Convert_Result;
-    (*e).normal.enc.utf16Convert = unknown_toUtf16
-        as unsafe fn(
-            &ENCODING,
-            *mut *const c_char,
-            *const c_char,
-            *mut *mut c_ushort,
-            *const c_ushort,
-        ) -> XML_Convert_Result;
+    (*e).normal.enc.functions = &UNKNOWN_ENCODING_FUNCTIONS;
     return &raw mut (*e).normal.enc;
 }
 
