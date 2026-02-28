@@ -32,6 +32,50 @@ run_perl_xml_parser_tests() {
   )
 }
 
+run_rust_xmlwf_regression_tests() {
+  local repo_root xmlwf_bin xmlwf_dir
+
+  repo_root="$(pwd)"
+  xmlwf_bin="${repo_root}/target/debug/xmlwf"
+  xmlwf_dir="${repo_root}/target/xmlwf-regression"
+
+  cargo build --bin xmlwf
+
+  rm -rf "${xmlwf_dir}"
+  mkdir -p "${xmlwf_dir}/wellformed" "${xmlwf_dir}/notwellformed"
+
+  cat > "${xmlwf_dir}/wellformed/simple.xml" <<'XML'
+<root/>
+XML
+  cat > "${xmlwf_dir}/wellformed/namespaces.xml" <<'XML'
+<root xmlns:ns="urn:test"><ns:item attr="value">text</ns:item></root>
+XML
+  cat > "${xmlwf_dir}/wellformed/cdata.xml" <<'XML'
+<root><![CDATA[some <escaped> text]]></root>
+XML
+
+  cat > "${xmlwf_dir}/notwellformed/unclosed.xml" <<'XML'
+<root>
+XML
+  cat > "${xmlwf_dir}/notwellformed/mismatch.xml" <<'XML'
+<root><item></root>
+XML
+  cat > "${xmlwf_dir}/notwellformed/undefined_entity.xml" <<'XML'
+<root>&missing;</root>
+XML
+
+  for file in "${xmlwf_dir}/wellformed/"*.xml; do
+    "${xmlwf_bin}" -p "${file}" >/dev/null
+  done
+
+  for file in "${xmlwf_dir}/notwellformed/"*.xml; do
+    if "${xmlwf_bin}" -p "${file}" >/dev/null 2>&1; then
+      echo "xmlwf expected parse failure for ${file}" >&2
+      return 1
+    fi
+  done
+}
+
 build_expat_runtests() {
   local mode="$1"
 
@@ -57,6 +101,9 @@ echo -e "running built-in tests using libexpat written in \033[1;34m$mode\033[0m
 build_expat_runtests "$mode"
 
 if [ "$mode" = "rust" ]; then
+  echo -e "running Rust xmlwf regression tests using libexpat written in \033[1;34m$mode\033[0m"
+  run_rust_xmlwf_regression_tests
+
   echo -e "running Perl XML::Parser integration tests using libexpat written in \033[1;34m$mode\033[0m"
   run_perl_xml_parser_tests
 fi
