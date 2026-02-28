@@ -9,7 +9,7 @@
 #![register_tool(c2rust)]
 #![feature(extern_types, register_tool)]
 pub mod expat_h {
-    pub type XML_Parser = *mut ::libexpat::expat_h::XML_ParserStruct;
+    pub type XML_Parser = *mut ::expat::expat_h::XML_ParserStruct;
 
     pub type XML_Bool = ::core::ffi::c_uchar;
 
@@ -124,7 +124,7 @@ pub mod expat_h {
         unsafe extern "C" fn(
             *mut ::core::ffi::c_void,
             *const crate::expat_external_h::XML_Char,
-            *mut ::libexpat::expat_h::XML_Encoding,
+            *mut ::expat::expat_h::XML_Encoding,
         ) -> ::core::ffi::c_int,
     >;
 
@@ -217,7 +217,7 @@ pub mod stdlib {
 
         pub type _IO_wide_data;
     }
-    pub type FILE = ::libexpat::stdlib::_IO_FILE;
+    pub type FILE = ::expat::stdlib::_IO_FILE;
     pub const __ASSERT_FUNCTION: [::core::ffi::c_char; 46] = unsafe {
         ::core::mem::transmute::<[u8; 46], [::core::ffi::c_char; 46]>(
             *b"void attributeValue(FILE *, const XML_Char *)\0",
@@ -242,13 +242,13 @@ pub mod stdlib {
 }
 extern crate c2rust_bitfields;
 #[allow(unused_imports)]
-use ::libexpat;
+use ::expat;
 
 pub use crate::__stddef_size_t_h::size_t;
 
 pub use crate::stdlib::__ASSERT_FUNCTION;
 
-pub use ::libexpat::stdlib::__assert_fail;
+pub use ::expat::stdlib::__assert_fail;
 
 pub use crate::expat_external_h::XML_Char;
 pub use crate::expat_external_h::XML_Index;
@@ -274,64 +274,64 @@ pub use crate::expat_h::XML_StartDoctypeDeclHandler;
 pub use crate::expat_h::XML_StartElementHandler;
 pub use crate::expat_h::XML_StartNamespaceDeclHandler;
 pub use crate::expat_h::XML_UnknownEncodingHandler;
-pub use ::libexpat::expat_h::XML_Encoding;
-pub use ::libexpat::expat_h::XML_Feature;
-pub use ::libexpat::expat_h::XML_ParserStruct;
-pub use ::libexpat::expat_h::XML_FALSE;
-pub use ::libexpat::expat_h::XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
-pub use ::libexpat::expat_h::XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
-pub use ::libexpat::expat_h::XML_FEATURE_ATTR_INFO;
-pub use ::libexpat::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
-pub use ::libexpat::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
-pub use ::libexpat::expat_h::XML_FEATURE_CONTEXT_BYTES;
-pub use ::libexpat::expat_h::XML_FEATURE_DTD;
-pub use ::libexpat::expat_h::XML_FEATURE_END;
-pub use ::libexpat::expat_h::XML_FEATURE_GE;
-pub use ::libexpat::expat_h::XML_FEATURE_LARGE_SIZE;
-pub use ::libexpat::expat_h::XML_FEATURE_MIN_SIZE;
-pub use ::libexpat::expat_h::XML_FEATURE_NS;
-pub use ::libexpat::expat_h::XML_FEATURE_SIZEOF_XML_CHAR;
-pub use ::libexpat::expat_h::XML_FEATURE_SIZEOF_XML_LCHAR;
-pub use ::libexpat::expat_h::XML_FEATURE_UNICODE;
-pub use ::libexpat::expat_h::XML_FEATURE_UNICODE_WCHAR_T;
-pub use ::libexpat::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS;
-pub use ::libexpat::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
-pub use ::libexpat::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE;
-pub use ::libexpat::expat_h::XML_TRUE;
-pub use ::libexpat::limits_h::INT_MAX;
-pub use ::libexpat::src::lib::xmlparse::XML_DefaultCurrent;
-pub use ::libexpat::src::lib::xmlparse::XML_ExpatVersion;
-pub use ::libexpat::src::lib::xmlparse::XML_GetBase;
-pub use ::libexpat::src::lib::xmlparse::XML_GetCurrentByteCount;
-pub use ::libexpat::src::lib::xmlparse::XML_GetCurrentByteIndex;
-pub use ::libexpat::src::lib::xmlparse::XML_GetCurrentColumnNumber;
-pub use ::libexpat::src::lib::xmlparse::XML_GetCurrentLineNumber;
-pub use ::libexpat::src::lib::xmlparse::XML_GetFeatureList;
-pub use ::libexpat::src::lib::xmlparse::XML_GetIdAttributeIndex;
-pub use ::libexpat::src::lib::xmlparse::XML_GetSpecifiedAttributeCount;
-pub use ::libexpat::src::lib::xmlparse::XML_ParserCreate;
-pub use ::libexpat::src::lib::xmlparse::XML_ParserCreateNS;
-pub use ::libexpat::src::lib::xmlparse::XML_ParserFree;
-pub use ::libexpat::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold;
-pub use ::libexpat::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification;
-pub use ::libexpat::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionActivationThreshold;
-pub use ::libexpat::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification;
-pub use ::libexpat::src::lib::xmlparse::XML_SetCdataSectionHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetCharacterDataHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetCommentHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetDefaultHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetDoctypeDeclHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetElementHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetEntityDeclHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetNamespaceDeclHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetNotStandaloneHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetNotationDeclHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetParamEntityParsing;
-pub use ::libexpat::src::lib::xmlparse::XML_SetProcessingInstructionHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetReparseDeferralEnabled;
-pub use ::libexpat::src::lib::xmlparse::XML_SetUnknownEncodingHandler;
-pub use ::libexpat::src::lib::xmlparse::XML_SetUserData;
-pub use ::libexpat::src::lib::xmlparse::XML_UseParserAsHandlerArg;
+pub use ::expat::expat_h::XML_Encoding;
+pub use ::expat::expat_h::XML_Feature;
+pub use ::expat::expat_h::XML_ParserStruct;
+pub use ::expat::expat_h::XML_FALSE;
+pub use ::expat::expat_h::XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
+pub use ::expat::expat_h::XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use ::expat::expat_h::XML_FEATURE_ATTR_INFO;
+pub use ::expat::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
+pub use ::expat::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
+pub use ::expat::expat_h::XML_FEATURE_CONTEXT_BYTES;
+pub use ::expat::expat_h::XML_FEATURE_DTD;
+pub use ::expat::expat_h::XML_FEATURE_END;
+pub use ::expat::expat_h::XML_FEATURE_GE;
+pub use ::expat::expat_h::XML_FEATURE_LARGE_SIZE;
+pub use ::expat::expat_h::XML_FEATURE_MIN_SIZE;
+pub use ::expat::expat_h::XML_FEATURE_NS;
+pub use ::expat::expat_h::XML_FEATURE_SIZEOF_XML_CHAR;
+pub use ::expat::expat_h::XML_FEATURE_SIZEOF_XML_LCHAR;
+pub use ::expat::expat_h::XML_FEATURE_UNICODE;
+pub use ::expat::expat_h::XML_FEATURE_UNICODE_WCHAR_T;
+pub use ::expat::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS;
+pub use ::expat::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
+pub use ::expat::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE;
+pub use ::expat::expat_h::XML_TRUE;
+pub use ::expat::limits_h::INT_MAX;
+pub use ::expat::src::lib::xmlparse::XML_DefaultCurrent;
+pub use ::expat::src::lib::xmlparse::XML_ExpatVersion;
+pub use ::expat::src::lib::xmlparse::XML_GetBase;
+pub use ::expat::src::lib::xmlparse::XML_GetCurrentByteCount;
+pub use ::expat::src::lib::xmlparse::XML_GetCurrentByteIndex;
+pub use ::expat::src::lib::xmlparse::XML_GetCurrentColumnNumber;
+pub use ::expat::src::lib::xmlparse::XML_GetCurrentLineNumber;
+pub use ::expat::src::lib::xmlparse::XML_GetFeatureList;
+pub use ::expat::src::lib::xmlparse::XML_GetIdAttributeIndex;
+pub use ::expat::src::lib::xmlparse::XML_GetSpecifiedAttributeCount;
+pub use ::expat::src::lib::xmlparse::XML_ParserCreate;
+pub use ::expat::src::lib::xmlparse::XML_ParserCreateNS;
+pub use ::expat::src::lib::xmlparse::XML_ParserFree;
+pub use ::expat::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold;
+pub use ::expat::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification;
+pub use ::expat::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionActivationThreshold;
+pub use ::expat::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification;
+pub use ::expat::src::lib::xmlparse::XML_SetCdataSectionHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetCharacterDataHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetCommentHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetDefaultHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetDoctypeDeclHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetElementHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetEntityDeclHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetNamespaceDeclHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetNotStandaloneHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetNotationDeclHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetParamEntityParsing;
+pub use ::expat::src::lib::xmlparse::XML_SetProcessingInstructionHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetReparseDeferralEnabled;
+pub use ::expat::src::lib::xmlparse::XML_SetUnknownEncodingHandler;
+pub use ::expat::src::lib::xmlparse::XML_SetUserData;
+pub use ::expat::src::lib::xmlparse::XML_UseParserAsHandlerArg;
 
 pub use crate::stdlib::_IO_codecvt;
 pub use crate::stdlib::_IO_lock_t;
@@ -358,19 +358,19 @@ pub use crate::stdlib::ERANGE;
 pub use crate::stdlib::FILE;
 pub use crate::stdlib::_IOFBF;
 pub use crate::xmlfile_h::g_read_size_bytes;
-pub use ::libexpat::__stddef_null_h::NULL;
-pub use ::libexpat::internal::__INT_MAX__;
-pub use ::libexpat::src::xmlwf::xmlfile::XML_ProcessFile;
-pub use ::libexpat::src::xmlwf::xmlfile::XML_EXTERNAL_ENTITIES;
-pub use ::libexpat::src::xmlwf::xmlfile::XML_MAP_FILE;
-pub use ::libexpat::stdlib::exit;
-pub use ::libexpat::stdlib::fprintf;
-pub use ::libexpat::stdlib::free;
-pub use ::libexpat::stdlib::malloc;
+pub use ::expat::__stddef_null_h::NULL;
+pub use ::expat::internal::__INT_MAX__;
+pub use ::expat::src::xmlwf::xmlfile::XML_ProcessFile;
+pub use ::expat::src::xmlwf::xmlfile::XML_EXTERNAL_ENTITIES;
+pub use ::expat::src::xmlwf::xmlfile::XML_MAP_FILE;
+pub use ::expat::stdlib::exit;
+pub use ::expat::stdlib::fprintf;
+pub use ::expat::stdlib::free;
+pub use ::expat::stdlib::malloc;
 
-pub use ::libexpat::stdlib::perror;
+pub use ::expat::stdlib::perror;
 
-pub use ::libexpat::stdlib::_IO_FILE;
+pub use ::expat::stdlib::_IO_FILE;
 
 pub type ExitCode = ::core::ffi::c_uint;
 
@@ -549,10 +549,10 @@ unsafe extern "C" fn nsattcmp(
 ) -> ::core::ffi::c_int {
     let mut att1: *const XML_Char = *(p1 as *const *const XML_Char);
     let mut att2: *const XML_Char = *(p2 as *const *const XML_Char);
-    let mut sep1: ::core::ffi::c_int = (::libexpat::stdlib::strrchr(att1, '\u{1}' as i32)
+    let mut sep1: ::core::ffi::c_int = (::expat::stdlib::strrchr(att1, '\u{1}' as i32)
         != ::core::ptr::null_mut::<::core::ffi::c_char>())
         as ::core::ffi::c_int;
-    let mut sep2: ::core::ffi::c_int = (::libexpat::stdlib::strrchr(att2, '\u{1}' as i32)
+    let mut sep2: ::core::ffi::c_int = (::expat::stdlib::strrchr(att2, '\u{1}' as i32)
         != ::core::ptr::null_mut::<::core::ffi::c_char>())
         as ::core::ffi::c_int;
     if sep1 != sep2 {
@@ -572,7 +572,7 @@ unsafe extern "C" fn startElementNS(
     let mut fp: *mut FILE = (*(userData as *mut XmlwfUserData)).fp;
     let mut sep: *const XML_Char = ::core::ptr::null::<XML_Char>();
     putc('<' as i32, fp);
-    sep = ::libexpat::stdlib::strrchr(name, '\u{1}' as i32);
+    sep = ::expat::stdlib::strrchr(name, '\u{1}' as i32);
     if !sep.is_null() {
         fputs(b"n1:\0" as *const u8 as *const ::core::ffi::c_char, fp);
         fputs(sep.offset(1), fp);
@@ -609,7 +609,7 @@ unsafe extern "C" fn startElementNS(
         let fresh1 = atts;
         atts = atts.offset(1);
         name = *fresh1;
-        sep = ::libexpat::stdlib::strrchr(name, '\u{1}' as i32);
+        sep = ::expat::stdlib::strrchr(name, '\u{1}' as i32);
         putc(' ' as i32, fp);
         if !sep.is_null() {
             fprintf(
@@ -645,7 +645,7 @@ unsafe extern "C" fn endElementNS(
     let mut sep: *const XML_Char = ::core::ptr::null::<XML_Char>();
     putc('<' as i32, fp);
     putc('/' as i32, fp);
-    sep = ::libexpat::stdlib::strrchr(name, '\u{1}' as i32);
+    sep = ::expat::stdlib::strrchr(name, '\u{1}' as i32);
     if !sep.is_null() {
         fputs(b"n1:\0" as *const u8 as *const ::core::ffi::c_char, fp);
         fputs(sep.offset(1isize), fp);
@@ -686,7 +686,7 @@ unsafe extern "C" fn xcsdup(mut s: *const XML_Char) -> *mut XML_Char {
     if result.is_null() {
         return ::core::ptr::null_mut::<XML_Char>();
     }
-    ::libexpat::stdlib::memcpy(
+    ::expat::stdlib::memcpy(
         result as *mut ::core::ffi::c_void,
         s as *const ::core::ffi::c_void,
         numBytes,
@@ -1042,7 +1042,7 @@ unsafe extern "C" fn metaStartElement(
             characterData(
                 data as *mut ::core::ffi::c_void,
                 *atts.offset(1),
-                ::libexpat::stdlib::strlen(*atts.offset(1)) as ::core::ffi::c_int,
+                ::expat::stdlib::strlen(*atts.offset(1)) as ::core::ffi::c_int,
             );
             if atts >= specifiedAttsEnd {
                 fputs(
@@ -1105,7 +1105,7 @@ unsafe extern "C" fn metaProcessingInstruction(
     characterData(
         usrData as *mut ::core::ffi::c_void,
         data,
-        ::libexpat::stdlib::strlen(data) as ::core::ffi::c_int,
+        ::expat::stdlib::strlen(data) as ::core::ffi::c_int,
     );
     putc('"' as i32, fp);
     metaLocation(parser);
@@ -1127,7 +1127,7 @@ unsafe extern "C" fn metaComment(
     characterData(
         usrData as *mut ::core::ffi::c_void,
         data,
-        ::libexpat::stdlib::strlen(data) as ::core::ffi::c_int,
+        ::expat::stdlib::strlen(data) as ::core::ffi::c_int,
     );
     putc('"' as i32, fp);
     metaLocation(parser);
@@ -1243,7 +1243,7 @@ unsafe extern "C" fn metaNotationDecl(
         characterData(
             data as *mut ::core::ffi::c_void,
             systemId,
-            ::libexpat::stdlib::strlen(systemId) as ::core::ffi::c_int,
+            ::expat::stdlib::strlen(systemId) as ::core::ffi::c_int,
         );
         putc('"' as i32, fp);
     }
@@ -1299,7 +1299,7 @@ unsafe extern "C" fn metaEntityDecl(
         characterData(
             data as *mut ::core::ffi::c_void,
             systemId,
-            ::libexpat::stdlib::strlen(systemId) as ::core::ffi::c_int,
+            ::expat::stdlib::strlen(systemId) as ::core::ffi::c_int,
         );
         putc('"' as i32, fp);
         fprintf(
@@ -1329,7 +1329,7 @@ unsafe extern "C" fn metaEntityDecl(
         characterData(
             data as *mut ::core::ffi::c_void,
             systemId,
-            ::libexpat::stdlib::strlen(systemId) as ::core::ffi::c_int,
+            ::expat::stdlib::strlen(systemId) as ::core::ffi::c_int,
         );
         putc('"' as i32, fp);
         metaLocation(parser);
@@ -1359,7 +1359,7 @@ unsafe extern "C" fn metaStartNamespaceDecl(
         characterData(
             data as *mut ::core::ffi::c_void,
             uri,
-            ::libexpat::stdlib::strlen(uri) as ::core::ffi::c_int,
+            ::expat::stdlib::strlen(uri) as ::core::ffi::c_int,
         );
         fputs(b"\"/>\n\0" as *const u8 as *const ::core::ffi::c_char, fp);
     } else {
@@ -1393,7 +1393,7 @@ unsafe extern "C" fn unknownEncodingConvert(
     mut data: *mut ::core::ffi::c_void,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return ::libexpat::src::xmlwf::codepage::codepageConvert(
+    return ::expat::src::xmlwf::codepage::codepageConvert(
         *(data as *mut ::core::ffi::c_int),
         p,
     );
@@ -1439,7 +1439,7 @@ unsafe extern "C" fn unknownEncoding(
         }
         i += 1;
     }
-    if ::libexpat::src::xmlwf::codepage::codepageMap(
+    if ::expat::src::xmlwf::codepage::codepageMap(
         cp,
         &raw mut (*info).map as *mut ::core::ffi::c_int,
     ) == 0
@@ -1702,16 +1702,16 @@ unsafe fn main_0(mut argc: ::core::ffi::c_int, mut argv: *mut *mut XML_Char) -> 
                 }
                 i += 1;
                 j = 0;
-                *::libexpat::stdlib::__errno_location() = 0;
+                *::expat::stdlib::__errno_location() = 0;
                 let mut afterValueText: *mut XML_Char = valueText as *mut XML_Char;
                 let read_size_bytes_candidate: ::core::ffi::c_longlong =
                     strtoull(valueText, &raw mut afterValueText, 10) as ::core::ffi::c_longlong;
-                if *::libexpat::stdlib::__errno_location() != 0
+                if *::expat::stdlib::__errno_location() != 0
                     || *afterValueText.offset(0) as ::core::ffi::c_int != '\0' as i32
                     || read_size_bytes_candidate < 1
                     || read_size_bytes_candidate > (INT_MAX / 2 + 1) as ::core::ffi::c_longlong
                 {
-                    *::libexpat::stdlib::__errno_location() = ERANGE;
+                    *::expat::stdlib::__errno_location() = ERANGE;
                     perror(
                         b"invalid buffer size (needs an integer from 1 to INT_MAX/2+1 i.e. 1,073,741,824 on most platforms)\0"
                             as *const u8 as *const ::core::ffi::c_char,
@@ -1744,15 +1744,15 @@ unsafe fn main_0(mut argc: ::core::ffi::c_int, mut argv: *mut *mut XML_Char) -> 
                 }
                 i += 1;
                 j = 0;
-                *::libexpat::stdlib::__errno_location() = 0;
+                *::expat::stdlib::__errno_location() = 0;
                 let mut afterValueText_0: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
                 attackMaximumAmplification = strtof(valueText_0, &raw mut afterValueText_0);
-                if *::libexpat::stdlib::__errno_location() != 0
+                if *::expat::stdlib::__errno_location() != 0
                     || *afterValueText_0.offset(0) as ::core::ffi::c_int != '\0' as i32
                     || attackMaximumAmplification.is_nan() as i32 != 0
                     || attackMaximumAmplification < 1.0
                 {
-                    *::libexpat::stdlib::__errno_location() = ERANGE;
+                    *::expat::stdlib::__errno_location() = ERANGE;
                     perror(
                         b"invalid amplification limit (needs a floating point number greater or equal than 1.0)\0"
                             as *const u8 as *const ::core::ffi::c_char,
@@ -1779,13 +1779,13 @@ unsafe fn main_0(mut argc: ::core::ffi::c_int, mut argv: *mut *mut XML_Char) -> 
                 }
                 i += 1;
                 j = 0;
-                *::libexpat::stdlib::__errno_location() = 0;
+                *::expat::stdlib::__errno_location() = 0;
                 let mut afterValueText_1: *mut XML_Char = valueText_1 as *mut XML_Char;
                 attackThresholdBytes = strtoull(valueText_1, &raw mut afterValueText_1, 10);
-                if *::libexpat::stdlib::__errno_location() != 0
+                if *::expat::stdlib::__errno_location() != 0
                     || *afterValueText_1.offset(0) as ::core::ffi::c_int != '\0' as i32
                 {
-                    *::libexpat::stdlib::__errno_location() = ERANGE;
+                    *::expat::stdlib::__errno_location() = ERANGE;
                     perror(
                         b"invalid ignore threshold (needs an integer from 0 to 2^64-1)\0"
                             as *const u8 as *const ::core::ffi::c_char,
@@ -1860,7 +1860,7 @@ unsafe fn main_0(mut argc: ::core::ffi::c_int, mut argv: *mut *mut XML_Char) -> 
         if disableDeferral != 0 {
             let success: XML_Bool = XML_SetReparseDeferralEnabled(parser, XML_FALSE);
             if success == 0 {
-                *::libexpat::stdlib::__errno_location() = EINVAL;
+                *::expat::stdlib::__errno_location() = EINVAL;
                 perror(
                     b"Failed to disable reparse deferral\0" as *const u8
                         as *const ::core::ffi::c_char,
@@ -1927,14 +1927,14 @@ unsafe fn main_0(mut argc: ::core::ffi::c_int, mut argv: *mut *mut XML_Char) -> 
             };
             if useStdin == 0 {
                 let mut lastDelim: *const XML_Char =
-                    ::libexpat::stdlib::strrchr(file, *delim.offset(0) as ::core::ffi::c_int);
+                    ::expat::stdlib::strrchr(file, *delim.offset(0) as ::core::ffi::c_int);
                 if !lastDelim.is_null() {
                     file = lastDelim.offset(1isize);
                 }
             }
             outName = malloc(
-                ::libexpat::stdlib::strlen(outputDir)
-                    .wrapping_add(::libexpat::stdlib::strlen(file))
+                ::expat::stdlib::strlen(outputDir)
+                    .wrapping_add(::expat::stdlib::strlen(file))
                     .wrapping_add(2usize)
                     .wrapping_mul(::core::mem::size_of::<XML_Char>()),
             ) as *mut XML_Char;
@@ -1942,7 +1942,7 @@ unsafe fn main_0(mut argc: ::core::ffi::c_int, mut argv: *mut *mut XML_Char) -> 
                 perror(b"Could not allocate memory\0" as *const u8 as *const ::core::ffi::c_char);
                 exit(XMLWF_EXIT_INTERNAL_ERROR as ::core::ffi::c_int);
             }
-            ::libexpat::stdlib::strcpy(outName, outputDir);
+            ::expat::stdlib::strcpy(outName, outputDir);
             crate::stdlib::strcat(outName, delim);
             crate::stdlib::strcat(outName, file);
             userData.fp = fopen(outName, b"wb\0" as *const u8 as *const ::core::ffi::c_char);
