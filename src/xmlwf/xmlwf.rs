@@ -7,7 +7,7 @@
     unused_mut
 )]
 #![register_tool(c2rust)]
-#![feature(extern_types, raw_ref_op, register_tool)]
+#![feature(extern_types, register_tool)]
 pub mod expat_h {
     pub type XML_Parser = *mut ::libexpat::expat_h::XML_ParserStruct;
 
@@ -240,7 +240,6 @@ pub mod stdlib {
 
     pub type __off64_t = ::core::ffi::c_long;
 }
-#[macro_use]
 extern crate c2rust_bitfields;
 #[allow(unused_imports)]
 use ::libexpat;

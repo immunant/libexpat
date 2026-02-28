@@ -1750,7 +1750,7 @@ unsafe extern "C" fn attlist2(
     match tok {
         XML_TOK_PROLOG_S => return crate::src::lib::xmlrole::XML_ROLE_ATTLIST_NONE,
         XML_TOK_NAME => {
-            static mut types: [*const ::core::ffi::c_char; 8] = unsafe {
+            static mut types: [*const ::core::ffi::c_char; 8] = {
                 [
                     &raw const KW_CDATA as *const ::core::ffi::c_char,
                     &raw const KW_ID as *const ::core::ffi::c_char,
