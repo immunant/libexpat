@@ -10263,13 +10263,11 @@ pub mod xmltok_ns_c {
         input: &[c_char],
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
         return initScan(
             encodings.as_ptr() as *const *const ENCODING,
             as_init_encoding(enc),
             XML_PROLOG_STATE,
-            c_char_slice_from_ptr_end(ptr, end),
+            input,
             nextTokPtr,
         );
     }
@@ -10279,13 +10277,11 @@ pub mod xmltok_ns_c {
         input: &[c_char],
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
         return initScan(
             encodings.as_ptr() as *const *const ENCODING,
             as_init_encoding(enc),
             XML_CONTENT_STATE,
-            c_char_slice_from_ptr_end(ptr, end),
+            input,
             nextTokPtr,
         );
     }
@@ -10357,13 +10353,11 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const ENCODING,
         mut standalone: *mut c_int,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
         return doParseXmlDecl(
             Some(findEncoding as unsafe fn(&ENCODING, &[c_char]) -> *const ENCODING),
             isGeneralTextEntity,
             enc,
-            c_char_slice_from_ptr_end(ptr, end),
+            input,
             badPtr,
             versionPtr,
             versionEndPtr,
@@ -10394,13 +10388,11 @@ pub mod xmltok_ns_c {
         input: &[c_char],
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
         return initScan(
             encodingsNS.as_ptr() as *const *const ENCODING,
             as_init_encoding(enc),
             XML_PROLOG_STATE,
-            c_char_slice_from_ptr_end(ptr, end),
+            input,
             nextTokPtr,
         );
     }
@@ -10410,13 +10402,11 @@ pub mod xmltok_ns_c {
         input: &[c_char],
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
         return initScan(
             encodingsNS.as_ptr() as *const *const ENCODING,
             as_init_encoding(enc),
             XML_CONTENT_STATE,
-            c_char_slice_from_ptr_end(ptr, end),
+            input,
             nextTokPtr,
         );
     }
@@ -10488,13 +10478,11 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const ENCODING,
         mut standalone: *mut c_int,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
         return doParseXmlDecl(
             Some(findEncodingNS as unsafe fn(&ENCODING, &[c_char]) -> *const ENCODING),
             isGeneralTextEntity,
             enc,
-            c_char_slice_from_ptr_end(ptr, end),
+            input,
             badPtr,
             versionPtr,
             versionEndPtr,
@@ -11300,15 +11288,11 @@ impl EncodingFunctions for Utf8EncodingFunctions {
     }
 
     unsafe fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_predefinedEntityName(enc, c_char_slice_from_ptr_end(ptr, end))
+        normal_predefinedEntityName(enc, input)
     }
 
     unsafe fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_updatePosition(enc, c_char_slice_from_ptr_end(ptr, end), pos);
+        normal_updatePosition(enc, input, pos);
     }
 
     unsafe fn isPublicId(
@@ -11317,9 +11301,7 @@ impl EncodingFunctions for Utf8EncodingFunctions {
         input: &[c_char],
         event_pp: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_isPublicId(enc, c_char_slice_from_ptr_end(ptr, end), event_pp)
+        normal_isPublicId(enc, input, event_pp)
     }
 
     unsafe fn utf8Convert(
@@ -11380,15 +11362,11 @@ impl EncodingFunctions for Latin1EncodingFunctions {
     }
 
     unsafe fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_predefinedEntityName(enc, c_char_slice_from_ptr_end(ptr, end))
+        normal_predefinedEntityName(enc, input)
     }
 
     unsafe fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_updatePosition(enc, c_char_slice_from_ptr_end(ptr, end), pos);
+        normal_updatePosition(enc, input, pos);
     }
 
     unsafe fn isPublicId(
@@ -11397,9 +11375,7 @@ impl EncodingFunctions for Latin1EncodingFunctions {
         input: &[c_char],
         event_pp: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_isPublicId(enc, c_char_slice_from_ptr_end(ptr, end), event_pp)
+        normal_isPublicId(enc, input, event_pp)
     }
 
     unsafe fn utf8Convert(
@@ -11460,15 +11436,11 @@ impl EncodingFunctions for AsciiEncodingFunctions {
     }
 
     unsafe fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_predefinedEntityName(enc, c_char_slice_from_ptr_end(ptr, end))
+        normal_predefinedEntityName(enc, input)
     }
 
     unsafe fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_updatePosition(enc, c_char_slice_from_ptr_end(ptr, end), pos);
+        normal_updatePosition(enc, input, pos);
     }
 
     unsafe fn isPublicId(
@@ -11477,9 +11449,7 @@ impl EncodingFunctions for AsciiEncodingFunctions {
         input: &[c_char],
         event_pp: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_isPublicId(enc, c_char_slice_from_ptr_end(ptr, end), event_pp)
+        normal_isPublicId(enc, input, event_pp)
     }
 
     unsafe fn utf8Convert(
@@ -11540,15 +11510,11 @@ impl EncodingFunctions for Little2EncodingFunctions {
     }
 
     unsafe fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        little2_predefinedEntityName(enc, c_char_slice_from_ptr_end(ptr, end))
+        little2_predefinedEntityName(enc, input)
     }
 
     unsafe fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        little2_updatePosition(enc, c_char_slice_from_ptr_end(ptr, end), pos);
+        little2_updatePosition(enc, input, pos);
     }
 
     unsafe fn isPublicId(
@@ -11557,9 +11523,7 @@ impl EncodingFunctions for Little2EncodingFunctions {
         input: &[c_char],
         event_pp: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        little2_isPublicId(enc, c_char_slice_from_ptr_end(ptr, end), event_pp)
+        little2_isPublicId(enc, input, event_pp)
     }
 
     unsafe fn utf8Convert(
@@ -11620,15 +11584,11 @@ impl EncodingFunctions for Big2EncodingFunctions {
     }
 
     unsafe fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        big2_predefinedEntityName(enc, c_char_slice_from_ptr_end(ptr, end))
+        big2_predefinedEntityName(enc, input)
     }
 
     unsafe fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        big2_updatePosition(enc, c_char_slice_from_ptr_end(ptr, end), pos);
+        big2_updatePosition(enc, input, pos);
     }
 
     unsafe fn isPublicId(
@@ -11637,9 +11597,7 @@ impl EncodingFunctions for Big2EncodingFunctions {
         input: &[c_char],
         event_pp: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        big2_isPublicId(enc, c_char_slice_from_ptr_end(ptr, end), event_pp)
+        big2_isPublicId(enc, input, event_pp)
     }
 
     unsafe fn utf8Convert(
@@ -11700,15 +11658,11 @@ impl EncodingFunctions for InitEncodingFunctions {
     }
 
     unsafe fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_predefinedEntityName(enc, c_char_slice_from_ptr_end(ptr, end))
+        normal_predefinedEntityName(enc, input)
     }
 
     unsafe fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        initUpdatePosition(enc, c_char_slice_from_ptr_end(ptr, end), pos);
+        initUpdatePosition(enc, input, pos);
     }
 
     unsafe fn isPublicId(
@@ -11717,9 +11671,7 @@ impl EncodingFunctions for InitEncodingFunctions {
         input: &[c_char],
         event_pp: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_isPublicId(enc, c_char_slice_from_ptr_end(ptr, end), event_pp)
+        normal_isPublicId(enc, input, event_pp)
     }
 
     unsafe fn utf8Convert(
@@ -11780,15 +11732,11 @@ impl EncodingFunctions for UnknownEncodingFunctions {
     }
 
     unsafe fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_predefinedEntityName(enc, c_char_slice_from_ptr_end(ptr, end))
+        normal_predefinedEntityName(enc, input)
     }
 
     unsafe fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_updatePosition(enc, c_char_slice_from_ptr_end(ptr, end), pos);
+        normal_updatePosition(enc, input, pos);
     }
 
     unsafe fn isPublicId(
@@ -11797,9 +11745,7 @@ impl EncodingFunctions for UnknownEncodingFunctions {
         input: &[c_char],
         event_pp: *mut *const c_char,
     ) -> c_int {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        normal_isPublicId(enc, c_char_slice_from_ptr_end(ptr, end), event_pp)
+        normal_isPublicId(enc, input, event_pp)
     }
 
     unsafe fn utf8Convert(
@@ -16130,9 +16076,7 @@ unsafe fn streqci(mut s1: *const c_char, mut s2: *const c_char) -> c_int {
 }
 
 unsafe fn initUpdatePosition(_enc: &ENCODING, input: &[c_char], mut pos: *mut POSITION) {
-    let mut ptr = input.as_ptr();
-    let mut end = ptr.add(input.len());
-    normal_updatePosition(&utf8_encoding.enc, c_char_slice_from_ptr_end(ptr, end), pos);
+    normal_updatePosition(&utf8_encoding.enc, input, pos);
 }
 
 unsafe fn toAscii(enc: &ENCODING, input: &[c_char]) -> c_int {
