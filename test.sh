@@ -35,17 +35,22 @@ run_perl_xml_parser_tests() {
 build_expat_runtests() {
   local mode="$1"
 
-  rm -f expat/tests/runtests
+  rm -f expat/tests/runtests expat/tests/runtests_cxx
 
   if [ "$mode" = "rust" ]; then
     local ldadd='../../target/debug/liblibexpat.a'
     cargo build
-    make -C expat/tests runtests runtests_LDADD="$ldadd"
+    make -C expat/tests \
+      runtests \
+      runtests_cxx \
+      runtests_LDADD="$ldadd" \
+      runtests_cxx_LDADD="$ldadd"
   else
-    make -C expat/tests runtests
+    make -C expat/tests runtests runtests_cxx
   fi
 
   expat/run.sh expat/tests/runtests
+  expat/run.sh expat/tests/runtests_cxx
 }
 
 echo -e "running built-in tests using libexpat written in \033[1;34m$mode\033[0m"
