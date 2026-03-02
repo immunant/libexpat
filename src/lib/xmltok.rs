@@ -297,7 +297,7 @@ pub struct encoding {
 impl encoding {
     #[inline]
     fn functions(&self) -> &(dyn EncodingFunctions + Sync) {
-        unsafe { self.functions }
+        self.functions
     }
 
     pub(crate) fn nameMatchesAscii(
@@ -306,15 +306,15 @@ impl encoding {
         input: &[c_char],
         kw: *const c_char,
     ) -> c_int {
-        unsafe { self.functions().nameMatchesAscii(enc, input, kw) }
+        self.functions().nameMatchesAscii(enc, input, kw)
     }
 
     pub(crate) fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.functions().nameLength(enc, ptr) }
+        self.functions().nameLength(enc, ptr)
     }
 
     pub(crate) fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        unsafe { self.functions().skipS(enc, ptr) }
+        self.functions().skipS(enc, ptr)
     }
 
     pub(crate) fn getAtts(
@@ -324,15 +324,15 @@ impl encoding {
         n: c_int,
         atts: *mut crate::src::lib::xmltok::ATTRIBUTE,
     ) -> c_int {
-        unsafe { self.functions().getAtts(enc, ptr, n, atts) }
+        self.functions().getAtts(enc, ptr, n, atts)
     }
 
     pub(crate) fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.functions().charRefNumber(enc, ptr) }
+        self.functions().charRefNumber(enc, ptr)
     }
 
     pub(crate) fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe { self.functions().predefinedEntityName(enc, input) }
+        self.functions().predefinedEntityName(enc, input)
     }
 
     pub(crate) fn updatePosition(
@@ -341,11 +341,11 @@ impl encoding {
         input: &[c_char],
         pos: *mut crate::src::lib::xmltok::POSITION,
     ) {
-        unsafe { self.functions().updatePosition(enc, input, pos) }
+        self.functions().updatePosition(enc, input, pos)
     }
 
     pub(crate) fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe { self.functions().isPublicId(enc, input) }
+        self.functions().isPublicId(enc, input)
     }
 
     pub(crate) fn utf8Convert(
@@ -356,10 +356,8 @@ impl encoding {
         to_p: *mut c_char,
         to_lim: *const c_char,
     ) -> Utf8ConvertResult {
-        unsafe {
-            self.functions()
-                .utf8Convert(enc, from_p, from_lim, to_p, to_lim)
-        }
+        self.functions()
+            .utf8Convert(enc, from_p, from_lim, to_p, to_lim)
     }
 
     pub(crate) fn utf16Convert(
@@ -370,10 +368,8 @@ impl encoding {
         to_p: *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> Utf16ConvertResult {
-        unsafe {
-            self.functions()
-                .utf16Convert(enc, from_p, from_lim, to_p, to_lim)
-        }
+        self.functions()
+            .utf16Convert(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 #[derive(Copy, Clone)]
@@ -10823,14 +10819,10 @@ pub mod xmltok_impl_c {
 pub mod xmltok_ns_c {
     use super::*;
     pub(crate) fn XmlGetUtf8InternalEncoding() -> *const ENCODING {
-        unsafe {
-            return &raw const internal_utf8_encoding.enc;
-        }
+        return &raw const internal_utf8_encoding.enc;
     }
     pub(crate) fn XmlGetUtf16InternalEncoding() -> *const ENCODING {
-        unsafe {
-            return &raw const internal_little2_encoding.enc;
-        }
+        return &raw const internal_little2_encoding.enc;
     }
 
     pub static encodings: [&ENCODING; 7] = [
@@ -10844,25 +10836,21 @@ pub mod xmltok_ns_c {
     ];
 
     pub(crate) fn initScanProlog(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            return initScan(
-                encodings.as_ptr() as *const *const ENCODING,
-                as_init_encoding(enc),
-                XML_PROLOG_STATE,
-                input,
-            );
-        }
+        return initScan(
+            encodings.as_ptr() as *const *const ENCODING,
+            as_init_encoding(enc),
+            XML_PROLOG_STATE,
+            input,
+        );
     }
 
     pub(crate) fn initScanContent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            return initScan(
-                encodings.as_ptr() as *const *const ENCODING,
-                as_init_encoding(enc),
-                XML_CONTENT_STATE,
-                input,
-            );
-        }
+        return initScan(
+            encodings.as_ptr() as *const *const ENCODING,
+            as_init_encoding(enc),
+            XML_CONTENT_STATE,
+            input,
+        );
     }
     pub(crate) fn XmlInitEncoding(
         mut p: *mut INIT_ENCODING,
@@ -10919,24 +10907,18 @@ pub mod xmltok_ns_c {
         enc: &ENCODING,
         input: &[c_char],
     ) -> ParseXmlDeclResult {
-        unsafe {
-            return doParseXmlDecl(
-                Some(findEncoding as fn(&ENCODING, &[c_char]) -> *const ENCODING),
-                isGeneralTextEntity,
-                enc,
-                input,
-            );
-        }
+        return doParseXmlDecl(
+            Some(findEncoding as fn(&ENCODING, &[c_char]) -> *const ENCODING),
+            isGeneralTextEntity,
+            enc,
+            input,
+        );
     }
     pub(crate) fn XmlGetUtf8InternalEncodingNS() -> *const ENCODING {
-        unsafe {
-            return &raw const internal_utf8_encoding_ns.enc;
-        }
+        return &raw const internal_utf8_encoding_ns.enc;
     }
     pub(crate) fn XmlGetUtf16InternalEncodingNS() -> *const ENCODING {
-        unsafe {
-            return &raw const internal_little2_encoding_ns.enc;
-        }
+        return &raw const internal_little2_encoding_ns.enc;
     }
 
     pub static encodingsNS: [&ENCODING; 7] = [
@@ -10950,25 +10932,21 @@ pub mod xmltok_ns_c {
     ];
 
     pub(crate) fn initScanPrologNS(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            return initScan(
-                encodingsNS.as_ptr() as *const *const ENCODING,
-                as_init_encoding(enc),
-                XML_PROLOG_STATE,
-                input,
-            );
-        }
+        return initScan(
+            encodingsNS.as_ptr() as *const *const ENCODING,
+            as_init_encoding(enc),
+            XML_PROLOG_STATE,
+            input,
+        );
     }
 
     pub(crate) fn initScanContentNS(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            return initScan(
-                encodingsNS.as_ptr() as *const *const ENCODING,
-                as_init_encoding(enc),
-                XML_CONTENT_STATE,
-                input,
-            );
-        }
+        return initScan(
+            encodingsNS.as_ptr() as *const *const ENCODING,
+            as_init_encoding(enc),
+            XML_CONTENT_STATE,
+            input,
+        );
     }
     pub(crate) fn XmlInitEncodingNS(
         mut p: *mut INIT_ENCODING,
@@ -11025,14 +11003,12 @@ pub mod xmltok_ns_c {
         enc: &ENCODING,
         input: &[c_char],
     ) -> ParseXmlDeclResult {
-        unsafe {
-            return doParseXmlDecl(
-                Some(findEncodingNS as fn(&ENCODING, &[c_char]) -> *const ENCODING),
-                isGeneralTextEntity,
-                enc,
-                input,
-            );
-        }
+        return doParseXmlDecl(
+            Some(findEncodingNS as fn(&ENCODING, &[c_char]) -> *const ENCODING),
+            isGeneralTextEntity,
+            enc,
+            input,
+        );
     }
 
     use crate::src::lib::xmltok::doParseXmlDecl;
@@ -11311,52 +11287,52 @@ pub struct normal_encoding {
 impl normal_encoding {
     #[inline]
     fn checkFunctions(&self) -> &(dyn NormalEncodingCheckFunctions + Sync) {
-        unsafe { self.check_functions }
+        self.check_functions
     }
 
     #[inline]
     fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isName2(enc, ptr) }
+        self.checkFunctions().isName2(enc, ptr)
     }
 
     #[inline]
     fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isName3(enc, ptr) }
+        self.checkFunctions().isName3(enc, ptr)
     }
 
     #[inline]
     fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isName4(enc, ptr) }
+        self.checkFunctions().isName4(enc, ptr)
     }
 
     #[inline]
     fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isNmstrt2(enc, ptr) }
+        self.checkFunctions().isNmstrt2(enc, ptr)
     }
 
     #[inline]
     fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isNmstrt3(enc, ptr) }
+        self.checkFunctions().isNmstrt3(enc, ptr)
     }
 
     #[inline]
     fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isNmstrt4(enc, ptr) }
+        self.checkFunctions().isNmstrt4(enc, ptr)
     }
 
     #[inline]
     fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isInvalid2(enc, ptr) }
+        self.checkFunctions().isInvalid2(enc, ptr)
     }
 
     #[inline]
     fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isInvalid3(enc, ptr) }
+        self.checkFunctions().isInvalid3(enc, ptr)
     }
 
     #[inline]
     fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { self.checkFunctions().isInvalid4(enc, ptr) }
+        self.checkFunctions().isInvalid4(enc, ptr)
     }
 }
 
@@ -11407,9 +11383,7 @@ pub type C2RustUnnamed_9 = c_int;
 pub const US_ASCII_ENC: C2RustUnnamed_9 = 1;
 
 fn isNever(_enc: &ENCODING, mut _p: *const c_char) -> c_int {
-    unsafe {
-        return 0;
-    }
+    return 0;
 }
 
 fn utf8_isName2(_enc: &ENCODING, mut p: *const c_char) -> c_int {
@@ -11522,48 +11496,46 @@ fn utf8_isInvalid4(_enc: &ENCODING, mut p: *const c_char) -> c_int {
 #[inline(never)]
 #[cold]
 fn missingNormalEncodingFunction() -> ! {
-    unsafe {
-        panic!("non-null function pointer");
-    }
+    panic!("non-null function pointer");
 }
 
 struct Utf8NormalEncodingCheckFunctions;
 
 impl NormalEncodingCheckFunctions for Utf8NormalEncodingCheckFunctions {
     fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { utf8_isName2(enc, ptr) }
+        utf8_isName2(enc, ptr)
     }
 
     fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { utf8_isName3(enc, ptr) }
+        utf8_isName3(enc, ptr)
     }
 
     fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { isNever(enc, ptr) }
+        isNever(enc, ptr)
     }
 
     fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { utf8_isNmstrt2(enc, ptr) }
+        utf8_isNmstrt2(enc, ptr)
     }
 
     fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { utf8_isNmstrt3(enc, ptr) }
+        utf8_isNmstrt3(enc, ptr)
     }
 
     fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { isNever(enc, ptr) }
+        isNever(enc, ptr)
     }
 
     fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { utf8_isInvalid2(enc, ptr) }
+        utf8_isInvalid2(enc, ptr)
     }
 
     fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { utf8_isInvalid3(enc, ptr) }
+        utf8_isInvalid3(enc, ptr)
     }
 
     fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { utf8_isInvalid4(enc, ptr) }
+        utf8_isInvalid4(enc, ptr)
     }
 }
 
@@ -11571,39 +11543,39 @@ struct UnknownNormalEncodingCheckFunctions;
 
 impl NormalEncodingCheckFunctions for UnknownNormalEncodingCheckFunctions {
     fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isName(enc, ptr) }
+        unknown_isName(enc, ptr)
     }
 
     fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isName(enc, ptr) }
+        unknown_isName(enc, ptr)
     }
 
     fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isName(enc, ptr) }
+        unknown_isName(enc, ptr)
     }
 
     fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isNmstrt(enc, ptr) }
+        unknown_isNmstrt(enc, ptr)
     }
 
     fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isNmstrt(enc, ptr) }
+        unknown_isNmstrt(enc, ptr)
     }
 
     fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isNmstrt(enc, ptr) }
+        unknown_isNmstrt(enc, ptr)
     }
 
     fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isInvalid(enc, ptr) }
+        unknown_isInvalid(enc, ptr)
     }
 
     fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isInvalid(enc, ptr) }
+        unknown_isInvalid(enc, ptr)
     }
 
     fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { unknown_isInvalid(enc, ptr) }
+        unknown_isInvalid(enc, ptr)
     }
 }
 
@@ -11611,39 +11583,39 @@ struct MissingNormalEncodingCheckFunctions;
 
 impl NormalEncodingCheckFunctions for MissingNormalEncodingCheckFunctions {
     fn isName2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 
     fn isName3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 
     fn isName4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 
     fn isNmstrt2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 
     fn isNmstrt3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 
     fn isNmstrt4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 
     fn isInvalid2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 
     fn isInvalid3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 
     fn isInvalid4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
-        unsafe { missingNormalEncodingFunction() }
+        missingNormalEncodingFunction()
     }
 }
 
@@ -11842,37 +11814,35 @@ struct Utf8EncodingFunctions;
 
 impl EncodingFunctions for Utf8EncodingFunctions {
     fn nameMatchesAscii(&self, enc: &ENCODING, input: &[c_char], kw: *const c_char) -> c_int {
-        unsafe { normal_nameMatchesAscii(enc, input, kw) }
+        normal_nameMatchesAscii(enc, input, kw)
     }
 
     fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_nameLength(enc, ptr) }
+        normal_nameLength(enc, ptr)
     }
 
     fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        unsafe { normal_skipS(enc, ptr) }
+        normal_skipS(enc, ptr)
     }
 
     fn getAtts(&self, enc: &ENCODING, ptr: *const c_char, n: c_int, atts: *mut ATTRIBUTE) -> c_int {
-        unsafe { normal_getAtts(enc, ptr, n, atts) }
+        normal_getAtts(enc, ptr, n, atts)
     }
 
     fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_charRefNumber(enc, ptr) }
+        normal_charRefNumber(enc, ptr)
     }
 
     fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe { normal_predefinedEntityName(enc, input) }
+        normal_predefinedEntityName(enc, input)
     }
 
     fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        unsafe {
-            normal_updatePosition(enc, input, pos);
-        }
+        normal_updatePosition(enc, input, pos);
     }
 
     fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe { normal_isPublicId(enc, input) }
+        normal_isPublicId(enc, input)
     }
 
     fn utf8Convert(
@@ -11883,7 +11853,7 @@ impl EncodingFunctions for Utf8EncodingFunctions {
         to_p: *mut c_char,
         to_lim: *const c_char,
     ) -> Utf8ConvertResult {
-        unsafe { utf8_toUtf8(enc, from_p, from_lim, to_p, to_lim) }
+        utf8_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     fn utf16Convert(
@@ -11894,7 +11864,7 @@ impl EncodingFunctions for Utf8EncodingFunctions {
         to_p: *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> Utf16ConvertResult {
-        unsafe { utf8_toUtf16(enc, from_p, from_lim, to_p, to_lim) }
+        utf8_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 
@@ -11902,37 +11872,35 @@ struct Latin1EncodingFunctions;
 
 impl EncodingFunctions for Latin1EncodingFunctions {
     fn nameMatchesAscii(&self, enc: &ENCODING, input: &[c_char], kw: *const c_char) -> c_int {
-        unsafe { normal_nameMatchesAscii(enc, input, kw) }
+        normal_nameMatchesAscii(enc, input, kw)
     }
 
     fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_nameLength(enc, ptr) }
+        normal_nameLength(enc, ptr)
     }
 
     fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        unsafe { normal_skipS(enc, ptr) }
+        normal_skipS(enc, ptr)
     }
 
     fn getAtts(&self, enc: &ENCODING, ptr: *const c_char, n: c_int, atts: *mut ATTRIBUTE) -> c_int {
-        unsafe { normal_getAtts(enc, ptr, n, atts) }
+        normal_getAtts(enc, ptr, n, atts)
     }
 
     fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_charRefNumber(enc, ptr) }
+        normal_charRefNumber(enc, ptr)
     }
 
     fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe { normal_predefinedEntityName(enc, input) }
+        normal_predefinedEntityName(enc, input)
     }
 
     fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        unsafe {
-            normal_updatePosition(enc, input, pos);
-        }
+        normal_updatePosition(enc, input, pos);
     }
 
     fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe { normal_isPublicId(enc, input) }
+        normal_isPublicId(enc, input)
     }
 
     fn utf8Convert(
@@ -11943,7 +11911,7 @@ impl EncodingFunctions for Latin1EncodingFunctions {
         to_p: *mut c_char,
         to_lim: *const c_char,
     ) -> Utf8ConvertResult {
-        unsafe { latin1_toUtf8(enc, from_p, from_lim, to_p, to_lim) }
+        latin1_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     fn utf16Convert(
@@ -11954,7 +11922,7 @@ impl EncodingFunctions for Latin1EncodingFunctions {
         to_p: *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> Utf16ConvertResult {
-        unsafe { latin1_toUtf16(enc, from_p, from_lim, to_p, to_lim) }
+        latin1_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 
@@ -11962,37 +11930,35 @@ struct AsciiEncodingFunctions;
 
 impl EncodingFunctions for AsciiEncodingFunctions {
     fn nameMatchesAscii(&self, enc: &ENCODING, input: &[c_char], kw: *const c_char) -> c_int {
-        unsafe { normal_nameMatchesAscii(enc, input, kw) }
+        normal_nameMatchesAscii(enc, input, kw)
     }
 
     fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_nameLength(enc, ptr) }
+        normal_nameLength(enc, ptr)
     }
 
     fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        unsafe { normal_skipS(enc, ptr) }
+        normal_skipS(enc, ptr)
     }
 
     fn getAtts(&self, enc: &ENCODING, ptr: *const c_char, n: c_int, atts: *mut ATTRIBUTE) -> c_int {
-        unsafe { normal_getAtts(enc, ptr, n, atts) }
+        normal_getAtts(enc, ptr, n, atts)
     }
 
     fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_charRefNumber(enc, ptr) }
+        normal_charRefNumber(enc, ptr)
     }
 
     fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe { normal_predefinedEntityName(enc, input) }
+        normal_predefinedEntityName(enc, input)
     }
 
     fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        unsafe {
-            normal_updatePosition(enc, input, pos);
-        }
+        normal_updatePosition(enc, input, pos);
     }
 
     fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe { normal_isPublicId(enc, input) }
+        normal_isPublicId(enc, input)
     }
 
     fn utf8Convert(
@@ -12003,7 +11969,7 @@ impl EncodingFunctions for AsciiEncodingFunctions {
         to_p: *mut c_char,
         to_lim: *const c_char,
     ) -> Utf8ConvertResult {
-        unsafe { ascii_toUtf8(enc, from_p, from_lim, to_p, to_lim) }
+        ascii_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     fn utf16Convert(
@@ -12014,7 +11980,7 @@ impl EncodingFunctions for AsciiEncodingFunctions {
         to_p: *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> Utf16ConvertResult {
-        unsafe { latin1_toUtf16(enc, from_p, from_lim, to_p, to_lim) }
+        latin1_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 
@@ -12022,37 +11988,35 @@ struct Little2EncodingFunctions;
 
 impl EncodingFunctions for Little2EncodingFunctions {
     fn nameMatchesAscii(&self, enc: &ENCODING, input: &[c_char], kw: *const c_char) -> c_int {
-        unsafe { little2_nameMatchesAscii(enc, input, kw) }
+        little2_nameMatchesAscii(enc, input, kw)
     }
 
     fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { little2_nameLength(enc, ptr) }
+        little2_nameLength(enc, ptr)
     }
 
     fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        unsafe { little2_skipS(enc, ptr) }
+        little2_skipS(enc, ptr)
     }
 
     fn getAtts(&self, enc: &ENCODING, ptr: *const c_char, n: c_int, atts: *mut ATTRIBUTE) -> c_int {
-        unsafe { little2_getAtts(enc, ptr, n, atts) }
+        little2_getAtts(enc, ptr, n, atts)
     }
 
     fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { little2_charRefNumber(enc, ptr) }
+        little2_charRefNumber(enc, ptr)
     }
 
     fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe { little2_predefinedEntityName(enc, input) }
+        little2_predefinedEntityName(enc, input)
     }
 
     fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        unsafe {
-            little2_updatePosition(enc, input, pos);
-        }
+        little2_updatePosition(enc, input, pos);
     }
 
     fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe { little2_isPublicId(enc, input) }
+        little2_isPublicId(enc, input)
     }
 
     fn utf8Convert(
@@ -12063,7 +12027,7 @@ impl EncodingFunctions for Little2EncodingFunctions {
         to_p: *mut c_char,
         to_lim: *const c_char,
     ) -> Utf8ConvertResult {
-        unsafe { little2_toUtf8(enc, from_p, from_lim, to_p, to_lim) }
+        little2_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     fn utf16Convert(
@@ -12074,7 +12038,7 @@ impl EncodingFunctions for Little2EncodingFunctions {
         to_p: *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> Utf16ConvertResult {
-        unsafe { little2_toUtf16(enc, from_p, from_lim, to_p, to_lim) }
+        little2_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 
@@ -12082,37 +12046,35 @@ struct Big2EncodingFunctions;
 
 impl EncodingFunctions for Big2EncodingFunctions {
     fn nameMatchesAscii(&self, enc: &ENCODING, input: &[c_char], kw: *const c_char) -> c_int {
-        unsafe { big2_nameMatchesAscii(enc, input, kw) }
+        big2_nameMatchesAscii(enc, input, kw)
     }
 
     fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { big2_nameLength(enc, ptr) }
+        big2_nameLength(enc, ptr)
     }
 
     fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        unsafe { big2_skipS(enc, ptr) }
+        big2_skipS(enc, ptr)
     }
 
     fn getAtts(&self, enc: &ENCODING, ptr: *const c_char, n: c_int, atts: *mut ATTRIBUTE) -> c_int {
-        unsafe { big2_getAtts(enc, ptr, n, atts) }
+        big2_getAtts(enc, ptr, n, atts)
     }
 
     fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { big2_charRefNumber(enc, ptr) }
+        big2_charRefNumber(enc, ptr)
     }
 
     fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe { big2_predefinedEntityName(enc, input) }
+        big2_predefinedEntityName(enc, input)
     }
 
     fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        unsafe {
-            big2_updatePosition(enc, input, pos);
-        }
+        big2_updatePosition(enc, input, pos);
     }
 
     fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe { big2_isPublicId(enc, input) }
+        big2_isPublicId(enc, input)
     }
 
     fn utf8Convert(
@@ -12123,7 +12085,7 @@ impl EncodingFunctions for Big2EncodingFunctions {
         to_p: *mut c_char,
         to_lim: *const c_char,
     ) -> Utf8ConvertResult {
-        unsafe { big2_toUtf8(enc, from_p, from_lim, to_p, to_lim) }
+        big2_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     fn utf16Convert(
@@ -12134,7 +12096,7 @@ impl EncodingFunctions for Big2EncodingFunctions {
         to_p: *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> Utf16ConvertResult {
-        unsafe { big2_toUtf16(enc, from_p, from_lim, to_p, to_lim) }
+        big2_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 
@@ -12142,37 +12104,35 @@ struct InitEncodingFunctions;
 
 impl EncodingFunctions for InitEncodingFunctions {
     fn nameMatchesAscii(&self, enc: &ENCODING, input: &[c_char], kw: *const c_char) -> c_int {
-        unsafe { normal_nameMatchesAscii(enc, input, kw) }
+        normal_nameMatchesAscii(enc, input, kw)
     }
 
     fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_nameLength(enc, ptr) }
+        normal_nameLength(enc, ptr)
     }
 
     fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        unsafe { normal_skipS(enc, ptr) }
+        normal_skipS(enc, ptr)
     }
 
     fn getAtts(&self, enc: &ENCODING, ptr: *const c_char, n: c_int, atts: *mut ATTRIBUTE) -> c_int {
-        unsafe { normal_getAtts(enc, ptr, n, atts) }
+        normal_getAtts(enc, ptr, n, atts)
     }
 
     fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_charRefNumber(enc, ptr) }
+        normal_charRefNumber(enc, ptr)
     }
 
     fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe { normal_predefinedEntityName(enc, input) }
+        normal_predefinedEntityName(enc, input)
     }
 
     fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        unsafe {
-            initUpdatePosition(enc, input, pos);
-        }
+        initUpdatePosition(enc, input, pos);
     }
 
     fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe { normal_isPublicId(enc, input) }
+        normal_isPublicId(enc, input)
     }
 
     fn utf8Convert(
@@ -12183,7 +12143,7 @@ impl EncodingFunctions for InitEncodingFunctions {
         to_p: *mut c_char,
         to_lim: *const c_char,
     ) -> Utf8ConvertResult {
-        unsafe { utf8_toUtf8(enc, from_p, from_lim, to_p, to_lim) }
+        utf8_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     fn utf16Convert(
@@ -12194,7 +12154,7 @@ impl EncodingFunctions for InitEncodingFunctions {
         to_p: *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> Utf16ConvertResult {
-        unsafe { utf8_toUtf16(enc, from_p, from_lim, to_p, to_lim) }
+        utf8_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 
@@ -12202,37 +12162,35 @@ struct UnknownEncodingFunctions;
 
 impl EncodingFunctions for UnknownEncodingFunctions {
     fn nameMatchesAscii(&self, enc: &ENCODING, input: &[c_char], kw: *const c_char) -> c_int {
-        unsafe { normal_nameMatchesAscii(enc, input, kw) }
+        normal_nameMatchesAscii(enc, input, kw)
     }
 
     fn nameLength(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_nameLength(enc, ptr) }
+        normal_nameLength(enc, ptr)
     }
 
     fn skipS(&self, enc: &ENCODING, ptr: *const c_char) -> *const c_char {
-        unsafe { normal_skipS(enc, ptr) }
+        normal_skipS(enc, ptr)
     }
 
     fn getAtts(&self, enc: &ENCODING, ptr: *const c_char, n: c_int, atts: *mut ATTRIBUTE) -> c_int {
-        unsafe { normal_getAtts(enc, ptr, n, atts) }
+        normal_getAtts(enc, ptr, n, atts)
     }
 
     fn charRefNumber(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unsafe { normal_charRefNumber(enc, ptr) }
+        normal_charRefNumber(enc, ptr)
     }
 
     fn predefinedEntityName(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe { normal_predefinedEntityName(enc, input) }
+        normal_predefinedEntityName(enc, input)
     }
 
     fn updatePosition(&self, enc: &ENCODING, input: &[c_char], pos: *mut POSITION) {
-        unsafe {
-            normal_updatePosition(enc, input, pos);
-        }
+        normal_updatePosition(enc, input, pos);
     }
 
     fn isPublicId(&self, enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe { normal_isPublicId(enc, input) }
+        normal_isPublicId(enc, input)
     }
 
     fn utf8Convert(
@@ -12243,7 +12201,7 @@ impl EncodingFunctions for UnknownEncodingFunctions {
         to_p: *mut c_char,
         to_lim: *const c_char,
     ) -> Utf8ConvertResult {
-        unsafe { unknown_toUtf8(enc, from_p, from_lim, to_p, to_lim) }
+        unknown_toUtf8(enc, from_p, from_lim, to_p, to_lim)
     }
 
     fn utf16Convert(
@@ -12254,7 +12212,7 @@ impl EncodingFunctions for UnknownEncodingFunctions {
         to_p: *mut c_ushort,
         to_lim: *const c_ushort,
     ) -> Utf16ConvertResult {
-        unsafe { unknown_toUtf16(enc, from_p, from_lim, to_p, to_lim) }
+        unknown_toUtf16(enc, from_p, from_lim, to_p, to_lim)
     }
 }
 
@@ -14594,18 +14552,16 @@ static ascii_encoding: normal_encoding = normal_encoding {
 };
 
 fn unicode_byte_type(mut hi: c_char, mut lo: c_char) -> c_int {
-    unsafe {
-        match hi as c_uchar as c_int {
-            216 | 217 | 218 | 219 => return BT_LEAD4 as c_int,
-            220 | 221 | 222 | 223 => return BT_TRAIL as c_int,
-            255 => match lo as c_uchar as c_int {
-                255 | 254 => return BT_NONXML as c_int,
-                _ => {}
-            },
+    match hi as c_uchar as c_int {
+        216 | 217 | 218 | 219 => return BT_LEAD4 as c_int,
+        220 | 221 | 222 | 223 => return BT_TRAIL as c_int,
+        255 => match lo as c_uchar as c_int {
+            255 | 254 => return BT_NONXML as c_int,
             _ => {}
-        }
-        return BT_NONASCII as c_int;
+        },
+        _ => {}
     }
+    return BT_NONASCII as c_int;
 }
 
 fn little2_toUtf8(
@@ -16595,9 +16551,7 @@ fn streqci(mut s1: *const c_char, mut s2: *const c_char) -> c_int {
 }
 
 fn initUpdatePosition(_enc: &ENCODING, input: &[c_char], mut pos: *mut POSITION) {
-    unsafe {
-        normal_updatePosition(&utf8_encoding.enc, input, pos);
-    }
+    normal_updatePosition(&utf8_encoding.enc, input, pos);
 }
 
 fn toAscii(enc: &ENCODING, input: &[c_char]) -> c_int {
@@ -16617,13 +16571,11 @@ fn toAscii(enc: &ENCODING, input: &[c_char]) -> c_int {
 }
 
 fn isSpace(mut c: c_int) -> c_int {
-    unsafe {
-        match c {
-            32 | 13 | 10 | 9 => return 1,
-            _ => {}
-        }
-        return 0;
+    match c {
+        32 | 13 | 10 | 9 => return 1,
+        _ => {}
     }
+    return 0;
 }
 
 fn parsePseudoAttribute(enc: &ENCODING, input: &[c_char]) -> ParsePseudoAttributeResult {
@@ -16979,25 +16931,23 @@ fn doParseXmlDecl(
 }
 
 fn checkCharRefNumber(mut result: c_int) -> c_int {
-    unsafe {
-        match result >> 8 {
-            216 | 217 | 218 | 219 | 220 | 221 | 222 | 223 => {
+    match result >> 8 {
+        216 | 217 | 218 | 219 | 220 | 221 | 222 | 223 => {
+            return -(1i32);
+        }
+        0 => {
+            if latin1_encoding.type_0[result as usize] as c_int == BT_NONXML as c_int {
                 return -(1i32);
             }
-            0 => {
-                if latin1_encoding.type_0[result as usize] as c_int == BT_NONXML as c_int {
-                    return -(1i32);
-                }
-            }
-            255 => {
-                if result == 0xfffe || result == 0xffff {
-                    return -(1i32);
-                }
-            }
-            _ => {}
         }
-        return result;
+        255 => {
+            if result == 0xfffe || result == 0xffff {
+                return -(1i32);
+            }
+        }
+        _ => {}
     }
+    return result;
 }
 pub(crate) fn XmlUtf8Encode(mut c: c_int, mut buf: *mut c_char) -> c_int {
     unsafe {
@@ -17048,43 +16998,35 @@ pub(crate) fn XmlUtf16Encode(mut charNum: c_int, mut buf: *mut c_ushort) -> c_in
     }
 }
 pub(crate) fn XmlSizeOfUnknownEncoding() -> c_int {
-    unsafe {
-        return size_of::<unknown_encoding>() as c_int;
-    }
+    return size_of::<unknown_encoding>() as c_int;
 }
 
 fn unknown_isName(enc: &ENCODING, mut p: *const c_char) -> c_int {
-    unsafe {
-        let uenc: &unknown_encoding = as_unknown_encoding(enc);
-        let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
-        if c & !(0xffff) != 0 {
-            return 0i32;
-        }
-        return (namingBitmap
-            [(((namePages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
-            & (1) << (c & 0xff & 0x1f)) as c_int;
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
+    if c & !(0xffff) != 0 {
+        return 0i32;
     }
+    return (namingBitmap
+        [(((namePages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
+        & (1) << (c & 0xff & 0x1f)) as c_int;
 }
 
 fn unknown_isNmstrt(enc: &ENCODING, mut p: *const c_char) -> c_int {
-    unsafe {
-        let uenc: &unknown_encoding = as_unknown_encoding(enc);
-        let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
-        if c & !(0xffff) != 0 {
-            return 0i32;
-        }
-        return (namingBitmap
-            [(((nmstrtPages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
-            & (1) << (c & 0xff & 0x1f)) as c_int;
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
+    if c & !(0xffff) != 0 {
+        return 0i32;
     }
+    return (namingBitmap
+        [(((nmstrtPages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
+        & (1) << (c & 0xff & 0x1f)) as c_int;
 }
 
 fn unknown_isInvalid(enc: &ENCODING, mut p: *const c_char) -> c_int {
-    unsafe {
-        let uenc: &unknown_encoding = as_unknown_encoding(enc);
-        let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
-        return (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as c_int;
-    }
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
+    return (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as c_int;
 }
 
 fn unknown_toUtf8(
@@ -17339,30 +17281,26 @@ static KW_UTF_16LE: [c_char; 9] = [
 ];
 
 fn getEncodingIndex(mut name: *const c_char) -> c_int {
-    unsafe {
-        let encodingNames: [*const c_char; 6] = [
-            &raw const KW_ISO_8859_1 as *const c_char,
-            &raw const KW_US_ASCII as *const c_char,
-            &raw const KW_UTF_8 as *const c_char,
-            &raw const KW_UTF_16 as *const c_char,
-            &raw const KW_UTF_16BE as *const c_char,
-            &raw const KW_UTF_16LE as *const c_char,
-        ];
-        let mut i: c_int = 0;
-        if name.is_null() {
-            return NO_ENC;
-        }
-        i = 0;
-        while i
-            < (size_of::<[*const c_char; 6]>()).wrapping_div(size_of::<*const c_char>()) as c_int
-        {
-            if streqci(name, encodingNames[i as usize]) != 0 {
-                return i;
-            }
-            i += 1;
-        }
-        return UNKNOWN_ENC;
+    let encodingNames: [*const c_char; 6] = [
+        &raw const KW_ISO_8859_1 as *const c_char,
+        &raw const KW_US_ASCII as *const c_char,
+        &raw const KW_UTF_8 as *const c_char,
+        &raw const KW_UTF_16 as *const c_char,
+        &raw const KW_UTF_16BE as *const c_char,
+        &raw const KW_UTF_16LE as *const c_char,
+    ];
+    let mut i: c_int = 0;
+    if name.is_null() {
+        return NO_ENC;
     }
+    i = 0;
+    while i < (size_of::<[*const c_char; 6]>()).wrapping_div(size_of::<*const c_char>()) as c_int {
+        if streqci(name, encodingNames[i as usize]) != 0 {
+            return i;
+        }
+        i += 1;
+    }
+    return UNKNOWN_ENC;
 }
 
 fn initScan(
