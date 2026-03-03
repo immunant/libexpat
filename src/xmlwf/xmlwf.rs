@@ -777,9 +777,7 @@ extern "C" fn defaultCharacterData(
     mut _s: *const XML_Char,
     mut _len: c_int,
 ) {
-    unsafe {
-        XML_DefaultCurrent(userData as XML_Parser);
-    }
+    XML_DefaultCurrent(userData as XML_Parser);
 }
 
 extern "C" fn defaultStartElement(
@@ -787,15 +785,11 @@ extern "C" fn defaultStartElement(
     mut _name: *const XML_Char,
     mut _atts: *mut *const XML_Char,
 ) {
-    unsafe {
-        XML_DefaultCurrent(userData as XML_Parser);
-    }
+    XML_DefaultCurrent(userData as XML_Parser);
 }
 
 extern "C" fn defaultEndElement(mut userData: *mut c_void, mut _name: *const XML_Char) {
-    unsafe {
-        XML_DefaultCurrent(userData as XML_Parser);
-    }
+    XML_DefaultCurrent(userData as XML_Parser);
 }
 
 extern "C" fn defaultProcessingInstruction(
@@ -803,9 +797,7 @@ extern "C" fn defaultProcessingInstruction(
     mut _target: *const XML_Char,
     mut _data: *const XML_Char,
 ) {
-    unsafe {
-        XML_DefaultCurrent(userData as XML_Parser);
-    }
+    XML_DefaultCurrent(userData as XML_Parser);
 }
 
 extern "C" fn nopCharacterData(
@@ -813,7 +805,6 @@ extern "C" fn nopCharacterData(
     mut _s: *const XML_Char,
     mut _len: c_int,
 ) {
-    unsafe {}
 }
 
 extern "C" fn nopStartElement(
@@ -821,19 +812,15 @@ extern "C" fn nopStartElement(
     mut _name: *const XML_Char,
     mut _atts: *mut *const XML_Char,
 ) {
-    unsafe {}
 }
 
-extern "C" fn nopEndElement(mut _userData: *mut c_void, mut _name: *const XML_Char) {
-    unsafe {}
-}
+extern "C" fn nopEndElement(mut _userData: *mut c_void, mut _name: *const XML_Char) {}
 
 extern "C" fn nopProcessingInstruction(
     mut _userData: *mut c_void,
     mut _target: *const XML_Char,
     mut _data: *const XML_Char,
 ) {
-    unsafe {}
 }
 
 extern "C" fn markup(mut userData: *mut c_void, mut s: *const XML_Char, mut len: c_int) {
@@ -1271,9 +1258,7 @@ extern "C" fn unknownEncoding(
 }
 
 extern "C" fn notStandalone(mut _userData: *mut c_void) -> c_int {
-    unsafe {
-        return 0;
-    }
+    return 0;
 }
 
 extern "C" fn showVersion(mut prog: *mut XML_Char) {
@@ -2034,24 +2019,20 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
     }
 }
 pub fn main() {
-    unsafe {
-        let mut args_strings: Vec<Vec<u8>> = std::env::args()
-            .map(|arg| {
-                std::ffi::CString::new(arg)
-                    .expect("Failed to convert argument into CString.")
-                    .into_bytes_with_nul()
-            })
-            .collect();
-        let mut args_ptrs: Vec<*mut c_char> = args_strings
-            .iter_mut()
-            .map(|arg| arg.as_mut_ptr() as *mut c_char)
-            .chain(core::iter::once(null_mut()))
-            .collect();
-        unsafe {
-            std::process::exit(main_0(
-                (args_ptrs.len() - 1) as c_int,
-                args_ptrs.as_mut_ptr(),
-            ))
-        }
-    }
+    let mut args_strings: Vec<Vec<u8>> = std::env::args()
+        .map(|arg| {
+            std::ffi::CString::new(arg)
+                .expect("Failed to convert argument into CString.")
+                .into_bytes_with_nul()
+        })
+        .collect();
+    let mut args_ptrs: Vec<*mut c_char> = args_strings
+        .iter_mut()
+        .map(|arg| arg.as_mut_ptr() as *mut c_char)
+        .chain(core::iter::once(null_mut()))
+        .collect();
+    std::process::exit(main_0(
+        (args_ptrs.len() - 1) as c_int,
+        args_ptrs.as_mut_ptr(),
+    ))
 }

@@ -204,115 +204,111 @@ pub mod siphash_h {
         mut len: size_t,
         mut key: *const sipkey,
     ) -> uint64_t {
-        unsafe {
-            let mut state: siphash = siphash {
-                v0: 0u64,
-                v1: 0u64,
-                v2: 0u64,
-                v3: 0u64,
-                buf: [0u8, 0, 0, 0, 0, 0, 0, 0],
-                p: core::ptr::null_mut::<c_uchar>(),
-                c: 0u64,
-            };
-            return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
-        }
+        let mut state: siphash = siphash {
+            v0: 0u64,
+            v1: 0u64,
+            v2: 0u64,
+            v3: 0u64,
+            buf: [0u8, 0, 0, 0, 0, 0, 0, 0],
+            p: core::ptr::null_mut::<c_uchar>(),
+            c: 0u64,
+        };
+        return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
     }
 
     pub(crate) fn sip24_valid() -> c_int {
-        unsafe {
-            pub static vectors: [[c_uchar; 8]; 64] = [
-                [0x31, 0xe, 0xe, 0xdd, 0x47, 0xdb, 0x6f, 0x72],
-                [0xfd, 0x67, 0xdc, 0x93, 0xc5, 0x39, 0xf8, 0x74],
-                [0x5a, 0x4f, 0xa9, 0xd9, 0x9, 0x80, 0x6c, 0xd],
-                [0x2d, 0x7e, 0xfb, 0xd7, 0x96, 0x66, 0x67, 0x85],
-                [0xb7, 0x87, 0x71, 0x27, 0xe0, 0x94, 0x27, 0xcf],
-                [0x8d, 0xa6, 0x99, 0xcd, 0x64, 0x55, 0x76, 0x18],
-                [0xce, 0xe3, 0xfe, 0x58, 0x6e, 0x46, 0xc9, 0xcb],
-                [0x37, 0xd1, 0x1, 0x8b, 0xf5, 0, 0x2, 0xab],
-                [0x62, 0x24, 0x93, 0x9a, 0x79, 0xf5, 0xf5, 0x93],
-                [0xb0, 0xe4, 0xa9, 0xb, 0xdf, 0x82, 0, 0x9e],
-                [0xf3, 0xb9, 0xdd, 0x94, 0xc5, 0xbb, 0x5d, 0x7a],
-                [0xa7, 0xad, 0x6b, 0x22, 0x46, 0x2f, 0xb3, 0xf4],
-                [0xfb, 0xe5, 0xe, 0x86, 0xbc, 0x8f, 0x1e, 0x75],
-                [0x90, 0x3d, 0x84, 0xc0, 0x27, 0x56, 0xea, 0x14],
-                [0xee, 0xf2, 0x7a, 0x8e, 0x90, 0xca, 0x23, 0xf7],
-                [0xe5, 0x45, 0xbe, 0x49, 0x61, 0xca, 0x29, 0xa1],
-                [0xdb, 0x9b, 0xc2, 0x57, 0x7f, 0xcc, 0x2a, 0x3f],
-                [0x94, 0x47, 0xbe, 0x2c, 0xf5, 0xe9, 0x9a, 0x69],
-                [0x9c, 0xd3, 0x8d, 0x96, 0xf0, 0xb3, 0xc1, 0x4b],
-                [0xbd, 0x61, 0x79, 0xa7, 0x1d, 0xc9, 0x6d, 0xbb],
-                [0x98, 0xee, 0xa2, 0x1a, 0xf2, 0x5c, 0xd6, 0xbe],
-                [0xc7, 0x67, 0x3b, 0x2e, 0xb0, 0xcb, 0xf2, 0xd0],
-                [0x88, 0x3e, 0xa3, 0xe3, 0x95, 0x67, 0x53, 0x93],
-                [0xc8, 0xce, 0x5c, 0xcd, 0x8c, 0x3, 0xc, 0xa8],
-                [0x94, 0xaf, 0x49, 0xf6, 0xc6, 0x50, 0xad, 0xb8],
-                [0xea, 0xb8, 0x85, 0x8a, 0xde, 0x92, 0xe1, 0xbc],
-                [0xf3, 0x15, 0xbb, 0x5b, 0xb8, 0x35, 0xd8, 0x17],
-                [0xad, 0xcf, 0x6b, 0x7, 0x63, 0x61, 0x2e, 0x2f],
-                [0xa5, 0xc9, 0x1d, 0xa7, 0xac, 0xaa, 0x4d, 0xde],
-                [0x71, 0x65, 0x95, 0x87, 0x66, 0x50, 0xa2, 0xa6],
-                [0x28, 0xef, 0x49, 0x5c, 0x53, 0xa3, 0x87, 0xad],
-                [0x42, 0xc3, 0x41, 0xd8, 0xfa, 0x92, 0xd8, 0x32],
-                [0xce, 0x7c, 0xf2, 0x72, 0x2f, 0x51, 0x27, 0x71],
-                [0xe3, 0x78, 0x59, 0xf9, 0x46, 0x23, 0xf3, 0xa7],
-                [0x38, 0x12, 0x5, 0xbb, 0x1a, 0xb0, 0xe0, 0x12],
-                [0xae, 0x97, 0xa1, 0xf, 0xd4, 0x34, 0xe0, 0x15],
-                [0xb4, 0xa3, 0x15, 0x8, 0xbe, 0xff, 0x4d, 0x31],
-                [0x81, 0x39, 0x62, 0x29, 0xf0, 0x90, 0x79, 0x2],
-                [0x4d, 0xc, 0xf4, 0x9e, 0xe5, 0xd4, 0xdc, 0xca],
-                [0x5c, 0x73, 0x33, 0x6a, 0x76, 0xd8, 0xbf, 0x9a],
-                [0xd0, 0xa7, 0x4, 0x53, 0x6b, 0xa9, 0x3e, 0xe],
-                [0x92, 0x59, 0x58, 0xfc, 0xd6, 0x42, 0xc, 0xad],
-                [0xa9, 0x15, 0xc2, 0x9b, 0xc8, 0x6, 0x73, 0x18],
-                [0x95, 0x2b, 0x79, 0xf3, 0xbc, 0xa, 0xa6, 0xd4],
-                [0xf2, 0x1d, 0xf2, 0xe4, 0x1d, 0x45, 0x35, 0xf9],
-                [0x87, 0x57, 0x75, 0x19, 0x4, 0x8f, 0x53, 0xa9],
-                [0x10, 0xa5, 0x6c, 0xf5, 0xdf, 0xcd, 0x9a, 0xdb],
-                [0xeb, 0x75, 0x9, 0x5c, 0xcd, 0x98, 0x6c, 0xd0],
-                [0x51, 0xa9, 0xcb, 0x9e, 0xcb, 0xa3, 0x12, 0xe6],
-                [0x96, 0xaf, 0xad, 0xfc, 0x2c, 0xe6, 0x66, 0xc7],
-                [0x72, 0xfe, 0x52, 0x97, 0x5a, 0x43, 0x64, 0xee],
-                [0x5a, 0x16, 0x45, 0xb2, 0x76, 0xd5, 0x92, 0xa1],
-                [0xb2, 0x74, 0xcb, 0x8e, 0xbf, 0x87, 0x87, 0xa],
-                [0x6f, 0x9b, 0xb4, 0x20, 0x3d, 0xe7, 0xb3, 0x81],
-                [0xea, 0xec, 0xb2, 0xa3, 0xb, 0x22, 0xa8, 0x7f],
-                [0x99, 0x24, 0xa4, 0x3c, 0xc1, 0x31, 0x57, 0x24],
-                [0xbd, 0x83, 0x8d, 0x3a, 0xaf, 0xbf, 0x8d, 0xb7],
-                [0xb, 0x1a, 0x2a, 0x32, 0x65, 0xd5, 0x1a, 0xea],
-                [0x13, 0x50, 0x79, 0xa3, 0x23, 0x1c, 0xe6, 0x60],
-                [0x93, 0x2b, 0x28, 0x46, 0xe4, 0xd7, 0x6, 0x66],
-                [0xe1, 0x91, 0x5f, 0x5c, 0xb1, 0xec, 0xa4, 0x6c],
-                [0xf3, 0x25, 0x96, 0x5c, 0xa1, 0x6d, 0x62, 0x9f],
-                [0x57, 0x5f, 0xf2, 0x8e, 0x60, 0x38, 0x1b, 0xe5],
-                [0x72, 0x45, 0x6, 0xeb, 0x4c, 0x32, 0x8a, 0x95],
-            ];
-            let mut in_0: [c_uchar; 64] = [0; 64];
-            let mut k: sipkey = sipkey { k: [0; 2] };
-            let mut i: size_t = 0;
-            sip_tokey(
-                &raw mut k,
-                b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\0" as *const u8
-                    as *const c_void,
-            );
-            i = 0;
-            while i < size_of::<[c_uchar; 64]>() {
-                in_0[i] = i as c_uchar;
-                if siphash24(&raw mut in_0 as *const c_void, i, &raw mut k)
-                    != (vectors[i][0] as uint64_t) << 0
-                        | (vectors[i][1] as uint64_t) << 8
-                        | (vectors[i][2] as uint64_t) << 16
-                        | (vectors[i][3] as uint64_t) << 24
-                        | (vectors[i][4] as uint64_t) << 32
-                        | (vectors[i][5] as uint64_t) << 40
-                        | (vectors[i][6] as uint64_t) << 48
-                        | (vectors[i][7] as uint64_t) << 56
-                {
-                    return 0i32;
-                }
-                i = i.wrapping_add(1);
+        pub static vectors: [[c_uchar; 8]; 64] = [
+            [0x31, 0xe, 0xe, 0xdd, 0x47, 0xdb, 0x6f, 0x72],
+            [0xfd, 0x67, 0xdc, 0x93, 0xc5, 0x39, 0xf8, 0x74],
+            [0x5a, 0x4f, 0xa9, 0xd9, 0x9, 0x80, 0x6c, 0xd],
+            [0x2d, 0x7e, 0xfb, 0xd7, 0x96, 0x66, 0x67, 0x85],
+            [0xb7, 0x87, 0x71, 0x27, 0xe0, 0x94, 0x27, 0xcf],
+            [0x8d, 0xa6, 0x99, 0xcd, 0x64, 0x55, 0x76, 0x18],
+            [0xce, 0xe3, 0xfe, 0x58, 0x6e, 0x46, 0xc9, 0xcb],
+            [0x37, 0xd1, 0x1, 0x8b, 0xf5, 0, 0x2, 0xab],
+            [0x62, 0x24, 0x93, 0x9a, 0x79, 0xf5, 0xf5, 0x93],
+            [0xb0, 0xe4, 0xa9, 0xb, 0xdf, 0x82, 0, 0x9e],
+            [0xf3, 0xb9, 0xdd, 0x94, 0xc5, 0xbb, 0x5d, 0x7a],
+            [0xa7, 0xad, 0x6b, 0x22, 0x46, 0x2f, 0xb3, 0xf4],
+            [0xfb, 0xe5, 0xe, 0x86, 0xbc, 0x8f, 0x1e, 0x75],
+            [0x90, 0x3d, 0x84, 0xc0, 0x27, 0x56, 0xea, 0x14],
+            [0xee, 0xf2, 0x7a, 0x8e, 0x90, 0xca, 0x23, 0xf7],
+            [0xe5, 0x45, 0xbe, 0x49, 0x61, 0xca, 0x29, 0xa1],
+            [0xdb, 0x9b, 0xc2, 0x57, 0x7f, 0xcc, 0x2a, 0x3f],
+            [0x94, 0x47, 0xbe, 0x2c, 0xf5, 0xe9, 0x9a, 0x69],
+            [0x9c, 0xd3, 0x8d, 0x96, 0xf0, 0xb3, 0xc1, 0x4b],
+            [0xbd, 0x61, 0x79, 0xa7, 0x1d, 0xc9, 0x6d, 0xbb],
+            [0x98, 0xee, 0xa2, 0x1a, 0xf2, 0x5c, 0xd6, 0xbe],
+            [0xc7, 0x67, 0x3b, 0x2e, 0xb0, 0xcb, 0xf2, 0xd0],
+            [0x88, 0x3e, 0xa3, 0xe3, 0x95, 0x67, 0x53, 0x93],
+            [0xc8, 0xce, 0x5c, 0xcd, 0x8c, 0x3, 0xc, 0xa8],
+            [0x94, 0xaf, 0x49, 0xf6, 0xc6, 0x50, 0xad, 0xb8],
+            [0xea, 0xb8, 0x85, 0x8a, 0xde, 0x92, 0xe1, 0xbc],
+            [0xf3, 0x15, 0xbb, 0x5b, 0xb8, 0x35, 0xd8, 0x17],
+            [0xad, 0xcf, 0x6b, 0x7, 0x63, 0x61, 0x2e, 0x2f],
+            [0xa5, 0xc9, 0x1d, 0xa7, 0xac, 0xaa, 0x4d, 0xde],
+            [0x71, 0x65, 0x95, 0x87, 0x66, 0x50, 0xa2, 0xa6],
+            [0x28, 0xef, 0x49, 0x5c, 0x53, 0xa3, 0x87, 0xad],
+            [0x42, 0xc3, 0x41, 0xd8, 0xfa, 0x92, 0xd8, 0x32],
+            [0xce, 0x7c, 0xf2, 0x72, 0x2f, 0x51, 0x27, 0x71],
+            [0xe3, 0x78, 0x59, 0xf9, 0x46, 0x23, 0xf3, 0xa7],
+            [0x38, 0x12, 0x5, 0xbb, 0x1a, 0xb0, 0xe0, 0x12],
+            [0xae, 0x97, 0xa1, 0xf, 0xd4, 0x34, 0xe0, 0x15],
+            [0xb4, 0xa3, 0x15, 0x8, 0xbe, 0xff, 0x4d, 0x31],
+            [0x81, 0x39, 0x62, 0x29, 0xf0, 0x90, 0x79, 0x2],
+            [0x4d, 0xc, 0xf4, 0x9e, 0xe5, 0xd4, 0xdc, 0xca],
+            [0x5c, 0x73, 0x33, 0x6a, 0x76, 0xd8, 0xbf, 0x9a],
+            [0xd0, 0xa7, 0x4, 0x53, 0x6b, 0xa9, 0x3e, 0xe],
+            [0x92, 0x59, 0x58, 0xfc, 0xd6, 0x42, 0xc, 0xad],
+            [0xa9, 0x15, 0xc2, 0x9b, 0xc8, 0x6, 0x73, 0x18],
+            [0x95, 0x2b, 0x79, 0xf3, 0xbc, 0xa, 0xa6, 0xd4],
+            [0xf2, 0x1d, 0xf2, 0xe4, 0x1d, 0x45, 0x35, 0xf9],
+            [0x87, 0x57, 0x75, 0x19, 0x4, 0x8f, 0x53, 0xa9],
+            [0x10, 0xa5, 0x6c, 0xf5, 0xdf, 0xcd, 0x9a, 0xdb],
+            [0xeb, 0x75, 0x9, 0x5c, 0xcd, 0x98, 0x6c, 0xd0],
+            [0x51, 0xa9, 0xcb, 0x9e, 0xcb, 0xa3, 0x12, 0xe6],
+            [0x96, 0xaf, 0xad, 0xfc, 0x2c, 0xe6, 0x66, 0xc7],
+            [0x72, 0xfe, 0x52, 0x97, 0x5a, 0x43, 0x64, 0xee],
+            [0x5a, 0x16, 0x45, 0xb2, 0x76, 0xd5, 0x92, 0xa1],
+            [0xb2, 0x74, 0xcb, 0x8e, 0xbf, 0x87, 0x87, 0xa],
+            [0x6f, 0x9b, 0xb4, 0x20, 0x3d, 0xe7, 0xb3, 0x81],
+            [0xea, 0xec, 0xb2, 0xa3, 0xb, 0x22, 0xa8, 0x7f],
+            [0x99, 0x24, 0xa4, 0x3c, 0xc1, 0x31, 0x57, 0x24],
+            [0xbd, 0x83, 0x8d, 0x3a, 0xaf, 0xbf, 0x8d, 0xb7],
+            [0xb, 0x1a, 0x2a, 0x32, 0x65, 0xd5, 0x1a, 0xea],
+            [0x13, 0x50, 0x79, 0xa3, 0x23, 0x1c, 0xe6, 0x60],
+            [0x93, 0x2b, 0x28, 0x46, 0xe4, 0xd7, 0x6, 0x66],
+            [0xe1, 0x91, 0x5f, 0x5c, 0xb1, 0xec, 0xa4, 0x6c],
+            [0xf3, 0x25, 0x96, 0x5c, 0xa1, 0x6d, 0x62, 0x9f],
+            [0x57, 0x5f, 0xf2, 0x8e, 0x60, 0x38, 0x1b, 0xe5],
+            [0x72, 0x45, 0x6, 0xeb, 0x4c, 0x32, 0x8a, 0x95],
+        ];
+        let mut in_0: [c_uchar; 64] = [0; 64];
+        let mut k: sipkey = sipkey { k: [0; 2] };
+        let mut i: size_t = 0;
+        sip_tokey(
+            &raw mut k,
+            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\0" as *const u8
+                as *const c_void,
+        );
+        i = 0;
+        while i < size_of::<[c_uchar; 64]>() {
+            in_0[i] = i as c_uchar;
+            if siphash24(&raw mut in_0 as *const c_void, i, &raw mut k)
+                != (vectors[i][0] as uint64_t) << 0
+                    | (vectors[i][1] as uint64_t) << 8
+                    | (vectors[i][2] as uint64_t) << 16
+                    | (vectors[i][3] as uint64_t) << 24
+                    | (vectors[i][4] as uint64_t) << 32
+                    | (vectors[i][5] as uint64_t) << 40
+                    | (vectors[i][6] as uint64_t) << 48
+                    | (vectors[i][7] as uint64_t) << 56
+            {
+                return 0i32;
             }
-            return 1;
+            i = i.wrapping_add(1);
         }
+        return 1;
     }
 }
 
@@ -1199,7 +1195,7 @@ extern "C" fn expat_malloc_test_shim(
     size: size_t,
     sourceLine: c_int,
 ) -> *mut c_void {
-    unsafe { expat_malloc(parser, size, sourceLine) }
+    expat_malloc(parser, size, sourceLine)
 }
 
 fn expat_free(mut parser: XML_Parser, mut ptr: *mut c_void, mut sourceLine: c_int) {
@@ -1239,9 +1235,7 @@ fn expat_free(mut parser: XML_Parser, mut ptr: *mut c_void, mut sourceLine: c_in
 #[cfg(feature = "expat_test_shims")]
 #[export_name = "expat_free"]
 extern "C" fn expat_free_test_shim(parser: XML_Parser, ptr: *mut c_void, sourceLine: c_int) {
-    unsafe {
-        expat_free(parser, ptr, sourceLine);
-    }
+    expat_free(parser, ptr, sourceLine);
 }
 
 fn expat_realloc(
@@ -1346,19 +1340,17 @@ extern "C" fn expat_realloc_test_shim(
     size: size_t,
     sourceLine: c_int,
 ) -> *mut c_void {
-    unsafe { expat_realloc(parser, ptr, size, sourceLine) }
+    expat_realloc(parser, ptr, size, sourceLine)
 }
 
 #[no_mangle]
 
 pub extern "C" fn XML_ParserCreate(mut encodingName: *const XML_Char) -> XML_Parser {
-    unsafe {
-        return XML_ParserCreate_MM(
-            encodingName,
-            null::<XML_Memory_Handling_Suite>(),
-            null::<XML_Char>(),
-        );
-    }
+    return XML_ParserCreate_MM(
+        encodingName,
+        null::<XML_Memory_Handling_Suite>(),
+        null::<XML_Char>(),
+    );
 }
 #[no_mangle]
 
@@ -1366,14 +1358,12 @@ pub extern "C" fn XML_ParserCreateNS(
     mut encodingName: *const XML_Char,
     mut nsSep: XML_Char,
 ) -> XML_Parser {
-    unsafe {
-        let mut tmp: [XML_Char; 2] = [nsSep, 0];
-        return XML_ParserCreate_MM(
-            encodingName,
-            null::<XML_Memory_Handling_Suite>(),
-            &raw mut tmp as *mut XML_Char,
-        );
-    }
+    let mut tmp: [XML_Char; 2] = [nsSep, 0];
+    return XML_ParserCreate_MM(
+        encodingName,
+        null::<XML_Memory_Handling_Suite>(),
+        &raw mut tmp as *mut XML_Char,
+    );
 }
 
 static implicitContext: [XML_Char; 41] = [
@@ -1633,15 +1623,13 @@ pub extern "C" fn XML_ParserCreate_MM(
     mut memsuite: *const XML_Memory_Handling_Suite,
     mut nameSep: *const XML_Char,
 ) -> XML_Parser {
-    unsafe {
-        return parserCreate(
-            encodingName,
-            memsuite,
-            nameSep,
-            null_mut::<DTD>(),
-            null_mut::<XML_ParserStruct>(),
-        );
-    }
+    return parserCreate(
+        encodingName,
+        memsuite,
+        nameSep,
+        null_mut::<DTD>(),
+        null_mut::<XML_ParserStruct>(),
+    );
 }
 
 extern "C" fn stdlib_malloc(size: size_t) -> *mut c_void {
@@ -3391,198 +3379,187 @@ pub extern "C" fn XML_DefaultCurrent(mut parser: XML_Parser) {
 #[no_mangle]
 
 pub extern "C" fn XML_ErrorString(mut code: XML_Error) -> *const XML_LChar {
-    unsafe {
-        match code {
-            0 => return null::<XML_LChar>(),
-            1 => return b"out of memory\0" as *const u8 as *const XML_LChar,
-            2 => return b"syntax error\0" as *const u8 as *const XML_LChar,
-            3 => return b"no element found\0" as *const u8 as *const XML_LChar,
-            4 => return b"not well-formed (invalid token)\0" as *const u8 as *const XML_LChar,
-            5 => return b"unclosed token\0" as *const u8 as *const XML_LChar,
-            6 => return b"partial character\0" as *const u8 as *const XML_LChar,
-            7 => return b"mismatched tag\0" as *const u8 as *const XML_LChar,
-            8 => return b"duplicate attribute\0" as *const u8 as *const XML_LChar,
-            9 => return b"junk after document element\0" as *const u8 as *const XML_LChar,
-            10 => {
-                return b"illegal parameter entity reference\0" as *const u8 as *const XML_LChar;
-            }
-            11 => return b"undefined entity\0" as *const u8 as *const XML_LChar,
-            12 => return b"recursive entity reference\0" as *const u8 as *const XML_LChar,
-            13 => return b"asynchronous entity\0" as *const u8 as *const XML_LChar,
-            14 => {
-                return b"reference to invalid character number\0" as *const u8 as *const XML_LChar;
-            }
-            15 => return b"reference to binary entity\0" as *const u8 as *const XML_LChar,
-            16 => {
-                return b"reference to external entity in attribute\0" as *const u8
-                    as *const XML_LChar;
-            }
-            17 => {
-                return b"XML or text declaration not at start of entity\0" as *const u8
-                    as *const XML_LChar;
-            }
-            18 => return b"unknown encoding\0" as *const u8 as *const XML_LChar,
-            19 => {
-                return b"encoding specified in XML declaration is incorrect\0" as *const u8
-                    as *const XML_LChar;
-            }
-            20 => return b"unclosed CDATA section\0" as *const u8 as *const XML_LChar,
-            21 => {
-                return b"error in processing external entity reference\0" as *const u8
-                    as *const XML_LChar;
-            }
-            22 => return b"document is not standalone\0" as *const u8 as *const XML_LChar,
-            23 => {
-                return b"unexpected parser state - please send a bug report\0" as *const u8
-                    as *const XML_LChar;
-            }
-            24 => {
-                return b"entity declared in parameter entity\0" as *const u8 as *const XML_LChar;
-            }
-            25 => {
-                return b"requested feature requires XML_DTD support in Expat\0" as *const u8
-                    as *const XML_LChar;
-            }
-            26 => {
-                return b"cannot change setting once parsing has begun\0" as *const u8
-                    as *const XML_LChar;
-            }
-            27 => return b"unbound prefix\0" as *const u8 as *const XML_LChar,
-            28 => return b"must not undeclare prefix\0" as *const u8 as *const XML_LChar,
-            29 => {
-                return b"incomplete markup in parameter entity\0" as *const u8 as *const XML_LChar;
-            }
-            30 => {
-                return b"XML declaration not well-formed\0" as *const u8 as *const XML_LChar;
-            }
-            31 => {
-                return b"text declaration not well-formed\0" as *const u8 as *const XML_LChar;
-            }
-            32 => {
-                return b"illegal character(s) in public id\0" as *const u8 as *const XML_LChar;
-            }
-            33 => return b"parser suspended\0" as *const u8 as *const XML_LChar,
-            34 => return b"parser not suspended\0" as *const u8 as *const XML_LChar,
-            35 => return b"parsing aborted\0" as *const u8 as *const XML_LChar,
-            36 => return b"parsing finished\0" as *const u8 as *const XML_LChar,
-            37 => {
-                return b"cannot suspend in external parameter entity\0" as *const u8
-                    as *const XML_LChar;
-            }
-            38 => {
-                return b"reserved prefix (xml) must not be undeclared or bound to another namespace name\0"
-                as *const u8 as *const XML_LChar;
-            }
-            39 => {
-                return b"reserved prefix (xmlns) must not be declared or undeclared\0" as *const u8
-                    as *const XML_LChar;
-            }
-            40 => {
-                return b"prefix must not be bound to one of the reserved namespace names\0"
-                    as *const u8 as *const XML_LChar;
-            }
-            41 => return b"invalid argument\0" as *const u8 as *const XML_LChar,
-            42 => {
-                return b"a successful prior call to function XML_GetBuffer is required\0"
-                    as *const u8 as *const XML_LChar;
-            }
-            43 => {
-                return b"limit on input amplification factor (from DTD and entities) breached\0"
-                    as *const u8 as *const XML_LChar;
-            }
-            44 => return b"parser not started\0" as *const u8 as *const XML_LChar,
-            _ => {}
+    match code {
+        0 => return null::<XML_LChar>(),
+        1 => return b"out of memory\0" as *const u8 as *const XML_LChar,
+        2 => return b"syntax error\0" as *const u8 as *const XML_LChar,
+        3 => return b"no element found\0" as *const u8 as *const XML_LChar,
+        4 => return b"not well-formed (invalid token)\0" as *const u8 as *const XML_LChar,
+        5 => return b"unclosed token\0" as *const u8 as *const XML_LChar,
+        6 => return b"partial character\0" as *const u8 as *const XML_LChar,
+        7 => return b"mismatched tag\0" as *const u8 as *const XML_LChar,
+        8 => return b"duplicate attribute\0" as *const u8 as *const XML_LChar,
+        9 => return b"junk after document element\0" as *const u8 as *const XML_LChar,
+        10 => {
+            return b"illegal parameter entity reference\0" as *const u8 as *const XML_LChar;
         }
-        return null::<XML_LChar>();
+        11 => return b"undefined entity\0" as *const u8 as *const XML_LChar,
+        12 => return b"recursive entity reference\0" as *const u8 as *const XML_LChar,
+        13 => return b"asynchronous entity\0" as *const u8 as *const XML_LChar,
+        14 => {
+            return b"reference to invalid character number\0" as *const u8 as *const XML_LChar;
+        }
+        15 => return b"reference to binary entity\0" as *const u8 as *const XML_LChar,
+        16 => {
+            return b"reference to external entity in attribute\0" as *const u8 as *const XML_LChar;
+        }
+        17 => {
+            return b"XML or text declaration not at start of entity\0" as *const u8
+                as *const XML_LChar;
+        }
+        18 => return b"unknown encoding\0" as *const u8 as *const XML_LChar,
+        19 => {
+            return b"encoding specified in XML declaration is incorrect\0" as *const u8
+                as *const XML_LChar;
+        }
+        20 => return b"unclosed CDATA section\0" as *const u8 as *const XML_LChar,
+        21 => {
+            return b"error in processing external entity reference\0" as *const u8
+                as *const XML_LChar;
+        }
+        22 => return b"document is not standalone\0" as *const u8 as *const XML_LChar,
+        23 => {
+            return b"unexpected parser state - please send a bug report\0" as *const u8
+                as *const XML_LChar;
+        }
+        24 => {
+            return b"entity declared in parameter entity\0" as *const u8 as *const XML_LChar;
+        }
+        25 => {
+            return b"requested feature requires XML_DTD support in Expat\0" as *const u8
+                as *const XML_LChar;
+        }
+        26 => {
+            return b"cannot change setting once parsing has begun\0" as *const u8
+                as *const XML_LChar;
+        }
+        27 => return b"unbound prefix\0" as *const u8 as *const XML_LChar,
+        28 => return b"must not undeclare prefix\0" as *const u8 as *const XML_LChar,
+        29 => {
+            return b"incomplete markup in parameter entity\0" as *const u8 as *const XML_LChar;
+        }
+        30 => {
+            return b"XML declaration not well-formed\0" as *const u8 as *const XML_LChar;
+        }
+        31 => {
+            return b"text declaration not well-formed\0" as *const u8 as *const XML_LChar;
+        }
+        32 => {
+            return b"illegal character(s) in public id\0" as *const u8 as *const XML_LChar;
+        }
+        33 => return b"parser suspended\0" as *const u8 as *const XML_LChar,
+        34 => return b"parser not suspended\0" as *const u8 as *const XML_LChar,
+        35 => return b"parsing aborted\0" as *const u8 as *const XML_LChar,
+        36 => return b"parsing finished\0" as *const u8 as *const XML_LChar,
+        37 => {
+            return b"cannot suspend in external parameter entity\0" as *const u8
+                as *const XML_LChar;
+        }
+        38 => {
+            return b"reserved prefix (xml) must not be undeclared or bound to another namespace name\0"
+                as *const u8 as *const XML_LChar;
+        }
+        39 => {
+            return b"reserved prefix (xmlns) must not be declared or undeclared\0" as *const u8
+                as *const XML_LChar;
+        }
+        40 => {
+            return b"prefix must not be bound to one of the reserved namespace names\0" as *const u8
+                as *const XML_LChar;
+        }
+        41 => return b"invalid argument\0" as *const u8 as *const XML_LChar,
+        42 => {
+            return b"a successful prior call to function XML_GetBuffer is required\0" as *const u8
+                as *const XML_LChar;
+        }
+        43 => {
+            return b"limit on input amplification factor (from DTD and entities) breached\0"
+                as *const u8 as *const XML_LChar;
+        }
+        44 => return b"parser not started\0" as *const u8 as *const XML_LChar,
+        _ => {}
     }
+    return null::<XML_LChar>();
 }
 #[no_mangle]
 
 pub extern "C" fn XML_ExpatVersion() -> *const XML_LChar {
-    unsafe {
-        return b"expat_2.7.4\0" as *const u8 as *const XML_LChar;
-    }
+    return b"expat_2.7.4\0" as *const u8 as *const XML_LChar;
 }
 #[no_mangle]
 
 pub extern "C" fn XML_ExpatVersionInfo() -> XML_Expat_Version {
-    unsafe {
-        let mut version: XML_Expat_Version = XML_Expat_Version {
-            major: 0,
-            minor: 0,
-            micro: 0,
-        };
-        version.major = XML_MAJOR_VERSION;
-        version.minor = XML_MINOR_VERSION;
-        version.micro = XML_MICRO_VERSION;
-        return version;
-    }
+    let mut version: XML_Expat_Version = XML_Expat_Version {
+        major: 0,
+        minor: 0,
+        micro: 0,
+    };
+    version.major = XML_MAJOR_VERSION;
+    version.minor = XML_MINOR_VERSION;
+    version.micro = XML_MICRO_VERSION;
+    return version;
 }
 #[no_mangle]
 
 pub extern "C" fn XML_GetFeatureList() -> *const XML_Feature {
-    unsafe {
-        const FEATURES: [XML_Feature; 11] = [
-            XML_Feature {
-                feature: XML_FEATURE_SIZEOF_XML_CHAR,
-                name: b"sizeof(XML_Char)\0" as *const u8 as *const XML_LChar,
-                value: size_of::<XML_Char>() as c_long,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_SIZEOF_XML_LCHAR,
-                name: b"sizeof(XML_LChar)\0" as *const u8 as *const XML_LChar,
-                value: size_of::<XML_LChar>() as c_long,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_DTD,
-                name: b"XML_DTD\0" as *const u8 as *const XML_LChar,
-                value: 0i64,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_CONTEXT_BYTES,
-                name: b"XML_CONTEXT_BYTES\0" as *const u8 as *const XML_LChar,
-                value: XML_CONTEXT_BYTES as c_long,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_NS,
-                name: b"XML_NS\0" as *const u8 as *const XML_LChar,
-                value: 0i64,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT,
-                name: b"XML_BLAP_MAX_AMP\0" as *const u8 as *const XML_LChar,
-                value: EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT
-                    as c_long,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
-                name: b"XML_BLAP_ACT_THRES\0" as *const u8 as *const XML_LChar,
-                value: EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT
-                    as c_long,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_GE,
-                name: b"XML_GE\0" as *const u8 as *const XML_LChar,
-                value: 0i64,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT,
-                name: b"XML_AT_MAX_AMP\0" as *const u8 as *const XML_LChar,
-                value: EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT as c_long,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
-                name: b"XML_AT_ACT_THRES\0" as *const u8 as *const XML_LChar,
-                value: EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as c_long,
-            },
-            XML_Feature {
-                feature: XML_FEATURE_END,
-                name: null::<XML_LChar>(),
-                value: 0i64,
-            },
-        ];
-        return FEATURES.as_ptr();
-    }
+    const FEATURES: [XML_Feature; 11] = [
+        XML_Feature {
+            feature: XML_FEATURE_SIZEOF_XML_CHAR,
+            name: b"sizeof(XML_Char)\0" as *const u8 as *const XML_LChar,
+            value: size_of::<XML_Char>() as c_long,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_SIZEOF_XML_LCHAR,
+            name: b"sizeof(XML_LChar)\0" as *const u8 as *const XML_LChar,
+            value: size_of::<XML_LChar>() as c_long,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_DTD,
+            name: b"XML_DTD\0" as *const u8 as *const XML_LChar,
+            value: 0i64,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_CONTEXT_BYTES,
+            name: b"XML_CONTEXT_BYTES\0" as *const u8 as *const XML_LChar,
+            value: XML_CONTEXT_BYTES as c_long,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_NS,
+            name: b"XML_NS\0" as *const u8 as *const XML_LChar,
+            value: 0i64,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT,
+            name: b"XML_BLAP_MAX_AMP\0" as *const u8 as *const XML_LChar,
+            value: EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT as c_long,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
+            name: b"XML_BLAP_ACT_THRES\0" as *const u8 as *const XML_LChar,
+            value: EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT as c_long,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_GE,
+            name: b"XML_GE\0" as *const u8 as *const XML_LChar,
+            value: 0i64,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT,
+            name: b"XML_AT_MAX_AMP\0" as *const u8 as *const XML_LChar,
+            value: EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT as c_long,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
+            name: b"XML_AT_ACT_THRES\0" as *const u8 as *const XML_LChar,
+            value: EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as c_long,
+        },
+        XML_Feature {
+            feature: XML_FEATURE_END,
+            name: null::<XML_LChar>(),
+            value: 0i64,
+        },
+    ];
+    return FEATURES.as_ptr();
 }
 #[no_mangle]
 
@@ -5212,17 +5189,15 @@ extern "C" fn storeAtts(
 }
 
 extern "C" fn is_rfc3986_uri_char(mut candidate: XML_Char) -> XML_Bool {
-    unsafe {
-        match candidate as c_int {
-            65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73 | 74 | 75 | 76 | 77 | 78 | 79 | 80 | 81
-            | 82 | 83 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 97 | 98 | 99 | 100 | 101 | 102 | 103
-            | 104 | 105 | 106 | 107 | 108 | 109 | 110 | 111 | 112 | 113 | 114 | 115 | 116 | 117
-            | 118 | 119 | 120 | 121 | 122 | 48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57
-            | 37 | 45 | 46 | 95 | 126 | 58 | 47 | 63 | 35 | 91 | 93 | 64 | 33 | 36 | 38 | 39
-            | 40 | 41 | 42 | 43 | 44 | 59 | 61 => return XML_TRUE,
-            _ => return XML_FALSE,
-        };
-    }
+    match candidate as c_int {
+        65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73 | 74 | 75 | 76 | 77 | 78 | 79 | 80 | 81 | 82
+        | 83 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 97 | 98 | 99 | 100 | 101 | 102 | 103 | 104
+        | 105 | 106 | 107 | 108 | 109 | 110 | 111 | 112 | 113 | 114 | 115 | 116 | 117 | 118
+        | 119 | 120 | 121 | 122 | 48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 | 37 | 45
+        | 46 | 95 | 126 | 58 | 47 | 63 | 35 | 91 | 93 | 64 | 33 | 36 | 38 | 39 | 40 | 41 | 42
+        | 43 | 44 | 59 | 61 => return XML_TRUE,
+        _ => return XML_FALSE,
+    };
 }
 
 extern "C" fn addBinding(
@@ -9874,26 +9849,24 @@ extern "C" fn copy_salt_to_sipkey(mut parser: XML_Parser, mut key: *mut sipkey) 
 }
 
 extern "C" fn hash(mut parser: XML_Parser, mut s: KEY) -> c_ulong {
-    unsafe {
-        let mut state: siphash = siphash {
-            v0: 0,
-            v1: 0,
-            v2: 0,
-            v3: 0,
-            buf: [0; 8],
-            p: null_mut::<c_uchar>(),
-            c: 0,
-        };
-        let mut key: sipkey = sipkey { k: [0; 2] };
-        copy_salt_to_sipkey(parser, &raw mut key);
-        sip24_init(&raw mut state, &raw mut key);
-        sip24_update(
-            &raw mut state,
-            s as *const c_void,
-            keylen(s).wrapping_mul(size_of::<XML_Char>()),
-        );
-        return sip24_final(&raw mut state);
-    }
+    let mut state: siphash = siphash {
+        v0: 0,
+        v1: 0,
+        v2: 0,
+        v3: 0,
+        buf: [0; 8],
+        p: null_mut::<c_uchar>(),
+        c: 0,
+    };
+    let mut key: sipkey = sipkey { k: [0; 2] };
+    copy_salt_to_sipkey(parser, &raw mut key);
+    sip24_init(&raw mut state, &raw mut key);
+    sip24_update(
+        &raw mut state,
+        s as *const c_void,
+        keylen(s).wrapping_mul(size_of::<XML_Char>()),
+    );
+    return sip24_final(&raw mut state);
 }
 
 extern "C" fn lookup(
@@ -10160,22 +10133,20 @@ extern "C" fn poolStoreString(
 }
 
 extern "C" fn poolBytesToAllocateFor(mut blockSize: c_int) -> size_t {
-    unsafe {
-        let stretch: size_t = size_of::<XML_Char>();
-        if blockSize <= 0 {
-            return 0usize;
-        }
-        if blockSize > (INT_MAX as size_t).wrapping_div(stretch) as c_int {
-            return 0usize;
-        }
-        let stretchedBlockSize: c_int = blockSize * stretch as c_int;
-        let bytesToAllocate: c_int =
-            (12u64).wrapping_add(stretchedBlockSize as c_uint as c_ulong) as c_int;
-        if bytesToAllocate < 0 {
-            return 0usize;
-        }
-        return bytesToAllocate as size_t;
+    let stretch: size_t = size_of::<XML_Char>();
+    if blockSize <= 0 {
+        return 0usize;
     }
+    if blockSize > (INT_MAX as size_t).wrapping_div(stretch) as c_int {
+        return 0usize;
+    }
+    let stretchedBlockSize: c_int = blockSize * stretch as c_int;
+    let bytesToAllocate: c_int =
+        (12u64).wrapping_add(stretchedBlockSize as c_uint as c_ulong) as c_int;
+    if bytesToAllocate < 0 {
+        return 0usize;
+    }
+    return bytesToAllocate as size_t;
 }
 
 extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> XML_Bool {
@@ -10527,9 +10498,7 @@ extern "C" fn accountingReportStats(mut originParser: XML_Parser, mut epilog: *c
 }
 
 extern "C" fn accountingOnAbort(mut originParser: XML_Parser) {
-    unsafe {
-        accountingReportStats(originParser, b" ABORTING\n\0" as *const u8 as *const c_char);
-    }
+    accountingReportStats(originParser, b" ABORTING\n\0" as *const u8 as *const c_char);
 }
 
 extern "C" fn accountingReportDiff(
@@ -10671,7 +10640,7 @@ fn testingAccountingGetCountBytesDirect(mut parser: XML_Parser) -> c_ulonglong {
 extern "C" fn testing_accounting_get_count_bytes_direct_test_shim(
     parser: XML_Parser,
 ) -> c_ulonglong {
-    unsafe { testingAccountingGetCountBytesDirect(parser) }
+    testingAccountingGetCountBytesDirect(parser)
 }
 
 fn testingAccountingGetCountBytesIndirect(mut parser: XML_Parser) -> c_ulonglong {
@@ -10688,7 +10657,7 @@ fn testingAccountingGetCountBytesIndirect(mut parser: XML_Parser) -> c_ulonglong
 extern "C" fn testing_accounting_get_count_bytes_indirect_test_shim(
     parser: XML_Parser,
 ) -> c_ulonglong {
-    unsafe { testingAccountingGetCountBytesIndirect(parser) }
+    testingAccountingGetCountBytesIndirect(parser)
 }
 
 extern "C" fn entityTrackingReportStats(
@@ -10789,276 +10758,274 @@ extern "C" fn getRootParserOf(mut parser: XML_Parser, mut outLevelDiff: *mut c_u
     }
 }
 fn unsignedCharToPrintable(mut c: c_uchar) -> *const c_char {
-    unsafe {
-        match c as c_int {
-            0 => return b"\\0\0" as *const u8 as *const c_char,
-            1 => return b"\\x1\0" as *const u8 as *const c_char,
-            2 => return b"\\x2\0" as *const u8 as *const c_char,
-            3 => return b"\\x3\0" as *const u8 as *const c_char,
-            4 => return b"\\x4\0" as *const u8 as *const c_char,
-            5 => return b"\\x5\0" as *const u8 as *const c_char,
-            6 => return b"\\x6\0" as *const u8 as *const c_char,
-            7 => return b"\\x7\0" as *const u8 as *const c_char,
-            8 => return b"\\x8\0" as *const u8 as *const c_char,
-            9 => return b"\\t\0" as *const u8 as *const c_char,
-            10 => return b"\\n\0" as *const u8 as *const c_char,
-            11 => return b"\\xB\0" as *const u8 as *const c_char,
-            12 => return b"\\xC\0" as *const u8 as *const c_char,
-            13 => return b"\\r\0" as *const u8 as *const c_char,
-            14 => return b"\\xE\0" as *const u8 as *const c_char,
-            15 => return b"\\xF\0" as *const u8 as *const c_char,
-            16 => return b"\\x10\0" as *const u8 as *const c_char,
-            17 => return b"\\x11\0" as *const u8 as *const c_char,
-            18 => return b"\\x12\0" as *const u8 as *const c_char,
-            19 => return b"\\x13\0" as *const u8 as *const c_char,
-            20 => return b"\\x14\0" as *const u8 as *const c_char,
-            21 => return b"\\x15\0" as *const u8 as *const c_char,
-            22 => return b"\\x16\0" as *const u8 as *const c_char,
-            23 => return b"\\x17\0" as *const u8 as *const c_char,
-            24 => return b"\\x18\0" as *const u8 as *const c_char,
-            25 => return b"\\x19\0" as *const u8 as *const c_char,
-            26 => return b"\\x1A\0" as *const u8 as *const c_char,
-            27 => return b"\\x1B\0" as *const u8 as *const c_char,
-            28 => return b"\\x1C\0" as *const u8 as *const c_char,
-            29 => return b"\\x1D\0" as *const u8 as *const c_char,
-            30 => return b"\\x1E\0" as *const u8 as *const c_char,
-            31 => return b"\\x1F\0" as *const u8 as *const c_char,
-            32 => return b" \0" as *const u8 as *const c_char,
-            33 => return b"!\0" as *const u8 as *const c_char,
-            34 => return b"\\\"\0" as *const u8 as *const c_char,
-            35 => return b"#\0" as *const u8 as *const c_char,
-            36 => return b"$\0" as *const u8 as *const c_char,
-            37 => return b"%\0" as *const u8 as *const c_char,
-            38 => return b"&\0" as *const u8 as *const c_char,
-            39 => return b"'\0" as *const u8 as *const c_char,
-            40 => return b"(\0" as *const u8 as *const c_char,
-            41 => return b")\0" as *const u8 as *const c_char,
-            42 => return b"*\0" as *const u8 as *const c_char,
-            43 => return b"+\0" as *const u8 as *const c_char,
-            44 => return b",\0" as *const u8 as *const c_char,
-            45 => return b"-\0" as *const u8 as *const c_char,
-            46 => return b".\0" as *const u8 as *const c_char,
-            47 => return b"/\0" as *const u8 as *const c_char,
-            48 => return b"0\0" as *const u8 as *const c_char,
-            49 => return b"1\0" as *const u8 as *const c_char,
-            50 => return b"2\0" as *const u8 as *const c_char,
-            51 => return b"3\0" as *const u8 as *const c_char,
-            52 => return b"4\0" as *const u8 as *const c_char,
-            53 => return b"5\0" as *const u8 as *const c_char,
-            54 => return b"6\0" as *const u8 as *const c_char,
-            55 => return b"7\0" as *const u8 as *const c_char,
-            56 => return b"8\0" as *const u8 as *const c_char,
-            57 => return b"9\0" as *const u8 as *const c_char,
-            58 => return b":\0" as *const u8 as *const c_char,
-            59 => return b";\0" as *const u8 as *const c_char,
-            60 => return b"<\0" as *const u8 as *const c_char,
-            61 => return b"=\0" as *const u8 as *const c_char,
-            62 => return b">\0" as *const u8 as *const c_char,
-            63 => return b"?\0" as *const u8 as *const c_char,
-            64 => return b"@\0" as *const u8 as *const c_char,
-            65 => return b"A\0" as *const u8 as *const c_char,
-            66 => return b"B\0" as *const u8 as *const c_char,
-            67 => return b"C\0" as *const u8 as *const c_char,
-            68 => return b"D\0" as *const u8 as *const c_char,
-            69 => return b"E\0" as *const u8 as *const c_char,
-            70 => return b"F\0" as *const u8 as *const c_char,
-            71 => return b"G\0" as *const u8 as *const c_char,
-            72 => return b"H\0" as *const u8 as *const c_char,
-            73 => return b"I\0" as *const u8 as *const c_char,
-            74 => return b"J\0" as *const u8 as *const c_char,
-            75 => return b"K\0" as *const u8 as *const c_char,
-            76 => return b"L\0" as *const u8 as *const c_char,
-            77 => return b"M\0" as *const u8 as *const c_char,
-            78 => return b"N\0" as *const u8 as *const c_char,
-            79 => return b"O\0" as *const u8 as *const c_char,
-            80 => return b"P\0" as *const u8 as *const c_char,
-            81 => return b"Q\0" as *const u8 as *const c_char,
-            82 => return b"R\0" as *const u8 as *const c_char,
-            83 => return b"S\0" as *const u8 as *const c_char,
-            84 => return b"T\0" as *const u8 as *const c_char,
-            85 => return b"U\0" as *const u8 as *const c_char,
-            86 => return b"V\0" as *const u8 as *const c_char,
-            87 => return b"W\0" as *const u8 as *const c_char,
-            88 => return b"X\0" as *const u8 as *const c_char,
-            89 => return b"Y\0" as *const u8 as *const c_char,
-            90 => return b"Z\0" as *const u8 as *const c_char,
-            91 => return b"[\0" as *const u8 as *const c_char,
-            92 => return b"\\\\\0" as *const u8 as *const c_char,
-            93 => return b"]\0" as *const u8 as *const c_char,
-            94 => return b"^\0" as *const u8 as *const c_char,
-            95 => return b"_\0" as *const u8 as *const c_char,
-            96 => return b"`\0" as *const u8 as *const c_char,
-            97 => return b"a\0" as *const u8 as *const c_char,
-            98 => return b"b\0" as *const u8 as *const c_char,
-            99 => return b"c\0" as *const u8 as *const c_char,
-            100 => return b"d\0" as *const u8 as *const c_char,
-            101 => return b"e\0" as *const u8 as *const c_char,
-            102 => return b"f\0" as *const u8 as *const c_char,
-            103 => return b"g\0" as *const u8 as *const c_char,
-            104 => return b"h\0" as *const u8 as *const c_char,
-            105 => return b"i\0" as *const u8 as *const c_char,
-            106 => return b"j\0" as *const u8 as *const c_char,
-            107 => return b"k\0" as *const u8 as *const c_char,
-            108 => return b"l\0" as *const u8 as *const c_char,
-            109 => return b"m\0" as *const u8 as *const c_char,
-            110 => return b"n\0" as *const u8 as *const c_char,
-            111 => return b"o\0" as *const u8 as *const c_char,
-            112 => return b"p\0" as *const u8 as *const c_char,
-            113 => return b"q\0" as *const u8 as *const c_char,
-            114 => return b"r\0" as *const u8 as *const c_char,
-            115 => return b"s\0" as *const u8 as *const c_char,
-            116 => return b"t\0" as *const u8 as *const c_char,
-            117 => return b"u\0" as *const u8 as *const c_char,
-            118 => return b"v\0" as *const u8 as *const c_char,
-            119 => return b"w\0" as *const u8 as *const c_char,
-            120 => return b"x\0" as *const u8 as *const c_char,
-            121 => return b"y\0" as *const u8 as *const c_char,
-            122 => return b"z\0" as *const u8 as *const c_char,
-            123 => return b"{\0" as *const u8 as *const c_char,
-            124 => return b"|\0" as *const u8 as *const c_char,
-            125 => return b"}\0" as *const u8 as *const c_char,
-            126 => return b"~\0" as *const u8 as *const c_char,
-            127 => return b"\\x7F\0" as *const u8 as *const c_char,
-            128 => return b"\\x80\0" as *const u8 as *const c_char,
-            129 => return b"\\x81\0" as *const u8 as *const c_char,
-            130 => return b"\\x82\0" as *const u8 as *const c_char,
-            131 => return b"\\x83\0" as *const u8 as *const c_char,
-            132 => return b"\\x84\0" as *const u8 as *const c_char,
-            133 => return b"\\x85\0" as *const u8 as *const c_char,
-            134 => return b"\\x86\0" as *const u8 as *const c_char,
-            135 => return b"\\x87\0" as *const u8 as *const c_char,
-            136 => return b"\\x88\0" as *const u8 as *const c_char,
-            137 => return b"\\x89\0" as *const u8 as *const c_char,
-            138 => return b"\\x8A\0" as *const u8 as *const c_char,
-            139 => return b"\\x8B\0" as *const u8 as *const c_char,
-            140 => return b"\\x8C\0" as *const u8 as *const c_char,
-            141 => return b"\\x8D\0" as *const u8 as *const c_char,
-            142 => return b"\\x8E\0" as *const u8 as *const c_char,
-            143 => return b"\\x8F\0" as *const u8 as *const c_char,
-            144 => return b"\\x90\0" as *const u8 as *const c_char,
-            145 => return b"\\x91\0" as *const u8 as *const c_char,
-            146 => return b"\\x92\0" as *const u8 as *const c_char,
-            147 => return b"\\x93\0" as *const u8 as *const c_char,
-            148 => return b"\\x94\0" as *const u8 as *const c_char,
-            149 => return b"\\x95\0" as *const u8 as *const c_char,
-            150 => return b"\\x96\0" as *const u8 as *const c_char,
-            151 => return b"\\x97\0" as *const u8 as *const c_char,
-            152 => return b"\\x98\0" as *const u8 as *const c_char,
-            153 => return b"\\x99\0" as *const u8 as *const c_char,
-            154 => return b"\\x9A\0" as *const u8 as *const c_char,
-            155 => return b"\\x9B\0" as *const u8 as *const c_char,
-            156 => return b"\\x9C\0" as *const u8 as *const c_char,
-            157 => return b"\\x9D\0" as *const u8 as *const c_char,
-            158 => return b"\\x9E\0" as *const u8 as *const c_char,
-            159 => return b"\\x9F\0" as *const u8 as *const c_char,
-            160 => return b"\\xA0\0" as *const u8 as *const c_char,
-            161 => return b"\\xA1\0" as *const u8 as *const c_char,
-            162 => return b"\\xA2\0" as *const u8 as *const c_char,
-            163 => return b"\\xA3\0" as *const u8 as *const c_char,
-            164 => return b"\\xA4\0" as *const u8 as *const c_char,
-            165 => return b"\\xA5\0" as *const u8 as *const c_char,
-            166 => return b"\\xA6\0" as *const u8 as *const c_char,
-            167 => return b"\\xA7\0" as *const u8 as *const c_char,
-            168 => return b"\\xA8\0" as *const u8 as *const c_char,
-            169 => return b"\\xA9\0" as *const u8 as *const c_char,
-            170 => return b"\\xAA\0" as *const u8 as *const c_char,
-            171 => return b"\\xAB\0" as *const u8 as *const c_char,
-            172 => return b"\\xAC\0" as *const u8 as *const c_char,
-            173 => return b"\\xAD\0" as *const u8 as *const c_char,
-            174 => return b"\\xAE\0" as *const u8 as *const c_char,
-            175 => return b"\\xAF\0" as *const u8 as *const c_char,
-            176 => return b"\\xB0\0" as *const u8 as *const c_char,
-            177 => return b"\\xB1\0" as *const u8 as *const c_char,
-            178 => return b"\\xB2\0" as *const u8 as *const c_char,
-            179 => return b"\\xB3\0" as *const u8 as *const c_char,
-            180 => return b"\\xB4\0" as *const u8 as *const c_char,
-            181 => return b"\\xB5\0" as *const u8 as *const c_char,
-            182 => return b"\\xB6\0" as *const u8 as *const c_char,
-            183 => return b"\\xB7\0" as *const u8 as *const c_char,
-            184 => return b"\\xB8\0" as *const u8 as *const c_char,
-            185 => return b"\\xB9\0" as *const u8 as *const c_char,
-            186 => return b"\\xBA\0" as *const u8 as *const c_char,
-            187 => return b"\\xBB\0" as *const u8 as *const c_char,
-            188 => return b"\\xBC\0" as *const u8 as *const c_char,
-            189 => return b"\\xBD\0" as *const u8 as *const c_char,
-            190 => return b"\\xBE\0" as *const u8 as *const c_char,
-            191 => return b"\\xBF\0" as *const u8 as *const c_char,
-            192 => return b"\\xC0\0" as *const u8 as *const c_char,
-            193 => return b"\\xC1\0" as *const u8 as *const c_char,
-            194 => return b"\\xC2\0" as *const u8 as *const c_char,
-            195 => return b"\\xC3\0" as *const u8 as *const c_char,
-            196 => return b"\\xC4\0" as *const u8 as *const c_char,
-            197 => return b"\\xC5\0" as *const u8 as *const c_char,
-            198 => return b"\\xC6\0" as *const u8 as *const c_char,
-            199 => return b"\\xC7\0" as *const u8 as *const c_char,
-            200 => return b"\\xC8\0" as *const u8 as *const c_char,
-            201 => return b"\\xC9\0" as *const u8 as *const c_char,
-            202 => return b"\\xCA\0" as *const u8 as *const c_char,
-            203 => return b"\\xCB\0" as *const u8 as *const c_char,
-            204 => return b"\\xCC\0" as *const u8 as *const c_char,
-            205 => return b"\\xCD\0" as *const u8 as *const c_char,
-            206 => return b"\\xCE\0" as *const u8 as *const c_char,
-            207 => return b"\\xCF\0" as *const u8 as *const c_char,
-            208 => return b"\\xD0\0" as *const u8 as *const c_char,
-            209 => return b"\\xD1\0" as *const u8 as *const c_char,
-            210 => return b"\\xD2\0" as *const u8 as *const c_char,
-            211 => return b"\\xD3\0" as *const u8 as *const c_char,
-            212 => return b"\\xD4\0" as *const u8 as *const c_char,
-            213 => return b"\\xD5\0" as *const u8 as *const c_char,
-            214 => return b"\\xD6\0" as *const u8 as *const c_char,
-            215 => return b"\\xD7\0" as *const u8 as *const c_char,
-            216 => return b"\\xD8\0" as *const u8 as *const c_char,
-            217 => return b"\\xD9\0" as *const u8 as *const c_char,
-            218 => return b"\\xDA\0" as *const u8 as *const c_char,
-            219 => return b"\\xDB\0" as *const u8 as *const c_char,
-            220 => return b"\\xDC\0" as *const u8 as *const c_char,
-            221 => return b"\\xDD\0" as *const u8 as *const c_char,
-            222 => return b"\\xDE\0" as *const u8 as *const c_char,
-            223 => return b"\\xDF\0" as *const u8 as *const c_char,
-            224 => return b"\\xE0\0" as *const u8 as *const c_char,
-            225 => return b"\\xE1\0" as *const u8 as *const c_char,
-            226 => return b"\\xE2\0" as *const u8 as *const c_char,
-            227 => return b"\\xE3\0" as *const u8 as *const c_char,
-            228 => return b"\\xE4\0" as *const u8 as *const c_char,
-            229 => return b"\\xE5\0" as *const u8 as *const c_char,
-            230 => return b"\\xE6\0" as *const u8 as *const c_char,
-            231 => return b"\\xE7\0" as *const u8 as *const c_char,
-            232 => return b"\\xE8\0" as *const u8 as *const c_char,
-            233 => return b"\\xE9\0" as *const u8 as *const c_char,
-            234 => return b"\\xEA\0" as *const u8 as *const c_char,
-            235 => return b"\\xEB\0" as *const u8 as *const c_char,
-            236 => return b"\\xEC\0" as *const u8 as *const c_char,
-            237 => return b"\\xED\0" as *const u8 as *const c_char,
-            238 => return b"\\xEE\0" as *const u8 as *const c_char,
-            239 => return b"\\xEF\0" as *const u8 as *const c_char,
-            240 => return b"\\xF0\0" as *const u8 as *const c_char,
-            241 => return b"\\xF1\0" as *const u8 as *const c_char,
-            242 => return b"\\xF2\0" as *const u8 as *const c_char,
-            243 => return b"\\xF3\0" as *const u8 as *const c_char,
-            244 => return b"\\xF4\0" as *const u8 as *const c_char,
-            245 => return b"\\xF5\0" as *const u8 as *const c_char,
-            246 => return b"\\xF6\0" as *const u8 as *const c_char,
-            247 => return b"\\xF7\0" as *const u8 as *const c_char,
-            248 => return b"\\xF8\0" as *const u8 as *const c_char,
-            249 => return b"\\xF9\0" as *const u8 as *const c_char,
-            250 => return b"\\xFA\0" as *const u8 as *const c_char,
-            251 => return b"\\xFB\0" as *const u8 as *const c_char,
-            252 => return b"\\xFC\0" as *const u8 as *const c_char,
-            253 => return b"\\xFD\0" as *const u8 as *const c_char,
-            254 => return b"\\xFE\0" as *const u8 as *const c_char,
-            255 => return b"\\xFF\0" as *const u8 as *const c_char,
-            _ => {
-                assert!(0 != 0);
-                return b"dead code\0" as *const u8 as *const c_char;
-            }
-        };
-    }
+    match c as c_int {
+        0 => return b"\\0\0" as *const u8 as *const c_char,
+        1 => return b"\\x1\0" as *const u8 as *const c_char,
+        2 => return b"\\x2\0" as *const u8 as *const c_char,
+        3 => return b"\\x3\0" as *const u8 as *const c_char,
+        4 => return b"\\x4\0" as *const u8 as *const c_char,
+        5 => return b"\\x5\0" as *const u8 as *const c_char,
+        6 => return b"\\x6\0" as *const u8 as *const c_char,
+        7 => return b"\\x7\0" as *const u8 as *const c_char,
+        8 => return b"\\x8\0" as *const u8 as *const c_char,
+        9 => return b"\\t\0" as *const u8 as *const c_char,
+        10 => return b"\\n\0" as *const u8 as *const c_char,
+        11 => return b"\\xB\0" as *const u8 as *const c_char,
+        12 => return b"\\xC\0" as *const u8 as *const c_char,
+        13 => return b"\\r\0" as *const u8 as *const c_char,
+        14 => return b"\\xE\0" as *const u8 as *const c_char,
+        15 => return b"\\xF\0" as *const u8 as *const c_char,
+        16 => return b"\\x10\0" as *const u8 as *const c_char,
+        17 => return b"\\x11\0" as *const u8 as *const c_char,
+        18 => return b"\\x12\0" as *const u8 as *const c_char,
+        19 => return b"\\x13\0" as *const u8 as *const c_char,
+        20 => return b"\\x14\0" as *const u8 as *const c_char,
+        21 => return b"\\x15\0" as *const u8 as *const c_char,
+        22 => return b"\\x16\0" as *const u8 as *const c_char,
+        23 => return b"\\x17\0" as *const u8 as *const c_char,
+        24 => return b"\\x18\0" as *const u8 as *const c_char,
+        25 => return b"\\x19\0" as *const u8 as *const c_char,
+        26 => return b"\\x1A\0" as *const u8 as *const c_char,
+        27 => return b"\\x1B\0" as *const u8 as *const c_char,
+        28 => return b"\\x1C\0" as *const u8 as *const c_char,
+        29 => return b"\\x1D\0" as *const u8 as *const c_char,
+        30 => return b"\\x1E\0" as *const u8 as *const c_char,
+        31 => return b"\\x1F\0" as *const u8 as *const c_char,
+        32 => return b" \0" as *const u8 as *const c_char,
+        33 => return b"!\0" as *const u8 as *const c_char,
+        34 => return b"\\\"\0" as *const u8 as *const c_char,
+        35 => return b"#\0" as *const u8 as *const c_char,
+        36 => return b"$\0" as *const u8 as *const c_char,
+        37 => return b"%\0" as *const u8 as *const c_char,
+        38 => return b"&\0" as *const u8 as *const c_char,
+        39 => return b"'\0" as *const u8 as *const c_char,
+        40 => return b"(\0" as *const u8 as *const c_char,
+        41 => return b")\0" as *const u8 as *const c_char,
+        42 => return b"*\0" as *const u8 as *const c_char,
+        43 => return b"+\0" as *const u8 as *const c_char,
+        44 => return b",\0" as *const u8 as *const c_char,
+        45 => return b"-\0" as *const u8 as *const c_char,
+        46 => return b".\0" as *const u8 as *const c_char,
+        47 => return b"/\0" as *const u8 as *const c_char,
+        48 => return b"0\0" as *const u8 as *const c_char,
+        49 => return b"1\0" as *const u8 as *const c_char,
+        50 => return b"2\0" as *const u8 as *const c_char,
+        51 => return b"3\0" as *const u8 as *const c_char,
+        52 => return b"4\0" as *const u8 as *const c_char,
+        53 => return b"5\0" as *const u8 as *const c_char,
+        54 => return b"6\0" as *const u8 as *const c_char,
+        55 => return b"7\0" as *const u8 as *const c_char,
+        56 => return b"8\0" as *const u8 as *const c_char,
+        57 => return b"9\0" as *const u8 as *const c_char,
+        58 => return b":\0" as *const u8 as *const c_char,
+        59 => return b";\0" as *const u8 as *const c_char,
+        60 => return b"<\0" as *const u8 as *const c_char,
+        61 => return b"=\0" as *const u8 as *const c_char,
+        62 => return b">\0" as *const u8 as *const c_char,
+        63 => return b"?\0" as *const u8 as *const c_char,
+        64 => return b"@\0" as *const u8 as *const c_char,
+        65 => return b"A\0" as *const u8 as *const c_char,
+        66 => return b"B\0" as *const u8 as *const c_char,
+        67 => return b"C\0" as *const u8 as *const c_char,
+        68 => return b"D\0" as *const u8 as *const c_char,
+        69 => return b"E\0" as *const u8 as *const c_char,
+        70 => return b"F\0" as *const u8 as *const c_char,
+        71 => return b"G\0" as *const u8 as *const c_char,
+        72 => return b"H\0" as *const u8 as *const c_char,
+        73 => return b"I\0" as *const u8 as *const c_char,
+        74 => return b"J\0" as *const u8 as *const c_char,
+        75 => return b"K\0" as *const u8 as *const c_char,
+        76 => return b"L\0" as *const u8 as *const c_char,
+        77 => return b"M\0" as *const u8 as *const c_char,
+        78 => return b"N\0" as *const u8 as *const c_char,
+        79 => return b"O\0" as *const u8 as *const c_char,
+        80 => return b"P\0" as *const u8 as *const c_char,
+        81 => return b"Q\0" as *const u8 as *const c_char,
+        82 => return b"R\0" as *const u8 as *const c_char,
+        83 => return b"S\0" as *const u8 as *const c_char,
+        84 => return b"T\0" as *const u8 as *const c_char,
+        85 => return b"U\0" as *const u8 as *const c_char,
+        86 => return b"V\0" as *const u8 as *const c_char,
+        87 => return b"W\0" as *const u8 as *const c_char,
+        88 => return b"X\0" as *const u8 as *const c_char,
+        89 => return b"Y\0" as *const u8 as *const c_char,
+        90 => return b"Z\0" as *const u8 as *const c_char,
+        91 => return b"[\0" as *const u8 as *const c_char,
+        92 => return b"\\\\\0" as *const u8 as *const c_char,
+        93 => return b"]\0" as *const u8 as *const c_char,
+        94 => return b"^\0" as *const u8 as *const c_char,
+        95 => return b"_\0" as *const u8 as *const c_char,
+        96 => return b"`\0" as *const u8 as *const c_char,
+        97 => return b"a\0" as *const u8 as *const c_char,
+        98 => return b"b\0" as *const u8 as *const c_char,
+        99 => return b"c\0" as *const u8 as *const c_char,
+        100 => return b"d\0" as *const u8 as *const c_char,
+        101 => return b"e\0" as *const u8 as *const c_char,
+        102 => return b"f\0" as *const u8 as *const c_char,
+        103 => return b"g\0" as *const u8 as *const c_char,
+        104 => return b"h\0" as *const u8 as *const c_char,
+        105 => return b"i\0" as *const u8 as *const c_char,
+        106 => return b"j\0" as *const u8 as *const c_char,
+        107 => return b"k\0" as *const u8 as *const c_char,
+        108 => return b"l\0" as *const u8 as *const c_char,
+        109 => return b"m\0" as *const u8 as *const c_char,
+        110 => return b"n\0" as *const u8 as *const c_char,
+        111 => return b"o\0" as *const u8 as *const c_char,
+        112 => return b"p\0" as *const u8 as *const c_char,
+        113 => return b"q\0" as *const u8 as *const c_char,
+        114 => return b"r\0" as *const u8 as *const c_char,
+        115 => return b"s\0" as *const u8 as *const c_char,
+        116 => return b"t\0" as *const u8 as *const c_char,
+        117 => return b"u\0" as *const u8 as *const c_char,
+        118 => return b"v\0" as *const u8 as *const c_char,
+        119 => return b"w\0" as *const u8 as *const c_char,
+        120 => return b"x\0" as *const u8 as *const c_char,
+        121 => return b"y\0" as *const u8 as *const c_char,
+        122 => return b"z\0" as *const u8 as *const c_char,
+        123 => return b"{\0" as *const u8 as *const c_char,
+        124 => return b"|\0" as *const u8 as *const c_char,
+        125 => return b"}\0" as *const u8 as *const c_char,
+        126 => return b"~\0" as *const u8 as *const c_char,
+        127 => return b"\\x7F\0" as *const u8 as *const c_char,
+        128 => return b"\\x80\0" as *const u8 as *const c_char,
+        129 => return b"\\x81\0" as *const u8 as *const c_char,
+        130 => return b"\\x82\0" as *const u8 as *const c_char,
+        131 => return b"\\x83\0" as *const u8 as *const c_char,
+        132 => return b"\\x84\0" as *const u8 as *const c_char,
+        133 => return b"\\x85\0" as *const u8 as *const c_char,
+        134 => return b"\\x86\0" as *const u8 as *const c_char,
+        135 => return b"\\x87\0" as *const u8 as *const c_char,
+        136 => return b"\\x88\0" as *const u8 as *const c_char,
+        137 => return b"\\x89\0" as *const u8 as *const c_char,
+        138 => return b"\\x8A\0" as *const u8 as *const c_char,
+        139 => return b"\\x8B\0" as *const u8 as *const c_char,
+        140 => return b"\\x8C\0" as *const u8 as *const c_char,
+        141 => return b"\\x8D\0" as *const u8 as *const c_char,
+        142 => return b"\\x8E\0" as *const u8 as *const c_char,
+        143 => return b"\\x8F\0" as *const u8 as *const c_char,
+        144 => return b"\\x90\0" as *const u8 as *const c_char,
+        145 => return b"\\x91\0" as *const u8 as *const c_char,
+        146 => return b"\\x92\0" as *const u8 as *const c_char,
+        147 => return b"\\x93\0" as *const u8 as *const c_char,
+        148 => return b"\\x94\0" as *const u8 as *const c_char,
+        149 => return b"\\x95\0" as *const u8 as *const c_char,
+        150 => return b"\\x96\0" as *const u8 as *const c_char,
+        151 => return b"\\x97\0" as *const u8 as *const c_char,
+        152 => return b"\\x98\0" as *const u8 as *const c_char,
+        153 => return b"\\x99\0" as *const u8 as *const c_char,
+        154 => return b"\\x9A\0" as *const u8 as *const c_char,
+        155 => return b"\\x9B\0" as *const u8 as *const c_char,
+        156 => return b"\\x9C\0" as *const u8 as *const c_char,
+        157 => return b"\\x9D\0" as *const u8 as *const c_char,
+        158 => return b"\\x9E\0" as *const u8 as *const c_char,
+        159 => return b"\\x9F\0" as *const u8 as *const c_char,
+        160 => return b"\\xA0\0" as *const u8 as *const c_char,
+        161 => return b"\\xA1\0" as *const u8 as *const c_char,
+        162 => return b"\\xA2\0" as *const u8 as *const c_char,
+        163 => return b"\\xA3\0" as *const u8 as *const c_char,
+        164 => return b"\\xA4\0" as *const u8 as *const c_char,
+        165 => return b"\\xA5\0" as *const u8 as *const c_char,
+        166 => return b"\\xA6\0" as *const u8 as *const c_char,
+        167 => return b"\\xA7\0" as *const u8 as *const c_char,
+        168 => return b"\\xA8\0" as *const u8 as *const c_char,
+        169 => return b"\\xA9\0" as *const u8 as *const c_char,
+        170 => return b"\\xAA\0" as *const u8 as *const c_char,
+        171 => return b"\\xAB\0" as *const u8 as *const c_char,
+        172 => return b"\\xAC\0" as *const u8 as *const c_char,
+        173 => return b"\\xAD\0" as *const u8 as *const c_char,
+        174 => return b"\\xAE\0" as *const u8 as *const c_char,
+        175 => return b"\\xAF\0" as *const u8 as *const c_char,
+        176 => return b"\\xB0\0" as *const u8 as *const c_char,
+        177 => return b"\\xB1\0" as *const u8 as *const c_char,
+        178 => return b"\\xB2\0" as *const u8 as *const c_char,
+        179 => return b"\\xB3\0" as *const u8 as *const c_char,
+        180 => return b"\\xB4\0" as *const u8 as *const c_char,
+        181 => return b"\\xB5\0" as *const u8 as *const c_char,
+        182 => return b"\\xB6\0" as *const u8 as *const c_char,
+        183 => return b"\\xB7\0" as *const u8 as *const c_char,
+        184 => return b"\\xB8\0" as *const u8 as *const c_char,
+        185 => return b"\\xB9\0" as *const u8 as *const c_char,
+        186 => return b"\\xBA\0" as *const u8 as *const c_char,
+        187 => return b"\\xBB\0" as *const u8 as *const c_char,
+        188 => return b"\\xBC\0" as *const u8 as *const c_char,
+        189 => return b"\\xBD\0" as *const u8 as *const c_char,
+        190 => return b"\\xBE\0" as *const u8 as *const c_char,
+        191 => return b"\\xBF\0" as *const u8 as *const c_char,
+        192 => return b"\\xC0\0" as *const u8 as *const c_char,
+        193 => return b"\\xC1\0" as *const u8 as *const c_char,
+        194 => return b"\\xC2\0" as *const u8 as *const c_char,
+        195 => return b"\\xC3\0" as *const u8 as *const c_char,
+        196 => return b"\\xC4\0" as *const u8 as *const c_char,
+        197 => return b"\\xC5\0" as *const u8 as *const c_char,
+        198 => return b"\\xC6\0" as *const u8 as *const c_char,
+        199 => return b"\\xC7\0" as *const u8 as *const c_char,
+        200 => return b"\\xC8\0" as *const u8 as *const c_char,
+        201 => return b"\\xC9\0" as *const u8 as *const c_char,
+        202 => return b"\\xCA\0" as *const u8 as *const c_char,
+        203 => return b"\\xCB\0" as *const u8 as *const c_char,
+        204 => return b"\\xCC\0" as *const u8 as *const c_char,
+        205 => return b"\\xCD\0" as *const u8 as *const c_char,
+        206 => return b"\\xCE\0" as *const u8 as *const c_char,
+        207 => return b"\\xCF\0" as *const u8 as *const c_char,
+        208 => return b"\\xD0\0" as *const u8 as *const c_char,
+        209 => return b"\\xD1\0" as *const u8 as *const c_char,
+        210 => return b"\\xD2\0" as *const u8 as *const c_char,
+        211 => return b"\\xD3\0" as *const u8 as *const c_char,
+        212 => return b"\\xD4\0" as *const u8 as *const c_char,
+        213 => return b"\\xD5\0" as *const u8 as *const c_char,
+        214 => return b"\\xD6\0" as *const u8 as *const c_char,
+        215 => return b"\\xD7\0" as *const u8 as *const c_char,
+        216 => return b"\\xD8\0" as *const u8 as *const c_char,
+        217 => return b"\\xD9\0" as *const u8 as *const c_char,
+        218 => return b"\\xDA\0" as *const u8 as *const c_char,
+        219 => return b"\\xDB\0" as *const u8 as *const c_char,
+        220 => return b"\\xDC\0" as *const u8 as *const c_char,
+        221 => return b"\\xDD\0" as *const u8 as *const c_char,
+        222 => return b"\\xDE\0" as *const u8 as *const c_char,
+        223 => return b"\\xDF\0" as *const u8 as *const c_char,
+        224 => return b"\\xE0\0" as *const u8 as *const c_char,
+        225 => return b"\\xE1\0" as *const u8 as *const c_char,
+        226 => return b"\\xE2\0" as *const u8 as *const c_char,
+        227 => return b"\\xE3\0" as *const u8 as *const c_char,
+        228 => return b"\\xE4\0" as *const u8 as *const c_char,
+        229 => return b"\\xE5\0" as *const u8 as *const c_char,
+        230 => return b"\\xE6\0" as *const u8 as *const c_char,
+        231 => return b"\\xE7\0" as *const u8 as *const c_char,
+        232 => return b"\\xE8\0" as *const u8 as *const c_char,
+        233 => return b"\\xE9\0" as *const u8 as *const c_char,
+        234 => return b"\\xEA\0" as *const u8 as *const c_char,
+        235 => return b"\\xEB\0" as *const u8 as *const c_char,
+        236 => return b"\\xEC\0" as *const u8 as *const c_char,
+        237 => return b"\\xED\0" as *const u8 as *const c_char,
+        238 => return b"\\xEE\0" as *const u8 as *const c_char,
+        239 => return b"\\xEF\0" as *const u8 as *const c_char,
+        240 => return b"\\xF0\0" as *const u8 as *const c_char,
+        241 => return b"\\xF1\0" as *const u8 as *const c_char,
+        242 => return b"\\xF2\0" as *const u8 as *const c_char,
+        243 => return b"\\xF3\0" as *const u8 as *const c_char,
+        244 => return b"\\xF4\0" as *const u8 as *const c_char,
+        245 => return b"\\xF5\0" as *const u8 as *const c_char,
+        246 => return b"\\xF6\0" as *const u8 as *const c_char,
+        247 => return b"\\xF7\0" as *const u8 as *const c_char,
+        248 => return b"\\xF8\0" as *const u8 as *const c_char,
+        249 => return b"\\xF9\0" as *const u8 as *const c_char,
+        250 => return b"\\xFA\0" as *const u8 as *const c_char,
+        251 => return b"\\xFB\0" as *const u8 as *const c_char,
+        252 => return b"\\xFC\0" as *const u8 as *const c_char,
+        253 => return b"\\xFD\0" as *const u8 as *const c_char,
+        254 => return b"\\xFE\0" as *const u8 as *const c_char,
+        255 => return b"\\xFF\0" as *const u8 as *const c_char,
+        _ => {
+            assert!(0 != 0);
+            return b"dead code\0" as *const u8 as *const c_char;
+        }
+    };
 }
 
 #[cfg(feature = "expat_test_shims")]
 #[export_name = "unsignedCharToPrintable"]
 extern "C" fn unsigned_char_to_printable_test_shim(c: c_uchar) -> *const c_char {
-    unsafe { unsignedCharToPrintable(c) }
+    unsignedCharToPrintable(c)
 }
 
 extern "C" fn getDebugLevel(
