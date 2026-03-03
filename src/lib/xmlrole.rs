@@ -210,6 +210,126 @@ fn c_char_slice_from_ptr_end<'a>(ptr: *const c_char, end: *const c_char) -> &'a 
     unsafe { core::slice::from_raw_parts(ptr, end.offset_from(ptr) as usize) }
 }
 
+#[inline]
+fn input_ptr_and_end(input: &[c_char]) -> (*const c_char, *const c_char) {
+    let ptr = input.as_ptr();
+    let end = ptr.wrapping_add(input.len());
+    (ptr, end)
+}
+
+#[inline]
+fn set_handler(state: *mut PROLOG_STATE, handler: PROLOG_HANDLER) {
+    unsafe { (*state).handler = Some(handler) }
+}
+
+#[inline]
+fn role_none(state: *mut PROLOG_STATE) -> c_int {
+    unsafe { (*state).role_none }
+}
+
+#[inline]
+fn document_entity(state: *mut PROLOG_STATE) -> c_int {
+    unsafe { (*state).documentEntity }
+}
+
+#[inline]
+fn set_document_entity(state: *mut PROLOG_STATE, value: c_int) {
+    unsafe { (*state).documentEntity = value }
+}
+
+#[inline]
+fn include_level(state: *mut PROLOG_STATE) -> core::ffi::c_uint {
+    unsafe { (*state).includeLevel }
+}
+
+#[inline]
+fn set_include_level(state: *mut PROLOG_STATE, value: core::ffi::c_uint) {
+    unsafe { (*state).includeLevel = value }
+}
+
+#[inline]
+fn inc_include_level(state: *mut PROLOG_STATE) {
+    unsafe { (*state).includeLevel = (*state).includeLevel.wrapping_add(1u32) }
+}
+
+#[inline]
+fn dec_include_level(state: *mut PROLOG_STATE) {
+    unsafe { (*state).includeLevel = (*state).includeLevel.wrapping_sub(1u32) }
+}
+
+#[inline]
+fn set_in_entity_value(state: *mut PROLOG_STATE, value: c_int) {
+    unsafe { (*state).inEntityValue = value }
+}
+
+#[inline]
+fn set_role_none(state: *mut PROLOG_STATE, value: c_int) {
+    unsafe { (*state).role_none = value }
+}
+
+#[inline]
+fn level(state: *mut PROLOG_STATE) -> core::ffi::c_uint {
+    unsafe { (*state).level }
+}
+
+#[inline]
+fn set_level(state: *mut PROLOG_STATE, value: core::ffi::c_uint) {
+    unsafe { (*state).level = value }
+}
+
+#[inline]
+fn inc_level(state: *mut PROLOG_STATE) {
+    unsafe { (*state).level = (*state).level.wrapping_add(1u32) }
+}
+
+#[inline]
+fn dec_level(state: *mut PROLOG_STATE) {
+    unsafe { (*state).level = (*state).level.wrapping_sub(1u32) }
+}
+
+#[inline]
+fn set_handler_for_subset(state: *mut PROLOG_STATE) {
+    if document_entity(state) != 0 {
+        set_handler(state, internalSubset);
+    } else {
+        set_handler(state, externalSubset1);
+    }
+}
+
+#[inline]
+fn set_decl_close_role_none(state: *mut PROLOG_STATE, role: c_int) {
+    set_handler(state, declClose);
+    set_role_none(state, role);
+}
+
+#[inline]
+fn close_element_group(state: *mut PROLOG_STATE, role: c_int) -> c_int {
+    dec_level(state);
+    if level(state) == 0u32 {
+        set_decl_close_role_none(state, XML_ROLE_ELEMENT_NONE);
+    }
+    role
+}
+
+#[inline]
+fn enc_min_bytes_per_char(enc: *const ENCODING) -> isize {
+    unsafe { (*enc).minBytesPerChar as isize }
+}
+
+#[inline]
+fn decl_open_keyword_slice<'a>(
+    ptr: *const c_char,
+    end: *const c_char,
+    enc: *const ENCODING,
+) -> &'a [c_char] {
+    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize * enc_min_bytes_per_char(enc)), end)
+}
+
+#[inline]
+fn enc_name_matches_ascii(enc: *const ENCODING, input: &[c_char], keyword: *const c_char) -> bool {
+    unsafe { (*enc).nameMatchesAscii(&*enc, input, keyword) != 0 }
+}
+
 static KW_ANY: [c_char; 4] = [
     ASCII_A as c_char,
     ASCII_N as c_char,
@@ -444,63 +564,38 @@ fn prolog0(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => {
-                (*state).handler = Some(
-                    prolog1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_NONE;
-            }
-            XML_TOK_XML_DECL => {
-                (*state).handler = Some(
-                    prolog1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_XML_DECL;
-            }
-            XML_TOK_PI => {
-                (*state).handler = Some(
-                    prolog1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_PI;
-            }
-            XML_TOK_COMMENT => {
-                (*state).handler = Some(
-                    prolog1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_COMMENT;
-            }
-            XML_TOK_BOM => return XML_ROLE_NONE,
-            XML_TOK_DECL_OPEN => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(
-                        ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
-                        end,
-                    ),
-                    &raw const KW_DOCTYPE as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        doctype0
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_DOCTYPE_NONE;
-                }
-            }
-            XML_TOK_INSTANCE_START_1 => {
-                (*state).handler = Some(
-                    error as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_INSTANCE_START;
-            }
-            _ => {}
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => {
+            set_handler(state, prolog1);
+            return XML_ROLE_NONE;
         }
-        common(state, tok)
+        XML_TOK_XML_DECL => {
+            set_handler(state, prolog1);
+            return XML_ROLE_XML_DECL;
+        }
+        XML_TOK_PI => {
+            set_handler(state, prolog1);
+            return XML_ROLE_PI;
+        }
+        XML_TOK_COMMENT => {
+            set_handler(state, prolog1);
+            return XML_ROLE_COMMENT;
+        }
+        XML_TOK_BOM => return XML_ROLE_NONE,
+        XML_TOK_DECL_OPEN => {
+            if enc_name_matches_ascii(enc, decl_open_keyword_slice(ptr, end, enc), KW_DOCTYPE.as_ptr()) {
+                set_handler(state, doctype0);
+                return XML_ROLE_DOCTYPE_NONE;
+            }
+        }
+        XML_TOK_INSTANCE_START_1 => {
+            set_handler(state, error);
+            return XML_ROLE_INSTANCE_START;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn prolog1(
@@ -509,42 +604,25 @@ fn prolog1(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NONE,
-            XML_TOK_PI => return XML_ROLE_PI,
-            XML_TOK_COMMENT => return XML_ROLE_COMMENT,
-            XML_TOK_BOM => return XML_ROLE_NONE,
-            XML_TOK_DECL_OPEN => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(
-                        ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
-                        end,
-                    ),
-                    &raw const KW_DOCTYPE as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        doctype0
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_DOCTYPE_NONE;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NONE,
+        XML_TOK_PI => return XML_ROLE_PI,
+        XML_TOK_COMMENT => return XML_ROLE_COMMENT,
+        XML_TOK_BOM => return XML_ROLE_NONE,
+        XML_TOK_DECL_OPEN => {
+            if enc_name_matches_ascii(enc, decl_open_keyword_slice(ptr, end, enc), KW_DOCTYPE.as_ptr()) {
+                set_handler(state, doctype0);
+                return XML_ROLE_DOCTYPE_NONE;
             }
-            XML_TOK_INSTANCE_START_1 => {
-                (*state).handler = Some(
-                    error as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_INSTANCE_START;
-            }
-            _ => {}
         }
-        common(state, tok)
+        XML_TOK_INSTANCE_START_1 => {
+            set_handler(state, error);
+            return XML_ROLE_INSTANCE_START;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn prolog2(
@@ -553,24 +631,18 @@ fn prolog2(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NONE,
-            XML_TOK_PI => return XML_ROLE_PI,
-            XML_TOK_COMMENT => return XML_ROLE_COMMENT,
-            XML_TOK_INSTANCE_START_1 => {
-                (*state).handler = Some(
-                    error as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_INSTANCE_START;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NONE,
+        XML_TOK_PI => return XML_ROLE_PI,
+        XML_TOK_COMMENT => return XML_ROLE_COMMENT,
+        XML_TOK_INSTANCE_START_1 => {
+            set_handler(state, error);
+            return XML_ROLE_INSTANCE_START;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn doctype0(
@@ -579,22 +651,16 @@ fn doctype0(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
-            XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
-                (*state).handler = Some(
-                    doctype1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_NAME;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
+        XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
+            set_handler(state, doctype1);
+            return XML_ROLE_DOCTYPE_NAME;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn doctype1(
@@ -603,55 +669,30 @@ fn doctype1(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
-            XML_TOK_OPEN_BRACKET => {
-                (*state).handler = Some(
-                    internalSubset
-                        as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_INTERNAL_SUBSET;
-            }
-            XML_TOK_DECL_CLOSE => {
-                (*state).handler = Some(
-                    prolog2 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_CLOSE;
-            }
-            XML_TOK_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_SYSTEM as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        doctype3
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_DOCTYPE_NONE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_PUBLIC as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        doctype2
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_DOCTYPE_NONE;
-                }
-            }
-            _ => {}
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
+        XML_TOK_OPEN_BRACKET => {
+            set_handler(state, internalSubset);
+            return XML_ROLE_DOCTYPE_INTERNAL_SUBSET;
         }
-        common(state, tok)
+        XML_TOK_DECL_CLOSE => {
+            set_handler(state, prolog2);
+            return XML_ROLE_DOCTYPE_CLOSE;
+        }
+        XML_TOK_NAME => {
+            if enc_name_matches_ascii(enc, c_char_slice_from_ptr_end(ptr, end), KW_SYSTEM.as_ptr()) {
+                set_handler(state, doctype3);
+                return XML_ROLE_DOCTYPE_NONE;
+            }
+            if enc_name_matches_ascii(enc, c_char_slice_from_ptr_end(ptr, end), KW_PUBLIC.as_ptr()) {
+                set_handler(state, doctype2);
+                return XML_ROLE_DOCTYPE_NONE;
+            }
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn doctype2(
@@ -660,22 +701,16 @@ fn doctype2(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    doctype3 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_PUBLIC_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
+        XML_TOK_LITERAL => {
+            set_handler(state, doctype3);
+            return XML_ROLE_DOCTYPE_PUBLIC_ID;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn doctype3(
@@ -684,22 +719,16 @@ fn doctype3(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    doctype4 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_SYSTEM_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
+        XML_TOK_LITERAL => {
+            set_handler(state, doctype4);
+            return XML_ROLE_DOCTYPE_SYSTEM_ID;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn doctype4(
@@ -708,29 +737,20 @@ fn doctype4(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
-            XML_TOK_OPEN_BRACKET => {
-                (*state).handler = Some(
-                    internalSubset
-                        as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_INTERNAL_SUBSET;
-            }
-            XML_TOK_DECL_CLOSE => {
-                (*state).handler = Some(
-                    prolog2 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_CLOSE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
+        XML_TOK_OPEN_BRACKET => {
+            set_handler(state, internalSubset);
+            return XML_ROLE_DOCTYPE_INTERNAL_SUBSET;
         }
-        common(state, tok)
+        XML_TOK_DECL_CLOSE => {
+            set_handler(state, prolog2);
+            return XML_ROLE_DOCTYPE_CLOSE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn doctype5(
@@ -739,22 +759,16 @@ fn doctype5(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
-            XML_TOK_DECL_CLOSE => {
-                (*state).handler = Some(
-                    prolog2 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_CLOSE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_DOCTYPE_NONE,
+        XML_TOK_DECL_CLOSE => {
+            set_handler(state, prolog2);
+            return XML_ROLE_DOCTYPE_CLOSE;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn internalSubset(
@@ -763,90 +777,41 @@ fn internalSubset(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NONE,
-            XML_TOK_DECL_OPEN => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(
-                        ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
-                        end,
-                    ),
-                    &raw const KW_ENTITY as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        entity0
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ENTITY_NONE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(
-                        ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
-                        end,
-                    ),
-                    &raw const KW_ATTLIST as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        attlist0
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ATTLIST_NONE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(
-                        ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
-                        end,
-                    ),
-                    &raw const KW_ELEMENT as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        element0
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ELEMENT_NONE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(
-                        ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
-                        end,
-                    ),
-                    &raw const KW_NOTATION as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        notation0
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_NOTATION_NONE;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NONE,
+        XML_TOK_DECL_OPEN => {
+            let decl_name = decl_open_keyword_slice(ptr, end, enc);
+            if enc_name_matches_ascii(enc, decl_name, KW_ENTITY.as_ptr()) {
+                set_handler(state, entity0);
+                return XML_ROLE_ENTITY_NONE;
             }
-            XML_TOK_PI => return XML_ROLE_PI,
-            XML_TOK_COMMENT => return XML_ROLE_COMMENT,
-            XML_TOK_PARAM_ENTITY_REF_1 => {
-                return XML_ROLE_PARAM_ENTITY_REF;
+            if enc_name_matches_ascii(enc, decl_name, KW_ATTLIST.as_ptr()) {
+                set_handler(state, attlist0);
+                return XML_ROLE_ATTLIST_NONE;
             }
-            XML_TOK_CLOSE_BRACKET => {
-                (*state).handler = Some(
-                    doctype5 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DOCTYPE_NONE;
+            if enc_name_matches_ascii(enc, decl_name, KW_ELEMENT.as_ptr()) {
+                set_handler(state, element0);
+                return XML_ROLE_ELEMENT_NONE;
             }
-            XML_TOK_NONE => return XML_ROLE_NONE,
-            _ => {}
+            if enc_name_matches_ascii(enc, decl_name, KW_NOTATION.as_ptr()) {
+                set_handler(state, notation0);
+                return XML_ROLE_NOTATION_NONE;
+            }
         }
-        common(state, tok)
+        XML_TOK_PI => return XML_ROLE_PI,
+        XML_TOK_COMMENT => return XML_ROLE_COMMENT,
+        XML_TOK_PARAM_ENTITY_REF_1 => {
+            return XML_ROLE_PARAM_ENTITY_REF;
+        }
+        XML_TOK_CLOSE_BRACKET => {
+            set_handler(state, doctype5);
+            return XML_ROLE_DOCTYPE_NONE;
+        }
+        XML_TOK_NONE => return XML_ROLE_NONE,
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn externalSubset0(
@@ -855,23 +820,12 @@ fn externalSubset0(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        (*state).handler = Some(
-            externalSubset1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-        );
-        if tok == XML_TOK_XML_DECL {
-            return XML_ROLE_TEXT_DECL;
-        }
-        externalSubset1(
-            state,
-            tok,
-            core::slice::from_raw_parts(ptr, end.offset_from(ptr) as usize),
-            enc,
-        )
+    let (ptr, end) = input_ptr_and_end(input);
+    set_handler(state, externalSubset1);
+    if tok == XML_TOK_XML_DECL {
+        return XML_ROLE_TEXT_DECL;
     }
+    externalSubset1(state, tok, c_char_slice_from_ptr_end(ptr, end), enc)
 }
 
 fn externalSubset1(
@@ -880,41 +834,30 @@ fn externalSubset1(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_COND_SECT_OPEN => {
-                (*state).handler = Some(
-                    condSect0 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_COND_SECT_OPEN => {
+            set_handler(state, condSect0);
+            return XML_ROLE_NONE;
+        }
+        XML_TOK_COND_SECT_CLOSE => {
+            if include_level(state) != 0u32 {
+                dec_include_level(state);
                 return XML_ROLE_NONE;
             }
-            XML_TOK_COND_SECT_CLOSE => {
-                if (*state).includeLevel != 0u32 {
-                    (*state).includeLevel = (*state).includeLevel.wrapping_sub(1u32);
-                    return XML_ROLE_NONE;
-                }
-            }
-            XML_TOK_PROLOG_S => return XML_ROLE_NONE,
-            XML_TOK_CLOSE_BRACKET => {}
-            XML_TOK_NONE => {
-                if (*state).includeLevel == 0 {
-                    return XML_ROLE_NONE;
-                }
-            }
-            _ => {
-                return internalSubset(
-                    state,
-                    tok,
-                    core::slice::from_raw_parts(ptr, end.offset_from(ptr) as usize),
-                    enc,
-                )
+        }
+        XML_TOK_PROLOG_S => return XML_ROLE_NONE,
+        XML_TOK_CLOSE_BRACKET => {}
+        XML_TOK_NONE => {
+            if include_level(state) == 0 {
+                return XML_ROLE_NONE;
             }
         }
-        common(state, tok)
+        _ => {
+            return internalSubset(state, tok, c_char_slice_from_ptr_end(ptr, end), enc)
+        }
     }
+    common(state, tok)
 }
 
 fn entity0(
@@ -923,28 +866,20 @@ fn entity0(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_PERCENT => {
-                (*state).handler = Some(
-                    entity1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ENTITY_NONE;
-            }
-            XML_TOK_NAME => {
-                (*state).handler = Some(
-                    entity2 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_GENERAL_ENTITY_NAME;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_PERCENT => {
+            set_handler(state, entity1);
+            return XML_ROLE_ENTITY_NONE;
         }
-        common(state, tok)
+        XML_TOK_NAME => {
+            set_handler(state, entity2);
+            return XML_ROLE_GENERAL_ENTITY_NAME;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity1(
@@ -953,22 +888,16 @@ fn entity1(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_NAME => {
-                (*state).handler = Some(
-                    entity7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_PARAM_ENTITY_NAME;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_NAME => {
+            set_handler(state, entity7);
+            return XML_ROLE_PARAM_ENTITY_NAME;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity2(
@@ -977,49 +906,28 @@ fn entity2(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_SYSTEM as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        entity4
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ENTITY_NONE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_PUBLIC as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        entity3
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ENTITY_NONE;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_NAME => {
+            let name = c_char_slice_from_ptr_end(ptr, end);
+            if enc_name_matches_ascii(enc, name, KW_SYSTEM.as_ptr()) {
+                set_handler(state, entity4);
+                return XML_ROLE_ENTITY_NONE;
             }
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    declClose as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).role_none = XML_ROLE_ENTITY_NONE;
-                return XML_ROLE_ENTITY_VALUE;
+            if enc_name_matches_ascii(enc, name, KW_PUBLIC.as_ptr()) {
+                set_handler(state, entity3);
+                return XML_ROLE_ENTITY_NONE;
             }
-            _ => {}
         }
-        common(state, tok)
+        XML_TOK_LITERAL => {
+            set_handler(state, declClose);
+            set_role_none(state, XML_ROLE_ENTITY_NONE);
+            return XML_ROLE_ENTITY_VALUE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity3(
@@ -1028,22 +936,16 @@ fn entity3(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    entity4 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ENTITY_PUBLIC_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_LITERAL => {
+            set_handler(state, entity4);
+            return XML_ROLE_ENTITY_PUBLIC_ID;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity4(
@@ -1052,22 +954,16 @@ fn entity4(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    entity5 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ENTITY_SYSTEM_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_LITERAL => {
+            set_handler(state, entity5);
+            return XML_ROLE_ENTITY_SYSTEM_ID;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity5(
@@ -1076,44 +972,22 @@ fn entity5(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_DECL_CLOSE => {
-                (*state).handler = if (*state).documentEntity != 0 {
-                    Some(
-                        internalSubset
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                } else {
-                    Some(
-                        externalSubset1
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                };
-                return XML_ROLE_ENTITY_COMPLETE;
-            }
-            XML_TOK_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_NDATA as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        entity6
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ENTITY_NONE;
-                }
-            }
-            _ => {}
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_DECL_CLOSE => {
+            set_handler_for_subset(state);
+            return XML_ROLE_ENTITY_COMPLETE;
         }
-        common(state, tok)
+        XML_TOK_NAME => {
+            if enc_name_matches_ascii(enc, c_char_slice_from_ptr_end(ptr, end), KW_NDATA.as_ptr()) {
+                set_handler(state, entity6);
+                return XML_ROLE_ENTITY_NONE;
+            }
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity6(
@@ -1122,23 +996,17 @@ fn entity6(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_NAME => {
-                (*state).handler = Some(
-                    declClose as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).role_none = XML_ROLE_ENTITY_NONE;
-                return XML_ROLE_ENTITY_NOTATION_NAME;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_NAME => {
+            set_handler(state, declClose);
+            set_role_none(state, XML_ROLE_ENTITY_NONE);
+            return XML_ROLE_ENTITY_NOTATION_NAME;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity7(
@@ -1147,49 +1015,28 @@ fn entity7(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_SYSTEM as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        entity9
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ENTITY_NONE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_PUBLIC as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        entity8
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ENTITY_NONE;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_NAME => {
+            let name = c_char_slice_from_ptr_end(ptr, end);
+            if enc_name_matches_ascii(enc, name, KW_SYSTEM.as_ptr()) {
+                set_handler(state, entity9);
+                return XML_ROLE_ENTITY_NONE;
             }
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    declClose as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).role_none = XML_ROLE_ENTITY_NONE;
-                return XML_ROLE_ENTITY_VALUE;
+            if enc_name_matches_ascii(enc, name, KW_PUBLIC.as_ptr()) {
+                set_handler(state, entity8);
+                return XML_ROLE_ENTITY_NONE;
             }
-            _ => {}
         }
-        common(state, tok)
+        XML_TOK_LITERAL => {
+            set_handler(state, declClose);
+            set_role_none(state, XML_ROLE_ENTITY_NONE);
+            return XML_ROLE_ENTITY_VALUE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity8(
@@ -1198,22 +1045,16 @@ fn entity8(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    entity9 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ENTITY_PUBLIC_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_LITERAL => {
+            set_handler(state, entity9);
+            return XML_ROLE_ENTITY_PUBLIC_ID;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity9(
@@ -1222,22 +1063,16 @@ fn entity9(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    entity10 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ENTITY_SYSTEM_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_LITERAL => {
+            set_handler(state, entity10);
+            return XML_ROLE_ENTITY_SYSTEM_ID;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn entity10(
@@ -1246,30 +1081,16 @@ fn entity10(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
-            XML_TOK_DECL_CLOSE => {
-                (*state).handler = if (*state).documentEntity != 0 {
-                    Some(
-                        internalSubset
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                } else {
-                    Some(
-                        externalSubset1
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                };
-                return XML_ROLE_ENTITY_COMPLETE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ENTITY_NONE,
+        XML_TOK_DECL_CLOSE => {
+            set_handler_for_subset(state);
+            return XML_ROLE_ENTITY_COMPLETE;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn notation0(
@@ -1278,22 +1099,16 @@ fn notation0(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
-            XML_TOK_NAME => {
-                (*state).handler = Some(
-                    notation1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_NOTATION_NAME;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
+        XML_TOK_NAME => {
+            set_handler(state, notation1);
+            return XML_ROLE_NOTATION_NAME;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn notation1(
@@ -1302,42 +1117,23 @@ fn notation1(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
-            XML_TOK_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_SYSTEM as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        notation3
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_NOTATION_NONE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_PUBLIC as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        notation2
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_NOTATION_NONE;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
+        XML_TOK_NAME => {
+            let name_input = c_char_slice_from_ptr_end(ptr, end);
+            if enc_name_matches_ascii(enc, name_input, &raw const KW_SYSTEM as *const c_char) {
+                set_handler(state, notation3);
+                return XML_ROLE_NOTATION_NONE;
             }
-            _ => {}
+            if enc_name_matches_ascii(enc, name_input, &raw const KW_PUBLIC as *const c_char) {
+                set_handler(state, notation2);
+                return XML_ROLE_NOTATION_NONE;
+            }
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn notation2(
@@ -1346,22 +1142,16 @@ fn notation2(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    notation4 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_NOTATION_PUBLIC_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
+        XML_TOK_LITERAL => {
+            set_handler(state, notation4);
+            return XML_ROLE_NOTATION_PUBLIC_ID;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn notation3(
@@ -1370,23 +1160,16 @@ fn notation3(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    declClose as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).role_none = XML_ROLE_NOTATION_NONE;
-                return XML_ROLE_NOTATION_SYSTEM_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
+        XML_TOK_LITERAL => {
+            set_decl_close_role_none(state, XML_ROLE_NOTATION_NONE);
+            return XML_ROLE_NOTATION_SYSTEM_ID;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn notation4(
@@ -1395,37 +1178,20 @@ fn notation4(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    declClose as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).role_none = XML_ROLE_NOTATION_NONE;
-                return XML_ROLE_NOTATION_SYSTEM_ID;
-            }
-            XML_TOK_DECL_CLOSE => {
-                (*state).handler = if (*state).documentEntity != 0 {
-                    Some(
-                        internalSubset
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                } else {
-                    Some(
-                        externalSubset1
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                };
-                return XML_ROLE_NOTATION_NO_SYSTEM_ID;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NOTATION_NONE,
+        XML_TOK_LITERAL => {
+            set_decl_close_role_none(state, XML_ROLE_NOTATION_NONE);
+            return XML_ROLE_NOTATION_SYSTEM_ID;
         }
-        common(state, tok)
+        XML_TOK_DECL_CLOSE => {
+            set_handler_for_subset(state);
+            return XML_ROLE_NOTATION_NO_SYSTEM_ID;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist0(
@@ -1434,22 +1200,16 @@ fn attlist0(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
-                (*state).handler = Some(
-                    attlist1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTLIST_ELEMENT_NAME;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
+            set_handler(state, attlist1);
+            return XML_ROLE_ATTLIST_ELEMENT_NAME;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist1(
@@ -1458,36 +1218,20 @@ fn attlist1(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_DECL_CLOSE => {
-                (*state).handler = if (*state).documentEntity != 0 {
-                    Some(
-                        internalSubset
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                } else {
-                    Some(
-                        externalSubset1
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                };
-                return XML_ROLE_ATTLIST_NONE;
-            }
-            XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
-                (*state).handler = Some(
-                    attlist2 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTRIBUTE_NAME;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_DECL_CLOSE => {
+            set_handler_for_subset(state);
+            return XML_ROLE_ATTLIST_NONE;
         }
-        common(state, tok)
+        XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
+            set_handler(state, attlist2);
+            return XML_ROLE_ATTRIBUTE_NAME;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist2(
@@ -1496,72 +1240,39 @@ fn attlist2(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_NAME => {
-                let types: [*const c_char; 8] = [
-                    &raw const KW_CDATA as *const c_char,
-                    &raw const KW_ID as *const c_char,
-                    &raw const KW_IDREF as *const c_char,
-                    &raw const KW_IDREFS as *const c_char,
-                    &raw const KW_ENTITY as *const c_char,
-                    &raw const KW_ENTITIES as *const c_char,
-                    &raw const KW_NMTOKEN as *const c_char,
-                    &raw const KW_NMTOKENS as *const c_char,
-                ];
-                let mut i: c_int = 0;
-                i = 0;
-                while i
-                    < (::core::mem::size_of::<[*const c_char; 8]>())
-                        .wrapping_div(::core::mem::size_of::<*const c_char>())
-                        as c_int
-                {
-                    if (*enc).nameMatchesAscii(
-                        &*enc,
-                        c_char_slice_from_ptr_end(ptr, end),
-                        types[i as usize],
-                    ) != 0
-                    {
-                        (*state).handler = Some(
-                            attlist8
-                                as fn(
-                                    *mut PROLOG_STATE,
-                                    c_int,
-                                    &[c_char],
-                                    *const ENCODING,
-                                ) -> c_int,
-                        );
-                        return XML_ROLE_ATTRIBUTE_TYPE_CDATA + i;
-                    }
-                    i += 1;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_NOTATION as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        attlist5
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ATTLIST_NONE;
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_NAME => {
+            let types: [*const c_char; 8] = [
+                &raw const KW_CDATA as *const c_char,
+                &raw const KW_ID as *const c_char,
+                &raw const KW_IDREF as *const c_char,
+                &raw const KW_IDREFS as *const c_char,
+                &raw const KW_ENTITY as *const c_char,
+                &raw const KW_ENTITIES as *const c_char,
+                &raw const KW_NMTOKEN as *const c_char,
+                &raw const KW_NMTOKENS as *const c_char,
+            ];
+            let name_input = c_char_slice_from_ptr_end(ptr, end);
+            for (i, ty) in types.iter().enumerate() {
+                if enc_name_matches_ascii(enc, name_input, *ty) {
+                    set_handler(state, attlist8);
+                    return XML_ROLE_ATTRIBUTE_TYPE_CDATA + i as c_int;
                 }
             }
-            XML_TOK_OPEN_PAREN => {
-                (*state).handler = Some(
-                    attlist3 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
+            if enc_name_matches_ascii(enc, name_input, &raw const KW_NOTATION as *const c_char) {
+                set_handler(state, attlist5);
                 return XML_ROLE_ATTLIST_NONE;
             }
-            _ => {}
         }
-        common(state, tok)
+        XML_TOK_OPEN_PAREN => {
+            set_handler(state, attlist3);
+            return XML_ROLE_ATTLIST_NONE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist3(
@@ -1570,22 +1281,16 @@ fn attlist3(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_NMTOKEN | XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
-                (*state).handler = Some(
-                    attlist4 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTRIBUTE_ENUM_VALUE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_NMTOKEN | XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
+            set_handler(state, attlist4);
+            return XML_ROLE_ATTRIBUTE_ENUM_VALUE;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist4(
@@ -1594,28 +1299,20 @@ fn attlist4(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_CLOSE_PAREN => {
-                (*state).handler = Some(
-                    attlist8 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTLIST_NONE;
-            }
-            XML_TOK_OR => {
-                (*state).handler = Some(
-                    attlist3 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTLIST_NONE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_CLOSE_PAREN => {
+            set_handler(state, attlist8);
+            return XML_ROLE_ATTLIST_NONE;
         }
-        common(state, tok)
+        XML_TOK_OR => {
+            set_handler(state, attlist3);
+            return XML_ROLE_ATTLIST_NONE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist5(
@@ -1624,22 +1321,16 @@ fn attlist5(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_OPEN_PAREN => {
-                (*state).handler = Some(
-                    attlist6 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTLIST_NONE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_OPEN_PAREN => {
+            set_handler(state, attlist6);
+            return XML_ROLE_ATTLIST_NONE;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist6(
@@ -1648,22 +1339,16 @@ fn attlist6(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_NAME => {
-                (*state).handler = Some(
-                    attlist7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTRIBUTE_NOTATION_VALUE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_NAME => {
+            set_handler(state, attlist7);
+            return XML_ROLE_ATTRIBUTE_NOTATION_VALUE;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist7(
@@ -1672,28 +1357,20 @@ fn attlist7(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_CLOSE_PAREN => {
-                (*state).handler = Some(
-                    attlist8 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTLIST_NONE;
-            }
-            XML_TOK_OR => {
-                (*state).handler = Some(
-                    attlist6 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ATTLIST_NONE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_CLOSE_PAREN => {
+            set_handler(state, attlist8);
+            return XML_ROLE_ATTLIST_NONE;
         }
-        common(state, tok)
+        XML_TOK_OR => {
+            set_handler(state, attlist6);
+            return XML_ROLE_ATTLIST_NONE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist8(
@@ -1702,60 +1379,34 @@ fn attlist8(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_POUND_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr.offset((*enc).minBytesPerChar as isize), end),
-                    &raw const KW_IMPLIED as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        attlist1
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_IMPLIED_ATTRIBUTE_VALUE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr.offset((*enc).minBytesPerChar as isize), end),
-                    &raw const KW_REQUIRED as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        attlist1
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_REQUIRED_ATTRIBUTE_VALUE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr.offset((*enc).minBytesPerChar as isize), end),
-                    &raw const KW_FIXED as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        attlist9
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_ATTLIST_NONE;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_POUND_NAME => {
+            let pound_name_input =
+                c_char_slice_from_ptr_end(ptr.wrapping_offset(enc_min_bytes_per_char(enc)), end);
+            if enc_name_matches_ascii(enc, pound_name_input, &raw const KW_IMPLIED as *const c_char)
+            {
+                set_handler(state, attlist1);
+                return XML_ROLE_IMPLIED_ATTRIBUTE_VALUE;
             }
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    attlist1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_DEFAULT_ATTRIBUTE_VALUE;
+            if enc_name_matches_ascii(enc, pound_name_input, &raw const KW_REQUIRED as *const c_char)
+            {
+                set_handler(state, attlist1);
+                return XML_ROLE_REQUIRED_ATTRIBUTE_VALUE;
             }
-            _ => {}
+            if enc_name_matches_ascii(enc, pound_name_input, &raw const KW_FIXED as *const c_char) {
+                set_handler(state, attlist9);
+                return XML_ROLE_ATTLIST_NONE;
+            }
         }
-        common(state, tok)
+        XML_TOK_LITERAL => {
+            set_handler(state, attlist1);
+            return XML_ROLE_DEFAULT_ATTRIBUTE_VALUE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn attlist9(
@@ -1764,22 +1415,16 @@ fn attlist9(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
-            XML_TOK_LITERAL => {
-                (*state).handler = Some(
-                    attlist1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_FIXED_ATTRIBUTE_VALUE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ATTLIST_NONE,
+        XML_TOK_LITERAL => {
+            set_handler(state, attlist1);
+            return XML_ROLE_FIXED_ATTRIBUTE_VALUE;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn element0(
@@ -1788,22 +1433,16 @@ fn element0(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
-            XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
-                (*state).handler = Some(
-                    element1 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ELEMENT_NAME;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
+        XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
+            set_handler(state, element1);
+            return XML_ROLE_ELEMENT_NAME;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn element1(
@@ -1812,51 +1451,28 @@ fn element1(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
-            XML_TOK_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_EMPTY as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        declClose
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                    return XML_ROLE_CONTENT_EMPTY;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_ANY as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        declClose
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                    return XML_ROLE_CONTENT_ANY;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
+        XML_TOK_NAME => {
+            let name_input = c_char_slice_from_ptr_end(ptr, end);
+            if enc_name_matches_ascii(enc, name_input, &raw const KW_EMPTY as *const c_char) {
+                set_decl_close_role_none(state, XML_ROLE_ELEMENT_NONE);
+                return XML_ROLE_CONTENT_EMPTY;
             }
-            XML_TOK_OPEN_PAREN => {
-                (*state).handler = Some(
-                    element2 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).level = 1u32;
-                return XML_ROLE_GROUP_OPEN;
+            if enc_name_matches_ascii(enc, name_input, &raw const KW_ANY as *const c_char) {
+                set_decl_close_role_none(state, XML_ROLE_ELEMENT_NONE);
+                return XML_ROLE_CONTENT_ANY;
             }
-            _ => {}
         }
-        common(state, tok)
+        XML_TOK_OPEN_PAREN => {
+            set_handler(state, element2);
+            set_level(state, 1u32);
+            return XML_ROLE_GROUP_OPEN;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn element2(
@@ -1865,61 +1481,42 @@ fn element2(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
-            XML_TOK_POUND_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr.offset((*enc).minBytesPerChar as isize), end),
-                    &raw const KW_PCDATA as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        element3
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_CONTENT_PCDATA;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
+        XML_TOK_POUND_NAME => {
+            let pound_name_input =
+                c_char_slice_from_ptr_end(ptr.wrapping_offset(enc_min_bytes_per_char(enc)), end);
+            if enc_name_matches_ascii(enc, pound_name_input, &raw const KW_PCDATA as *const c_char)
+            {
+                set_handler(state, element3);
+                return XML_ROLE_CONTENT_PCDATA;
             }
-            XML_TOK_OPEN_PAREN => {
-                (*state).level = 2u32;
-                (*state).handler = Some(
-                    element6 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_GROUP_OPEN;
-            }
-            XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
-                (*state).handler = Some(
-                    element7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT;
-            }
-            XML_TOK_NAME_QUESTION => {
-                (*state).handler = Some(
-                    element7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT_OPT;
-            }
-            XML_TOK_NAME_ASTERISK => {
-                (*state).handler = Some(
-                    element7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT_REP;
-            }
-            XML_TOK_NAME_PLUS => {
-                (*state).handler = Some(
-                    element7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT_PLUS;
-            }
-            _ => {}
         }
-        common(state, tok)
+        XML_TOK_OPEN_PAREN => {
+            set_level(state, 2u32);
+            set_handler(state, element6);
+            return XML_ROLE_GROUP_OPEN;
+        }
+        XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
+            set_handler(state, element7);
+            return XML_ROLE_CONTENT_ELEMENT;
+        }
+        XML_TOK_NAME_QUESTION => {
+            set_handler(state, element7);
+            return XML_ROLE_CONTENT_ELEMENT_OPT;
+        }
+        XML_TOK_NAME_ASTERISK => {
+            set_handler(state, element7);
+            return XML_ROLE_CONTENT_ELEMENT_REP;
+        }
+        XML_TOK_NAME_PLUS => {
+            set_handler(state, element7);
+            return XML_ROLE_CONTENT_ELEMENT_PLUS;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn element3(
@@ -1928,36 +1525,24 @@ fn element3(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
-            XML_TOK_CLOSE_PAREN => {
-                (*state).handler = Some(
-                    declClose as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                return XML_ROLE_GROUP_CLOSE;
-            }
-            XML_TOK_CLOSE_PAREN_ASTERISK => {
-                (*state).handler = Some(
-                    declClose as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                return XML_ROLE_GROUP_CLOSE_REP;
-            }
-            XML_TOK_OR => {
-                (*state).handler = Some(
-                    element4 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ELEMENT_NONE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
+        XML_TOK_CLOSE_PAREN => {
+            set_decl_close_role_none(state, XML_ROLE_ELEMENT_NONE);
+            return XML_ROLE_GROUP_CLOSE;
         }
-        common(state, tok)
+        XML_TOK_CLOSE_PAREN_ASTERISK => {
+            set_decl_close_role_none(state, XML_ROLE_ELEMENT_NONE);
+            return XML_ROLE_GROUP_CLOSE_REP;
+        }
+        XML_TOK_OR => {
+            set_handler(state, element4);
+            return XML_ROLE_ELEMENT_NONE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn element4(
@@ -1966,22 +1551,16 @@ fn element4(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
-            XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
-                (*state).handler = Some(
-                    element5 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
+        XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
+            set_handler(state, element5);
+            return XML_ROLE_CONTENT_ELEMENT;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn element5(
@@ -1990,29 +1569,20 @@ fn element5(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
-            XML_TOK_CLOSE_PAREN_ASTERISK => {
-                (*state).handler = Some(
-                    declClose as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                return XML_ROLE_GROUP_CLOSE_REP;
-            }
-            XML_TOK_OR => {
-                (*state).handler = Some(
-                    element4 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_ELEMENT_NONE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
+        XML_TOK_CLOSE_PAREN_ASTERISK => {
+            set_decl_close_role_none(state, XML_ROLE_ELEMENT_NONE);
+            return XML_ROLE_GROUP_CLOSE_REP;
         }
-        common(state, tok)
+        XML_TOK_OR => {
+            set_handler(state, element4);
+            return XML_ROLE_ELEMENT_NONE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn element6(
@@ -2021,44 +1591,32 @@ fn element6(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
-            XML_TOK_OPEN_PAREN => {
-                (*state).level = (*state).level.wrapping_add(1u32);
-                return XML_ROLE_GROUP_OPEN;
-            }
-            XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
-                (*state).handler = Some(
-                    element7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT;
-            }
-            XML_TOK_NAME_QUESTION => {
-                (*state).handler = Some(
-                    element7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT_OPT;
-            }
-            XML_TOK_NAME_ASTERISK => {
-                (*state).handler = Some(
-                    element7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT_REP;
-            }
-            XML_TOK_NAME_PLUS => {
-                (*state).handler = Some(
-                    element7 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_CONTENT_ELEMENT_PLUS;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
+        XML_TOK_OPEN_PAREN => {
+            inc_level(state);
+            return XML_ROLE_GROUP_OPEN;
         }
-        common(state, tok)
+        XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
+            set_handler(state, element7);
+            return XML_ROLE_CONTENT_ELEMENT;
+        }
+        XML_TOK_NAME_QUESTION => {
+            set_handler(state, element7);
+            return XML_ROLE_CONTENT_ELEMENT_OPT;
+        }
+        XML_TOK_NAME_ASTERISK => {
+            set_handler(state, element7);
+            return XML_ROLE_CONTENT_ELEMENT_REP;
+        }
+        XML_TOK_NAME_PLUS => {
+            set_handler(state, element7);
+            return XML_ROLE_CONTENT_ELEMENT_PLUS;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn element7(
@@ -2067,72 +1625,24 @@ fn element7(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
-            XML_TOK_CLOSE_PAREN => {
-                (*state).level = (*state).level.wrapping_sub(1u32);
-                if (*state).level == 0u32 {
-                    (*state).handler = Some(
-                        declClose
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                }
-                return XML_ROLE_GROUP_CLOSE;
-            }
-            XML_TOK_CLOSE_PAREN_ASTERISK => {
-                (*state).level = (*state).level.wrapping_sub(1u32);
-                if (*state).level == 0u32 {
-                    (*state).handler = Some(
-                        declClose
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                }
-                return XML_ROLE_GROUP_CLOSE_REP;
-            }
-            XML_TOK_CLOSE_PAREN_QUESTION => {
-                (*state).level = (*state).level.wrapping_sub(1u32);
-                if (*state).level == 0u32 {
-                    (*state).handler = Some(
-                        declClose
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                }
-                return XML_ROLE_GROUP_CLOSE_OPT;
-            }
-            XML_TOK_CLOSE_PAREN_PLUS => {
-                (*state).level = (*state).level.wrapping_sub(1u32);
-                if (*state).level == 0u32 {
-                    (*state).handler = Some(
-                        declClose
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    (*state).role_none = XML_ROLE_ELEMENT_NONE;
-                }
-                return XML_ROLE_GROUP_CLOSE_PLUS;
-            }
-            XML_TOK_COMMA => {
-                (*state).handler = Some(
-                    element6 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_GROUP_SEQUENCE;
-            }
-            XML_TOK_OR => {
-                (*state).handler = Some(
-                    element6 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_GROUP_CHOICE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
+        XML_TOK_CLOSE_PAREN => return close_element_group(state, XML_ROLE_GROUP_CLOSE),
+        XML_TOK_CLOSE_PAREN_ASTERISK => return close_element_group(state, XML_ROLE_GROUP_CLOSE_REP),
+        XML_TOK_CLOSE_PAREN_QUESTION => return close_element_group(state, XML_ROLE_GROUP_CLOSE_OPT),
+        XML_TOK_CLOSE_PAREN_PLUS => return close_element_group(state, XML_ROLE_GROUP_CLOSE_PLUS),
+        XML_TOK_COMMA => {
+            set_handler(state, element6);
+            return XML_ROLE_GROUP_SEQUENCE;
         }
-        common(state, tok)
+        XML_TOK_OR => {
+            set_handler(state, element6);
+            return XML_ROLE_GROUP_CHOICE;
+        }
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn condSect0(
@@ -2141,42 +1651,23 @@ fn condSect0(
     input: &[c_char],
     mut enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NONE,
-            XML_TOK_NAME => {
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_INCLUDE as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        condSect1
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_NONE;
-                }
-                if (*enc).nameMatchesAscii(
-                    &*enc,
-                    c_char_slice_from_ptr_end(ptr, end),
-                    &raw const KW_IGNORE as *const c_char,
-                ) != 0
-                {
-                    (*state).handler = Some(
-                        condSect2
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    );
-                    return XML_ROLE_NONE;
-                }
+    let (ptr, end) = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NONE,
+        XML_TOK_NAME => {
+            let name_input = c_char_slice_from_ptr_end(ptr, end);
+            if enc_name_matches_ascii(enc, name_input, &raw const KW_INCLUDE as *const c_char) {
+                set_handler(state, condSect1);
+                return XML_ROLE_NONE;
             }
-            _ => {}
+            if enc_name_matches_ascii(enc, name_input, &raw const KW_IGNORE as *const c_char) {
+                set_handler(state, condSect2);
+                return XML_ROLE_NONE;
+            }
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn condSect1(
@@ -2185,24 +1676,17 @@ fn condSect1(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NONE,
-            XML_TOK_OPEN_BRACKET => {
-                (*state).handler = Some(
-                    externalSubset1
-                        as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                (*state).includeLevel = (*state).includeLevel.wrapping_add(1u32);
-                return XML_ROLE_NONE;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NONE,
+        XML_TOK_OPEN_BRACKET => {
+            set_handler(state, externalSubset1);
+            inc_include_level(state);
+            return XML_ROLE_NONE;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn condSect2(
@@ -2211,23 +1695,16 @@ fn condSect2(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return XML_ROLE_NONE,
-            XML_TOK_OPEN_BRACKET => {
-                (*state).handler = Some(
-                    externalSubset1
-                        as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                );
-                return XML_ROLE_IGNORE_SECT;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return XML_ROLE_NONE,
+        XML_TOK_OPEN_BRACKET => {
+            set_handler(state, externalSubset1);
+            return XML_ROLE_IGNORE_SECT;
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn declClose(
@@ -2236,30 +1713,16 @@ fn declClose(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        match tok {
-            XML_TOK_PROLOG_S => return (*state).role_none,
-            XML_TOK_DECL_CLOSE => {
-                (*state).handler = if (*state).documentEntity != 0 {
-                    Some(
-                        internalSubset
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                } else {
-                    Some(
-                        externalSubset1
-                            as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-                    )
-                };
-                return (*state).role_none;
-            }
-            _ => {}
+    let _ = input_ptr_and_end(input);
+    match tok {
+        XML_TOK_PROLOG_S => return role_none(state),
+        XML_TOK_DECL_CLOSE => {
+            set_handler_for_subset(state);
+            return role_none(state);
         }
-        common(state, tok)
+        _ => {}
     }
+    common(state, tok)
 }
 
 fn error(
@@ -2268,39 +1731,25 @@ fn error(
     input: &[c_char],
     mut _enc: *const ENCODING,
 ) -> c_int {
-    unsafe {
-        let mut ptr = input.as_ptr();
-        let mut end = ptr.add(input.len());
-        let _ = (ptr, end);
-        XML_ROLE_NONE
-    }
+    let _ = input;
+    XML_ROLE_NONE
 }
 
 fn common(mut state: *mut PROLOG_STATE, mut tok: c_int) -> c_int {
-    unsafe {
-        if (*state).documentEntity == 0 && tok == XML_TOK_PARAM_ENTITY_REF_1 {
-            return XML_ROLE_INNER_PARAM_ENTITY_REF;
-        }
-        (*state).handler =
-            Some(error as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int);
-        XML_ROLE_ERROR
+    if document_entity(state) == 0 && tok == XML_TOK_PARAM_ENTITY_REF_1 {
+        return XML_ROLE_INNER_PARAM_ENTITY_REF;
     }
+    set_handler(state, error);
+    XML_ROLE_ERROR
 }
 pub(crate) fn XmlPrologStateInit(mut state: *mut PROLOG_STATE) {
-    unsafe {
-        (*state).handler =
-            Some(prolog0 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int);
-        (*state).documentEntity = 1;
-        (*state).includeLevel = 0u32;
-        (*state).inEntityValue = 0;
-    }
+    set_handler(state, prolog0);
+    set_document_entity(state, 1);
+    set_include_level(state, 0u32);
+    set_in_entity_value(state, 0);
 }
 pub(crate) fn XmlPrologStateInitExternalEntity(mut state: *mut PROLOG_STATE) {
-    unsafe {
-        (*state).handler = Some(
-            externalSubset0 as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int,
-        );
-        (*state).documentEntity = 0;
-        (*state).includeLevel = 0u32;
-    }
+    set_handler(state, externalSubset0);
+    set_document_entity(state, 0);
+    set_include_level(state, 0u32);
 }

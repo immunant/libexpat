@@ -82,14 +82,9 @@ pub fn filemap(
         unsafe { close(fd) };
         return 0i32;
     }
-    if sb.st_mode & __S_IFMT as __mode_t != 0o100000  {
-        unsafe {
-            fprintf(
-                stderr,
-                b"%s: not a regular file\n\0" as *const u8 as *const c_char,
-                name,
-            )
-        };
+    if sb.st_mode & __S_IFMT as __mode_t != 0o100000 {
+        let not_regular_file_fmt = b"%s: not a regular file\n\0" as *const u8 as *const c_char;
+        unsafe { fprintf(stderr, not_regular_file_fmt, name) };
         unsafe { close(fd) };
         return 0i32;
     }
@@ -111,13 +106,8 @@ pub fn filemap(
     }
     p = unsafe { crate::stdlib::malloc(nbytes) };
     if p.is_null() {
-        unsafe {
-            fprintf(
-                stderr,
-                b"%s: out of memory\n\0" as *const u8 as *const c_char,
-                name,
-            )
-        };
+        let out_of_memory_fmt = b"%s: out of memory\n\0" as *const u8 as *const c_char;
+        unsafe { fprintf(stderr, out_of_memory_fmt, name) };
         unsafe { close(fd) };
         return 0i32;
     }
@@ -129,13 +119,9 @@ pub fn filemap(
         return 0i32;
     }
     if n != nbytes as ssize_t {
-        unsafe {
-            fprintf(
-                stderr,
-                b"%s: read unexpected number of bytes\n\0" as *const u8 as *const c_char,
-                name,
-            )
-        };
+        let read_mismatch_fmt =
+            b"%s: read unexpected number of bytes\n\0" as *const u8 as *const c_char;
+        unsafe { fprintf(stderr, read_mismatch_fmt, name) };
         unsafe { free(p) };
         unsafe { close(fd) };
         return 0i32;

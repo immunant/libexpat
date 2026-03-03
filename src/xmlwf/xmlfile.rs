@@ -116,25 +116,13 @@ extern "C" fn reportError(mut parser: XML_Parser, mut filename: *const XML_Char)
     let mut code: XML_Error = XML_GetErrorCode(parser);
     let mut message: *const XML_Char = XML_ErrorString(code);
     if !message.is_null() {
-        unsafe {
-            fprintf(
-                crate::stdlib::stdout,
-                b"%s:%lu:%lu: %s\n\0" as *const u8 as *const c_char,
-                filename,
-                XML_GetCurrentLineNumber(parser),
-                XML_GetCurrentColumnNumber(parser),
-                message,
-            )
-        };
+        let parse_error_fmt = b"%s:%lu:%lu: %s\n\0" as *const u8 as *const c_char;
+        let line = XML_GetCurrentLineNumber(parser);
+        let col = XML_GetCurrentColumnNumber(parser);
+        unsafe { fprintf(crate::stdlib::stdout, parse_error_fmt, filename, line, col, message) };
     } else {
-        unsafe {
-            fprintf(
-                stderr,
-                b"%s: (unknown message %u)\n\0" as *const u8 as *const c_char,
-                filename,
-                code,
-            )
-        };
+        let unknown_error_fmt = b"%s: (unknown message %u)\n\0" as *const u8 as *const c_char;
+        unsafe { fprintf(stderr, unknown_error_fmt, filename, code) };
     };
 }
 
@@ -144,8 +132,9 @@ extern "C" fn processFile(
     mut filename: *const XML_Char,
     mut args: *mut c_void,
 ) {
-    let mut parser: XML_Parser = unsafe { (*(args as *mut PROCESS_ARGS)).parser };
-    let mut retPtr: *mut c_int = unsafe { (*(args as *mut PROCESS_ARGS)).retPtr };
+    let process_args = args as *mut PROCESS_ARGS;
+    let mut parser: XML_Parser = unsafe { (*process_args).parser };
+    let mut retPtr: *mut c_int = unsafe { (*process_args).retPtr };
     if XML_Parse(parser, data as *const c_char, size as c_int, 1) == XML_STATUS_ERROR {
         reportError(parser, filename);
         unsafe { *retPtr = 0i32 };
@@ -164,21 +153,21 @@ extern "C" fn resolveSystemId(
     if base.is_null() || unsafe { *systemId as c_int == '/' as i32 } {
         return systemId;
     }
-    unsafe {
-        *toFree = crate::stdlib::malloc(
-            crate::stdlib::strlen(base)
-                .wrapping_add(crate::stdlib::strlen(systemId))
-                .wrapping_add(2usize)
-                .wrapping_mul(::core::mem::size_of::<XML_Char>()),
-        ) as *mut XML_Char
-    };
+    let base_len = unsafe { crate::stdlib::strlen(base) };
+    let system_id_len = unsafe { crate::stdlib::strlen(systemId) };
+    let alloc_size = base_len
+        .wrapping_add(system_id_len)
+        .wrapping_add(2usize)
+        .wrapping_mul(::core::mem::size_of::<XML_Char>());
+    unsafe { *toFree = crate::stdlib::malloc(alloc_size) as *mut XML_Char };
     if unsafe { (*toFree).is_null() } {
         return systemId;
     }
     unsafe { crate::stdlib::strcpy(*toFree, base) };
     s = unsafe { *toFree };
-    if !unsafe { crate::stdlib::strrchr(s, '/' as i32) }.is_null() {
-        s = unsafe { crate::stdlib::strrchr(s, '/' as i32).offset(1isize) };
+    let last_slash = unsafe { crate::stdlib::strrchr(s, '/' as i32) };
+    if !last_slash.is_null() {
+        s = unsafe { last_slash.offset(1isize) };
     }
     unsafe { crate::stdlib::strcpy(s, systemId) };
     unsafe { *toFree }
@@ -217,14 +206,10 @@ extern "C" fn externalEntityRefFilemap(
             result = 0i32;
         }
         2 => {
-            unsafe {
-                fprintf(
-                    stderr,
-                    b"%s: file too large for memory-mapping, switching to streaming\n\0"
-                        as *const u8 as *const c_char,
-                    filename,
-                )
-            };
+            let too_large_fmt =
+                b"%s: file too large for memory-mapping, switching to streaming\n\0"
+                    as *const u8 as *const c_char;
+            unsafe { fprintf(stderr, too_large_fmt, filename) };
             result = processStream(filename, entParser);
         }
         _ => {}
@@ -251,28 +236,23 @@ extern "C" fn processStream(mut filename: *const XML_Char, mut parser: XML_Parse
             if !filename.is_null() {
                 unsafe { close(fd) };
             }
-            unsafe {
-                fprintf(
-                    stderr,
-                    b"%s: out of memory\n\0" as *const u8 as *const c_char,
-                    if !filename.is_null() {
-                        filename
-                    } else {
-                        b"xmlwf\0" as *const u8 as *const c_char
-                    },
-                )
+            let source_name = if !filename.is_null() {
+                filename
+            } else {
+                b"xmlwf\0" as *const u8 as *const c_char
             };
+            let out_of_memory_fmt = b"%s: out of memory\n\0" as *const u8 as *const c_char;
+            unsafe { fprintf(stderr, out_of_memory_fmt, source_name) };
             return 0i32;
         }
         nread = unsafe { read(fd, buf as *mut c_void, read_size as size_t) };
         if nread < 0 {
-            unsafe {
-                crate::stdlib::perror(if !filename.is_null() {
-                    filename
-                } else {
-                    b"STDIN\0" as *const u8 as *const c_char
-                })
+            let input_name = if !filename.is_null() {
+                filename
+            } else {
+                b"STDIN\0" as *const u8 as *const c_char
             };
+            unsafe { crate::stdlib::perror(input_name) };
             if !filename.is_null() {
                 unsafe { close(fd) };
             }
@@ -329,13 +309,8 @@ pub fn XML_ProcessFile(
 ) -> c_int {
     let mut result: c_int = 0;
     if XML_SetBase(parser, filename) as u64 == 0 {
-        unsafe {
-            fprintf(
-                stderr,
-                b"%s: out of memory\0" as *const u8 as *const c_char,
-                filename,
-            )
-        };
+        let out_of_memory_fmt = b"%s: out of memory\0" as *const u8 as *const c_char;
+        unsafe { fprintf(stderr, out_of_memory_fmt, filename) };
         unsafe { crate::stdlib::exit(1i32) };
     }
     if flags & crate::src::xmlwf::xmlfile::XML_EXTERNAL_ENTITIES as c_uint != 0 {
@@ -387,14 +362,10 @@ pub fn XML_ProcessFile(
                 result = 0i32;
             }
             2 => {
-                unsafe {
-                    fprintf(
-                        stderr,
-                        b"%s: file too large for memory-mapping, switching to streaming\n\0"
-                            as *const u8 as *const c_char,
-                        filename,
-                    )
-                };
+                let too_large_fmt =
+                    b"%s: file too large for memory-mapping, switching to streaming\n\0"
+                        as *const u8 as *const c_char;
+                unsafe { fprintf(stderr, too_large_fmt, filename) };
                 result = processStream(filename, parser);
             }
             _ => {}
