@@ -154,8 +154,11 @@ pub mod stdlib {
         pub type _IO_wide_data;
     }
     pub type FILE = libexpat::stdlib::_IO_FILE;
-    pub const __ASSERT_FUNCTION: [c_char; 46] =
-        unsafe { core::mem::transmute::<[u8; 46], [c_char; 46]>(*b"void attributeValue(FILE *, const XML_Char *)\0") };
+    pub const __ASSERT_FUNCTION: [c_char; 46] = unsafe {
+        core::mem::transmute::<[u8; 46], [c_char; 46]>(
+            *b"void attributeValue(FILE *, const XML_Char *)\0",
+        )
+    };
     pub const EINVAL: c_int = 22;
 
     pub const ERANGE: c_int = 34;
@@ -465,7 +468,12 @@ fn c_char_ptr_offset(ptr: *const c_char, offset: isize) -> *const c_char {
 
 #[inline]
 fn unknown_encoding_handler() -> XML_UnknownEncodingHandler {
-    unsafe { transmute(Some(unknownEncoding as extern "C" fn(*mut c_void, *const XML_Char, *mut XML_Encoding) -> c_int)) }
+    unsafe {
+        transmute(Some(
+            unknownEncoding
+                as extern "C" fn(*mut c_void, *const XML_Char, *mut XML_Encoding) -> c_int,
+        ))
+    }
 }
 
 extern "C" fn characterData(mut userData: *mut c_void, mut s: *const XML_Char, mut len: c_int) {
@@ -777,7 +785,14 @@ extern "C" fn endDoctypeDecl(mut userData: *mut c_void) {
                 i += 1;
             }
             let cmp = Some(notationCmp as extern "C" fn(*const c_void, *const c_void) -> c_int);
-            unsafe { qsort(notations as *mut c_void, notationCount as size_t, size_of::<*mut NotationList>(), cmp) };
+            unsafe {
+                qsort(
+                    notations as *mut c_void,
+                    notationCount as size_t,
+                    size_of::<*mut NotationList>(),
+                    cmp,
+                )
+            };
             unsafe { fputs(b"<!DOCTYPE \0" as *const u8 as *const c_char, fp) };
             unsafe { fputs((*data).currentDoctypeName, fp) };
             unsafe { fputs(b" [\n\0" as *const u8 as *const c_char, fp) };
@@ -935,7 +950,16 @@ extern "C" fn metaLocation(mut parser: XML_Parser) {
     let current_byte_count = XML_GetCurrentByteCount(parser);
     let current_line = XML_GetCurrentLineNumber(parser);
     let current_col = XML_GetCurrentColumnNumber(parser);
-    unsafe { fprintf(fp, location_fmt, current_byte_index, current_byte_count, current_line, current_col) };
+    unsafe {
+        fprintf(
+            fp,
+            location_fmt,
+            current_byte_index,
+            current_byte_count,
+            current_line,
+            current_col,
+        )
+    };
 }
 
 extern "C" fn metaStartDocument(mut userData: *mut c_void) {
@@ -978,7 +1002,12 @@ extern "C" fn metaStartElement(
             characterData(data as *mut c_void, att_value, unsafe { strlen(att_value) }
                 as c_int);
             if atts >= specifiedAttsEnd {
-                unsafe { fputs(b"\" defaulted=\"yes\"/>\n\0" as *const u8 as *const c_char, fp) };
+                unsafe {
+                    fputs(
+                        b"\" defaulted=\"yes\"/>\n\0" as *const u8 as *const c_char,
+                        fp,
+                    )
+                };
             } else if atts == idAttPtr {
                 unsafe { fputs(b"\" id=\"yes\"/>\n\0" as *const u8 as *const c_char, fp) };
             } else {
@@ -1237,7 +1266,8 @@ extern "C" fn unknownEncoding(
     if libexpat::src::xmlwf::codepage::codepageMap(cp, map_ptr) == 0 {
         return 0i32;
     }
-    let convert = Some(unknownEncodingConvert as extern "C" fn(*mut c_void, *const c_char) -> c_int);
+    let convert =
+        Some(unknownEncodingConvert as extern "C" fn(*mut c_void, *const c_char) -> c_int);
     unsafe { (*info).convert = convert };
     unsafe { (*info).release = Some(stdlib_free) };
     unsafe { (*info).data = malloc(size_of::<c_int>()) };
@@ -1278,10 +1308,22 @@ extern "C" fn showVersion(mut prog: *mut XML_Char) {
         }
         while unsafe { (*features.offset(i as isize)).feature } != XML_FEATURE_END {
             let comma_feature_fmt = b", %s\0" as *const u8 as *const c_char;
-            unsafe { fprintf(stdout, comma_feature_fmt, (*features.offset(i as isize)).name) };
+            unsafe {
+                fprintf(
+                    stdout,
+                    comma_feature_fmt,
+                    (*features.offset(i as isize)).name,
+                )
+            };
             if unsafe { (*features.offset(i as isize)).value } != 0 {
                 let feature_value_fmt = b"=%ld\0" as *const u8 as *const c_char;
-                unsafe { fprintf(stdout, feature_value_fmt, (*features.offset(i as isize)).value) };
+                unsafe {
+                    fprintf(
+                        stdout,
+                        feature_value_fmt,
+                        (*features.offset(i as isize)).value,
+                    )
+                };
             }
             i += 1;
         }
@@ -1332,7 +1374,8 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
                 if argv_char(argv, i, 2) == '\0' as i32 {
                     i += 1;
                     break;
-                } else if c_strcmp(arg_offset(arg, 2), b"help\0" as *const u8 as *const c_char) == 0 {
+                } else if c_strcmp(arg_offset(arg, 2), b"help\0" as *const u8 as *const c_char) == 0
+                {
                     usage(argv_at(argv, 0), XMLWF_EXIT_SUCCESS as c_int);
                 } else if c_strcmp(
                     arg_offset(arg, 2),
@@ -1347,203 +1390,203 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
         }
         let mut current_block_122: u64;
         match argv_char(argv, i, j) {
-                114 => {
-                    processFlags &= !XML_MAP_FILE as c_uint;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                115 => {
-                    requireStandalone = 1;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                110 => {
-                    useNamespaces = 1;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                112 => {
-                    paramEntityParsing = XML_PARAM_ENTITY_PARSING_ALWAYS;
-                    current_block_122 = 12538682772167414182;
-                }
-                120 => {
-                    current_block_122 = 12538682772167414182;
-                }
-                119 => {
-                    windowsCodePages = 1;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                109 => {
-                    outputType = 'm' as i32;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                99 => {
-                    outputType = 'c' as i32;
-                    useNamespaces = 0;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                116 => {
-                    outputType = 't' as i32;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                78 => {
-                    requiresNotations = 1;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                100 => {
-                    if argv_char(argv, i, j + 1) == '\0' as i32 {
-                        i += 1;
-                        if i == argc {
-                            usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
-                        }
-                        outputDir = argv_at(argv, i);
-                    } else {
-                        outputDir = arg_offset(arg, j + 1);
-                    }
+            114 => {
+                processFlags &= !XML_MAP_FILE as c_uint;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            115 => {
+                requireStandalone = 1;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            110 => {
+                useNamespaces = 1;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            112 => {
+                paramEntityParsing = XML_PARAM_ENTITY_PARSING_ALWAYS;
+                current_block_122 = 12538682772167414182;
+            }
+            120 => {
+                current_block_122 = 12538682772167414182;
+            }
+            119 => {
+                windowsCodePages = 1;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            109 => {
+                outputType = 'm' as i32;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            99 => {
+                outputType = 'c' as i32;
+                useNamespaces = 0;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            116 => {
+                outputType = 't' as i32;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            78 => {
+                requiresNotations = 1;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            100 => {
+                if argv_char(argv, i, j + 1) == '\0' as i32 {
                     i += 1;
-                    j = 0;
-                    current_block_122 = 8602574157404971894;
-                }
-                101 => {
-                    if argv_char(argv, i, j + 1) == '\0' as i32 {
-                        i += 1;
-                        if i == argc {
-                            usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
-                        }
-                        encoding = argv_at(argv, i);
-                    } else {
-                        encoding = arg_offset(arg, j + 1);
+                    if i == argc {
+                        usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
                     }
+                    outputDir = argv_at(argv, i);
+                } else {
+                    outputDir = arg_offset(arg, j + 1);
+                }
+                i += 1;
+                j = 0;
+                current_block_122 = 8602574157404971894;
+            }
+            101 => {
+                if argv_char(argv, i, j + 1) == '\0' as i32 {
                     i += 1;
-                    j = 0;
-                    current_block_122 = 8602574157404971894;
-                }
-                104 => {
-                    usage(argv_at(argv, 0), XMLWF_EXIT_SUCCESS as c_int);
-                }
-                118 => {
-                    showVersion(argv_at(argv, 0));
-                    return XMLWF_EXIT_SUCCESS as c_int;
-                }
-                103 => {
-                    let mut valueText: *const XML_Char = null::<XML_Char>();
-                    if argv_char(argv, i, j + 1) == '\0' as i32 {
-                        i += 1;
-                        if i == argc {
-                            usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
-                        }
-                        valueText = argv_at(argv, i);
-                    } else {
-                        valueText = arg_offset(arg, j + 1);
+                    if i == argc {
+                        usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
                     }
+                    encoding = argv_at(argv, i);
+                } else {
+                    encoding = arg_offset(arg, j + 1);
+                }
+                i += 1;
+                j = 0;
+                current_block_122 = 8602574157404971894;
+            }
+            104 => {
+                usage(argv_at(argv, 0), XMLWF_EXIT_SUCCESS as c_int);
+            }
+            118 => {
+                showVersion(argv_at(argv, 0));
+                return XMLWF_EXIT_SUCCESS as c_int;
+            }
+            103 => {
+                let mut valueText: *const XML_Char = null::<XML_Char>();
+                if argv_char(argv, i, j + 1) == '\0' as i32 {
                     i += 1;
-                    j = 0;
-                    set_errno_value(0);
-                    let mut afterValueText: *mut XML_Char = valueText as *mut XML_Char;
-                    let read_size_bytes_candidate: c_longlong =
-                        c_strtoull(valueText, &raw mut afterValueText, 10) as c_longlong;
-                    if errno_value() != 0
-                        || xml_char_at(afterValueText as *const XML_Char, 0) != '\0' as i32
-                        || read_size_bytes_candidate < 1
-                        || read_size_bytes_candidate > (INT_MAX / 2 + 1) as c_longlong
-                    {
-                        set_errno_value(ERANGE);
-                        c_perror(
+                    if i == argc {
+                        usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
+                    }
+                    valueText = argv_at(argv, i);
+                } else {
+                    valueText = arg_offset(arg, j + 1);
+                }
+                i += 1;
+                j = 0;
+                set_errno_value(0);
+                let mut afterValueText: *mut XML_Char = valueText as *mut XML_Char;
+                let read_size_bytes_candidate: c_longlong =
+                    c_strtoull(valueText, &raw mut afterValueText, 10) as c_longlong;
+                if errno_value() != 0
+                    || xml_char_at(afterValueText as *const XML_Char, 0) != '\0' as i32
+                    || read_size_bytes_candidate < 1
+                    || read_size_bytes_candidate > (INT_MAX / 2 + 1) as c_longlong
+                {
+                    set_errno_value(ERANGE);
+                    c_perror(
                         b"invalid buffer size (needs an integer from 1 to INT_MAX/2+1 i.e. 1,073,741,824 on most platforms)\0"
                             as *const u8 as *const c_char,
                     );
-                        c_exit(XMLWF_EXIT_USAGE_ERROR as c_int);
-                    }
-                    set_read_size_bytes(read_size_bytes_candidate as c_int);
-                    current_block_122 = 8602574157404971894;
+                    c_exit(XMLWF_EXIT_USAGE_ERROR as c_int);
                 }
-                107 => {
-                    continueOnError = 1;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                97 => {
-                    let mut valueText_0: *const XML_Char = null::<XML_Char>();
-                    if argv_char(argv, i, j + 1) == '\0' as i32 {
-                        i += 1;
-                        if i == argc {
-                            usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
-                        }
-                        valueText_0 = argv_at(argv, i);
-                    } else {
-                        valueText_0 = arg_offset(arg, j + 1);
-                    }
+                set_read_size_bytes(read_size_bytes_candidate as c_int);
+                current_block_122 = 8602574157404971894;
+            }
+            107 => {
+                continueOnError = 1;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            97 => {
+                let mut valueText_0: *const XML_Char = null::<XML_Char>();
+                if argv_char(argv, i, j + 1) == '\0' as i32 {
                     i += 1;
-                    j = 0;
-                    set_errno_value(0);
-                    let mut afterValueText_0: *mut XML_Char = null_mut::<XML_Char>();
-                    attackMaximumAmplification = c_strtof(valueText_0, &raw mut afterValueText_0);
-                    if errno_value() != 0
-                        || xml_char_at(afterValueText_0 as *const XML_Char, 0) != '\0' as i32
-                        || attackMaximumAmplification.is_nan() as i32 != 0
-                        || attackMaximumAmplification < 1.0
-                    {
-                        set_errno_value(ERANGE);
-                        c_perror(
+                    if i == argc {
+                        usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
+                    }
+                    valueText_0 = argv_at(argv, i);
+                } else {
+                    valueText_0 = arg_offset(arg, j + 1);
+                }
+                i += 1;
+                j = 0;
+                set_errno_value(0);
+                let mut afterValueText_0: *mut XML_Char = null_mut::<XML_Char>();
+                attackMaximumAmplification = c_strtof(valueText_0, &raw mut afterValueText_0);
+                if errno_value() != 0
+                    || xml_char_at(afterValueText_0 as *const XML_Char, 0) != '\0' as i32
+                    || attackMaximumAmplification.is_nan() as i32 != 0
+                    || attackMaximumAmplification < 1.0
+                {
+                    set_errno_value(ERANGE);
+                    c_perror(
                         b"invalid amplification limit (needs a floating point number greater or equal than 1.0)\0"
                             as *const u8 as *const c_char,
                     );
-                        c_exit(XMLWF_EXIT_USAGE_ERROR as c_int);
-                    }
-                    current_block_122 = 8602574157404971894;
+                    c_exit(XMLWF_EXIT_USAGE_ERROR as c_int);
                 }
-                98 => {
-                    let mut valueText_1: *const XML_Char = null::<XML_Char>();
-                    if argv_char(argv, i, j + 1) == '\0' as i32 {
-                        i += 1;
-                        if i == argc {
-                            usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
-                        }
-                        valueText_1 = argv_at(argv, i);
-                    } else {
-                        valueText_1 = arg_offset(arg, j + 1);
+                current_block_122 = 8602574157404971894;
+            }
+            98 => {
+                let mut valueText_1: *const XML_Char = null::<XML_Char>();
+                if argv_char(argv, i, j + 1) == '\0' as i32 {
+                    i += 1;
+                    if i == argc {
+                        usage(argv_at(argv, 0), XMLWF_EXIT_USAGE_ERROR as c_int);
                     }
+                    valueText_1 = argv_at(argv, i);
+                } else {
+                    valueText_1 = arg_offset(arg, j + 1);
+                }
+                i += 1;
+                j = 0;
+                set_errno_value(0);
+                let mut afterValueText_1: *mut XML_Char = valueText_1 as *mut XML_Char;
+                attackThresholdBytes = c_strtoull(valueText_1, &raw mut afterValueText_1, 10);
+                if errno_value() != 0
+                    || xml_char_at(afterValueText_1 as *const XML_Char, 0) != '\0' as i32
+                {
+                    set_errno_value(ERANGE);
+                    c_perror(
+                        b"invalid ignore threshold (needs an integer from 0 to 2^64-1)\0"
+                            as *const u8 as *const c_char,
+                    );
+                    c_exit(XMLWF_EXIT_USAGE_ERROR as c_int);
+                }
+                attackThresholdGiven = XML_TRUE;
+                current_block_122 = 8602574157404971894;
+            }
+            113 => {
+                disableDeferral = XML_TRUE;
+                j += 1;
+                current_block_122 = 8602574157404971894;
+            }
+            0 => {
+                if j > 1 {
                     i += 1;
                     j = 0;
-                    set_errno_value(0);
-                    let mut afterValueText_1: *mut XML_Char = valueText_1 as *mut XML_Char;
-                    attackThresholdBytes = c_strtoull(valueText_1, &raw mut afterValueText_1, 10);
-                    if errno_value() != 0
-                        || xml_char_at(afterValueText_1 as *const XML_Char, 0) != '\0' as i32
-                    {
-                        set_errno_value(ERANGE);
-                        c_perror(
-                            b"invalid ignore threshold (needs an integer from 0 to 2^64-1)\0"
-                                as *const u8 as *const c_char,
-                        );
-                        c_exit(XMLWF_EXIT_USAGE_ERROR as c_int);
-                    }
-                    attackThresholdGiven = XML_TRUE;
                     current_block_122 = 8602574157404971894;
-                }
-                113 => {
-                    disableDeferral = XML_TRUE;
-                    j += 1;
-                    current_block_122 = 8602574157404971894;
-                }
-                0 => {
-                    if j > 1 {
-                        i += 1;
-                        j = 0;
-                        current_block_122 = 8602574157404971894;
-                    } else {
-                        current_block_122 = 15955764443707486316;
-                    }
-                }
-                _ => {
+                } else {
                     current_block_122 = 15955764443707486316;
                 }
             }
+            _ => {
+                current_block_122 = 15955764443707486316;
+            }
+        }
         match current_block_122 {
             12538682772167414182 => {
                 processFlags |= XML_EXTERNAL_ENTITIES as c_uint;
@@ -1662,12 +1705,158 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
                 c_setvbuf(userData.fp, null_mut::<c_char>(), _IOFBF, 16384);
                 XML_SetUserData(parser, &raw mut userData as *mut c_void);
                 match outputType {
-                        109 => {
-                            XML_UseParserAsHandlerArg(parser);
+                    109 => {
+                        XML_UseParserAsHandlerArg(parser);
+                        XML_SetElementHandler(
+                            parser,
+                            Some(
+                                metaStartElement
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        *mut *const XML_Char,
+                                    ) -> (),
+                            ),
+                            Some(
+                                metaEndElement as extern "C" fn(*mut c_void, *const XML_Char) -> (),
+                            ),
+                        );
+                        XML_SetProcessingInstructionHandler(
+                            parser,
+                            Some(
+                                metaProcessingInstruction
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                    ) -> (),
+                            ),
+                        );
+                        XML_SetCommentHandler(
+                            parser,
+                            Some(metaComment as extern "C" fn(*mut c_void, *const XML_Char) -> ()),
+                        );
+                        XML_SetCdataSectionHandler(
+                            parser,
+                            Some(metaStartCdataSection as extern "C" fn(*mut c_void) -> ()),
+                            Some(metaEndCdataSection as extern "C" fn(*mut c_void) -> ()),
+                        );
+                        XML_SetCharacterDataHandler(
+                            parser,
+                            Some(
+                                metaCharacterData
+                                    as extern "C" fn(*mut c_void, *const XML_Char, c_int) -> (),
+                            ),
+                        );
+                        XML_SetDoctypeDeclHandler(
+                            parser,
+                            Some(
+                                metaStartDoctypeDecl
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                        c_int,
+                                    ) -> (),
+                            ),
+                            Some(metaEndDoctypeDecl as extern "C" fn(*mut c_void) -> ()),
+                        );
+                        XML_SetEntityDeclHandler(
+                            parser,
+                            Some(
+                                metaEntityDecl
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        c_int,
+                                        *const XML_Char,
+                                        c_int,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                    ) -> (),
+                            ),
+                        );
+                        XML_SetNotationDeclHandler(
+                            parser,
+                            Some(
+                                metaNotationDecl
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                    ) -> (),
+                            ),
+                        );
+                        XML_SetNamespaceDeclHandler(
+                            parser,
+                            Some(
+                                metaStartNamespaceDecl
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                    ) -> (),
+                            ),
+                            Some(
+                                metaEndNamespaceDecl
+                                    as extern "C" fn(*mut c_void, *const XML_Char) -> (),
+                            ),
+                        );
+                        metaStartDocument(parser as *mut c_void);
+                    }
+                    99 => {
+                        XML_UseParserAsHandlerArg(parser);
+                        XML_SetDefaultHandler(
+                            parser,
+                            Some(
+                                markup as extern "C" fn(*mut c_void, *const XML_Char, c_int) -> (),
+                            ),
+                        );
+                        XML_SetElementHandler(
+                            parser,
+                            Some(
+                                defaultStartElement
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        *mut *const XML_Char,
+                                    ) -> (),
+                            ),
+                            Some(
+                                defaultEndElement
+                                    as extern "C" fn(*mut c_void, *const XML_Char) -> (),
+                            ),
+                        );
+                        XML_SetCharacterDataHandler(
+                            parser,
+                            Some(
+                                defaultCharacterData
+                                    as extern "C" fn(*mut c_void, *const XML_Char, c_int) -> (),
+                            ),
+                        );
+                        XML_SetProcessingInstructionHandler(
+                            parser,
+                            Some(
+                                defaultProcessingInstruction
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                    ) -> (),
+                            ),
+                        );
+                    }
+                    _ => {
+                        if useNamespaces != 0 {
                             XML_SetElementHandler(
                                 parser,
                                 Some(
-                                    metaStartElement
+                                    startElementNS
                                         as extern "C" fn(
                                             *mut c_void,
                                             *const XML_Char,
@@ -1676,45 +1865,50 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
                                             -> (),
                                 ),
                                 Some(
-                                    metaEndElement
+                                    endElementNS
                                         as extern "C" fn(*mut c_void, *const XML_Char) -> (),
                                 ),
                             );
-                            XML_SetProcessingInstructionHandler(
+                        } else {
+                            XML_SetElementHandler(
                                 parser,
                                 Some(
-                                    metaProcessingInstruction
+                                    startElement
                                         as extern "C" fn(
                                             *mut c_void,
                                             *const XML_Char,
-                                            *const XML_Char,
+                                            *mut *const XML_Char,
                                         )
                                             -> (),
                                 ),
-                            );
-                            XML_SetCommentHandler(
-                                parser,
                                 Some(
-                                    metaComment
-                                        as extern "C" fn(*mut c_void, *const XML_Char) -> (),
+                                    endElement as extern "C" fn(*mut c_void, *const XML_Char) -> (),
                                 ),
                             );
-                            XML_SetCdataSectionHandler(
-                                parser,
-                                Some(metaStartCdataSection as extern "C" fn(*mut c_void) -> ()),
-                                Some(metaEndCdataSection as extern "C" fn(*mut c_void) -> ()),
-                            );
-                            XML_SetCharacterDataHandler(
-                                parser,
-                                Some(
-                                    metaCharacterData
-                                        as extern "C" fn(*mut c_void, *const XML_Char, c_int) -> (),
-                                ),
-                            );
+                        }
+                        XML_SetCharacterDataHandler(
+                            parser,
+                            Some(
+                                characterData
+                                    as extern "C" fn(*mut c_void, *const XML_Char, c_int) -> (),
+                            ),
+                        );
+                        XML_SetProcessingInstructionHandler(
+                            parser,
+                            Some(
+                                processingInstruction
+                                    as extern "C" fn(
+                                        *mut c_void,
+                                        *const XML_Char,
+                                        *const XML_Char,
+                                    ) -> (),
+                            ),
+                        );
+                        if requiresNotations != 0 {
                             XML_SetDoctypeDeclHandler(
                                 parser,
                                 Some(
-                                    metaStartDoctypeDecl
+                                    startDoctypeDecl
                                         as extern "C" fn(
                                             *mut c_void,
                                             *const XML_Char,
@@ -1724,96 +1918,16 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
                                         )
                                             -> (),
                                 ),
-                                Some(metaEndDoctypeDecl as extern "C" fn(*mut c_void) -> ()),
-                            );
-                            XML_SetEntityDeclHandler(
-                                parser,
-                                Some(
-                                    metaEntityDecl
-                                        as extern "C" fn(
-                                            *mut c_void,
-                                            *const XML_Char,
-                                            c_int,
-                                            *const XML_Char,
-                                            c_int,
-                                            *const XML_Char,
-                                            *const XML_Char,
-                                            *const XML_Char,
-                                            *const XML_Char,
-                                        )
-                                            -> (),
-                                ),
+                                Some(endDoctypeDecl as extern "C" fn(*mut c_void) -> ()),
                             );
                             XML_SetNotationDeclHandler(
                                 parser,
                                 Some(
-                                    metaNotationDecl
+                                    notationDecl
                                         as extern "C" fn(
                                             *mut c_void,
                                             *const XML_Char,
                                             *const XML_Char,
-                                            *const XML_Char,
-                                            *const XML_Char,
-                                        )
-                                            -> (),
-                                ),
-                            );
-                            XML_SetNamespaceDeclHandler(
-                                parser,
-                                Some(
-                                    metaStartNamespaceDecl
-                                        as extern "C" fn(
-                                            *mut c_void,
-                                            *const XML_Char,
-                                            *const XML_Char,
-                                        )
-                                            -> (),
-                                ),
-                                Some(
-                                    metaEndNamespaceDecl
-                                        as extern "C" fn(*mut c_void, *const XML_Char) -> (),
-                                ),
-                            );
-                            metaStartDocument(parser as *mut c_void);
-                        }
-                        99 => {
-                            XML_UseParserAsHandlerArg(parser);
-                            XML_SetDefaultHandler(
-                                parser,
-                                Some(
-                                    markup
-                                        as extern "C" fn(*mut c_void, *const XML_Char, c_int) -> (),
-                                ),
-                            );
-                            XML_SetElementHandler(
-                                parser,
-                                Some(
-                                    defaultStartElement
-                                        as extern "C" fn(
-                                            *mut c_void,
-                                            *const XML_Char,
-                                            *mut *const XML_Char,
-                                        )
-                                            -> (),
-                                ),
-                                Some(
-                                    defaultEndElement
-                                        as extern "C" fn(*mut c_void, *const XML_Char) -> (),
-                                ),
-                            );
-                            XML_SetCharacterDataHandler(
-                                parser,
-                                Some(
-                                    defaultCharacterData
-                                        as extern "C" fn(*mut c_void, *const XML_Char, c_int) -> (),
-                                ),
-                            );
-                            XML_SetProcessingInstructionHandler(
-                                parser,
-                                Some(
-                                    defaultProcessingInstruction
-                                        as extern "C" fn(
-                                            *mut c_void,
                                             *const XML_Char,
                                             *const XML_Char,
                                         )
@@ -1821,93 +1935,7 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
                                 ),
                             );
                         }
-                        _ => {
-                            if useNamespaces != 0 {
-                                XML_SetElementHandler(
-                                    parser,
-                                    Some(
-                                        startElementNS
-                                            as extern "C" fn(
-                                                *mut c_void,
-                                                *const XML_Char,
-                                                *mut *const XML_Char,
-                                            )
-                                                -> (),
-                                    ),
-                                    Some(
-                                        endElementNS
-                                            as extern "C" fn(*mut c_void, *const XML_Char) -> (),
-                                    ),
-                                );
-                            } else {
-                                XML_SetElementHandler(
-                                    parser,
-                                    Some(
-                                        startElement
-                                            as extern "C" fn(
-                                                *mut c_void,
-                                                *const XML_Char,
-                                                *mut *const XML_Char,
-                                            )
-                                                -> (),
-                                    ),
-                                    Some(
-                                        endElement
-                                            as extern "C" fn(*mut c_void, *const XML_Char) -> (),
-                                    ),
-                                );
-                            }
-                            XML_SetCharacterDataHandler(
-                                parser,
-                                Some(
-                                    characterData
-                                        as extern "C" fn(*mut c_void, *const XML_Char, c_int) -> (),
-                                ),
-                            );
-                            XML_SetProcessingInstructionHandler(
-                                parser,
-                                Some(
-                                    processingInstruction
-                                        as extern "C" fn(
-                                            *mut c_void,
-                                            *const XML_Char,
-                                            *const XML_Char,
-                                        )
-                                            -> (),
-                                ),
-                            );
-                            if requiresNotations != 0 {
-                                XML_SetDoctypeDeclHandler(
-                                    parser,
-                                    Some(
-                                        startDoctypeDecl
-                                            as extern "C" fn(
-                                                *mut c_void,
-                                                *const XML_Char,
-                                                *const XML_Char,
-                                                *const XML_Char,
-                                                c_int,
-                                            )
-                                                -> (),
-                                    ),
-                                    Some(endDoctypeDecl as extern "C" fn(*mut c_void) -> ()),
-                                );
-                                XML_SetNotationDeclHandler(
-                                    parser,
-                                    Some(
-                                        notationDecl
-                                            as extern "C" fn(
-                                                *mut c_void,
-                                                *const XML_Char,
-                                                *const XML_Char,
-                                                *const XML_Char,
-                                                *const XML_Char,
-                                            )
-                                                -> (),
-                                    ),
-                                );
-                            }
-                        }
+                    }
                 }
                 current_block_219 = 9952640327414195044;
             }
@@ -1916,7 +1944,11 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
         }
         if current_block_219 == 9952640327414195044 {
             if windowsCodePages != 0 {
-                XML_SetUnknownEncodingHandler(parser, unknown_encoding_handler(), null_mut::<c_void>());
+                XML_SetUnknownEncodingHandler(
+                    parser,
+                    unknown_encoding_handler(),
+                    null_mut::<c_void>(),
+                );
             }
             result = XML_ProcessFile(
                 parser,

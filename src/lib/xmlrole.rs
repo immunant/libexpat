@@ -322,7 +322,10 @@ fn decl_open_keyword_slice<'a>(
     end: *const c_char,
     enc: *const ENCODING,
 ) -> &'a [c_char] {
-    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize * enc_min_bytes_per_char(enc)), end)
+    c_char_slice_from_ptr_end(
+        ptr.wrapping_offset(2isize * enc_min_bytes_per_char(enc)),
+        end,
+    )
 }
 
 #[inline]
@@ -584,7 +587,11 @@ fn prolog0(
         }
         XML_TOK_BOM => return XML_ROLE_NONE,
         XML_TOK_DECL_OPEN => {
-            if enc_name_matches_ascii(enc, decl_open_keyword_slice(ptr, end, enc), KW_DOCTYPE.as_ptr()) {
+            if enc_name_matches_ascii(
+                enc,
+                decl_open_keyword_slice(ptr, end, enc),
+                KW_DOCTYPE.as_ptr(),
+            ) {
                 set_handler(state, doctype0);
                 return XML_ROLE_DOCTYPE_NONE;
             }
@@ -611,7 +618,11 @@ fn prolog1(
         XML_TOK_COMMENT => return XML_ROLE_COMMENT,
         XML_TOK_BOM => return XML_ROLE_NONE,
         XML_TOK_DECL_OPEN => {
-            if enc_name_matches_ascii(enc, decl_open_keyword_slice(ptr, end, enc), KW_DOCTYPE.as_ptr()) {
+            if enc_name_matches_ascii(
+                enc,
+                decl_open_keyword_slice(ptr, end, enc),
+                KW_DOCTYPE.as_ptr(),
+            ) {
                 set_handler(state, doctype0);
                 return XML_ROLE_DOCTYPE_NONE;
             }
@@ -681,11 +692,13 @@ fn doctype1(
             return XML_ROLE_DOCTYPE_CLOSE;
         }
         XML_TOK_NAME => {
-            if enc_name_matches_ascii(enc, c_char_slice_from_ptr_end(ptr, end), KW_SYSTEM.as_ptr()) {
+            if enc_name_matches_ascii(enc, c_char_slice_from_ptr_end(ptr, end), KW_SYSTEM.as_ptr())
+            {
                 set_handler(state, doctype3);
                 return XML_ROLE_DOCTYPE_NONE;
             }
-            if enc_name_matches_ascii(enc, c_char_slice_from_ptr_end(ptr, end), KW_PUBLIC.as_ptr()) {
+            if enc_name_matches_ascii(enc, c_char_slice_from_ptr_end(ptr, end), KW_PUBLIC.as_ptr())
+            {
                 set_handler(state, doctype2);
                 return XML_ROLE_DOCTYPE_NONE;
             }
@@ -853,9 +866,7 @@ fn externalSubset1(
                 return XML_ROLE_NONE;
             }
         }
-        _ => {
-            return internalSubset(state, tok, c_char_slice_from_ptr_end(ptr, end), enc)
-        }
+        _ => return internalSubset(state, tok, c_char_slice_from_ptr_end(ptr, end), enc),
     }
     common(state, tok)
 }
@@ -1385,13 +1396,19 @@ fn attlist8(
         XML_TOK_POUND_NAME => {
             let pound_name_input =
                 c_char_slice_from_ptr_end(ptr.wrapping_offset(enc_min_bytes_per_char(enc)), end);
-            if enc_name_matches_ascii(enc, pound_name_input, &raw const KW_IMPLIED as *const c_char)
-            {
+            if enc_name_matches_ascii(
+                enc,
+                pound_name_input,
+                &raw const KW_IMPLIED as *const c_char,
+            ) {
                 set_handler(state, attlist1);
                 return XML_ROLE_IMPLIED_ATTRIBUTE_VALUE;
             }
-            if enc_name_matches_ascii(enc, pound_name_input, &raw const KW_REQUIRED as *const c_char)
-            {
+            if enc_name_matches_ascii(
+                enc,
+                pound_name_input,
+                &raw const KW_REQUIRED as *const c_char,
+            ) {
                 set_handler(state, attlist1);
                 return XML_ROLE_REQUIRED_ATTRIBUTE_VALUE;
             }
@@ -1629,8 +1646,12 @@ fn element7(
     match tok {
         XML_TOK_PROLOG_S => return XML_ROLE_ELEMENT_NONE,
         XML_TOK_CLOSE_PAREN => return close_element_group(state, XML_ROLE_GROUP_CLOSE),
-        XML_TOK_CLOSE_PAREN_ASTERISK => return close_element_group(state, XML_ROLE_GROUP_CLOSE_REP),
-        XML_TOK_CLOSE_PAREN_QUESTION => return close_element_group(state, XML_ROLE_GROUP_CLOSE_OPT),
+        XML_TOK_CLOSE_PAREN_ASTERISK => {
+            return close_element_group(state, XML_ROLE_GROUP_CLOSE_REP)
+        }
+        XML_TOK_CLOSE_PAREN_QUESTION => {
+            return close_element_group(state, XML_ROLE_GROUP_CLOSE_OPT)
+        }
         XML_TOK_CLOSE_PAREN_PLUS => return close_element_group(state, XML_ROLE_GROUP_CLOSE_PLUS),
         XML_TOK_COMMA => {
             set_handler(state, element6);

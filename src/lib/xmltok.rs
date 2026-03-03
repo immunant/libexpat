@@ -791,8 +791,7 @@ pub mod xmltok_impl_c {
                                     }
                                     BT_QUEST => {
                                         ptr = ptr.offset(1);
-                                        if (end.offset_from(ptr) as c_long) < 1 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
                                             break 'iife_ret_4 XML_TOK_PARTIAL_1;
                                         }
                                         if *ptr as c_int == 0x3e {
@@ -1659,8 +1658,7 @@ pub mod xmltok_impl_c {
                                 BT_S | BT_CR | BT_LF => {
                                     loop {
                                         ptr = ptr.offset(1);
-                                        if (end.offset_from(ptr) as c_long) < 1 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
                                             break 'iife_ret_11 XML_TOK_PARTIAL_1;
                                         }
                                         match as_normal_encoding(enc).type_0
@@ -1761,8 +1759,7 @@ pub mod xmltok_impl_c {
                                 _ => match current_block_186 {
                                     398073151373002430 => {
                                         ptr = ptr.offset(1);
-                                        if (end.offset_from(ptr) as c_long) < 1 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
                                             break 'iife_ret_11 XML_TOK_PARTIAL_1;
                                         }
                                         if *ptr as c_int != 0x3e {
@@ -3436,13 +3433,15 @@ pub mod xmltok_impl_c {
                         current_block_8 = 10293610489198370764;
                     }
                 }
-                if current_block_8 == 10293610489198370764 { match *ptr as c_int {
-                    36 | 64 => {}
-                    _ => {
-                        *badPtr = ptr;
-                        return (0i32, badPtrVal);
+                if current_block_8 == 10293610489198370764 {
+                    match *ptr as c_int {
+                        36 | 64 => {}
+                        _ => {
+                            *badPtr = ptr;
+                            return (0i32, badPtrVal);
+                        }
                     }
-                } }
+                }
                 ptr = ptr.offset(1);
             }
             (1, badPtrVal)
@@ -4155,8 +4154,7 @@ pub mod xmltok_impl_c {
                                     }
                                     BT_QUEST => {
                                         ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
                                             break 'iife_ret_24 XML_TOK_PARTIAL_1;
                                         }
                                         if *ptr.offset(1) as c_int == 0
@@ -5028,8 +5026,7 @@ pub mod xmltok_impl_c {
                                 BT_S | BT_CR | BT_LF => {
                                     loop {
                                         ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
                                             break 'iife_ret_31 XML_TOK_PARTIAL_1;
                                         }
                                         match if *ptr.offset(1) as c_int == 0 {
@@ -5123,8 +5120,7 @@ pub mod xmltok_impl_c {
                                 _ => match current_block_186 {
                                     619033562305054167 => {
                                         ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
                                             break 'iife_ret_31 XML_TOK_PARTIAL_1;
                                         }
                                         if !(*ptr.offset(1) as c_int == 0
@@ -7592,8 +7588,7 @@ pub mod xmltok_impl_c {
                                     }
                                     BT_QUEST => {
                                         ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
                                             break 'iife_ret_44 XML_TOK_PARTIAL_1;
                                         }
                                         if *ptr.offset(0) as c_int == 0
@@ -8472,8 +8467,7 @@ pub mod xmltok_impl_c {
                                 BT_S | BT_CR | BT_LF => {
                                     loop {
                                         ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
                                             break 'iife_ret_51 XML_TOK_PARTIAL_1;
                                         }
                                         match if *ptr.offset(0) as c_int == 0 {
@@ -8568,8 +8562,7 @@ pub mod xmltok_impl_c {
                                 _ => match current_block_186 {
                                     18153789983347219713 => {
                                         ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long
-                                        {
+                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
                                             break 'iife_ret_51 XML_TOK_PARTIAL_1;
                                         }
                                         if !(*ptr.offset(0) as c_int == 0
@@ -10743,7 +10736,7 @@ pub mod xmltok_ns_c {
         let mut buf: [c_char; 128] = [0; 128];
         let buf_start = buf.as_mut_ptr();
         let mut p: *mut c_char = buf_start;
-        
+
         (_, ptr, p) = enc.utf8Convert(enc, ptr, end, p, p.wrapping_offset(127));
         if ptr != end {
             return null::<ENCODING>();
@@ -10833,7 +10826,7 @@ pub mod xmltok_ns_c {
         let mut buf: [c_char; 128] = [0; 128];
         let buf_start = buf.as_mut_ptr();
         let mut p: *mut c_char = buf_start;
-        
+
         (_, ptr, p) = enc.utf8Convert(enc, ptr, end, p, p.wrapping_offset(127));
         if ptr != end {
             return null::<ENCODING>();
@@ -11253,8 +11246,7 @@ fn utf8_isName3(_enc: &ENCODING, p: *const c_char) -> c_int {
     let b0 = read_c_uchar_at(p, 0) as c_int;
     let b1 = read_c_uchar_at(p, 1) as c_int;
     let b2 = read_c_uchar_at(p, 2) as c_int;
-    (namingBitmap[(((namePages[(((b0 & 0xf) << 4) + (b1 >> 2 & 0xf)) as usize] as c_int)
-        << 3)
+    (namingBitmap[(((namePages[(((b0 & 0xf) << 4) + (b1 >> 2 & 0xf)) as usize] as c_int) << 3)
         + ((b1 & 3) << 1)
         + (b2 >> 5 & 1)) as usize]
         & (1) << (b2 & 0x1f)) as c_int
@@ -11273,8 +11265,7 @@ fn utf8_isNmstrt3(_enc: &ENCODING, p: *const c_char) -> c_int {
     let b0 = read_c_uchar_at(p, 0) as c_int;
     let b1 = read_c_uchar_at(p, 1) as c_int;
     let b2 = read_c_uchar_at(p, 2) as c_int;
-    (namingBitmap[(((nmstrtPages[(((b0 & 0xf) << 4) + (b1 >> 2 & 0xf)) as usize] as c_int)
-        << 3)
+    (namingBitmap[(((nmstrtPages[(((b0 & 0xf) << 4) + (b1 >> 2 & 0xf)) as usize] as c_int) << 3)
         + ((b1 & 3) << 1)
         + (b2 >> 5 & 1)) as usize]
         & (1) << (b2 & 0x1f)) as c_int
@@ -11629,10 +11620,9 @@ fn utf8_toUtf16(
                 }
             }
         }
-        if current_block == 18317007320854588510
-            && from < fromLim {
-                res = XML_CONVERT_OUTPUT_EXHAUSTED;
-            }
+        if current_block == 18317007320854588510 && from < fromLim {
+            res = XML_CONVERT_OUTPUT_EXHAUSTED;
+        }
         *fromP = from;
         *toP = to;
         (res, from_cursor, to_cursor)
@@ -14484,8 +14474,7 @@ fn little2_toUtf8(
                 }
                 let fresh20 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh20 =
-                    (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char;
+                *fresh20 = (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char;
                 let fresh21 = *toP;
                 *toP = (*toP).offset(1);
                 *fresh21 = (lo as c_int & 0x3fi32 | 0x80i32) as c_char;
@@ -14627,8 +14616,7 @@ fn big2_toUtf8(
                 }
                 let fresh39 = *toP;
                 *toP = (*toP).offset(1);
-                *fresh39 =
-                    (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char;
+                *fresh39 = (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char;
                 let fresh40 = *toP;
                 *toP = (*toP).offset(1);
                 *fresh40 = (lo as c_int & 0x3fi32 | 0x80i32) as c_char;
@@ -16817,8 +16805,7 @@ fn unknown_isName(enc: &ENCODING, mut p: *const c_char) -> c_int {
     if c & !(0xffff) != 0 {
         return 0i32;
     }
-    (namingBitmap
-        [(((namePages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
+    (namingBitmap[(((namePages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
         & (1) << (c & 0xff & 0x1f)) as c_int
 }
 
@@ -16828,8 +16815,7 @@ fn unknown_isNmstrt(enc: &ENCODING, mut p: *const c_char) -> c_int {
     if c & !(0xffff) != 0 {
         return 0i32;
     }
-    (namingBitmap
-        [(((nmstrtPages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
+    (namingBitmap[(((nmstrtPages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
         & (1) << (c & 0xff & 0x1f)) as c_int
 }
 
@@ -17131,7 +17117,9 @@ fn initScan(
             }
             encPtr = enc.encPtr;
             if ptr.offset(1) == end {
-                if let 3..=5 = enc.initEnc.isUtf16 as c_int { break 'iife_ret_61 XML_TOK_PARTIAL_1 }
+                if let 3..=5 = enc.initEnc.isUtf16 as c_int {
+                    break 'iife_ret_61 XML_TOK_PARTIAL_1;
+                }
                 let mut current_block_5: u64;
                 match *ptr as c_uchar as c_int {
                     254 | 255 | 239 => {
@@ -17239,18 +17227,19 @@ fn initScan(
                                 });
                             }
                         } else if *ptr.offset(1) as c_int == '\0' as i32
-                            && (state != XML_CONTENT_STATE) {
-                                *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                                break 'iife_ret_61 ({
-                                    let (tok_value, next_tok_value) = (**encPtr).scanners
-                                        [state as usize](
-                                        &**encPtr,
-                                        c_char_slice_from_ptr_end(ptr, end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
+                            && (state != XML_CONTENT_STATE)
+                        {
+                            *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
+                            break 'iife_ret_61 ({
+                                let (tok_value, next_tok_value) = (**encPtr).scanners
+                                    [state as usize](
+                                    &**encPtr,
+                                    c_char_slice_from_ptr_end(ptr, end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
                     }
                 }
             }

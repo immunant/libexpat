@@ -119,7 +119,16 @@ extern "C" fn reportError(mut parser: XML_Parser, mut filename: *const XML_Char)
         let parse_error_fmt = b"%s:%lu:%lu: %s\n\0" as *const u8 as *const c_char;
         let line = XML_GetCurrentLineNumber(parser);
         let col = XML_GetCurrentColumnNumber(parser);
-        unsafe { fprintf(crate::stdlib::stdout, parse_error_fmt, filename, line, col, message) };
+        unsafe {
+            fprintf(
+                crate::stdlib::stdout,
+                parse_error_fmt,
+                filename,
+                line,
+                col,
+                message,
+            )
+        };
     } else {
         let unknown_error_fmt = b"%s: (unknown message %u)\n\0" as *const u8 as *const c_char;
         unsafe { fprintf(stderr, unknown_error_fmt, filename, code) };
@@ -206,9 +215,8 @@ extern "C" fn externalEntityRefFilemap(
             result = 0i32;
         }
         2 => {
-            let too_large_fmt =
-                b"%s: file too large for memory-mapping, switching to streaming\n\0"
-                    as *const u8 as *const c_char;
+            let too_large_fmt = b"%s: file too large for memory-mapping, switching to streaming\n\0"
+                as *const u8 as *const c_char;
             unsafe { fprintf(stderr, too_large_fmt, filename) };
             result = processStream(filename, entParser);
         }
