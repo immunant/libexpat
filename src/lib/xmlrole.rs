@@ -475,14 +475,14 @@ fn prolog0(
             }
             XML_TOK_BOM => return XML_ROLE_NONE,
             XML_TOK_DECL_OPEN => {
-                if !((*enc).nameMatchesAscii(
+                if (*enc).nameMatchesAscii(
                     &*enc,
                     c_char_slice_from_ptr_end(
                         ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
                         end,
                     ),
                     &raw const KW_DOCTYPE as *const c_char,
-                ) == 0)
+                ) != 0
                 {
                     (*state).handler = Some(
                         doctype0
@@ -499,7 +499,7 @@ fn prolog0(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -519,14 +519,14 @@ fn prolog1(
             XML_TOK_COMMENT => return XML_ROLE_COMMENT,
             XML_TOK_BOM => return XML_ROLE_NONE,
             XML_TOK_DECL_OPEN => {
-                if !((*enc).nameMatchesAscii(
+                if (*enc).nameMatchesAscii(
                     &*enc,
                     c_char_slice_from_ptr_end(
                         ptr.offset((2i32 * (*enc).minBytesPerChar) as isize),
                         end,
                     ),
                     &raw const KW_DOCTYPE as *const c_char,
-                ) == 0)
+                ) != 0
                 {
                     (*state).handler = Some(
                         doctype0
@@ -543,7 +543,7 @@ fn prolog1(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -569,7 +569,7 @@ fn prolog2(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -593,7 +593,7 @@ fn doctype0(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -650,7 +650,7 @@ fn doctype1(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -674,7 +674,7 @@ fn doctype2(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -698,7 +698,7 @@ fn doctype3(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -729,7 +729,7 @@ fn doctype4(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -753,7 +753,7 @@ fn doctype5(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -845,7 +845,7 @@ fn internalSubset(
             XML_TOK_NONE => return XML_ROLE_NONE,
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -865,12 +865,12 @@ fn externalSubset0(
         if tok == XML_TOK_XML_DECL {
             return XML_ROLE_TEXT_DECL;
         }
-        return externalSubset1(
+        externalSubset1(
             state,
             tok,
             core::slice::from_raw_parts(ptr, end.offset_from(ptr) as usize),
             enc,
-        );
+        )
     }
 }
 
@@ -892,7 +892,7 @@ fn externalSubset1(
                 return XML_ROLE_NONE;
             }
             XML_TOK_COND_SECT_CLOSE => {
-                if !((*state).includeLevel == 0u32) {
+                if (*state).includeLevel != 0u32 {
                     (*state).includeLevel = (*state).includeLevel.wrapping_sub(1u32);
                     return XML_ROLE_NONE;
                 }
@@ -900,7 +900,7 @@ fn externalSubset1(
             XML_TOK_PROLOG_S => return XML_ROLE_NONE,
             XML_TOK_CLOSE_BRACKET => {}
             XML_TOK_NONE => {
-                if !((*state).includeLevel != 0) {
+                if (*state).includeLevel == 0 {
                     return XML_ROLE_NONE;
                 }
             }
@@ -913,7 +913,7 @@ fn externalSubset1(
                 )
             }
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -943,7 +943,7 @@ fn entity0(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -967,7 +967,7 @@ fn entity1(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1018,7 +1018,7 @@ fn entity2(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1042,7 +1042,7 @@ fn entity3(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1066,7 +1066,7 @@ fn entity4(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1112,7 +1112,7 @@ fn entity5(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1137,7 +1137,7 @@ fn entity6(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1188,7 +1188,7 @@ fn entity7(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1212,7 +1212,7 @@ fn entity8(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1236,7 +1236,7 @@ fn entity9(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1268,7 +1268,7 @@ fn entity10(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1292,7 +1292,7 @@ fn notation0(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1336,7 +1336,7 @@ fn notation1(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1360,7 +1360,7 @@ fn notation2(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1385,7 +1385,7 @@ fn notation3(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1424,7 +1424,7 @@ fn notation4(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1448,7 +1448,7 @@ fn attlist0(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1486,7 +1486,7 @@ fn attlist1(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1560,7 +1560,7 @@ fn attlist2(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1584,7 +1584,7 @@ fn attlist3(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1614,7 +1614,7 @@ fn attlist4(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1638,7 +1638,7 @@ fn attlist5(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1662,7 +1662,7 @@ fn attlist6(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1692,7 +1692,7 @@ fn attlist7(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1754,7 +1754,7 @@ fn attlist8(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1778,7 +1778,7 @@ fn attlist9(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1802,7 +1802,7 @@ fn element0(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1855,7 +1855,7 @@ fn element1(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1918,7 +1918,7 @@ fn element2(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1956,7 +1956,7 @@ fn element3(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -1980,7 +1980,7 @@ fn element4(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -2011,7 +2011,7 @@ fn element5(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -2057,7 +2057,7 @@ fn element6(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -2131,7 +2131,7 @@ fn element7(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -2175,7 +2175,7 @@ fn condSect0(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -2201,7 +2201,7 @@ fn condSect1(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -2226,7 +2226,7 @@ fn condSect2(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -2258,7 +2258,7 @@ fn declClose(
             }
             _ => {}
         }
-        return common(state, tok);
+        common(state, tok)
     }
 }
 
@@ -2272,7 +2272,7 @@ fn error(
         let mut ptr = input.as_ptr();
         let mut end = ptr.add(input.len());
         let _ = (ptr, end);
-        return XML_ROLE_NONE;
+        XML_ROLE_NONE
     }
 }
 
@@ -2283,7 +2283,7 @@ fn common(mut state: *mut PROLOG_STATE, mut tok: c_int) -> c_int {
         }
         (*state).handler =
             Some(error as fn(*mut PROLOG_STATE, c_int, &[c_char], *const ENCODING) -> c_int);
-        return XML_ROLE_ERROR;
+        XML_ROLE_ERROR
     }
 }
 pub(crate) fn XmlPrologStateInit(mut state: *mut PROLOG_STATE) {

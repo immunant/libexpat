@@ -458,8 +458,8 @@ extern "C" fn nsattcmp(mut p1: *const c_void, mut p2: *const c_void) -> c_int {
     unsafe {
         let mut att1: *const XML_Char = *(p1 as *const *const XML_Char);
         let mut att2: *const XML_Char = *(p2 as *const *const XML_Char);
-        let mut sep1: c_int = (strrchr(att1, '\u{1}' as i32) != null_mut::<c_char>()) as c_int;
-        let mut sep2: c_int = (strrchr(att2, '\u{1}' as i32) != null_mut::<c_char>()) as c_int;
+        let mut sep1: c_int = !strrchr(att1, '\u{1}' as i32).is_null() as c_int;
+        let mut sep2: c_int = !strrchr(att2, '\u{1}' as i32).is_null() as c_int;
         if sep1 != sep2 {
             return sep1 - sep2;
         }
@@ -1967,51 +1967,48 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
             } else {
                 current_block_219 = 9952640327414195044;
             }
-            match current_block_219 {
-                9952640327414195044 => {
-                    if windowsCodePages != 0 {
-                        XML_SetUnknownEncodingHandler(
-                            parser,
-                            transmute(Some(
-                                unknownEncoding
-                                    as extern "C" fn(
-                                        *mut c_void,
-                                        *const XML_Char,
-                                        *mut XML_Encoding,
-                                    ) -> c_int,
-                            )),
-                            null_mut::<c_void>(),
-                        );
-                    }
-                    result = XML_ProcessFile(
+            if current_block_219 == 9952640327414195044 {
+                if windowsCodePages != 0 {
+                    XML_SetUnknownEncodingHandler(
                         parser,
-                        if useStdin != 0 {
-                            null_mut::<XML_Char>()
-                        } else {
-                            *argv.offset(i as isize)
-                        },
-                        processFlags,
+                        transmute(Some(
+                            unknownEncoding
+                                as extern "C" fn(
+                                    *mut c_void,
+                                    *const XML_Char,
+                                    *mut XML_Encoding,
+                                ) -> c_int,
+                        )),
+                        null_mut::<c_void>(),
                     );
-                    if !outputDir.is_null() {
-                        if outputType == 'm' as i32 {
-                            metaEndDocument(parser as *mut c_void);
-                        }
-                        fclose(userData.fp);
-                        if result == 0 {
-                            remove(outName);
-                        }
-                        free(outName as *mut c_void);
+                }
+                result = XML_ProcessFile(
+                    parser,
+                    if useStdin != 0 {
+                        null_mut::<XML_Char>()
+                    } else {
+                        *argv.offset(i as isize)
+                    },
+                    processFlags,
+                );
+                if !outputDir.is_null() {
+                    if outputType == 'm' as i32 {
+                        metaEndDocument(parser as *mut c_void);
                     }
-                    XML_ParserFree(parser);
+                    fclose(userData.fp);
                     if result == 0 {
-                        exitCode = XMLWF_EXIT_NOT_WELLFORMED as c_int;
-                        cleanupUserData(&raw mut userData);
-                        if continueOnError == 0 {
-                            break;
-                        }
+                        remove(outName);
+                    }
+                    free(outName as *mut c_void);
+                }
+                XML_ParserFree(parser);
+                if result == 0 {
+                    exitCode = XMLWF_EXIT_NOT_WELLFORMED as c_int;
+                    cleanupUserData(&raw mut userData);
+                    if continueOnError == 0 {
+                        break;
                     }
                 }
-                _ => {}
             }
             i += 1;
         }

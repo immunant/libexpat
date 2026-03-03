@@ -181,7 +181,7 @@ extern "C" fn resolveSystemId(
         s = unsafe { crate::stdlib::strrchr(s, '/' as i32).offset(1isize) };
     }
     unsafe { crate::stdlib::strcpy(s, systemId) };
-    return unsafe { *toFree };
+    unsafe { *toFree }
 }
 
 extern "C" fn externalEntityRefFilemap(
@@ -231,7 +231,7 @@ extern "C" fn externalEntityRefFilemap(
     }
     unsafe { crate::stdlib::free(s as *mut c_void) };
     XML_ParserFree(entParser);
-    return result;
+    result
 }
 
 extern "C" fn processStream(mut filename: *const XML_Char, mut parser: XML_Parser) -> c_int {
@@ -292,7 +292,7 @@ extern "C" fn processStream(mut filename: *const XML_Char, mut parser: XML_Parse
             }
             return 0i32;
         }
-        if !(nread == 0) {
+        if nread != 0 {
             continue;
         }
         if !filename.is_null() {
@@ -300,7 +300,7 @@ extern "C" fn processStream(mut filename: *const XML_Char, mut parser: XML_Parse
         }
         break;
     }
-    return 1;
+    1
 }
 
 extern "C" fn externalEntityRefStream(
@@ -320,7 +320,7 @@ extern "C" fn externalEntityRefStream(
     ret = processStream(filename, entParser);
     unsafe { crate::stdlib::free(s as *mut c_void) };
     XML_ParserFree(entParser);
-    return ret;
+    ret
 }
 pub fn XML_ProcessFile(
     mut parser: XML_Parser,
@@ -402,5 +402,5 @@ pub fn XML_ProcessFile(
     } else {
         result = processStream(filename, parser);
     }
-    return result;
+    result
 }

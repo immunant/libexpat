@@ -82,7 +82,7 @@ pub fn filemap(
         unsafe { close(fd) };
         return 0i32;
     }
-    if !(sb.st_mode & __S_IFMT as __mode_t == 0o100000) {
+    if sb.st_mode & __S_IFMT as __mode_t != 0o100000  {
         unsafe {
             fprintf(
                 stderr,
@@ -143,5 +143,5 @@ pub fn filemap(
     processor.expect("non-null function pointer")(p, nbytes, name, arg);
     unsafe { free(p) };
     unsafe { close(fd) };
-    return 1;
+    1
 }

@@ -11,7 +11,7 @@ pub mod siphash_h {
 
     pub(crate) fn sip_tokey(mut key: *mut sipkey, mut src: *const c_void) -> *mut sipkey {
         unsafe {
-            (*key).k[0] = (*(src as *const c_uchar).offset(0) as uint64_t) << 0
+            (*key).k[0] = (*(src as *const c_uchar).offset(0) as uint64_t)
                 | (*(src as *const c_uchar).offset(1) as uint64_t) << 8
                 | (*(src as *const c_uchar).offset(2) as uint64_t) << 16
                 | (*(src as *const c_uchar).offset(3) as uint64_t) << 24
@@ -19,7 +19,7 @@ pub mod siphash_h {
                 | (*(src as *const c_uchar).offset(5) as uint64_t) << 40
                 | (*(src as *const c_uchar).offset(6) as uint64_t) << 48
                 | (*(src as *const c_uchar).offset(7) as uint64_t) << 56;
-            (*key).k[1] = (*(src as *const c_uchar).offset(8).offset(0) as uint64_t) << 0
+            (*key).k[1] = (*(src as *const c_uchar).offset(8).offset(0) as uint64_t)
                 | (*(src as *const c_uchar).offset(8).offset(1) as uint64_t) << 8
                 | (*(src as *const c_uchar).offset(8).offset(2) as uint64_t) << 16
                 | (*(src as *const c_uchar).offset(8).offset(3) as uint64_t) << 24
@@ -27,7 +27,7 @@ pub mod siphash_h {
                 | (*(src as *const c_uchar).offset(8).offset(5) as uint64_t) << 40
                 | (*(src as *const c_uchar).offset(8).offset(6) as uint64_t) << 48
                 | (*(src as *const c_uchar).offset(8).offset(7) as uint64_t) << 56;
-            return key;
+            key
         }
     }
 
@@ -37,19 +37,19 @@ pub mod siphash_h {
             i = 0;
             while i < rounds {
                 (*H).v0 = (*H).v0.wrapping_add((*H).v1);
-                (*H).v1 = (*H).v1 << 13 | (*H).v1 >> 64 - 13;
+                (*H).v1 = (*H).v1.rotate_left(13);
                 (*H).v1 ^= (*H).v0;
-                (*H).v0 = (*H).v0 << 32 | (*H).v0 >> 64 - 32;
+                (*H).v0 = (*H).v0.rotate_right(64 - 32);
                 (*H).v2 = (*H).v2.wrapping_add((*H).v3);
-                (*H).v3 = (*H).v3 << 16 | (*H).v3 >> 64 - 16;
+                (*H).v3 = (*H).v3.rotate_left(16);
                 (*H).v3 ^= (*H).v2;
                 (*H).v0 = (*H).v0.wrapping_add((*H).v3);
-                (*H).v3 = (*H).v3 << 21 | (*H).v3 >> 64 - 21;
+                (*H).v3 = (*H).v3.rotate_left(21);
                 (*H).v3 ^= (*H).v0;
                 (*H).v2 = (*H).v2.wrapping_add((*H).v1);
-                (*H).v1 = (*H).v1 << 17 | (*H).v1 >> 64 - 17;
+                (*H).v1 = (*H).v1.rotate_left(17);
                 (*H).v1 ^= (*H).v2;
-                (*H).v2 = (*H).v2 << 32 | (*H).v2 >> 64 - 32;
+                (*H).v2 = (*H).v2.rotate_right(64 - 32);
                 i += 1;
             }
         }
@@ -63,7 +63,7 @@ pub mod siphash_h {
             (*H).v3 = ((0x74656462u64) << 32 | 0x79746573) ^ (*key).k[1];
             (*H).p = &raw mut (*H).buf as *mut c_uchar;
             (*H).c = 0u64;
-            return H;
+            H
         }
     }
 
@@ -74,13 +74,13 @@ pub mod siphash_h {
     ) -> *mut siphash {
         unsafe {
             let mut p: *const c_uchar = src as *const c_uchar;
-            let mut pe: *const c_uchar = p.offset(len as isize);
+            let mut pe: *const c_uchar = p.add(len);
             let mut m: uint64_t = 0;
             loop {
                 while p < pe
                     && (*H).p
-                        < (&raw mut (*H).buf as *mut c_uchar).offset(
-                            (size_of::<[c_uchar; 8]>()).wrapping_div(size_of::<c_uchar>()) as isize,
+                        < (&raw mut (*H).buf as *mut c_uchar).add(
+                            (size_of::<[c_uchar; 8]>()).wrapping_div(size_of::<c_uchar>()),
                         )
                 {
                     let fresh20 = p;
@@ -90,13 +90,13 @@ pub mod siphash_h {
                     *fresh21 = *fresh20;
                 }
                 if (*H).p
-                    < (&raw mut (*H).buf as *mut c_uchar).offset(
-                        (size_of::<[c_uchar; 8]>()).wrapping_div(size_of::<c_uchar>()) as isize,
+                    < (&raw mut (*H).buf as *mut c_uchar).add(
+                        (size_of::<[c_uchar; 8]>()).wrapping_div(size_of::<c_uchar>()),
                     )
                 {
                     break;
                 }
-                m = ((*H).buf[0] as uint64_t) << 0
+                m = ((*H).buf[0] as uint64_t)
                     | ((*H).buf[1] as uint64_t) << 8
                     | ((*H).buf[2] as uint64_t) << 16
                     | ((*H).buf[3] as uint64_t) << 24
@@ -109,11 +109,11 @@ pub mod siphash_h {
                 (*H).v0 ^= m;
                 (*H).p = &raw mut (*H).buf as *mut c_uchar;
                 (*H).c = (*H).c.wrapping_add(8u64);
-                if !(p < pe) {
+                if p >= pe  {
                     break;
                 }
             }
-            return H;
+            H
         }
     }
 
@@ -149,53 +149,35 @@ pub mod siphash_h {
                     current_block_6 = 5720623009719927633;
                 }
             }
-            match current_block_6 {
-                4021588137456158946 => {
-                    b |= ((*H).buf[5] as uint64_t) << 40;
-                    current_block_6 = 12485585037491154495;
-                }
-                _ => {}
+            if current_block_6 == 4021588137456158946 {
+                b |= ((*H).buf[5] as uint64_t) << 40;
+                current_block_6 = 12485585037491154495;
             }
-            match current_block_6 {
-                12485585037491154495 => {
-                    b |= ((*H).buf[4] as uint64_t) << 32;
-                    current_block_6 = 435354115069985819;
-                }
-                _ => {}
+            if current_block_6 == 12485585037491154495 {
+                b |= ((*H).buf[4] as uint64_t) << 32;
+                current_block_6 = 435354115069985819;
             }
-            match current_block_6 {
-                435354115069985819 => {
-                    b |= ((*H).buf[3] as uint64_t) << 24;
-                    current_block_6 = 1199690694990637288;
-                }
-                _ => {}
+            if current_block_6 == 435354115069985819 {
+                b |= ((*H).buf[3] as uint64_t) << 24;
+                current_block_6 = 1199690694990637288;
             }
-            match current_block_6 {
-                1199690694990637288 => {
-                    b |= ((*H).buf[2] as uint64_t) << 16;
-                    current_block_6 = 2615438511104190163;
-                }
-                _ => {}
+            if current_block_6 == 1199690694990637288 {
+                b |= ((*H).buf[2] as uint64_t) << 16;
+                current_block_6 = 2615438511104190163;
             }
-            match current_block_6 {
-                2615438511104190163 => {
-                    b |= ((*H).buf[1] as uint64_t) << 8;
-                    current_block_6 = 4681268752173749360;
-                }
-                _ => {}
+            if current_block_6 == 2615438511104190163 {
+                b |= ((*H).buf[1] as uint64_t) << 8;
+                current_block_6 = 4681268752173749360;
             }
-            match current_block_6 {
-                4681268752173749360 => {
-                    b |= ((*H).buf[0usize] as uint64_t) << 0i32;
-                }
-                _ => {}
+            if current_block_6 == 4681268752173749360 {
+                b |= (*H).buf[0usize] as uint64_t ;
             }
             (*H).v3 ^= b;
             sip_round(H, 2);
             (*H).v0 ^= b;
             (*H).v2 ^= 0xffu64;
             sip_round(H, 4);
-            return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
+            (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3
         }
     }
 
@@ -213,7 +195,7 @@ pub mod siphash_h {
             p: core::ptr::null_mut::<c_uchar>(),
             c: 0u64,
         };
-        return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
+        sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len))
     }
 
     pub(crate) fn sip24_valid() -> c_int {
@@ -295,7 +277,7 @@ pub mod siphash_h {
         while i < size_of::<[c_uchar; 64]>() {
             in_0[i] = i as c_uchar;
             if siphash24(&raw mut in_0 as *const c_void, i, &raw mut k)
-                != (vectors[i][0] as uint64_t) << 0
+                != (vectors[i][0] as uint64_t)
                     | (vectors[i][1] as uint64_t) << 8
                     | (vectors[i][2] as uint64_t) << 16
                     | (vectors[i][3] as uint64_t) << 24
@@ -308,7 +290,7 @@ pub mod siphash_h {
             }
             i = i.wrapping_add(1);
         }
-        return 1;
+        1
     }
 }
 
@@ -1130,7 +1112,7 @@ extern "C" fn expat_heap_increase_tolerable(
                 sourceLine,
             );
         }
-        return tolerable;
+        tolerable
     }
 }
 fn expat_malloc(mut parser: XML_Parser, mut size: size_t, mut sourceLine: c_int) -> *mut c_void {
@@ -1182,9 +1164,9 @@ fn expat_malloc(mut parser: XML_Parser, mut size: size_t, mut sourceLine: c_int)
                 sourceLine,
             );
         }
-        return (mallocedPtr as *mut c_char)
-            .offset(size_of::<size_t>() as isize)
-            .offset(EXPAT_MALLOC_PADDING as isize) as *mut c_void;
+        (mallocedPtr as *mut c_char)
+            .add(size_of::<size_t>())
+            .add(EXPAT_MALLOC_PADDING) as *mut c_void
     }
 }
 
@@ -1266,13 +1248,12 @@ fn expat_realloc(
         } else {
             prevSize.wrapping_sub(size)
         };
-        if isIncrease {
-            if !expat_heap_increase_tolerable(rootParser, absDiff as XmlBigCount, sourceLine) {
+        if isIncrease
+            && !expat_heap_increase_tolerable(rootParser, absDiff as XmlBigCount, sourceLine) {
                 return NULL;
             }
-        }
         assert!(
-            (18446744073709551615 as usize)
+            18446744073709551615_usize
                 .wrapping_sub(size_of::<size_t>())
                 .wrapping_sub((size_of::<c_longlong>()).wrapping_sub(size_of::<size_t>()))
                 >= size
@@ -1326,9 +1307,9 @@ fn expat_realloc(
             );
         }
         *(mallocedPtr as *mut size_t) = size;
-        return (mallocedPtr as *mut c_char)
-            .offset(size_of::<size_t>() as isize)
-            .offset(EXPAT_MALLOC_PADDING as isize) as *mut c_void;
+        (mallocedPtr as *mut c_char)
+            .add(size_of::<size_t>())
+            .add(EXPAT_MALLOC_PADDING) as *mut c_void
     }
 }
 
@@ -1346,11 +1327,11 @@ extern "C" fn expat_realloc_test_shim(
 #[no_mangle]
 
 pub extern "C" fn XML_ParserCreate(mut encodingName: *const XML_Char) -> XML_Parser {
-    return XML_ParserCreate_MM(
+    XML_ParserCreate_MM(
         encodingName,
         null::<XML_Memory_Handling_Suite>(),
         null::<XML_Char>(),
-    );
+    )
 }
 #[no_mangle]
 
@@ -1359,11 +1340,11 @@ pub extern "C" fn XML_ParserCreateNS(
     mut nsSep: XML_Char,
 ) -> XML_Parser {
     let mut tmp: [XML_Char; 2] = [nsSep, 0];
-    return XML_ParserCreate_MM(
+    XML_ParserCreate_MM(
         encodingName,
         null::<XML_Memory_Handling_Suite>(),
         &raw mut tmp as *mut XML_Char,
-    );
+    )
 }
 
 static implicitContext: [XML_Char; 41] = [
@@ -1420,7 +1401,7 @@ extern "C" fn writeRandomBytes_getrandom_nonblock(
         let getrandomFlags: c_uint = GRND_NONBLOCK as c_uint;
         loop {
             let currentTarget: *mut c_void =
-                (target as *mut c_char).offset(bytesWrittenTotal as isize) as *mut c_void;
+                (target as *mut c_char).add(bytesWrittenTotal) as *mut c_void;
             let bytesToWrite: size_t = count.wrapping_sub(bytesWrittenTotal);
             assert!(bytesToWrite <= 2147483647i32 as size_t);
             let bytesWrittenMore: c_int =
@@ -1435,7 +1416,7 @@ extern "C" fn writeRandomBytes_getrandom_nonblock(
                 break;
             }
         }
-        return success;
+        success
     }
 }
 
@@ -1450,7 +1431,7 @@ extern "C" fn writeRandomBytes_dev_urandom(mut target: *mut c_void, mut count: s
         }
         loop {
             let currentTarget: *mut c_void =
-                (target as *mut c_char).offset(bytesWrittenTotal as isize) as *mut c_void;
+                (target as *mut c_char).add(bytesWrittenTotal) as *mut c_void;
             let bytesToWrite: size_t = count.wrapping_sub(bytesWrittenTotal);
             let bytesWrittenMore: ssize_t = crate::stdlib::read(fd, currentTarget, bytesToWrite);
             if bytesWrittenMore > 0 {
@@ -1464,7 +1445,7 @@ extern "C" fn writeRandomBytes_dev_urandom(mut target: *mut c_void, mut count: s
             }
         }
         crate::stdlib::close(fd);
-        return success;
+        success
     }
 }
 
@@ -1477,7 +1458,7 @@ extern "C" fn gather_time_entropy() -> c_ulong {
         let mut gettimeofday_res: c_int = 0;
         gettimeofday_res = crate::stdlib::gettimeofday(&raw mut tv, NULL);
         assert!(gettimeofday_res == 0);
-        return tv.tv_usec as c_ulong;
+        tv.tv_usec as c_ulong
     }
 }
 
@@ -1493,7 +1474,7 @@ extern "C" fn ENTROPY_DEBUG(mut label: *const c_char, mut entropy: c_ulong) -> c
                 size_of::<c_ulong>() as c_ulong,
             );
         }
-        return entropy;
+        entropy
     }
 }
 
@@ -1514,16 +1495,16 @@ extern "C" fn generate_hash_secret_salt(mut _parser: XML_Parser) -> c_ulong {
         entropy = gather_time_entropy();
         entropy ^= crate::stdlib::getpid() as c_ulong;
         if size_of::<c_ulong>() == 4 {
-            return ENTROPY_DEBUG(
+            ENTROPY_DEBUG(
                 b"fallback(4)\0" as *const u8 as *const c_char,
                 entropy.wrapping_mul(2147483647u64),
-            );
+            )
         } else {
-            return ENTROPY_DEBUG(
+            ENTROPY_DEBUG(
                 b"fallback(8)\0" as *const u8 as *const c_char,
                 entropy.wrapping_mul(2305843009213693951u64),
-            );
-        };
+            )
+        }
     }
 }
 
@@ -1531,7 +1512,7 @@ extern "C" fn get_hash_secret_salt(mut parser: XML_Parser) -> c_ulong {
     unsafe {
         let rootParser: XML_Parser = getRootParserOf(parser, null_mut::<c_uint>());
         assert!((*rootParser).m_parentParser.is_null());
-        return (*rootParser).m_hash_secret_salt;
+        (*rootParser).m_hash_secret_salt
     }
 }
 
@@ -1601,7 +1582,7 @@ extern "C" fn callProcessor(
                 (*parser).m_partialTokenBytesBefore = 0usize;
             }
         }
-        return ret;
+        ret
     }
 }
 
@@ -1613,7 +1594,7 @@ extern "C" fn startParsing(mut parser: XML_Parser) -> XML_Bool {
         if (*parser).m_ns != 0 {
             return setContext(parser, &raw const implicitContext as *const XML_Char);
         }
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 #[no_mangle]
@@ -1623,13 +1604,13 @@ pub extern "C" fn XML_ParserCreate_MM(
     mut memsuite: *const XML_Memory_Handling_Suite,
     mut nameSep: *const XML_Char,
 ) -> XML_Parser {
-    return parserCreate(
+    parserCreate(
         encodingName,
         memsuite,
         nameSep,
         null_mut::<DTD>(),
         null_mut::<XML_ParserStruct>(),
-    );
+    )
 }
 
 extern "C" fn stdlib_malloc(size: size_t) -> *mut c_void {
@@ -1673,8 +1654,8 @@ extern "C" fn parserCreate(
             if !sizeAndParser.is_null() {
                 *(sizeAndParser as *mut size_t) = size_of::<XML_ParserStruct>();
                 parser = (sizeAndParser as *mut c_char)
-                    .offset(size_of::<size_t>() as isize)
-                    .offset(EXPAT_MALLOC_PADDING as isize) as XML_Parser;
+                    .add(size_of::<size_t>())
+                    .add(EXPAT_MALLOC_PADDING) as XML_Parser;
                 mtemp = &raw const (*parser).m_mem as *mut XML_Memory_Handling_Suite;
                 (*mtemp).malloc_fcn = (*memsuite).malloc_fcn;
                 (*mtemp).realloc_fcn = (*memsuite).realloc_fcn;
@@ -1691,8 +1672,8 @@ extern "C" fn parserCreate(
             if !sizeAndParser_0.is_null() {
                 *(sizeAndParser_0 as *mut size_t) = size_of::<XML_ParserStruct>();
                 parser = (sizeAndParser_0 as *mut c_char)
-                    .offset(size_of::<size_t>() as isize)
-                    .offset(EXPAT_MALLOC_PADDING as isize) as XML_Parser;
+                    .add(size_of::<size_t>())
+                    .add(EXPAT_MALLOC_PADDING) as XML_Parser;
                 mtemp_0 = &raw const (*parser).m_mem as *mut XML_Memory_Handling_Suite;
                 (*mtemp_0).malloc_fcn = Some(stdlib_malloc);
                 (*mtemp_0).realloc_fcn = Some(stdlib_realloc);
@@ -1813,7 +1794,7 @@ extern "C" fn parserCreate(
         } else {
             (*parser).m_internalEncoding = XmlGetUtf8InternalEncoding();
         }
-        return parser;
+        parser
     }
 }
 
@@ -1999,16 +1980,16 @@ pub extern "C" fn XML_ParserReset(
         (*parser).m_protocolEncodingName = null::<XML_Char>();
         parserInit(parser, encodingName);
         dtdReset((*parser).m_dtd, parser);
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 
 extern "C" fn parserBusy(mut parser: XML_Parser) -> XML_Bool {
     unsafe {
         match (*parser).m_parsingStatus.parsing {
-            1 | 3 => return XML_TRUE,
-            0 | 2 | _ => return XML_FALSE,
-        };
+            1 | 3 => XML_TRUE,
+            0 | 2 | _ => XML_FALSE,
+        }
     }
 }
 #[no_mangle]
@@ -2037,7 +2018,7 @@ pub extern "C" fn XML_SetEncoding(
                 return XML_STATUS_ERROR;
             }
         }
-        return XML_STATUS_OK;
+        XML_STATUS_OK
     }
 }
 #[no_mangle]
@@ -2208,7 +2189,7 @@ pub extern "C" fn XML_ExternalEntityParserCreate(
                     ) -> XML_Error,
             );
         }
-        return parser;
+        parser
     }
 }
 
@@ -2341,7 +2322,7 @@ pub extern "C" fn XML_UseForeignDTD(mut parser: XML_Parser, mut useDTD: XML_Bool
             return XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
         }
         (*parser).m_useForeignDTD = useDTD;
-        return XML_ERROR_NONE;
+        XML_ERROR_NONE
     }
 }
 #[no_mangle]
@@ -2392,7 +2373,7 @@ pub extern "C" fn XML_SetBase(mut parser: XML_Parser, mut p: *const XML_Char) ->
         } else {
             (*parser).m_curBase = null::<XML_Char>();
         }
-        return XML_STATUS_OK;
+        XML_STATUS_OK
     }
 }
 #[no_mangle]
@@ -2402,7 +2383,7 @@ pub extern "C" fn XML_GetBase(mut parser: XML_Parser) -> *const XML_Char {
         if parser.is_null() {
             return null::<XML_Char>();
         }
-        return (*parser).m_curBase;
+        (*parser).m_curBase
     }
 }
 #[no_mangle]
@@ -2412,7 +2393,7 @@ pub extern "C" fn XML_GetSpecifiedAttributeCount(mut parser: XML_Parser) -> c_in
         if parser.is_null() {
             return -(1i32);
         }
-        return (*parser).m_nSpecifiedAtts;
+        (*parser).m_nSpecifiedAtts
     }
 }
 #[no_mangle]
@@ -2422,7 +2403,7 @@ pub extern "C" fn XML_GetIdAttributeIndex(mut parser: XML_Parser) -> c_int {
         if parser.is_null() {
             return -(1i32);
         }
-        return (*parser).m_idAttIndex;
+        (*parser).m_idAttIndex
     }
 }
 #[no_mangle]
@@ -2784,7 +2765,7 @@ pub extern "C" fn XML_SetParamEntityParsing(
             return 0i32;
         }
         (*parser).m_paramEntityParsing = peParsing;
-        return 1;
+        1
     }
 }
 #[no_mangle]
@@ -2800,7 +2781,7 @@ pub extern "C" fn XML_SetHashSalt(mut parser: XML_Parser, mut hash_salt: c_ulong
             return 0i32;
         }
         (*rootParser).m_hash_secret_salt = hash_salt;
-        return 1;
+        1
     }
 }
 #[no_mangle]
@@ -2844,7 +2825,7 @@ pub extern "C" fn XML_Parse(
             assert!(!s.is_null());
             memcpy(buff, s as *const c_void, len as size_t);
         }
-        return XML_ParseBuffer(parser, len, isFinal);
+        XML_ParseBuffer(parser, len, isFinal)
     }
 }
 #[no_mangle]
@@ -2930,7 +2911,7 @@ pub extern "C" fn XML_ParseBuffer(
             &raw mut (*parser).m_position,
         );
         (*parser).m_positionPtr = (*parser).m_bufferPtr;
-        return result;
+        result
     }
 }
 #[no_mangle]
@@ -3089,7 +3070,7 @@ pub extern "C" fn XML_GetBuffer(mut parser: XML_Parser, mut len: c_int) -> *mut 
             (*parser).m_eventPtr = (*parser).m_eventEndPtr;
             (*parser).m_positionPtr = null::<c_char>();
         }
-        return (*parser).m_bufferEnd as *mut c_void;
+        (*parser).m_bufferEnd as *mut c_void
     }
 }
 
@@ -3136,7 +3117,7 @@ pub extern "C" fn XML_StopParser(mut parser: XML_Parser, mut resumable: XML_Bool
                 assert!(0i32 != 0);
             }
         }
-        return XML_STATUS_OK;
+        XML_STATUS_OK
     }
 }
 #[no_mangle]
@@ -3190,7 +3171,7 @@ pub extern "C" fn XML_ResumeParser(mut parser: XML_Parser) -> XML_Status {
             &raw mut (*parser).m_position,
         );
         (*parser).m_positionPtr = (*parser).m_bufferPtr;
-        return result;
+        result
     }
 }
 #[no_mangle]
@@ -3211,7 +3192,7 @@ pub extern "C" fn XML_GetErrorCode(mut parser: XML_Parser) -> XML_Error {
         if parser.is_null() {
             return XML_ERROR_INVALID_ARGUMENT;
         }
-        return (*parser).m_errorCode;
+        (*parser).m_errorCode
     }
 }
 #[no_mangle]
@@ -3225,7 +3206,7 @@ pub extern "C" fn XML_GetCurrentByteIndex(mut parser: XML_Parser) -> XML_Index {
             return (*parser).m_parseEndByteIndex
                 - (*parser).m_parseEndPtr.offset_from((*parser).m_eventPtr) as c_long;
         }
-        return -1i64;
+        -1i64
     }
 }
 #[no_mangle]
@@ -3238,7 +3219,7 @@ pub extern "C" fn XML_GetCurrentByteCount(mut parser: XML_Parser) -> c_int {
         if !(*parser).m_eventEndPtr.is_null() && !(*parser).m_eventPtr.is_null() {
             return (*parser).m_eventEndPtr.offset_from((*parser).m_eventPtr) as c_int;
         }
-        return 0;
+        0
     }
 }
 #[no_mangle]
@@ -3261,7 +3242,7 @@ pub extern "C" fn XML_GetInputContext(
             }
             return (*parser).m_buffer;
         }
-        return null::<c_char>();
+        null::<c_char>()
     }
 }
 #[no_mangle]
@@ -3279,7 +3260,7 @@ pub extern "C" fn XML_GetCurrentLineNumber(mut parser: XML_Parser) -> XML_Size {
             );
             (*parser).m_positionPtr = (*parser).m_eventPtr;
         }
-        return (*parser).m_position.lineNumber.wrapping_add(1u64);
+        (*parser).m_position.lineNumber.wrapping_add(1u64)
     }
 }
 #[no_mangle]
@@ -3297,7 +3278,7 @@ pub extern "C" fn XML_GetCurrentColumnNumber(mut parser: XML_Parser) -> XML_Size
             );
             (*parser).m_positionPtr = (*parser).m_eventPtr;
         }
-        return (*parser).m_position.columnNumber;
+        (*parser).m_position.columnNumber
     }
 }
 #[no_mangle]
@@ -3317,10 +3298,10 @@ pub extern "C" fn XML_MemMalloc(mut parser: XML_Parser, mut size: size_t) -> *mu
         if parser.is_null() {
             return NULL;
         }
-        return (*parser)
+        (*parser)
             .m_mem
             .malloc_fcn
-            .expect("non-null function pointer")(size);
+            .expect("non-null function pointer")(size)
     }
 }
 #[no_mangle]
@@ -3334,10 +3315,10 @@ pub extern "C" fn XML_MemRealloc(
         if parser.is_null() {
             return NULL;
         }
-        return (*parser)
+        (*parser)
             .m_mem
             .realloc_fcn
-            .expect("non-null function pointer")(ptr, size);
+            .expect("non-null function pointer")(ptr, size)
     }
 }
 #[no_mangle]
@@ -3479,12 +3460,12 @@ pub extern "C" fn XML_ErrorString(mut code: XML_Error) -> *const XML_LChar {
         44 => return b"parser not started\0" as *const u8 as *const XML_LChar,
         _ => {}
     }
-    return null::<XML_LChar>();
+    null::<XML_LChar>()
 }
 #[no_mangle]
 
 pub extern "C" fn XML_ExpatVersion() -> *const XML_LChar {
-    return b"expat_2.7.4\0" as *const u8 as *const XML_LChar;
+    b"expat_2.7.4\0" as *const u8 as *const XML_LChar
 }
 #[no_mangle]
 
@@ -3497,7 +3478,7 @@ pub extern "C" fn XML_ExpatVersionInfo() -> XML_Expat_Version {
     version.major = XML_MAJOR_VERSION;
     version.minor = XML_MINOR_VERSION;
     version.micro = XML_MICRO_VERSION;
-    return version;
+    version
 }
 #[no_mangle]
 
@@ -3559,7 +3540,7 @@ pub extern "C" fn XML_GetFeatureList() -> *const XML_Feature {
             value: 0i64,
         },
     ];
-    return FEATURES.as_ptr();
+    FEATURES.as_ptr()
 }
 #[no_mangle]
 
@@ -3576,7 +3557,7 @@ pub extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
             return XML_FALSE;
         }
         (*parser).m_accounting.maximumAmplificationFactor = maximumAmplificationFactor;
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 #[no_mangle]
@@ -3590,7 +3571,7 @@ pub extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
             return XML_FALSE;
         }
         (*parser).m_accounting.activationThresholdBytes = activationThresholdBytes;
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 #[no_mangle]
@@ -3608,7 +3589,7 @@ pub extern "C" fn XML_SetAllocTrackerMaximumAmplification(
             return XML_FALSE;
         }
         (*parser).m_alloc_tracker.maximumAmplificationFactor = maximumAmplificationFactor;
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 #[no_mangle]
@@ -3622,7 +3603,7 @@ pub extern "C" fn XML_SetAllocTrackerActivationThreshold(
             return XML_FALSE;
         }
         (*parser).m_alloc_tracker.activationThresholdBytes = activationThresholdBytes;
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 #[no_mangle]
@@ -3638,7 +3619,7 @@ pub extern "C" fn XML_SetReparseDeferralEnabled(
             (*parser).m_reparseDeferralEnabled = enabled;
             return XML_TRUE;
         }
-        return XML_FALSE;
+        XML_FALSE
     }
 }
 
@@ -3654,8 +3635,8 @@ extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
             let mut nameLen: size_t =
                 (size_of::<XML_Char>()).wrapping_mul(((*tag).name.strLen + 1) as size_t);
             let mut rawNameLen: size_t = 0;
-            let mut rawNameBuf: *mut c_char = (*tag).buf.raw.offset(nameLen as isize);
-            if (*tag).rawName == rawNameBuf as *const c_char {
+            let mut rawNameBuf: *mut c_char = (*tag).buf.raw.add(nameLen);
+            if std::ptr::eq((*tag).rawName, rawNameBuf) {
                 break;
             }
             rawNameLen = ((*tag).rawNameLength as usize)
@@ -3672,7 +3653,7 @@ extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
                 if temp.is_null() {
                     return XML_FALSE;
                 }
-                if (*tag).name.str_0 == (*tag).buf.str_0 as *const XML_Char {
+                if std::ptr::eq((*tag).name.str_0, (*tag).buf.str_0) {
                     (*tag).name.str_0 = temp;
                 }
                 if !(*tag).name.localPart.is_null() {
@@ -3680,8 +3661,8 @@ extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
                         (temp).offset((*tag).name.localPart.offset_from((*tag).buf.str_0));
                 }
                 (*tag).buf.raw = temp;
-                (*tag).bufEnd = temp.offset(bufSize as isize);
-                rawNameBuf = temp.offset(nameLen as isize);
+                (*tag).bufEnd = temp.add(bufSize);
+                rawNameBuf = temp.add(nameLen);
             }
             memcpy(
                 rawNameBuf as *mut c_void,
@@ -3695,7 +3676,7 @@ extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
                 null_mut::<TAG>()
             };
         }
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 
@@ -3720,12 +3701,11 @@ extern "C" fn contentProcessor(
             ((*parser).m_parsingStatus.finalBuffer == 0) as XML_Bool,
             XML_ACCOUNT_DIRECT,
         );
-        if result == XML_ERROR_NONE {
-            if storeRawNames(parser) == 0 {
+        if result == XML_ERROR_NONE
+            && storeRawNames(parser) == 0 {
                 return XML_ERROR_NO_MEMORY;
             }
-        }
-        return result;
+        result
     }
 }
 
@@ -3749,7 +3729,7 @@ extern "C" fn externalEntityInitProcessor(
                     *mut *const c_char,
                 ) -> XML_Error,
         );
-        return externalEntityInitProcessor2(parser, start, end, endPtr);
+        externalEntityInitProcessor2(parser, start, end, endPtr)
     }
 }
 
@@ -3809,7 +3789,7 @@ extern "C" fn externalEntityInitProcessor2(
                     *mut *const c_char,
                 ) -> XML_Error,
         );
-        return externalEntityInitProcessor3(parser, start, end, endPtr);
+        externalEntityInitProcessor3(parser, start, end, endPtr)
     }
 }
 
@@ -3880,7 +3860,7 @@ extern "C" fn externalEntityInitProcessor3(
                 ) -> XML_Error,
         );
         (*parser).m_tagLevel = 1;
-        return externalEntityContentProcessor(parser, start, end, endPtr);
+        externalEntityContentProcessor(parser, start, end, endPtr)
     }
 }
 
@@ -3901,12 +3881,11 @@ extern "C" fn externalEntityContentProcessor(
             ((*parser).m_parsingStatus.finalBuffer == 0) as XML_Bool,
             XML_ACCOUNT_ENTITY_EXPANSION,
         );
-        if result == XML_ERROR_NONE {
-            if storeRawNames(parser) == 0 {
+        if result == XML_ERROR_NONE
+            && storeRawNames(parser) == 0 {
                 return XML_ERROR_NO_MEMORY;
             }
-        }
-        return result;
+        result
     }
 }
 
@@ -3936,7 +3915,7 @@ extern "C" fn doContent(
             let mut next: *const c_char = s;
             let mut tok: c_int = {
                 let (tok_value, next_tok_value) =
-                    (*enc).scanners[1](&*enc, c_char_slice_from_ptr_end(s, end));
+                    enc.scanners[1](enc, c_char_slice_from_ptr_end(s, end));
                 next = next_tok_value;
                 tok_value
             };
@@ -4022,8 +4001,8 @@ extern "C" fn doContent(
                     let mut ch: XML_Char = (*enc).predefinedEntityName(
                         enc,
                         c_char_slice_from_ptr_end(
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         ),
                     ) as XML_Char;
                     if ch != 0 {
@@ -4031,7 +4010,7 @@ extern "C" fn doContent(
                             parser,
                             tok,
                             &raw mut ch,
-                            (&raw mut ch).offset(size_of::<XML_Char>() as isize),
+                            (&raw mut ch).add(size_of::<XML_Char>()),
                             3403,
                             XML_ACCOUNT_ENTITY_EXPANSION,
                         );
@@ -4050,8 +4029,8 @@ extern "C" fn doContent(
                         name = poolStoreString(
                             &raw mut (*dtd).pool,
                             enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if name.is_null() {
                             return XML_ERROR_NO_MEMORY;
@@ -4184,8 +4163,8 @@ extern "C" fn doContent(
                     (*tag).bindings = null_mut::<BINDING>();
                     (*tag).name.localPart = null::<XML_Char>();
                     (*tag).name.prefix = null::<XML_Char>();
-                    (*tag).rawName = s.offset((*enc).minBytesPerChar as isize);
-                    (*tag).rawNameLength = (*enc).nameLength(&*enc, (*tag).rawName);
+                    (*tag).rawName = s.offset(enc.minBytesPerChar as isize);
+                    (*tag).rawNameLength = (*enc).nameLength(enc, (*tag).rawName);
                     (*parser).m_tagLevel += 1;
                     let mut rawNameEnd: *const c_char =
                         (*tag).rawName.offset((*tag).rawNameLength as isize);
@@ -4221,7 +4200,7 @@ extern "C" fn doContent(
                                 return XML_ERROR_NO_MEMORY;
                             }
                             (*tag).buf.raw = temp;
-                            (*tag).bufEnd = temp.offset(bufSize as isize);
+                            (*tag).bufEnd = temp.add(bufSize);
                             toPtr = (temp).offset(convLen as isize);
                         }
                     }
@@ -4252,7 +4231,7 @@ extern "C" fn doContent(
                     poolClear(&raw mut (*parser).m_tempPool);
                 }
                 XML_TOK_EMPTY_ELEMENT_NO_ATTS | XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
-                    let mut rawName: *const c_char = s.offset((*enc).minBytesPerChar as isize);
+                    let mut rawName: *const c_char = s.offset(enc.minBytesPerChar as isize);
                     let mut result_1: XML_Error = XML_ERROR_NONE;
                     let mut bindings: *mut BINDING = null_mut::<BINDING>();
                     let mut noElmHandlers: XML_Bool = XML_TRUE;
@@ -4268,7 +4247,7 @@ extern "C" fn doContent(
                         &raw mut (*parser).m_tempPool,
                         enc,
                         rawName,
-                        rawName.offset((*enc).nameLength(&*enc, rawName) as isize),
+                        rawName.offset((*enc).nameLength(enc, rawName) as isize),
                     );
                     if name_0.str_0.is_null() {
                         return XML_ERROR_NO_MEMORY;
@@ -4347,8 +4326,8 @@ extern "C" fn doContent(
                         } else {
                             return XML_ERROR_UNEXPECTED_STATE;
                         };
-                        rawName_0 = s.offset(((*enc).minBytesPerChar * 2i32) as isize);
-                        len = (*enc).nameLength(&*enc, rawName_0);
+                        rawName_0 = s.offset((enc.minBytesPerChar * 2i32) as isize);
+                        len = (*enc).nameLength(enc, rawName_0);
                         if len != (*tag_0).rawNameLength
                             || crate::stdlib::memcmp(
                                 (*tag_0).rawName as *const c_void,
@@ -4446,7 +4425,7 @@ extern "C" fn doContent(
                     }
                 }
                 XML_TOK_CHAR_REF => {
-                    let mut n: c_int = (*enc).charRefNumber(&*enc, s);
+                    let mut n: c_int = (*enc).charRefNumber(enc, s);
                     if n < 0 {
                         return XML_ERROR_BAD_CHAR_REF;
                     }
@@ -4512,7 +4491,7 @@ extern "C" fn doContent(
                         return XML_ERROR_NONE;
                     }
                     if (*parser).m_characterDataHandler.is_some() {
-                        if (*enc).isUtf8 == 0 {
+                        if enc.isUtf8 == 0 {
                             let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf;
                             (_, s, dataPtr) =
                                 (*enc).utf8Convert(enc, s, end, dataPtr, (*parser).m_dataBufEnd);
@@ -4550,7 +4529,7 @@ extern "C" fn doContent(
                     let mut charDataHandler: XML_CharacterDataHandler =
                         (*parser).m_characterDataHandler;
                     if charDataHandler.is_some() {
-                        if (*enc).isUtf8 == 0 {
+                        if enc.isUtf8 == 0 {
                             loop {
                                 let mut dataPtr_0: *mut ICHAR = (*parser).m_dataBuf;
                                 let convert_res_0: XML_Convert_Result;
@@ -4688,7 +4667,7 @@ extern "C" fn storeAtts(
             }
         }
         nDefaultAtts = (*elementType).nDefaultAtts;
-        n = (*enc).getAtts(&*enc, attStr, (*parser).m_attsSize, (*parser).m_atts);
+        n = (*enc).getAtts(enc, attStr, (*parser).m_attsSize, (*parser).m_atts);
         if n > INT_MAX - nDefaultAtts {
             return XML_ERROR_NO_MEMORY;
         }
@@ -4713,7 +4692,7 @@ extern "C" fn storeAtts(
             }
             (*parser).m_atts = temp;
             if n > oldAttsSize {
-                (*enc).getAtts(&*enc, attStr, n, (*parser).m_atts);
+                (*enc).getAtts(enc, attStr, n, (*parser).m_atts);
             }
         }
         appAtts = (*parser).m_atts as *mut *const XML_Char;
@@ -4726,7 +4705,7 @@ extern "C" fn storeAtts(
                 (*currAtt).name,
                 (*currAtt)
                     .name
-                    .offset((*enc).nameLength(&*enc, (*currAtt).name) as isize),
+                    .offset((*enc).nameLength(enc, (*currAtt).name) as isize),
             );
             if attId.is_null() {
                 return XML_ERROR_NO_MEMORY;
@@ -4739,8 +4718,8 @@ extern "C" fn storeAtts(
             }
             *(*attId).name.offset(-1) = 1i8;
             let fresh27 = attIndex;
-            attIndex = attIndex + 1;
-            let ref mut fresh28 = *appAtts.offset(fresh27 as isize);
+            attIndex += 1;
+            let fresh28 = &mut *appAtts.offset(fresh27 as isize);
             *fresh28 = (*attId).name;
             if (*(*parser).m_atts.offset(i as isize)).normalized == 0 {
                 let mut result: XML_Error = XML_ERROR_NONE;
@@ -4749,9 +4728,7 @@ extern "C" fn storeAtts(
                     let mut j: c_int = 0;
                     j = 0;
                     while j < nDefaultAtts {
-                        if attId
-                            == (*(*elementType).defaultAtts.offset(j as isize)).id
-                                as *mut ATTRIBUTE_ID
+                        if std::ptr::eq(attId, (*(*elementType).defaultAtts.offset(j as isize)).id)
                         {
                             isCdata = (*(*elementType).defaultAtts.offset(j as isize)).isCdata;
                             break;
@@ -4772,11 +4749,11 @@ extern "C" fn storeAtts(
                 if result as u64 != 0 {
                     return result;
                 }
-                let ref mut fresh29 = *appAtts.offset(attIndex as isize);
+                let fresh29 = &mut *appAtts.offset(attIndex as isize);
                 *fresh29 = (*parser).m_tempPool.start;
                 (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
             } else {
-                let ref mut fresh30 = *appAtts.offset(attIndex as isize);
+                let fresh30 = &mut *appAtts.offset(attIndex as isize);
                 *fresh30 = poolStoreString(
                     &raw mut (*parser).m_tempPool,
                     enc,
@@ -4816,7 +4793,7 @@ extern "C" fn storeAtts(
         {
             i = 0;
             while i < attIndex {
-                if *appAtts.offset(i as isize) == (*(*elementType).idAtt).name as *const XML_Char {
+                if std::ptr::eq(*appAtts.offset(i as isize), (*(*elementType).idAtt).name) {
                     (*parser).m_idAttIndex = i;
                     break;
                 } else {
@@ -4846,29 +4823,29 @@ extern "C" fn storeAtts(
                         *(*(*da).id).name.offset(-1) = 2i8;
                         nPrefixes += 1;
                         let fresh31 = attIndex;
-                        attIndex = attIndex + 1;
-                        let ref mut fresh32 = *appAtts.offset(fresh31 as isize);
+                        attIndex += 1;
+                        let fresh32 = &mut *appAtts.offset(fresh31 as isize);
                         *fresh32 = (*(*da).id).name;
                         let fresh33 = attIndex;
-                        attIndex = attIndex + 1;
-                        let ref mut fresh34 = *appAtts.offset(fresh33 as isize);
+                        attIndex += 1;
+                        let fresh34 = &mut *appAtts.offset(fresh33 as isize);
                         *fresh34 = (*da).value;
                     }
                 } else {
                     *(*(*da).id).name.offset(-1) = 1i8;
                     let fresh35 = attIndex;
-                    attIndex = attIndex + 1;
-                    let ref mut fresh36 = *appAtts.offset(fresh35 as isize);
+                    attIndex += 1;
+                    let fresh36 = &mut *appAtts.offset(fresh35 as isize);
                     *fresh36 = (*(*da).id).name;
                     let fresh37 = attIndex;
-                    attIndex = attIndex + 1;
-                    let ref mut fresh38 = *appAtts.offset(fresh37 as isize);
+                    attIndex += 1;
+                    let fresh38 = &mut *appAtts.offset(fresh37 as isize);
                     *fresh38 = (*da).value;
                 }
             }
             i += 1;
         }
-        let ref mut fresh39 = *appAtts.offset(attIndex as isize);
+        let fresh39 = &mut *appAtts.offset(attIndex as isize);
         *fresh39 = null::<XML_Char>();
         i = 0;
         if nPrefixes != 0 {
@@ -4884,7 +4861,7 @@ extern "C" fn storeAtts(
                 loop {
                     let fresh40 = (*parser).m_nsAttsPower;
                     (*parser).m_nsAttsPower = (*parser).m_nsAttsPower.wrapping_add(1);
-                    if !(nPrefixes >> fresh40 as c_int != 0) {
+                    if nPrefixes >> fresh40 as c_int == 0  {
                         break;
                     }
                 }
@@ -4949,7 +4926,7 @@ extern "C" fn storeAtts(
                     j_0 = 0;
                     while j_0 < (*b).uriLen as c_uint {
                         let c: XML_Char = *(*b).uri.offset(j_0 as isize);
-                        if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                        if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                             && poolGrow(&raw mut (*parser).m_tempPool) == 0
                         {
                             0
@@ -4972,7 +4949,7 @@ extern "C" fn storeAtts(
                     loop {
                         let fresh42 = s;
                         s = s.offset(1);
-                        if !(*fresh42 as c_int != 0x3a) {
+                        if *fresh42 as c_int == 0x3a  {
                             break;
                         }
                     }
@@ -4982,7 +4959,7 @@ extern "C" fn storeAtts(
                         keylen(s).wrapping_mul(size_of::<XML_Char>()),
                     );
                     loop {
-                        if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                        if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                             && poolGrow(&raw mut (*parser).m_tempPool) == 0
                         {
                             0
@@ -4997,7 +4974,7 @@ extern "C" fn storeAtts(
                         }
                         let fresh44 = s;
                         s = s.offset(1);
-                        if !(*fresh44 != 0) {
+                        if *fresh44 == 0  {
                             break;
                         }
                     }
@@ -5019,7 +4996,7 @@ extern "C" fn storeAtts(
                             }
                         }
                         if step == 0 {
-                            step = ((uriHash & !mask) >> (*parser).m_nsAttsPower as c_int - 1i32
+                            step = ((uriHash & !mask) >> ((*parser).m_nsAttsPower as c_int - 1i32)
                                 & mask >> 2i32
                                 | 1u64) as c_uchar;
                         }
@@ -5033,8 +5010,7 @@ extern "C" fn storeAtts(
                         *(*parser).m_tempPool.ptr.offset(-1) = (*parser).m_namespaceSeparator;
                         s = (*(*b).prefix).name;
                         loop {
-                            if if (*parser).m_tempPool.ptr
-                                == (*parser).m_tempPool.end as *mut XML_Char
+                            if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                                 && poolGrow(&raw mut (*parser).m_tempPool) == 0
                             {
                                 0
@@ -5049,18 +5025,18 @@ extern "C" fn storeAtts(
                             }
                             let fresh46 = s;
                             s = s.offset(1);
-                            if !(*fresh46 != 0) {
+                            if *fresh46 == 0  {
                                 break;
                             }
                         }
                     }
                     s = (*parser).m_tempPool.start;
                     (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                    let ref mut fresh47 = *appAtts.offset(i as isize);
+                    let fresh47 = &mut *appAtts.offset(i as isize);
                     *fresh47 = s;
                     (*(*parser).m_nsAtts.offset(j_0 as isize)).version = version;
                     (*(*parser).m_nsAtts.offset(j_0 as isize)).hash = uriHash;
-                    let ref mut fresh48 = (*(*parser).m_nsAtts.offset(j_0 as isize)).uriName;
+                    let fresh48 = &mut (*(*parser).m_nsAtts.offset(j_0 as isize)).uriName;
                     *fresh48 = s;
                     nPrefixes -= 1;
                     if nPrefixes == 0 {
@@ -5094,7 +5070,7 @@ extern "C" fn storeAtts(
             loop {
                 let fresh49 = localPart;
                 localPart = localPart.offset(1);
-                if !(*fresh49 as c_int != 0x3a) {
+                if *fresh49 as c_int == 0x3a  {
                     break;
                 }
             }
@@ -5108,8 +5084,8 @@ extern "C" fn storeAtts(
         if (*parser).m_ns_triplets as c_int != 0 && !(*(*binding).prefix).name.is_null() {
             loop {
                 let fresh50 = prefixLen;
-                prefixLen = prefixLen + 1;
-                if !(*(*(*binding).prefix).name.offset(fresh50 as isize) != 0) {
+                prefixLen += 1;
+                if *(*(*binding).prefix).name.offset(fresh50 as isize) == 0  {
                     break;
                 }
             }
@@ -5121,8 +5097,8 @@ extern "C" fn storeAtts(
         i = 0;
         loop {
             let fresh51 = i;
-            i = i + 1;
-            if !(*localPart.offset(fresh51 as isize) != 0) {
+            i += 1;
+            if *localPart.offset(fresh51 as isize) == 0  {
                 break;
             }
         }
@@ -5156,7 +5132,7 @@ extern "C" fn storeAtts(
                 null_mut::<TAG>()
             };
             while !p.is_null() {
-                if (*p).name.str_0 == (*binding).uri as *const XML_Char {
+                if std::ptr::eq((*p).name.str_0, (*binding).uri) {
                     (*p).name.str_0 = uri;
                 }
                 p = if let Some(parent) = (*p).parent.as_mut() {
@@ -5184,7 +5160,7 @@ extern "C" fn storeAtts(
             );
         }
         (*tagNamePtr).str_0 = (*binding).uri;
-        return XML_ERROR_NONE;
+        XML_ERROR_NONE
     }
 }
 
@@ -5195,9 +5171,9 @@ extern "C" fn is_rfc3986_uri_char(mut candidate: XML_Char) -> XML_Bool {
         | 105 | 106 | 107 | 108 | 109 | 110 | 111 | 112 | 113 | 114 | 115 | 116 | 117 | 118
         | 119 | 120 | 121 | 122 | 48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 | 37 | 45
         | 46 | 95 | 126 | 58 | 47 | 63 | 35 | 91 | 93 | 64 | 33 | 36 | 38 | 39 | 40 | 41 | 42
-        | 43 | 44 | 59 | 61 => return XML_TRUE,
-        _ => return XML_FALSE,
-    };
+        | 43 | 44 | 59 | 61 => XML_TRUE,
+        _ => XML_FALSE,
+    }
 }
 
 extern "C" fn addBinding(
@@ -5410,7 +5386,7 @@ extern "C" fn addBinding(
                 },
             );
         }
-        return XML_ERROR_NONE;
+        XML_ERROR_NONE
     }
 }
 
@@ -5458,7 +5434,7 @@ extern "C" fn cdataSectionProcessor(
                 return contentProcessor(parser, start, end, endPtr);
             }
         }
-        return result;
+        result
     }
 }
 
@@ -5489,7 +5465,7 @@ extern "C" fn doCdataSection(
             let mut next: *const c_char = s;
             let mut tok: c_int = {
                 let (tok_value, next_tok_value) =
-                    (*enc).scanners[2](&*enc, c_char_slice_from_ptr_end(s, end));
+                    enc.scanners[2](enc, c_char_slice_from_ptr_end(s, end));
                 next = next_tok_value;
                 tok_value
             };
@@ -5535,7 +5511,7 @@ extern "C" fn doCdataSection(
                     let mut charDataHandler: XML_CharacterDataHandler =
                         (*parser).m_characterDataHandler;
                     if charDataHandler.is_some() {
-                        if (*enc).isUtf8 == 0 {
+                        if enc.isUtf8 == 0 {
                             loop {
                                 let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf;
                                 let convert_res: XML_Convert_Result;
@@ -5646,7 +5622,7 @@ extern "C" fn ignoreSectionProcessor(
             );
             return prologProcessor(parser, start, end, endPtr);
         }
-        return result;
+        result
     }
 }
 
@@ -5676,7 +5652,7 @@ extern "C" fn doIgnoreSection(
         *startPtr = null::<c_char>();
         tok = {
             let (tok_value, next_tok_value) =
-                (*enc).scanners[3](&*enc, c_char_slice_from_ptr_end(s, end));
+                enc.scanners[3](enc, c_char_slice_from_ptr_end(s, end));
             next = next_tok_value;
             tok_value
         };
@@ -5693,34 +5669,34 @@ extern "C" fn doIgnoreSection(
                 *startPtr = next;
                 *nextPtr = next;
                 if (*parser).m_parsingStatus.parsing == XML_FINISHED {
-                    return XML_ERROR_ABORTED;
+                    XML_ERROR_ABORTED
                 } else {
-                    return XML_ERROR_NONE;
+                    XML_ERROR_NONE
                 }
             }
             XML_TOK_INVALID => {
                 *eventPP = next;
-                return XML_ERROR_INVALID_TOKEN;
+                XML_ERROR_INVALID_TOKEN
             }
             XML_TOK_PARTIAL_CHAR => {
                 if haveMore != 0 {
                     *nextPtr = s;
                     return XML_ERROR_NONE;
                 }
-                return XML_ERROR_PARTIAL_CHAR;
+                XML_ERROR_PARTIAL_CHAR
             }
             XML_TOK_PARTIAL | XML_TOK_NONE => {
                 if haveMore != 0 {
                     *nextPtr = s;
                     return XML_ERROR_NONE;
                 }
-                return XML_ERROR_SYNTAX;
+                XML_ERROR_SYNTAX
             }
             _ => {
                 *eventPP = next;
-                return XML_ERROR_UNEXPECTED_STATE;
+                XML_ERROR_UNEXPECTED_STATE
             }
-        };
+        }
     }
 }
 
@@ -5747,7 +5723,7 @@ extern "C" fn initializeEncoding(mut parser: XML_Parser) -> XML_Error {
             (*parser).m_encoding = initEncoding;
             return XML_ERROR_NONE;
         }
-        return handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
+        handleUnknownEncoding(parser, (*parser).m_protocolEncodingName)
     }
 }
 
@@ -5881,7 +5857,7 @@ extern "C" fn processXmlDecl(
         if !storedEncName.is_null() || !storedversion.is_null() {
             poolClear(&raw mut (*parser).m_temp2Pool);
         }
-        return XML_ERROR_NONE;
+        XML_ERROR_NONE
     }
 }
 
@@ -5961,7 +5937,7 @@ extern "C" fn handleUnknownEncoding(
                 info.release.expect("non-null function pointer")(info.data);
             }
         }
-        return XML_ERROR_UNKNOWN_ENCODING;
+        XML_ERROR_UNKNOWN_ENCODING
     }
 }
 
@@ -5985,7 +5961,7 @@ extern "C" fn prologInitProcessor(
                     *mut *const c_char,
                 ) -> XML_Error,
         );
-        return prologProcessor(parser, s, end, nextPtr);
+        prologProcessor(parser, s, end, nextPtr)
     }
 }
 
@@ -6011,7 +5987,7 @@ extern "C" fn externalParEntInitProcessor(
                         *mut *const c_char,
                     ) -> XML_Error,
             );
-            return entityValueInitProcessor(parser, s, end, nextPtr);
+            entityValueInitProcessor(parser, s, end, nextPtr)
         } else {
             (*parser).m_processor = Some(
                 externalParEntProcessor
@@ -6022,8 +5998,8 @@ extern "C" fn externalParEntInitProcessor(
                         *mut *const c_char,
                     ) -> XML_Error,
             );
-            return externalParEntProcessor(parser, s, end, nextPtr);
-        };
+            externalParEntProcessor(parser, s, end, nextPtr)
+        }
     }
 }
 
@@ -6156,7 +6132,7 @@ extern "C" fn externalParEntProcessor(
                     *mut *const c_char,
                 ) -> XML_Error,
         );
-        return doProlog(
+        doProlog(
             parser,
             &*(*parser).m_encoding,
             s,
@@ -6167,7 +6143,7 @@ extern "C" fn externalParEntProcessor(
             ((*parser).m_parsingStatus.finalBuffer == 0) as XML_Bool,
             XML_TRUE,
             XML_ACCOUNT_DIRECT,
-        );
+        )
     }
 }
 
@@ -6185,7 +6161,7 @@ extern "C" fn entityValueProcessor(
         loop {
             tok = {
                 let (tok_value, next_tok_value) =
-                    (*enc).scanners[0](&*enc, c_char_slice_from_ptr_end(start, end));
+                    enc.scanners[0](enc, c_char_slice_from_ptr_end(start, end));
                 next = next_tok_value;
                 tok_value
             };
@@ -6230,7 +6206,7 @@ extern "C" fn prologProcessor(
             next = next_tok_value;
             tok_value
         };
-        return doProlog(
+        doProlog(
             parser,
             &*(*parser).m_encoding,
             s,
@@ -6241,7 +6217,7 @@ extern "C" fn prologProcessor(
             ((*parser).m_parsingStatus.finalBuffer == 0) as XML_Bool,
             XML_TRUE,
             XML_ACCOUNT_DIRECT,
-        );
+        )
     }
 }
 
@@ -6492,7 +6468,7 @@ extern "C" fn doProlog(
                         let mut is_public_id: c_int = 0;
                         let mut bad_ptr: *const c_char = null::<c_char>();
                         (is_public_id, bad_ptr) =
-                            (*enc).isPublicId(&*enc, c_char_slice_from_ptr_end(s, next));
+                            (*enc).isPublicId(enc, c_char_slice_from_ptr_end(s, next));
                         if is_public_id == 0 {
                             *eventPP = bad_ptr;
                             return XML_ERROR_PUBLICID;
@@ -6500,8 +6476,8 @@ extern "C" fn doProlog(
                         pubId = poolStoreString(
                             &raw mut (*parser).m_tempPool,
                             enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if pubId.is_null() {
                             return XML_ERROR_NO_MEMORY;
@@ -6750,8 +6726,7 @@ extern "C" fn doProlog(
                                 || *(*parser).m_declAttributeType as c_int == 0x4e
                                     && *(*parser).m_declAttributeType.offset(1) as c_int == 0x4f
                             {
-                                if (if (*parser).m_tempPool.ptr
-                                    == (*parser).m_tempPool.end as *mut XML_Char
+                                if (if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                                 {
                                     0
@@ -6761,8 +6736,7 @@ extern "C" fn doProlog(
                                     *fresh1 = 0x29i8;
                                     1
                                 }) == 0
-                                    || (if (*parser).m_tempPool.ptr
-                                        == (*parser).m_tempPool.end as *mut XML_Char
+                                    || (if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                                         && poolGrow(&raw mut (*parser).m_tempPool) == 0
                                     {
                                         0
@@ -6803,8 +6777,8 @@ extern "C" fn doProlog(
                             parser,
                             enc,
                             (*parser).m_declAttributeIsCdata,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                             &raw mut (*dtd).pool,
                             XML_ACCOUNT_NONE,
                         );
@@ -6831,8 +6805,7 @@ extern "C" fn doProlog(
                                 || *(*parser).m_declAttributeType as c_int == 0x4e
                                     && *(*parser).m_declAttributeType.offset(1) as c_int == 0x4f
                             {
-                                if (if (*parser).m_tempPool.ptr
-                                    == (*parser).m_tempPool.end as *mut XML_Char
+                                if (if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                                 {
                                     0
@@ -6842,8 +6815,7 @@ extern "C" fn doProlog(
                                     *fresh3 = 0x29i8;
                                     1
                                 }) == 0
-                                    || (if (*parser).m_tempPool.ptr
-                                        == (*parser).m_tempPool.end as *mut XML_Char
+                                    || (if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                                         && poolGrow(&raw mut (*parser).m_tempPool) == 0
                                     {
                                         0
@@ -6882,8 +6854,8 @@ extern "C" fn doProlog(
                         let mut result_2: XML_Error = callStoreEntityValue(
                             parser,
                             enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                             XML_ACCOUNT_NONE,
                         );
                         if !(*parser).m_declEntity.is_null() {
@@ -6927,8 +6899,8 @@ extern "C" fn doProlog(
                         (*parser).m_doctypeSysid = poolStoreString(
                             &raw mut (*parser).m_tempPool,
                             enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if (*parser).m_doctypeSysid.is_null() {
                             return XML_ERROR_NO_MEMORY;
@@ -7031,7 +7003,7 @@ extern "C" fn doProlog(
                     current_block = 8258632986558375165;
                 }
                 9 => {
-                    if (*enc).predefinedEntityName(&*enc, c_char_slice_from_ptr_end(s, next)) != 0 {
+                    if (*enc).predefinedEntityName(enc, c_char_slice_from_ptr_end(s, next)) != 0 {
                         (*parser).m_declEntity = null_mut::<ENTITY>();
                     } else if (*dtd).keepProcessing != 0 {
                         let mut name: *const XML_Char =
@@ -7124,7 +7096,7 @@ extern "C" fn doProlog(
                     let mut is_public_id: c_int = 0;
                     let mut bad_ptr: *const c_char = null::<c_char>();
                     (is_public_id, bad_ptr) =
-                        (*enc).isPublicId(&*enc, c_char_slice_from_ptr_end(s, next));
+                        (*enc).isPublicId(enc, c_char_slice_from_ptr_end(s, next));
                     if is_public_id == 0 {
                         *eventPP = bad_ptr;
                         return XML_ERROR_PUBLICID;
@@ -7133,8 +7105,8 @@ extern "C" fn doProlog(
                         let mut tem_0: *mut XML_Char = poolStoreString(
                             &raw mut (*parser).m_tempPool,
                             enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if tem_0.is_null() {
                             return XML_ERROR_NO_MEMORY;
@@ -7153,8 +7125,8 @@ extern "C" fn doProlog(
                         let mut systemId: *const XML_Char = poolStoreString(
                             &raw mut (*parser).m_tempPool,
                             enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if systemId.is_null() {
                             return XML_ERROR_NO_MEMORY;
@@ -7348,8 +7320,8 @@ extern "C" fn doProlog(
                         name_1 = poolStoreString(
                             &raw mut (*dtd).pool,
                             enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if name_1.is_null() {
                             return XML_ERROR_NO_MEMORY;
@@ -7573,11 +7545,8 @@ extern "C" fn doProlog(
                     current_block = 8258632986558375165;
                 }
                 0 => {
-                    match tok {
-                        XML_TOK_BOM => {
-                            handleDefault = XML_FALSE;
-                        }
-                        _ => {}
+                    if tok == XML_TOK_BOM {
+                        handleDefault = XML_FALSE;
                     }
                     current_block = 8258632986558375165;
                 }
@@ -7624,7 +7593,7 @@ extern "C" fn doProlog(
                     let mut is_public_id: c_int = 0;
                     let mut bad_ptr: *const c_char = null::<c_char>();
                     (is_public_id, bad_ptr) =
-                        (*enc).isPublicId(&*enc, c_char_slice_from_ptr_end(s, next));
+                        (*enc).isPublicId(enc, c_char_slice_from_ptr_end(s, next));
                     if is_public_id == 0 {
                         *eventPP = bad_ptr;
                         return XML_ERROR_PUBLICID;
@@ -7636,8 +7605,8 @@ extern "C" fn doProlog(
                         (*(*parser).m_declEntity).systemId = poolStoreString(
                             &raw mut (*dtd).pool,
                             enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            s.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if (*(*parser).m_declEntity).systemId.is_null() {
                             return XML_ERROR_NO_MEMORY;
@@ -7668,7 +7637,7 @@ extern "C" fn doProlog(
                         let mut nxt: *const c_char = if quant == XML_CQUANT_NONE {
                             next
                         } else {
-                            next.offset(-((*enc).minBytesPerChar as isize))
+                            next.offset(-(enc.minBytesPerChar as isize))
                         };
                         let mut myindex_0: c_int = nextScaffoldPart(parser);
                         if myindex_0 < 0 {
@@ -7681,13 +7650,13 @@ extern "C" fn doProlog(
                             return XML_ERROR_NO_MEMORY;
                         }
                         name_2 = (*el).name;
-                        let ref mut fresh5 = (*(*dtd).scaffold.offset(myindex_0 as isize)).name;
+                        let fresh5 = &mut (*(*dtd).scaffold.offset(myindex_0 as isize)).name;
                         *fresh5 = name_2;
                         nameLen = 0;
                         loop {
                             let fresh6 = nameLen;
                             nameLen = nameLen.wrapping_add(1);
-                            if !(*name_2.offset(fresh6 as isize) != 0) {
+                            if *name_2.add(fresh6) == 0  {
                                 break;
                             }
                         }
@@ -7735,30 +7704,26 @@ extern "C" fn doProlog(
                 }
                 _ => {}
             }
-            match current_block {
-                13941306361429013238 => {
-                    if (*dtd).keepProcessing as c_int != 0 && !(*parser).m_declEntity.is_null() {
-                        let mut tem: *mut XML_Char = poolStoreString(
-                            &raw mut (*dtd).pool,
-                            enc,
-                            s.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
-                        );
-                        if tem.is_null() {
-                            return XML_ERROR_NO_MEMORY;
-                        }
-                        normalizePublicId(tem);
-                        (*(*parser).m_declEntity).publicId = tem;
-                        (*dtd).pool.start = (*dtd).pool.ptr;
-                        if (*parser).m_entityDeclHandler.is_some()
-                            && role == XML_ROLE_ENTITY_PUBLIC_ID
-                        {
-                            handleDefault = XML_FALSE;
-                        }
+            if current_block == 13941306361429013238
+                && (*dtd).keepProcessing as c_int != 0 && !(*parser).m_declEntity.is_null() {
+                    let mut tem: *mut XML_Char = poolStoreString(
+                        &raw mut (*dtd).pool,
+                        enc,
+                        s.offset(enc.minBytesPerChar as isize),
+                        next.offset(-(enc.minBytesPerChar as isize)),
+                    );
+                    if tem.is_null() {
+                        return XML_ERROR_NO_MEMORY;
+                    }
+                    normalizePublicId(tem);
+                    (*(*parser).m_declEntity).publicId = tem;
+                    (*dtd).pool.start = (*dtd).pool.ptr;
+                    if (*parser).m_entityDeclHandler.is_some()
+                        && role == XML_ROLE_ENTITY_PUBLIC_ID
+                    {
+                        handleDefault = XML_FALSE;
                     }
                 }
-                _ => {}
-            }
             if handleDefault as c_int != 0 && (*parser).m_defaultHandler.is_some() {
                 reportDefault(parser, enc, s, next);
             }
@@ -7779,7 +7744,7 @@ extern "C" fn doProlog(
             s = next;
             tok = {
                 let (tok_value, next_tok_value) =
-                    (*enc).scanners[0](&*enc, c_char_slice_from_ptr_end(s, end));
+                    enc.scanners[0](enc, c_char_slice_from_ptr_end(s, end));
                 next = next_tok_value;
                 tok_value
             };
@@ -7955,7 +7920,7 @@ extern "C" fn processEntity(
         if type_0 == ENTITY_INTERNAL {
             triggerReenter(parser);
         }
-        return XML_ERROR_NONE;
+        XML_ERROR_NONE
     }
 }
 
@@ -8061,7 +8026,7 @@ extern "C" fn internalEntityProcessor(
             };
         }
         triggerReenter(parser);
-        return XML_ERROR_NONE;
+        XML_ERROR_NONE
     }
 }
 
@@ -8072,7 +8037,7 @@ extern "C" fn errorProcessor(
     mut _nextPtr: *mut *const c_char,
 ) -> XML_Error {
     unsafe {
-        return (*parser).m_errorCode;
+        (*parser).m_errorCode
     }
 }
 
@@ -8153,7 +8118,7 @@ extern "C" fn storeAttributeValue(
         {
             (*pool).ptr = (*pool).ptr.offset(-1);
         }
-        if if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(pool) == 0 {
+        if if std::ptr::eq((*pool).ptr, (*pool).end) && poolGrow(pool) == 0 {
             0
         } else {
             let fresh55 = (*pool).ptr;
@@ -8164,7 +8129,7 @@ extern "C" fn storeAttributeValue(
         {
             return XML_ERROR_NO_MEMORY;
         }
-        return XML_ERROR_NONE;
+        XML_ERROR_NONE
     }
 }
 
@@ -8184,7 +8149,7 @@ extern "C" fn appendAttributeValue(
             let mut next: *const c_char = ptr;
             let mut tok: c_int = {
                 let (tok_value, next_tok_value) =
-                    (*enc).literalScanners[0](&*enc, c_char_slice_from_ptr_end(ptr, end));
+                    enc.literalScanners[0](enc, c_char_slice_from_ptr_end(ptr, end));
                 next = next_tok_value;
                 tok_value
             };
@@ -8215,7 +8180,7 @@ extern "C" fn appendAttributeValue(
                 XML_TOK_CHAR_REF => {
                     let mut buf: [XML_Char; 4] = [0; 4];
                     let mut i: c_int = 0;
-                    let mut n: c_int = (*enc).charRefNumber(&*enc, ptr);
+                    let mut n: c_int = (*enc).charRefNumber(enc, ptr);
                     if n < 0 {
                         if core::ptr::eq(enc, &*(*parser).m_encoding) {
                             (*parser).m_eventPtr = ptr;
@@ -8232,7 +8197,7 @@ extern "C" fn appendAttributeValue(
                         n = XmlUtf8Encode(n, &raw mut buf as *mut c_char);
                         i = 0;
                         while i < n {
-                            if if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(pool) == 0
+                            if if std::ptr::eq((*pool).ptr, (*pool).end) && poolGrow(pool) == 0
                             {
                                 0
                             } else {
@@ -8256,7 +8221,7 @@ extern "C" fn appendAttributeValue(
                     current_block_70 = 18038362259723567392;
                 }
                 XML_TOK_TRAILING_CR => {
-                    next = ptr.offset((*enc).minBytesPerChar as isize);
+                    next = ptr.offset(enc.minBytesPerChar as isize);
                     current_block_70 = 1987954931741999833;
                 }
                 XML_TOK_ATTRIBUTE_VALUE_S | XML_TOK_DATA_NEWLINE => {
@@ -8269,8 +8234,8 @@ extern "C" fn appendAttributeValue(
                     let mut ch: XML_Char = (*enc).predefinedEntityName(
                         enc,
                         c_char_slice_from_ptr_end(
-                            ptr.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            ptr.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         ),
                     ) as XML_Char;
                     if ch != 0 {
@@ -8278,11 +8243,11 @@ extern "C" fn appendAttributeValue(
                             parser,
                             tok,
                             &raw mut ch,
-                            (&raw mut ch).offset(size_of::<XML_Char>() as isize),
+                            (&raw mut ch).add(size_of::<XML_Char>()),
                             6663,
                             XML_ACCOUNT_ENTITY_EXPANSION,
                         );
-                        if if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(pool) == 0 {
+                        if if std::ptr::eq((*pool).ptr, (*pool).end) && poolGrow(pool) == 0 {
                             0
                         } else {
                             let fresh58 = (*pool).ptr;
@@ -8297,8 +8262,8 @@ extern "C" fn appendAttributeValue(
                         name = poolStoreString(
                             &raw mut (*parser).m_temp2Pool,
                             enc,
-                            ptr.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
+                            ptr.offset(enc.minBytesPerChar as isize),
+                            next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if name.is_null() {
                             return XML_ERROR_NO_MEMORY;
@@ -8370,27 +8335,21 @@ extern "C" fn appendAttributeValue(
                     return XML_ERROR_UNEXPECTED_STATE;
                 }
             }
-            match current_block_70 {
-                1987954931741999833 => {
-                    if !(isCdata == 0
-                        && ((*pool).ptr.offset_from((*pool).start) as c_long == 0
-                            || *(*pool).ptr.offset(-1) as c_int == 0x20))
+            if current_block_70 == 1987954931741999833
+                && !(isCdata == 0
+                    && ((*pool).ptr.offset_from((*pool).start) as c_long == 0
+                        || *(*pool).ptr.offset(-1) as c_int == 0x20))
+                    && if std::ptr::eq((*pool).ptr, (*pool).end) && poolGrow(pool) == 0 {
+                        0
+                    } else {
+                        let fresh57 = (*pool).ptr;
+                        (*pool).ptr = (*pool).ptr.offset(1);
+                        *fresh57 = 0x20i8;
+                        1
+                    } == 0
                     {
-                        if if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(pool) == 0 {
-                            0
-                        } else {
-                            let fresh57 = (*pool).ptr;
-                            (*pool).ptr = (*pool).ptr.offset(1);
-                            *fresh57 = 0x20i8;
-                            1
-                        } == 0
-                        {
-                            return XML_ERROR_NO_MEMORY;
-                        }
+                        return XML_ERROR_NO_MEMORY;
                     }
-                }
-                _ => {}
-            }
             ptr = next;
         }
     }
@@ -8411,17 +8370,16 @@ extern "C" fn storeEntityValue(
         let mut result: XML_Error = XML_ERROR_NONE;
         let mut oldInEntityValue: c_int = (*parser).m_prologState.inEntityValue;
         (*parser).m_prologState.inEntityValue = 1;
-        if (*pool).blocks.is_null() {
-            if poolGrow(pool) == 0 {
+        if (*pool).blocks.is_null()
+            && poolGrow(pool) == 0 {
                 return XML_ERROR_NO_MEMORY;
             }
-        }
         let mut next: *const c_char = null::<c_char>();
         's_35: loop {
             next = entityTextPtr;
             let mut tok: c_int = {
-                let (tok_value, next_tok_value) = (*enc).literalScanners[1](
-                    &*enc,
+                let (tok_value, next_tok_value) = enc.literalScanners[1](
+                    enc,
                     c_char_slice_from_ptr_end(entityTextPtr, entityTextEnd),
                 );
                 next = next_tok_value;
@@ -8442,8 +8400,8 @@ extern "C" fn storeEntityValue(
                             name = poolStoreString(
                                 &raw mut (*parser).m_tempPool,
                                 enc,
-                                entityTextPtr.offset((*enc).minBytesPerChar as isize),
-                                next.offset(-((*enc).minBytesPerChar as isize)),
+                                entityTextPtr.offset(enc.minBytesPerChar as isize),
+                                next.offset(-(enc.minBytesPerChar as isize)),
                             );
                             if name.is_null() {
                                 result = XML_ERROR_NO_MEMORY;
@@ -8517,7 +8475,7 @@ extern "C" fn storeEntityValue(
                         }
                     }
                     XML_TOK_TRAILING_CR => {
-                        next = entityTextPtr.offset((*enc).minBytesPerChar as isize);
+                        next = entityTextPtr.offset(enc.minBytesPerChar as isize);
                         current_block = 14913579936405700701;
                     }
                     XML_TOK_DATA_NEWLINE => {
@@ -8526,7 +8484,7 @@ extern "C" fn storeEntityValue(
                     XML_TOK_CHAR_REF => {
                         let mut buf: [XML_Char; 4] = [0; 4];
                         let mut i: c_int = 0;
-                        let mut n: c_int = (*enc).charRefNumber(&*enc, entityTextPtr);
+                        let mut n: c_int = (*enc).charRefNumber(enc, entityTextPtr);
                         if n < 0 {
                             if core::ptr::eq(enc, &*(*parser).m_encoding) {
                                 (*parser).m_eventPtr = entityTextPtr;
@@ -8537,7 +8495,7 @@ extern "C" fn storeEntityValue(
                             n = XmlUtf8Encode(n, &raw mut buf as *mut c_char);
                             i = 0;
                             while i < n {
-                                if (*pool).end == (*pool).ptr as *const XML_Char
+                                if std::ptr::eq((*pool).end, (*pool).ptr)
                                     && poolGrow(pool) == 0
                                 {
                                     result = XML_ERROR_NO_MEMORY;
@@ -8574,18 +8532,15 @@ extern "C" fn storeEntityValue(
                         break;
                     }
                 }
-                match current_block {
-                    14913579936405700701 => {
-                        if (*pool).end == (*pool).ptr as *const XML_Char && poolGrow(pool) == 0 {
-                            result = XML_ERROR_NO_MEMORY;
-                            break;
-                        } else {
-                            let fresh72 = (*pool).ptr;
-                            (*pool).ptr = (*pool).ptr.offset(1);
-                            *fresh72 = 0xai8;
-                        }
+                if current_block == 14913579936405700701 {
+                    if std::ptr::eq((*pool).end, (*pool).ptr) && poolGrow(pool) == 0 {
+                        result = XML_ERROR_NO_MEMORY;
+                        break;
+                    } else {
+                        let fresh72 = (*pool).ptr;
+                        (*pool).ptr = (*pool).ptr.offset(1);
+                        *fresh72 = 0xai8;
                     }
-                    _ => {}
                 }
                 entityTextPtr = next;
             }
@@ -8594,7 +8549,7 @@ extern "C" fn storeEntityValue(
         if !nextPtr.is_null() {
             *nextPtr = next;
         }
-        return result;
+        result
     }
 }
 
@@ -8653,7 +8608,7 @@ extern "C" fn callStoreEntityValue(
                 break;
             }
         }
-        return result;
+        result
     }
 }
 
@@ -8686,7 +8641,7 @@ extern "C" fn normalizeLines(mut s: *mut XML_Char) {
                 p = p.offset(1);
                 *fresh9 = *fresh8;
             }
-            if !(*s != 0) {
+            if *s == 0  {
                 break;
             }
         }
@@ -8710,8 +8665,8 @@ extern "C" fn reportProcessingInstruction(
             }
             return 1i32;
         }
-        start = start.offset(((*enc).minBytesPerChar * 2i32) as isize);
-        tem = start.offset((*enc).nameLength(&*enc, start) as isize);
+        start = start.offset((enc.minBytesPerChar * 2i32) as isize);
+        tem = start.offset((*enc).nameLength(enc, start) as isize);
         target = poolStoreString(&raw mut (*parser).m_tempPool, enc, start, tem);
         if target.is_null() {
             return 0i32;
@@ -8720,8 +8675,8 @@ extern "C" fn reportProcessingInstruction(
         data = poolStoreString(
             &raw mut (*parser).m_tempPool,
             enc,
-            (*enc).skipS(&*enc, tem),
-            end.offset(-(((*enc).minBytesPerChar * 2i32) as isize)),
+            (*enc).skipS(enc, tem),
+            end.offset(-((enc.minBytesPerChar * 2i32) as isize)),
         );
         if data.is_null() {
             return 0i32;
@@ -8731,7 +8686,7 @@ extern "C" fn reportProcessingInstruction(
             .m_processingInstructionHandler
             .expect("non-null function pointer")((*parser).m_handlerArg, target, data);
         poolClear(&raw mut (*parser).m_tempPool);
-        return 1;
+        1
     }
 }
 
@@ -8752,8 +8707,8 @@ extern "C" fn reportComment(
         data = poolStoreString(
             &raw mut (*parser).m_tempPool,
             enc,
-            start.offset(((*enc).minBytesPerChar * 4i32) as isize),
-            end.offset(-(((*enc).minBytesPerChar * 3i32) as isize)),
+            start.offset((enc.minBytesPerChar * 4i32) as isize),
+            end.offset(-((enc.minBytesPerChar * 3i32) as isize)),
         );
         if data.is_null() {
             return 0i32;
@@ -8763,7 +8718,7 @@ extern "C" fn reportComment(
             .m_commentHandler
             .expect("non-null function pointer")((*parser).m_handlerArg, data);
         poolClear(&raw mut (*parser).m_tempPool);
-        return 1;
+        1
     }
 }
 
@@ -8774,7 +8729,7 @@ extern "C" fn reportDefault(
     mut end: *const c_char,
 ) {
     unsafe {
-        if (*enc).isUtf8 == 0 {
+        if enc.isUtf8 == 0 {
             let mut convert_res: XML_Convert_Result = XML_CONVERT_COMPLETED;
             let mut eventPP: *mut *const c_char = null_mut::<*const c_char>();
             let mut eventEndPP: *mut *const c_char = null_mut::<*const c_char>();
@@ -8830,7 +8785,7 @@ extern "C" fn defineAttribute(
             let mut i: c_int = 0;
             i = 0;
             while i < (*type_0).nDefaultAtts {
-                if attId == (*(*type_0).defaultAtts.offset(i as isize)).id as *mut ATTRIBUTE_ID {
+                if std::ptr::eq(attId, (*(*type_0).defaultAtts.offset(i as isize)).id) {
                     return 1i32;
                 }
                 i += 1;
@@ -8881,7 +8836,7 @@ extern "C" fn defineAttribute(
             (*attId).maybeTokenized = XML_TRUE;
         }
         (*type_0).nDefaultAtts += 1;
-        return 1;
+        1
     }
 }
 
@@ -8899,7 +8854,7 @@ extern "C" fn setElementTypePrefix(
                 let mut s: *const XML_Char = null::<XML_Char>();
                 s = (*elementType).name;
                 while s != name {
-                    if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
+                    if if std::ptr::eq((*dtd).pool.ptr, (*dtd).pool.end)
                         && poolGrow(&raw mut (*dtd).pool) == 0
                     {
                         0
@@ -8914,7 +8869,7 @@ extern "C" fn setElementTypePrefix(
                     }
                     s = s.offset(1);
                 }
-                if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
+                if if std::ptr::eq((*dtd).pool.ptr, (*dtd).pool.end)
                     && poolGrow(&raw mut (*dtd).pool) == 0
                 {
                     0
@@ -8936,7 +8891,7 @@ extern "C" fn setElementTypePrefix(
                 if prefix.is_null() {
                     return 0i32;
                 }
-                if (*prefix).name == (*dtd).pool.start as *const XML_Char {
+                if std::ptr::eq((*prefix).name, (*dtd).pool.start) {
                     (*dtd).pool.start = (*dtd).pool.ptr;
                 } else {
                     (*dtd).pool.ptr = (*dtd).pool.start;
@@ -8947,7 +8902,7 @@ extern "C" fn setElementTypePrefix(
                 name = name.offset(1);
             }
         }
-        return 1;
+        1
     }
 }
 
@@ -8961,7 +8916,7 @@ extern "C" fn getAttributeId(
         let dtd: *mut DTD = (*parser).m_dtd;
         let mut id: *mut ATTRIBUTE_ID = null_mut::<ATTRIBUTE_ID>();
         let mut name: *const XML_Char = null::<XML_Char>();
-        if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
+        if if std::ptr::eq((*dtd).pool.ptr, (*dtd).pool.end)
             && poolGrow(&raw mut (*dtd).pool) == 0
         {
             0
@@ -8988,11 +8943,11 @@ extern "C" fn getAttributeId(
         if id.is_null() {
             return null_mut::<ATTRIBUTE_ID>();
         }
-        if (*id).name != name as *mut XML_Char {
+        if !std::ptr::eq((*id).name, name) {
             (*dtd).pool.ptr = (*dtd).pool.start;
         } else {
             (*dtd).pool.start = (*dtd).pool.ptr;
-            if !((*parser).m_ns == 0) {
+            if (*parser).m_ns != 0  {
                 if *name.offset(0) as c_int == 0x78
                     && *name.offset(1) as c_int == 0x6d
                     && *name.offset(2) as c_int == 0x6c
@@ -9019,7 +8974,7 @@ extern "C" fn getAttributeId(
                             let mut j: c_int = 0;
                             j = 0;
                             while j < i {
-                                if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
+                                if if std::ptr::eq((*dtd).pool.ptr, (*dtd).pool.end)
                                     && poolGrow(&raw mut (*dtd).pool) == 0
                                 {
                                     0
@@ -9034,7 +8989,7 @@ extern "C" fn getAttributeId(
                                 }
                                 j += 1;
                             }
-                            if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
+                            if if std::ptr::eq((*dtd).pool.ptr, (*dtd).pool.end)
                                 && poolGrow(&raw mut (*dtd).pool) == 0
                             {
                                 0
@@ -9056,7 +9011,7 @@ extern "C" fn getAttributeId(
                             if (*id).prefix.is_null() {
                                 return null_mut::<ATTRIBUTE_ID>();
                             }
-                            if (*(*id).prefix).name == (*dtd).pool.start as *const XML_Char {
+                            if std::ptr::eq((*(*id).prefix).name, (*dtd).pool.start) {
                                 (*dtd).pool.start = (*dtd).pool.ptr;
                             } else {
                                 (*dtd).pool.ptr = (*dtd).pool.start;
@@ -9069,7 +9024,7 @@ extern "C" fn getAttributeId(
                 }
             }
         }
-        return id;
+        id
     }
 }
 
@@ -9086,7 +9041,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
         if !(*dtd).defaultPrefix.binding.is_null() {
             let mut i: c_int = 0;
             let mut len: c_int = 0;
-            if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+            if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                 && poolGrow(&raw mut (*parser).m_tempPool) == 0
             {
                 0
@@ -9105,7 +9060,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
             }
             i = 0;
             while i < len {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9135,7 +9090,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
                 continue;
             }
             if needSep as c_int != 0
-                && (if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                && (if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9150,7 +9105,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
             }
             s = (*prefix).name;
             while *s != 0 {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9165,7 +9120,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
                 }
                 s = s.offset(1);
             }
-            if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+            if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                 && poolGrow(&raw mut (*parser).m_tempPool) == 0
             {
                 0
@@ -9184,7 +9139,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
             }
             i_0 = 0;
             while i_0 < len_0 {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9212,7 +9167,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
                 continue;
             }
             if needSep as c_int != 0
-                && (if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                && (if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9227,7 +9182,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
             }
             s_0 = (*e).name;
             while *s_0 != 0 {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9244,7 +9199,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
             }
             needSep = XML_TRUE;
         }
-        if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+        if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
             && poolGrow(&raw mut (*parser).m_tempPool) == 0
         {
             0
@@ -9257,7 +9212,7 @@ extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
         {
             return null::<XML_Char>();
         }
-        return (*parser).m_tempPool.start;
+        (*parser).m_tempPool.start
     }
 }
 
@@ -9271,7 +9226,7 @@ extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -
         while *context as c_int != '\0' as i32 {
             if *s as c_int == 0xc || *s as c_int == '\0' as i32 {
                 let mut e: *mut ENTITY = null_mut::<ENTITY>();
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9308,7 +9263,7 @@ extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -
                 {
                     prefix = &raw mut (*dtd).defaultPrefix;
                 } else {
-                    if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                    if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                         && poolGrow(&raw mut (*parser).m_tempPool) == 0
                     {
                         0
@@ -9330,7 +9285,7 @@ extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -
                     if prefix.is_null() {
                         return XML_FALSE;
                     }
-                    if (*prefix).name == (*parser).m_tempPool.start as *const XML_Char {
+                    if std::ptr::eq((*prefix).name, (*parser).m_tempPool.start) {
                         (*prefix).name = poolCopyString(&raw mut (*dtd).pool, (*prefix).name);
                         if (*prefix).name.is_null() {
                             return XML_FALSE;
@@ -9340,7 +9295,7 @@ extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -
                 }
                 context = s.offset(1);
                 while *context as c_int != 0xc && *context as c_int != '\0' as i32 {
-                    if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                    if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                         && poolGrow(&raw mut (*parser).m_tempPool) == 0
                     {
                         0
@@ -9355,7 +9310,7 @@ extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -
                     }
                     context = context.offset(1);
                 }
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9384,7 +9339,7 @@ extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -
                 }
                 s = context;
             } else {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
+                if if std::ptr::eq((*parser).m_tempPool.ptr, (*parser).m_tempPool.end)
                     && poolGrow(&raw mut (*parser).m_tempPool) == 0
                 {
                     0
@@ -9400,7 +9355,7 @@ extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -
                 s = s.offset(1);
             }
         }
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 
@@ -9459,7 +9414,7 @@ extern "C" fn dtdCreate(mut parser: XML_Parser) -> *mut DTD {
         (*p).keepProcessing = XML_TRUE;
         (*p).hasParamEntityRefs = XML_FALSE;
         (*p).standalone = XML_FALSE;
-        return p;
+        p
     }
 }
 
@@ -9583,7 +9538,7 @@ extern "C" fn dtdCopy(
             if oldA.is_null() {
                 break;
             }
-            if if (*newDtd).pool.ptr == (*newDtd).pool.end as *mut XML_Char
+            if if std::ptr::eq((*newDtd).pool.ptr, (*newDtd).pool.end)
                 && poolGrow(&raw mut (*newDtd).pool) == 0
             {
                 0
@@ -9613,7 +9568,7 @@ extern "C" fn dtdCopy(
             (*newA).maybeTokenized = (*oldA).maybeTokenized;
             if !(*oldA).prefix.is_null() {
                 (*newA).xmlns = (*oldA).xmlns;
-                if (*oldA).prefix == &raw const (*oldDtd).defaultPrefix as *mut PREFIX {
+                if std::ptr::eq((*oldA).prefix, &raw const (*oldDtd).defaultPrefix) {
                     (*newA).prefix = &raw mut (*newDtd).defaultPrefix;
                 } else {
                     (*newA).prefix = lookup(
@@ -9678,7 +9633,7 @@ extern "C" fn dtdCopy(
             }
             i = 0;
             while i < (*newE).nDefaultAtts {
-                let ref mut fresh82 = (*(*newE).defaultAtts.offset(i as isize)).id;
+                let fresh82 = &mut (*(*newE).defaultAtts.offset(i as isize)).id;
                 *fresh82 = lookup(
                     oldParser,
                     &raw mut (*newDtd).attributeIds,
@@ -9688,7 +9643,7 @@ extern "C" fn dtdCopy(
                 (*(*newE).defaultAtts.offset(i as isize)).isCdata =
                     (*(*oldE).defaultAtts.offset(i as isize)).isCdata;
                 if !(*(*oldE).defaultAtts.offset(i as isize)).value.is_null() {
-                    let ref mut fresh83 = (*(*newE).defaultAtts.offset(i as isize)).value;
+                    let fresh83 = &mut (*(*newE).defaultAtts.offset(i as isize)).value;
                     *fresh83 = poolCopyString(
                         &raw mut (*newDtd).pool,
                         (*(*oldE).defaultAtts.offset(i as isize)).value,
@@ -9697,7 +9652,7 @@ extern "C" fn dtdCopy(
                         return 0i32;
                     }
                 } else {
-                    let ref mut fresh84 = (*(*newE).defaultAtts.offset(i as isize)).value;
+                    let fresh84 = &mut (*(*newE).defaultAtts.offset(i as isize)).value;
                     *fresh84 = null::<XML_Char>();
                 }
                 i += 1;
@@ -9731,7 +9686,7 @@ extern "C" fn dtdCopy(
         (*newDtd).scaffSize = (*oldDtd).scaffSize;
         (*newDtd).scaffLevel = (*oldDtd).scaffLevel;
         (*newDtd).scaffIndex = (*oldDtd).scaffIndex;
-        return 1;
+        1
     }
 }
 
@@ -9811,7 +9766,7 @@ extern "C" fn copyEntityTable(
             (*newE).is_param = (*oldE).is_param;
             (*newE).is_internal = (*oldE).is_internal;
         }
-        return 1;
+        1
     }
 }
 
@@ -9826,7 +9781,7 @@ extern "C" fn keyeq(mut s1: KEY, mut s2: KEY) -> XML_Bool {
             s1 = s1.offset(1);
             s2 = s2.offset(1);
         }
-        return XML_FALSE;
+        XML_FALSE
     }
 }
 
@@ -9837,7 +9792,7 @@ extern "C" fn keylen(mut s: KEY) -> size_t {
             s = s.offset(1);
             len = len.wrapping_add(1);
         }
-        return len;
+        len
     }
 }
 
@@ -9866,7 +9821,7 @@ extern "C" fn hash(mut parser: XML_Parser, mut s: KEY) -> c_ulong {
         s as *const c_void,
         keylen(s).wrapping_mul(size_of::<XML_Char>()),
     );
-    return sip24_final(&raw mut state);
+    sip24_final(&raw mut state)
 }
 
 extern "C" fn lookup(
@@ -9883,7 +9838,7 @@ extern "C" fn lookup(
             key.push(*key_cursor);
             key_cursor = key_cursor.offset(1);
         }
-        if let Some(&entry) = (&(*table).entries).get(&key) {
+        if let Some(&entry) = (*table).entries.get(&key) {
             return entry;
         }
         if createSize == 0 {
@@ -9897,15 +9852,15 @@ extern "C" fn lookup(
         }
         memset(entry as *mut c_void, 0 as c_int, createSize);
         (*entry).name = name;
-        (&mut (*table).entries).insert(key, entry);
-        return entry;
+        (*table).entries.insert(key, entry);
+        entry
     }
 }
 
 extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
     unsafe {
         let parser = (*table).parser;
-        for (_, entry) in (&mut (*table).entries).drain() {
+        for (_, entry) in (*table).entries.drain() {
             expat_free(parser, entry as *mut c_void, 7927 as c_int);
         }
     }
@@ -9953,7 +9908,7 @@ extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut NAMED {
         if let Some(&entry) = table.entries.values().nth(current_index) {
             return entry;
         }
-        return null_mut::<NAMED>();
+        null_mut::<NAMED>()
     }
 }
 
@@ -10018,7 +9973,7 @@ extern "C" fn poolAppend(
         loop {
             let convert_res: XML_Convert_Result;
             (convert_res, ptr, (*pool).ptr) =
-                (*enc).utf8Convert(&*enc, ptr, end, (*pool).ptr, (*pool).end);
+                (*enc).utf8Convert(enc, ptr, end, (*pool).ptr, (*pool).end);
             if convert_res == XML_CONVERT_COMPLETED || convert_res == XML_CONVERT_INPUT_INCOMPLETE {
                 break;
             }
@@ -10026,7 +9981,7 @@ extern "C" fn poolAppend(
                 return null_mut::<XML_Char>();
             }
         }
-        return (*pool).start;
+        (*pool).start
     }
 }
 
@@ -10036,7 +9991,7 @@ extern "C" fn poolCopyString(
 ) -> *const XML_Char {
     unsafe {
         loop {
-            if if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(pool) == 0 {
+            if if std::ptr::eq((*pool).ptr, (*pool).end) && poolGrow(pool) == 0 {
                 0
             } else {
                 let fresh59 = (*pool).ptr;
@@ -10049,13 +10004,13 @@ extern "C" fn poolCopyString(
             }
             let fresh60 = s;
             s = s.offset(1);
-            if !(*fresh60 != 0) {
+            if *fresh60 == 0  {
                 break;
             }
         }
         s = (*pool).start;
         (*pool).start = (*pool).ptr;
-        return s;
+        s
     }
 }
 
@@ -10069,7 +10024,7 @@ extern "C" fn poolCopyStringN(
             return null::<XML_Char>();
         }
         while n > 0 {
-            if if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(pool) == 0 {
+            if if std::ptr::eq((*pool).ptr, (*pool).end) && poolGrow(pool) == 0 {
                 0
             } else {
                 let fresh85 = (*pool).ptr;
@@ -10085,7 +10040,7 @@ extern "C" fn poolCopyStringN(
         }
         s = (*pool).start;
         (*pool).start = (*pool).ptr;
-        return s;
+        s
     }
 }
 
@@ -10095,7 +10050,7 @@ extern "C" fn poolAppendString(
 ) -> *const XML_Char {
     unsafe {
         while *s != 0 {
-            if if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(pool) == 0 {
+            if if std::ptr::eq((*pool).ptr, (*pool).end) && poolGrow(pool) == 0 {
                 0
             } else {
                 let fresh74 = (*pool).ptr;
@@ -10108,7 +10063,7 @@ extern "C" fn poolAppendString(
             }
             s = s.offset(1);
         }
-        return (*pool).start;
+        (*pool).start
     }
 }
 
@@ -10122,13 +10077,13 @@ extern "C" fn poolStoreString(
         if poolAppend(pool, enc, ptr, end).is_null() {
             return null_mut::<XML_Char>();
         }
-        if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(pool) == 0 {
+        if std::ptr::eq((*pool).ptr, (*pool).end) && poolGrow(pool) == 0 {
             return null_mut::<XML_Char>();
         }
         let fresh10 = (*pool).ptr;
         (*pool).ptr = (*pool).ptr.offset(1);
         *fresh10 = 0i8;
-        return (*pool).start;
+        (*pool).start
     }
 }
 
@@ -10146,7 +10101,7 @@ extern "C" fn poolBytesToAllocateFor(mut blockSize: c_int) -> size_t {
     if bytesToAllocate < 0 {
         return 0usize;
     }
-    return bytesToAllocate as size_t;
+    bytesToAllocate as size_t
 }
 
 extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> XML_Bool {
@@ -10249,7 +10204,7 @@ extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> XML_Bool {
             (*pool).start = &raw mut (*tem_0).s as *mut XML_Char;
             (*pool).end = (&raw mut (*tem_0).s as *mut XML_Char).offset(blockSize_0 as isize);
         }
-        return XML_TRUE;
+        XML_TRUE
     }
 }
 
@@ -10323,7 +10278,7 @@ extern "C" fn nextScaffoldPart(mut parser: XML_Parser) -> c_int {
         (*me).childcnt = (*me).nextsib;
         (*me).lastchild = (*me).childcnt;
         (*me).firstchild = (*me).lastchild;
-        return next;
+        next
     }
 }
 
@@ -10394,7 +10349,7 @@ extern "C" fn build_model(mut parser: XML_Parser) -> *mut XML_Content {
             }
             dest = dest.offset(1);
         }
-        return ret;
+        ret
     }
 }
 
@@ -10428,7 +10383,7 @@ extern "C" fn getElementType(
                 return null_mut::<ELEMENT_TYPE>();
             }
         }
-        return ret;
+        ret
     }
 }
 
@@ -10436,7 +10391,7 @@ extern "C" fn copyString(mut s: *const XML_Char, mut parser: XML_Parser) -> *mut
     unsafe {
         let mut charsRequired: size_t = 0;
         let mut result: *mut XML_Char = null_mut::<XML_Char>();
-        while *s.offset(charsRequired as isize) as c_int != 0 {
+        while *s.add(charsRequired) as c_int != 0 {
             charsRequired = charsRequired.wrapping_add(1);
         }
         charsRequired = charsRequired.wrapping_add(1);
@@ -10453,7 +10408,7 @@ extern "C" fn copyString(mut s: *const XML_Char, mut parser: XML_Parser) -> *mut
             s as *const c_void,
             charsRequired.wrapping_mul(size_of::<XML_Char>()),
         );
-        return result;
+        result
     }
 }
 
@@ -10472,7 +10427,7 @@ extern "C" fn accountingGetCurrentAmplification(mut rootParser: XML_Parser) -> c
                 / lenOfShortestInclude as c_float
         };
         assert!((*rootParser).m_parentParser.is_null());
-        return amplificationFactor;
+        amplificationFactor
     }
 }
 
@@ -10623,7 +10578,7 @@ extern "C" fn accountingDiffTolerated(
                 account,
             );
         }
-        return tolerated;
+        tolerated
     }
 }
 fn testingAccountingGetCountBytesDirect(mut parser: XML_Parser) -> c_ulonglong {
@@ -10631,7 +10586,7 @@ fn testingAccountingGetCountBytesDirect(mut parser: XML_Parser) -> c_ulonglong {
         if parser.is_null() {
             return 0u64;
         }
-        return (*parser).m_accounting.countBytesDirect;
+        (*parser).m_accounting.countBytesDirect
     }
 }
 
@@ -10648,7 +10603,7 @@ fn testingAccountingGetCountBytesIndirect(mut parser: XML_Parser) -> c_ulonglong
         if parser.is_null() {
             return 0u64;
         }
-        return (*parser).m_accounting.countBytesIndirect;
+        (*parser).m_accounting.countBytesIndirect
     }
 }
 
@@ -10754,272 +10709,272 @@ extern "C" fn getRootParserOf(mut parser: XML_Parser, mut outLevelDiff: *mut c_u
         if !outLevelDiff.is_null() {
             *outLevelDiff = stepsTakenUpwards;
         }
-        return rootParser;
+        rootParser
     }
 }
 fn unsignedCharToPrintable(mut c: c_uchar) -> *const c_char {
     match c as c_int {
-        0 => return b"\\0\0" as *const u8 as *const c_char,
-        1 => return b"\\x1\0" as *const u8 as *const c_char,
-        2 => return b"\\x2\0" as *const u8 as *const c_char,
-        3 => return b"\\x3\0" as *const u8 as *const c_char,
-        4 => return b"\\x4\0" as *const u8 as *const c_char,
-        5 => return b"\\x5\0" as *const u8 as *const c_char,
-        6 => return b"\\x6\0" as *const u8 as *const c_char,
-        7 => return b"\\x7\0" as *const u8 as *const c_char,
-        8 => return b"\\x8\0" as *const u8 as *const c_char,
-        9 => return b"\\t\0" as *const u8 as *const c_char,
-        10 => return b"\\n\0" as *const u8 as *const c_char,
-        11 => return b"\\xB\0" as *const u8 as *const c_char,
-        12 => return b"\\xC\0" as *const u8 as *const c_char,
-        13 => return b"\\r\0" as *const u8 as *const c_char,
-        14 => return b"\\xE\0" as *const u8 as *const c_char,
-        15 => return b"\\xF\0" as *const u8 as *const c_char,
-        16 => return b"\\x10\0" as *const u8 as *const c_char,
-        17 => return b"\\x11\0" as *const u8 as *const c_char,
-        18 => return b"\\x12\0" as *const u8 as *const c_char,
-        19 => return b"\\x13\0" as *const u8 as *const c_char,
-        20 => return b"\\x14\0" as *const u8 as *const c_char,
-        21 => return b"\\x15\0" as *const u8 as *const c_char,
-        22 => return b"\\x16\0" as *const u8 as *const c_char,
-        23 => return b"\\x17\0" as *const u8 as *const c_char,
-        24 => return b"\\x18\0" as *const u8 as *const c_char,
-        25 => return b"\\x19\0" as *const u8 as *const c_char,
-        26 => return b"\\x1A\0" as *const u8 as *const c_char,
-        27 => return b"\\x1B\0" as *const u8 as *const c_char,
-        28 => return b"\\x1C\0" as *const u8 as *const c_char,
-        29 => return b"\\x1D\0" as *const u8 as *const c_char,
-        30 => return b"\\x1E\0" as *const u8 as *const c_char,
-        31 => return b"\\x1F\0" as *const u8 as *const c_char,
-        32 => return b" \0" as *const u8 as *const c_char,
-        33 => return b"!\0" as *const u8 as *const c_char,
-        34 => return b"\\\"\0" as *const u8 as *const c_char,
-        35 => return b"#\0" as *const u8 as *const c_char,
-        36 => return b"$\0" as *const u8 as *const c_char,
-        37 => return b"%\0" as *const u8 as *const c_char,
-        38 => return b"&\0" as *const u8 as *const c_char,
-        39 => return b"'\0" as *const u8 as *const c_char,
-        40 => return b"(\0" as *const u8 as *const c_char,
-        41 => return b")\0" as *const u8 as *const c_char,
-        42 => return b"*\0" as *const u8 as *const c_char,
-        43 => return b"+\0" as *const u8 as *const c_char,
-        44 => return b",\0" as *const u8 as *const c_char,
-        45 => return b"-\0" as *const u8 as *const c_char,
-        46 => return b".\0" as *const u8 as *const c_char,
-        47 => return b"/\0" as *const u8 as *const c_char,
-        48 => return b"0\0" as *const u8 as *const c_char,
-        49 => return b"1\0" as *const u8 as *const c_char,
-        50 => return b"2\0" as *const u8 as *const c_char,
-        51 => return b"3\0" as *const u8 as *const c_char,
-        52 => return b"4\0" as *const u8 as *const c_char,
-        53 => return b"5\0" as *const u8 as *const c_char,
-        54 => return b"6\0" as *const u8 as *const c_char,
-        55 => return b"7\0" as *const u8 as *const c_char,
-        56 => return b"8\0" as *const u8 as *const c_char,
-        57 => return b"9\0" as *const u8 as *const c_char,
-        58 => return b":\0" as *const u8 as *const c_char,
-        59 => return b";\0" as *const u8 as *const c_char,
-        60 => return b"<\0" as *const u8 as *const c_char,
-        61 => return b"=\0" as *const u8 as *const c_char,
-        62 => return b">\0" as *const u8 as *const c_char,
-        63 => return b"?\0" as *const u8 as *const c_char,
-        64 => return b"@\0" as *const u8 as *const c_char,
-        65 => return b"A\0" as *const u8 as *const c_char,
-        66 => return b"B\0" as *const u8 as *const c_char,
-        67 => return b"C\0" as *const u8 as *const c_char,
-        68 => return b"D\0" as *const u8 as *const c_char,
-        69 => return b"E\0" as *const u8 as *const c_char,
-        70 => return b"F\0" as *const u8 as *const c_char,
-        71 => return b"G\0" as *const u8 as *const c_char,
-        72 => return b"H\0" as *const u8 as *const c_char,
-        73 => return b"I\0" as *const u8 as *const c_char,
-        74 => return b"J\0" as *const u8 as *const c_char,
-        75 => return b"K\0" as *const u8 as *const c_char,
-        76 => return b"L\0" as *const u8 as *const c_char,
-        77 => return b"M\0" as *const u8 as *const c_char,
-        78 => return b"N\0" as *const u8 as *const c_char,
-        79 => return b"O\0" as *const u8 as *const c_char,
-        80 => return b"P\0" as *const u8 as *const c_char,
-        81 => return b"Q\0" as *const u8 as *const c_char,
-        82 => return b"R\0" as *const u8 as *const c_char,
-        83 => return b"S\0" as *const u8 as *const c_char,
-        84 => return b"T\0" as *const u8 as *const c_char,
-        85 => return b"U\0" as *const u8 as *const c_char,
-        86 => return b"V\0" as *const u8 as *const c_char,
-        87 => return b"W\0" as *const u8 as *const c_char,
-        88 => return b"X\0" as *const u8 as *const c_char,
-        89 => return b"Y\0" as *const u8 as *const c_char,
-        90 => return b"Z\0" as *const u8 as *const c_char,
-        91 => return b"[\0" as *const u8 as *const c_char,
-        92 => return b"\\\\\0" as *const u8 as *const c_char,
-        93 => return b"]\0" as *const u8 as *const c_char,
-        94 => return b"^\0" as *const u8 as *const c_char,
-        95 => return b"_\0" as *const u8 as *const c_char,
-        96 => return b"`\0" as *const u8 as *const c_char,
-        97 => return b"a\0" as *const u8 as *const c_char,
-        98 => return b"b\0" as *const u8 as *const c_char,
-        99 => return b"c\0" as *const u8 as *const c_char,
-        100 => return b"d\0" as *const u8 as *const c_char,
-        101 => return b"e\0" as *const u8 as *const c_char,
-        102 => return b"f\0" as *const u8 as *const c_char,
-        103 => return b"g\0" as *const u8 as *const c_char,
-        104 => return b"h\0" as *const u8 as *const c_char,
-        105 => return b"i\0" as *const u8 as *const c_char,
-        106 => return b"j\0" as *const u8 as *const c_char,
-        107 => return b"k\0" as *const u8 as *const c_char,
-        108 => return b"l\0" as *const u8 as *const c_char,
-        109 => return b"m\0" as *const u8 as *const c_char,
-        110 => return b"n\0" as *const u8 as *const c_char,
-        111 => return b"o\0" as *const u8 as *const c_char,
-        112 => return b"p\0" as *const u8 as *const c_char,
-        113 => return b"q\0" as *const u8 as *const c_char,
-        114 => return b"r\0" as *const u8 as *const c_char,
-        115 => return b"s\0" as *const u8 as *const c_char,
-        116 => return b"t\0" as *const u8 as *const c_char,
-        117 => return b"u\0" as *const u8 as *const c_char,
-        118 => return b"v\0" as *const u8 as *const c_char,
-        119 => return b"w\0" as *const u8 as *const c_char,
-        120 => return b"x\0" as *const u8 as *const c_char,
-        121 => return b"y\0" as *const u8 as *const c_char,
-        122 => return b"z\0" as *const u8 as *const c_char,
-        123 => return b"{\0" as *const u8 as *const c_char,
-        124 => return b"|\0" as *const u8 as *const c_char,
-        125 => return b"}\0" as *const u8 as *const c_char,
-        126 => return b"~\0" as *const u8 as *const c_char,
-        127 => return b"\\x7F\0" as *const u8 as *const c_char,
-        128 => return b"\\x80\0" as *const u8 as *const c_char,
-        129 => return b"\\x81\0" as *const u8 as *const c_char,
-        130 => return b"\\x82\0" as *const u8 as *const c_char,
-        131 => return b"\\x83\0" as *const u8 as *const c_char,
-        132 => return b"\\x84\0" as *const u8 as *const c_char,
-        133 => return b"\\x85\0" as *const u8 as *const c_char,
-        134 => return b"\\x86\0" as *const u8 as *const c_char,
-        135 => return b"\\x87\0" as *const u8 as *const c_char,
-        136 => return b"\\x88\0" as *const u8 as *const c_char,
-        137 => return b"\\x89\0" as *const u8 as *const c_char,
-        138 => return b"\\x8A\0" as *const u8 as *const c_char,
-        139 => return b"\\x8B\0" as *const u8 as *const c_char,
-        140 => return b"\\x8C\0" as *const u8 as *const c_char,
-        141 => return b"\\x8D\0" as *const u8 as *const c_char,
-        142 => return b"\\x8E\0" as *const u8 as *const c_char,
-        143 => return b"\\x8F\0" as *const u8 as *const c_char,
-        144 => return b"\\x90\0" as *const u8 as *const c_char,
-        145 => return b"\\x91\0" as *const u8 as *const c_char,
-        146 => return b"\\x92\0" as *const u8 as *const c_char,
-        147 => return b"\\x93\0" as *const u8 as *const c_char,
-        148 => return b"\\x94\0" as *const u8 as *const c_char,
-        149 => return b"\\x95\0" as *const u8 as *const c_char,
-        150 => return b"\\x96\0" as *const u8 as *const c_char,
-        151 => return b"\\x97\0" as *const u8 as *const c_char,
-        152 => return b"\\x98\0" as *const u8 as *const c_char,
-        153 => return b"\\x99\0" as *const u8 as *const c_char,
-        154 => return b"\\x9A\0" as *const u8 as *const c_char,
-        155 => return b"\\x9B\0" as *const u8 as *const c_char,
-        156 => return b"\\x9C\0" as *const u8 as *const c_char,
-        157 => return b"\\x9D\0" as *const u8 as *const c_char,
-        158 => return b"\\x9E\0" as *const u8 as *const c_char,
-        159 => return b"\\x9F\0" as *const u8 as *const c_char,
-        160 => return b"\\xA0\0" as *const u8 as *const c_char,
-        161 => return b"\\xA1\0" as *const u8 as *const c_char,
-        162 => return b"\\xA2\0" as *const u8 as *const c_char,
-        163 => return b"\\xA3\0" as *const u8 as *const c_char,
-        164 => return b"\\xA4\0" as *const u8 as *const c_char,
-        165 => return b"\\xA5\0" as *const u8 as *const c_char,
-        166 => return b"\\xA6\0" as *const u8 as *const c_char,
-        167 => return b"\\xA7\0" as *const u8 as *const c_char,
-        168 => return b"\\xA8\0" as *const u8 as *const c_char,
-        169 => return b"\\xA9\0" as *const u8 as *const c_char,
-        170 => return b"\\xAA\0" as *const u8 as *const c_char,
-        171 => return b"\\xAB\0" as *const u8 as *const c_char,
-        172 => return b"\\xAC\0" as *const u8 as *const c_char,
-        173 => return b"\\xAD\0" as *const u8 as *const c_char,
-        174 => return b"\\xAE\0" as *const u8 as *const c_char,
-        175 => return b"\\xAF\0" as *const u8 as *const c_char,
-        176 => return b"\\xB0\0" as *const u8 as *const c_char,
-        177 => return b"\\xB1\0" as *const u8 as *const c_char,
-        178 => return b"\\xB2\0" as *const u8 as *const c_char,
-        179 => return b"\\xB3\0" as *const u8 as *const c_char,
-        180 => return b"\\xB4\0" as *const u8 as *const c_char,
-        181 => return b"\\xB5\0" as *const u8 as *const c_char,
-        182 => return b"\\xB6\0" as *const u8 as *const c_char,
-        183 => return b"\\xB7\0" as *const u8 as *const c_char,
-        184 => return b"\\xB8\0" as *const u8 as *const c_char,
-        185 => return b"\\xB9\0" as *const u8 as *const c_char,
-        186 => return b"\\xBA\0" as *const u8 as *const c_char,
-        187 => return b"\\xBB\0" as *const u8 as *const c_char,
-        188 => return b"\\xBC\0" as *const u8 as *const c_char,
-        189 => return b"\\xBD\0" as *const u8 as *const c_char,
-        190 => return b"\\xBE\0" as *const u8 as *const c_char,
-        191 => return b"\\xBF\0" as *const u8 as *const c_char,
-        192 => return b"\\xC0\0" as *const u8 as *const c_char,
-        193 => return b"\\xC1\0" as *const u8 as *const c_char,
-        194 => return b"\\xC2\0" as *const u8 as *const c_char,
-        195 => return b"\\xC3\0" as *const u8 as *const c_char,
-        196 => return b"\\xC4\0" as *const u8 as *const c_char,
-        197 => return b"\\xC5\0" as *const u8 as *const c_char,
-        198 => return b"\\xC6\0" as *const u8 as *const c_char,
-        199 => return b"\\xC7\0" as *const u8 as *const c_char,
-        200 => return b"\\xC8\0" as *const u8 as *const c_char,
-        201 => return b"\\xC9\0" as *const u8 as *const c_char,
-        202 => return b"\\xCA\0" as *const u8 as *const c_char,
-        203 => return b"\\xCB\0" as *const u8 as *const c_char,
-        204 => return b"\\xCC\0" as *const u8 as *const c_char,
-        205 => return b"\\xCD\0" as *const u8 as *const c_char,
-        206 => return b"\\xCE\0" as *const u8 as *const c_char,
-        207 => return b"\\xCF\0" as *const u8 as *const c_char,
-        208 => return b"\\xD0\0" as *const u8 as *const c_char,
-        209 => return b"\\xD1\0" as *const u8 as *const c_char,
-        210 => return b"\\xD2\0" as *const u8 as *const c_char,
-        211 => return b"\\xD3\0" as *const u8 as *const c_char,
-        212 => return b"\\xD4\0" as *const u8 as *const c_char,
-        213 => return b"\\xD5\0" as *const u8 as *const c_char,
-        214 => return b"\\xD6\0" as *const u8 as *const c_char,
-        215 => return b"\\xD7\0" as *const u8 as *const c_char,
-        216 => return b"\\xD8\0" as *const u8 as *const c_char,
-        217 => return b"\\xD9\0" as *const u8 as *const c_char,
-        218 => return b"\\xDA\0" as *const u8 as *const c_char,
-        219 => return b"\\xDB\0" as *const u8 as *const c_char,
-        220 => return b"\\xDC\0" as *const u8 as *const c_char,
-        221 => return b"\\xDD\0" as *const u8 as *const c_char,
-        222 => return b"\\xDE\0" as *const u8 as *const c_char,
-        223 => return b"\\xDF\0" as *const u8 as *const c_char,
-        224 => return b"\\xE0\0" as *const u8 as *const c_char,
-        225 => return b"\\xE1\0" as *const u8 as *const c_char,
-        226 => return b"\\xE2\0" as *const u8 as *const c_char,
-        227 => return b"\\xE3\0" as *const u8 as *const c_char,
-        228 => return b"\\xE4\0" as *const u8 as *const c_char,
-        229 => return b"\\xE5\0" as *const u8 as *const c_char,
-        230 => return b"\\xE6\0" as *const u8 as *const c_char,
-        231 => return b"\\xE7\0" as *const u8 as *const c_char,
-        232 => return b"\\xE8\0" as *const u8 as *const c_char,
-        233 => return b"\\xE9\0" as *const u8 as *const c_char,
-        234 => return b"\\xEA\0" as *const u8 as *const c_char,
-        235 => return b"\\xEB\0" as *const u8 as *const c_char,
-        236 => return b"\\xEC\0" as *const u8 as *const c_char,
-        237 => return b"\\xED\0" as *const u8 as *const c_char,
-        238 => return b"\\xEE\0" as *const u8 as *const c_char,
-        239 => return b"\\xEF\0" as *const u8 as *const c_char,
-        240 => return b"\\xF0\0" as *const u8 as *const c_char,
-        241 => return b"\\xF1\0" as *const u8 as *const c_char,
-        242 => return b"\\xF2\0" as *const u8 as *const c_char,
-        243 => return b"\\xF3\0" as *const u8 as *const c_char,
-        244 => return b"\\xF4\0" as *const u8 as *const c_char,
-        245 => return b"\\xF5\0" as *const u8 as *const c_char,
-        246 => return b"\\xF6\0" as *const u8 as *const c_char,
-        247 => return b"\\xF7\0" as *const u8 as *const c_char,
-        248 => return b"\\xF8\0" as *const u8 as *const c_char,
-        249 => return b"\\xF9\0" as *const u8 as *const c_char,
-        250 => return b"\\xFA\0" as *const u8 as *const c_char,
-        251 => return b"\\xFB\0" as *const u8 as *const c_char,
-        252 => return b"\\xFC\0" as *const u8 as *const c_char,
-        253 => return b"\\xFD\0" as *const u8 as *const c_char,
-        254 => return b"\\xFE\0" as *const u8 as *const c_char,
-        255 => return b"\\xFF\0" as *const u8 as *const c_char,
+        0 => b"\\0\0" as *const u8 as *const c_char,
+        1 => b"\\x1\0" as *const u8 as *const c_char,
+        2 => b"\\x2\0" as *const u8 as *const c_char,
+        3 => b"\\x3\0" as *const u8 as *const c_char,
+        4 => b"\\x4\0" as *const u8 as *const c_char,
+        5 => b"\\x5\0" as *const u8 as *const c_char,
+        6 => b"\\x6\0" as *const u8 as *const c_char,
+        7 => b"\\x7\0" as *const u8 as *const c_char,
+        8 => b"\\x8\0" as *const u8 as *const c_char,
+        9 => b"\\t\0" as *const u8 as *const c_char,
+        10 => b"\\n\0" as *const u8 as *const c_char,
+        11 => b"\\xB\0" as *const u8 as *const c_char,
+        12 => b"\\xC\0" as *const u8 as *const c_char,
+        13 => b"\\r\0" as *const u8 as *const c_char,
+        14 => b"\\xE\0" as *const u8 as *const c_char,
+        15 => b"\\xF\0" as *const u8 as *const c_char,
+        16 => b"\\x10\0" as *const u8 as *const c_char,
+        17 => b"\\x11\0" as *const u8 as *const c_char,
+        18 => b"\\x12\0" as *const u8 as *const c_char,
+        19 => b"\\x13\0" as *const u8 as *const c_char,
+        20 => b"\\x14\0" as *const u8 as *const c_char,
+        21 => b"\\x15\0" as *const u8 as *const c_char,
+        22 => b"\\x16\0" as *const u8 as *const c_char,
+        23 => b"\\x17\0" as *const u8 as *const c_char,
+        24 => b"\\x18\0" as *const u8 as *const c_char,
+        25 => b"\\x19\0" as *const u8 as *const c_char,
+        26 => b"\\x1A\0" as *const u8 as *const c_char,
+        27 => b"\\x1B\0" as *const u8 as *const c_char,
+        28 => b"\\x1C\0" as *const u8 as *const c_char,
+        29 => b"\\x1D\0" as *const u8 as *const c_char,
+        30 => b"\\x1E\0" as *const u8 as *const c_char,
+        31 => b"\\x1F\0" as *const u8 as *const c_char,
+        32 => b" \0" as *const u8 as *const c_char,
+        33 => b"!\0" as *const u8 as *const c_char,
+        34 => b"\\\"\0" as *const u8 as *const c_char,
+        35 => b"#\0" as *const u8 as *const c_char,
+        36 => b"$\0" as *const u8 as *const c_char,
+        37 => b"%\0" as *const u8 as *const c_char,
+        38 => b"&\0" as *const u8 as *const c_char,
+        39 => b"'\0" as *const u8 as *const c_char,
+        40 => b"(\0" as *const u8 as *const c_char,
+        41 => b")\0" as *const u8 as *const c_char,
+        42 => b"*\0" as *const u8 as *const c_char,
+        43 => b"+\0" as *const u8 as *const c_char,
+        44 => b",\0" as *const u8 as *const c_char,
+        45 => b"-\0" as *const u8 as *const c_char,
+        46 => b".\0" as *const u8 as *const c_char,
+        47 => b"/\0" as *const u8 as *const c_char,
+        48 => b"0\0" as *const u8 as *const c_char,
+        49 => b"1\0" as *const u8 as *const c_char,
+        50 => b"2\0" as *const u8 as *const c_char,
+        51 => b"3\0" as *const u8 as *const c_char,
+        52 => b"4\0" as *const u8 as *const c_char,
+        53 => b"5\0" as *const u8 as *const c_char,
+        54 => b"6\0" as *const u8 as *const c_char,
+        55 => b"7\0" as *const u8 as *const c_char,
+        56 => b"8\0" as *const u8 as *const c_char,
+        57 => b"9\0" as *const u8 as *const c_char,
+        58 => b":\0" as *const u8 as *const c_char,
+        59 => b";\0" as *const u8 as *const c_char,
+        60 => b"<\0" as *const u8 as *const c_char,
+        61 => b"=\0" as *const u8 as *const c_char,
+        62 => b">\0" as *const u8 as *const c_char,
+        63 => b"?\0" as *const u8 as *const c_char,
+        64 => b"@\0" as *const u8 as *const c_char,
+        65 => b"A\0" as *const u8 as *const c_char,
+        66 => b"B\0" as *const u8 as *const c_char,
+        67 => b"C\0" as *const u8 as *const c_char,
+        68 => b"D\0" as *const u8 as *const c_char,
+        69 => b"E\0" as *const u8 as *const c_char,
+        70 => b"F\0" as *const u8 as *const c_char,
+        71 => b"G\0" as *const u8 as *const c_char,
+        72 => b"H\0" as *const u8 as *const c_char,
+        73 => b"I\0" as *const u8 as *const c_char,
+        74 => b"J\0" as *const u8 as *const c_char,
+        75 => b"K\0" as *const u8 as *const c_char,
+        76 => b"L\0" as *const u8 as *const c_char,
+        77 => b"M\0" as *const u8 as *const c_char,
+        78 => b"N\0" as *const u8 as *const c_char,
+        79 => b"O\0" as *const u8 as *const c_char,
+        80 => b"P\0" as *const u8 as *const c_char,
+        81 => b"Q\0" as *const u8 as *const c_char,
+        82 => b"R\0" as *const u8 as *const c_char,
+        83 => b"S\0" as *const u8 as *const c_char,
+        84 => b"T\0" as *const u8 as *const c_char,
+        85 => b"U\0" as *const u8 as *const c_char,
+        86 => b"V\0" as *const u8 as *const c_char,
+        87 => b"W\0" as *const u8 as *const c_char,
+        88 => b"X\0" as *const u8 as *const c_char,
+        89 => b"Y\0" as *const u8 as *const c_char,
+        90 => b"Z\0" as *const u8 as *const c_char,
+        91 => b"[\0" as *const u8 as *const c_char,
+        92 => b"\\\\\0" as *const u8 as *const c_char,
+        93 => b"]\0" as *const u8 as *const c_char,
+        94 => b"^\0" as *const u8 as *const c_char,
+        95 => b"_\0" as *const u8 as *const c_char,
+        96 => b"`\0" as *const u8 as *const c_char,
+        97 => b"a\0" as *const u8 as *const c_char,
+        98 => b"b\0" as *const u8 as *const c_char,
+        99 => b"c\0" as *const u8 as *const c_char,
+        100 => b"d\0" as *const u8 as *const c_char,
+        101 => b"e\0" as *const u8 as *const c_char,
+        102 => b"f\0" as *const u8 as *const c_char,
+        103 => b"g\0" as *const u8 as *const c_char,
+        104 => b"h\0" as *const u8 as *const c_char,
+        105 => b"i\0" as *const u8 as *const c_char,
+        106 => b"j\0" as *const u8 as *const c_char,
+        107 => b"k\0" as *const u8 as *const c_char,
+        108 => b"l\0" as *const u8 as *const c_char,
+        109 => b"m\0" as *const u8 as *const c_char,
+        110 => b"n\0" as *const u8 as *const c_char,
+        111 => b"o\0" as *const u8 as *const c_char,
+        112 => b"p\0" as *const u8 as *const c_char,
+        113 => b"q\0" as *const u8 as *const c_char,
+        114 => b"r\0" as *const u8 as *const c_char,
+        115 => b"s\0" as *const u8 as *const c_char,
+        116 => b"t\0" as *const u8 as *const c_char,
+        117 => b"u\0" as *const u8 as *const c_char,
+        118 => b"v\0" as *const u8 as *const c_char,
+        119 => b"w\0" as *const u8 as *const c_char,
+        120 => b"x\0" as *const u8 as *const c_char,
+        121 => b"y\0" as *const u8 as *const c_char,
+        122 => b"z\0" as *const u8 as *const c_char,
+        123 => b"{\0" as *const u8 as *const c_char,
+        124 => b"|\0" as *const u8 as *const c_char,
+        125 => b"}\0" as *const u8 as *const c_char,
+        126 => b"~\0" as *const u8 as *const c_char,
+        127 => b"\\x7F\0" as *const u8 as *const c_char,
+        128 => b"\\x80\0" as *const u8 as *const c_char,
+        129 => b"\\x81\0" as *const u8 as *const c_char,
+        130 => b"\\x82\0" as *const u8 as *const c_char,
+        131 => b"\\x83\0" as *const u8 as *const c_char,
+        132 => b"\\x84\0" as *const u8 as *const c_char,
+        133 => b"\\x85\0" as *const u8 as *const c_char,
+        134 => b"\\x86\0" as *const u8 as *const c_char,
+        135 => b"\\x87\0" as *const u8 as *const c_char,
+        136 => b"\\x88\0" as *const u8 as *const c_char,
+        137 => b"\\x89\0" as *const u8 as *const c_char,
+        138 => b"\\x8A\0" as *const u8 as *const c_char,
+        139 => b"\\x8B\0" as *const u8 as *const c_char,
+        140 => b"\\x8C\0" as *const u8 as *const c_char,
+        141 => b"\\x8D\0" as *const u8 as *const c_char,
+        142 => b"\\x8E\0" as *const u8 as *const c_char,
+        143 => b"\\x8F\0" as *const u8 as *const c_char,
+        144 => b"\\x90\0" as *const u8 as *const c_char,
+        145 => b"\\x91\0" as *const u8 as *const c_char,
+        146 => b"\\x92\0" as *const u8 as *const c_char,
+        147 => b"\\x93\0" as *const u8 as *const c_char,
+        148 => b"\\x94\0" as *const u8 as *const c_char,
+        149 => b"\\x95\0" as *const u8 as *const c_char,
+        150 => b"\\x96\0" as *const u8 as *const c_char,
+        151 => b"\\x97\0" as *const u8 as *const c_char,
+        152 => b"\\x98\0" as *const u8 as *const c_char,
+        153 => b"\\x99\0" as *const u8 as *const c_char,
+        154 => b"\\x9A\0" as *const u8 as *const c_char,
+        155 => b"\\x9B\0" as *const u8 as *const c_char,
+        156 => b"\\x9C\0" as *const u8 as *const c_char,
+        157 => b"\\x9D\0" as *const u8 as *const c_char,
+        158 => b"\\x9E\0" as *const u8 as *const c_char,
+        159 => b"\\x9F\0" as *const u8 as *const c_char,
+        160 => b"\\xA0\0" as *const u8 as *const c_char,
+        161 => b"\\xA1\0" as *const u8 as *const c_char,
+        162 => b"\\xA2\0" as *const u8 as *const c_char,
+        163 => b"\\xA3\0" as *const u8 as *const c_char,
+        164 => b"\\xA4\0" as *const u8 as *const c_char,
+        165 => b"\\xA5\0" as *const u8 as *const c_char,
+        166 => b"\\xA6\0" as *const u8 as *const c_char,
+        167 => b"\\xA7\0" as *const u8 as *const c_char,
+        168 => b"\\xA8\0" as *const u8 as *const c_char,
+        169 => b"\\xA9\0" as *const u8 as *const c_char,
+        170 => b"\\xAA\0" as *const u8 as *const c_char,
+        171 => b"\\xAB\0" as *const u8 as *const c_char,
+        172 => b"\\xAC\0" as *const u8 as *const c_char,
+        173 => b"\\xAD\0" as *const u8 as *const c_char,
+        174 => b"\\xAE\0" as *const u8 as *const c_char,
+        175 => b"\\xAF\0" as *const u8 as *const c_char,
+        176 => b"\\xB0\0" as *const u8 as *const c_char,
+        177 => b"\\xB1\0" as *const u8 as *const c_char,
+        178 => b"\\xB2\0" as *const u8 as *const c_char,
+        179 => b"\\xB3\0" as *const u8 as *const c_char,
+        180 => b"\\xB4\0" as *const u8 as *const c_char,
+        181 => b"\\xB5\0" as *const u8 as *const c_char,
+        182 => b"\\xB6\0" as *const u8 as *const c_char,
+        183 => b"\\xB7\0" as *const u8 as *const c_char,
+        184 => b"\\xB8\0" as *const u8 as *const c_char,
+        185 => b"\\xB9\0" as *const u8 as *const c_char,
+        186 => b"\\xBA\0" as *const u8 as *const c_char,
+        187 => b"\\xBB\0" as *const u8 as *const c_char,
+        188 => b"\\xBC\0" as *const u8 as *const c_char,
+        189 => b"\\xBD\0" as *const u8 as *const c_char,
+        190 => b"\\xBE\0" as *const u8 as *const c_char,
+        191 => b"\\xBF\0" as *const u8 as *const c_char,
+        192 => b"\\xC0\0" as *const u8 as *const c_char,
+        193 => b"\\xC1\0" as *const u8 as *const c_char,
+        194 => b"\\xC2\0" as *const u8 as *const c_char,
+        195 => b"\\xC3\0" as *const u8 as *const c_char,
+        196 => b"\\xC4\0" as *const u8 as *const c_char,
+        197 => b"\\xC5\0" as *const u8 as *const c_char,
+        198 => b"\\xC6\0" as *const u8 as *const c_char,
+        199 => b"\\xC7\0" as *const u8 as *const c_char,
+        200 => b"\\xC8\0" as *const u8 as *const c_char,
+        201 => b"\\xC9\0" as *const u8 as *const c_char,
+        202 => b"\\xCA\0" as *const u8 as *const c_char,
+        203 => b"\\xCB\0" as *const u8 as *const c_char,
+        204 => b"\\xCC\0" as *const u8 as *const c_char,
+        205 => b"\\xCD\0" as *const u8 as *const c_char,
+        206 => b"\\xCE\0" as *const u8 as *const c_char,
+        207 => b"\\xCF\0" as *const u8 as *const c_char,
+        208 => b"\\xD0\0" as *const u8 as *const c_char,
+        209 => b"\\xD1\0" as *const u8 as *const c_char,
+        210 => b"\\xD2\0" as *const u8 as *const c_char,
+        211 => b"\\xD3\0" as *const u8 as *const c_char,
+        212 => b"\\xD4\0" as *const u8 as *const c_char,
+        213 => b"\\xD5\0" as *const u8 as *const c_char,
+        214 => b"\\xD6\0" as *const u8 as *const c_char,
+        215 => b"\\xD7\0" as *const u8 as *const c_char,
+        216 => b"\\xD8\0" as *const u8 as *const c_char,
+        217 => b"\\xD9\0" as *const u8 as *const c_char,
+        218 => b"\\xDA\0" as *const u8 as *const c_char,
+        219 => b"\\xDB\0" as *const u8 as *const c_char,
+        220 => b"\\xDC\0" as *const u8 as *const c_char,
+        221 => b"\\xDD\0" as *const u8 as *const c_char,
+        222 => b"\\xDE\0" as *const u8 as *const c_char,
+        223 => b"\\xDF\0" as *const u8 as *const c_char,
+        224 => b"\\xE0\0" as *const u8 as *const c_char,
+        225 => b"\\xE1\0" as *const u8 as *const c_char,
+        226 => b"\\xE2\0" as *const u8 as *const c_char,
+        227 => b"\\xE3\0" as *const u8 as *const c_char,
+        228 => b"\\xE4\0" as *const u8 as *const c_char,
+        229 => b"\\xE5\0" as *const u8 as *const c_char,
+        230 => b"\\xE6\0" as *const u8 as *const c_char,
+        231 => b"\\xE7\0" as *const u8 as *const c_char,
+        232 => b"\\xE8\0" as *const u8 as *const c_char,
+        233 => b"\\xE9\0" as *const u8 as *const c_char,
+        234 => b"\\xEA\0" as *const u8 as *const c_char,
+        235 => b"\\xEB\0" as *const u8 as *const c_char,
+        236 => b"\\xEC\0" as *const u8 as *const c_char,
+        237 => b"\\xED\0" as *const u8 as *const c_char,
+        238 => b"\\xEE\0" as *const u8 as *const c_char,
+        239 => b"\\xEF\0" as *const u8 as *const c_char,
+        240 => b"\\xF0\0" as *const u8 as *const c_char,
+        241 => b"\\xF1\0" as *const u8 as *const c_char,
+        242 => b"\\xF2\0" as *const u8 as *const c_char,
+        243 => b"\\xF3\0" as *const u8 as *const c_char,
+        244 => b"\\xF4\0" as *const u8 as *const c_char,
+        245 => b"\\xF5\0" as *const u8 as *const c_char,
+        246 => b"\\xF6\0" as *const u8 as *const c_char,
+        247 => b"\\xF7\0" as *const u8 as *const c_char,
+        248 => b"\\xF8\0" as *const u8 as *const c_char,
+        249 => b"\\xF9\0" as *const u8 as *const c_char,
+        250 => b"\\xFA\0" as *const u8 as *const c_char,
+        251 => b"\\xFB\0" as *const u8 as *const c_char,
+        252 => b"\\xFC\0" as *const u8 as *const c_char,
+        253 => b"\\xFD\0" as *const u8 as *const c_char,
+        254 => b"\\xFE\0" as *const u8 as *const c_char,
+        255 => b"\\xFF\0" as *const u8 as *const c_char,
         _ => {
             assert!(0 != 0);
-            return b"dead code\0" as *const u8 as *const c_char;
+            b"dead code\0" as *const u8 as *const c_char
         }
-    };
+    }
 }
 
 #[cfg(feature = "expat_test_shims")]
@@ -11042,12 +10997,12 @@ extern "C" fn getDebugLevel(
         let mut afterValue: *mut c_char = null_mut::<c_char>();
         let mut debugLevel: c_ulong = crate::stdlib::strtoul(value, &raw mut afterValue, 10);
         if *__errno_location() != 0
-            || afterValue == value as *mut c_char
+            || std::ptr::eq(afterValue, value)
             || *afterValue.offset(0) as c_int != '\0' as i32
         {
             *__errno_location() = 0;
             return defaultDebugLevel;
         }
-        return debugLevel;
+        debugLevel
     }
 }
