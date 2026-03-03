@@ -426,82 +426,83 @@ pub mod xmltok_impl_c {
     use core::ffi::c_uchar;
 
     pub(crate) fn normal_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_1: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 1 as c_long {
-                    if *ptr as c_int != 0x2d {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_1 XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(1);
-                    while end.offset_from(ptr) as c_long >= 1 as c_long {
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_1 XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(2isize);
+        let normal_enc = as_normal_encoding(enc);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let tok: c_int = 'iife_ret_1: {
+            let mut offset = 0usize;
+            let end = input.len();
+            if end >= 1 {
+                if input[offset] as c_int != 0x2d {
+                    next_tok = input.as_ptr().wrapping_add(offset);
+                    break 'iife_ret_1 XML_TOK_INVALID_1;
+                }
+                offset += 1;
+                while end - offset >= 1 {
+                    match normal_enc.type_0[input[offset] as c_uchar as usize] as c_uint {
+                        BT_LEAD2 => {
+                            if end - offset < 2 {
+                                break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_1 XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(3isize);
-                            }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_1 XML_TOK_INVALID_1;
-                                }
-                                ptr = ptr.offset(4isize);
-                            }
-                            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                                *nextTokPtr = ptr;
+                            let ptr = input[offset..].as_ptr();
+                            if normal_enc.isInvalid2(enc, ptr) != 0 {
+                                next_tok = ptr;
                                 break 'iife_ret_1 XML_TOK_INVALID_1;
                             }
-                            BT_MINUS => {
-                                ptr = ptr.offset(1);
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
+                            offset += 2;
+                        }
+                        BT_LEAD3 => {
+                            if end - offset < 3 {
+                                break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            let ptr = input[offset..].as_ptr();
+                            if normal_enc.isInvalid3(enc, ptr) != 0 {
+                                next_tok = ptr;
+                                break 'iife_ret_1 XML_TOK_INVALID_1;
+                            }
+                            offset += 3;
+                        }
+                        BT_LEAD4 => {
+                            if end - offset < 4 {
+                                break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
+                            }
+                            let ptr = input[offset..].as_ptr();
+                            if normal_enc.isInvalid4(enc, ptr) != 0 {
+                                next_tok = ptr;
+                                break 'iife_ret_1 XML_TOK_INVALID_1;
+                            }
+                            offset += 4;
+                        }
+                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                            next_tok = input.as_ptr().wrapping_add(offset);
+                            break 'iife_ret_1 XML_TOK_INVALID_1;
+                        }
+                        BT_MINUS => {
+                            offset += 1;
+                            if end - offset < 1 {
+                                break 'iife_ret_1 XML_TOK_PARTIAL_1;
+                            }
+                            if input[offset] as c_int == 0x2d {
+                                offset += 1;
+                                if end - offset < 1 {
                                     break 'iife_ret_1 XML_TOK_PARTIAL_1;
                                 }
-                                if *ptr as c_int == 0x2d {
-                                    ptr = ptr.offset(1);
-                                    if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                        break 'iife_ret_1 XML_TOK_PARTIAL_1;
-                                    }
-                                    if *ptr as c_int != 0x3e {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_1 XML_TOK_INVALID_1;
-                                    }
-                                    *nextTokPtr = ptr.offset(1);
-                                    break 'iife_ret_1 XML_TOK_COMMENT_1;
+                                if input[offset] as c_int != 0x3e {
+                                    next_tok = input.as_ptr().wrapping_add(offset);
+                                    break 'iife_ret_1 XML_TOK_INVALID_1;
                                 }
+                                next_tok = input.as_ptr().wrapping_add(offset + 1);
+                                break 'iife_ret_1 XML_TOK_COMMENT_1;
                             }
-                            _ => {
-                                ptr = ptr.offset(1isize);
-                            }
+                        }
+                        _ => {
+                            offset += 1;
                         }
                     }
                 }
-                break 'iife_ret_1 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_1 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
