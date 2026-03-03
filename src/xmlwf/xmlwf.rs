@@ -172,7 +172,7 @@ pub mod stdlib {
     pub type __off64_t = c_long;
 }
 #[allow(unused_imports)]
-use libexpat;
+
 
 pub use crate::__stddef_size_t_h::size_t;
 
@@ -401,10 +401,10 @@ extern "C" fn attributeValue(mut fp: *mut FILE, mut s: *const XML_Char) {
 
 extern "C" fn attcmp(mut att1: *const c_void, mut att2: *const c_void) -> c_int {
     unsafe {
-        return strcmp(
+        strcmp(
             *(att1 as *const *const XML_Char),
             *(att2 as *const *const XML_Char),
-        );
+        )
     }
 }
 
@@ -463,7 +463,7 @@ extern "C" fn nsattcmp(mut p1: *const c_void, mut p2: *const c_void) -> c_int {
         if sep1 != sep2 {
             return sep1 - sep2;
         }
-        return strcmp(att1, att2);
+        strcmp(att1, att2)
     }
 }
 
@@ -518,7 +518,7 @@ extern "C" fn startElementNS(
             attributeValue(fp, *atts);
             if !sep.is_null() {
                 let fresh2 = nsi;
-                nsi = nsi + 1;
+                nsi += 1;
                 fprintf(fp, b" xmlns:n%d\0" as *const u8 as *const c_char, fresh2);
                 attributeValue(fp, name);
             }
@@ -569,8 +569,8 @@ extern "C" fn xcsdup(mut s: *const XML_Char) -> *mut XML_Char {
         let mut numBytes: size_t = 0;
         loop {
             let fresh3 = count;
-            count = count + 1;
-            if !(*s.offset(fresh3 as isize) as c_int != 0) {
+            count += 1;
+            if *s.offset(fresh3 as isize) as c_int == 0 {
                 break;
             }
         }
@@ -580,7 +580,7 @@ extern "C" fn xcsdup(mut s: *const XML_Char) -> *mut XML_Char {
             return null_mut::<XML_Char>();
         }
         libexpat::stdlib::memcpy(result as *mut c_void, s as *const c_void, numBytes);
-        return result;
+        result
     }
 }
 
@@ -638,7 +638,7 @@ extern "C" fn xcscmp(mut xs: *const XML_Char, mut xt: *const XML_Char) -> c_int 
         if *xs as c_int > *xt as c_int {
             return 1i32;
         }
-        return 0;
+        0
     }
 }
 
@@ -646,7 +646,7 @@ extern "C" fn notationCmp(mut a: *const c_void, mut b: *const c_void) -> c_int {
     unsafe {
         let n1: *const NotationList = *(a as *const *const NotationList);
         let n2: *const NotationList = *(b as *const *const NotationList);
-        return xcscmp((*n1).notationName, (*n2).notationName);
+        xcscmp((*n1).notationName, (*n2).notationName)
     }
 }
 
@@ -662,7 +662,7 @@ extern "C" fn endDoctypeDecl(mut userData: *mut c_void) {
             notationCount += 1;
             p = (*p).next;
         }
-        if !(notationCount == 0) {
+        if notationCount != 0 {
             notations =
                 malloc((notationCount as size_t).wrapping_mul(size_of::<*mut NotationList>()))
                     as *mut *mut NotationList;
@@ -675,7 +675,7 @@ extern "C" fn endDoctypeDecl(mut userData: *mut c_void) {
                 p = (*data).notationListHead;
                 i = 0;
                 while i < notationCount {
-                    let ref mut fresh4 = *notations.offset(i as isize);
+                    let fresh4 = &mut (*notations.offset(i as isize));
                     *fresh4 = p;
                     p = (*p).next;
                     i += 1;
@@ -1194,7 +1194,7 @@ extern "C" fn metaEndNamespaceDecl(mut userData: *mut c_void, mut prefix: *const
 
 extern "C" fn unknownEncodingConvert(mut data: *mut c_void, mut p: *const c_char) -> c_int {
     unsafe {
-        return libexpat::src::xmlwf::codepage::codepageConvert(*(data as *mut c_int), p);
+        libexpat::src::xmlwf::codepage::codepageConvert(*(data as *mut c_int), p)
     }
 }
 
@@ -1253,12 +1253,12 @@ extern "C" fn unknownEncoding(
             return 0i32;
         }
         *((*info).data as *mut c_int) = cp;
-        return 1;
+        1
     }
 }
 
 extern "C" fn notStandalone(mut _userData: *mut c_void) -> c_int {
-    return 0;
+    0
 }
 
 extern "C" fn showVersion(mut prog: *mut XML_Char) {
@@ -1268,7 +1268,7 @@ extern "C" fn showVersion(mut prog: *mut XML_Char) {
         let mut features: *const XML_Feature = XML_GetFeatureList();
         loop {
             ch = *s;
-            if !(ch as c_int != 0) {
+            if ch as c_int == 0 {
                 break;
             }
             if ch as c_int == '/' as i32 {
@@ -1707,7 +1707,7 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
                     exitCode = XMLWF_EXIT_OUTPUT_ERROR as c_int;
                     free(outName as *mut c_void);
                     XML_ParserFree(parser);
-                    if !(continueOnError != 0) {
+                    if continueOnError == 0 {
                         break;
                     }
                     current_block_219 = 15947798178928648489;
@@ -2015,7 +2015,7 @@ fn main_0(mut argc: c_int, mut argv: *mut *mut XML_Char) -> c_int {
             }
             i += 1;
         }
-        return exitCode;
+        exitCode
     }
 }
 pub fn main() {
