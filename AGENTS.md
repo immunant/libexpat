@@ -15,7 +15,7 @@
         + preserve `#[repr(C)]` layouts and field order for C-facing types,
         + avoid unwinding across FFI boundaries
     + pass the test suite,
-    + pass formatting checks
+    + pass formatting checks (rustfmt reflow is allowed)
 - Each commit message should clearly summarize the changes made.
 
 ## Build
