@@ -3858,11 +3858,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if c_char_ptr_diff(end, ptr) >= 2 as c_long {
                 if !(read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x2d) {
@@ -3938,10 +3935,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
@@ -4083,10 +4078,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut tok: c_int = 0;
@@ -4301,11 +4294,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             pub static CDATA_LSQB: [c_char; 6] = [
                 ASCII_C as c_char,
@@ -4343,11 +4332,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if ptr >= end {
                 break 'iife_ret_26 XML_TOK_NONE_1;
@@ -4482,11 +4468,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                 break 'iife_ret_27 XML_TOK_PARTIAL_1;
@@ -4641,11 +4624,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if c_char_ptr_diff(end, ptr) >= 2 as c_long {
                 match if read_ptr_at(ptr, 1) as c_int == 0 {
@@ -4691,10 +4671,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if c_char_ptr_diff(end, ptr) >= 2 as c_long {
@@ -4751,10 +4729,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
@@ -4892,10 +4868,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut hadColon: c_int = 0;
@@ -5279,10 +5253,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut hadColon: c_int = 0;
@@ -5642,10 +5614,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if ptr >= end {
@@ -5840,11 +5810,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                 break 'iife_ret_34 XML_TOK_PARTIAL_1;
@@ -5975,11 +5942,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                 break 'iife_ret_35 XML_TOK_PARTIAL_1;
@@ -6110,11 +6074,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             while c_char_ptr_diff(end, ptr) >= 2 as c_long {
                 let mut t: c_int = if read_ptr_at(ptr, 1) as c_int == 0 {
@@ -6183,10 +6144,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut tok: c_int = 0;
@@ -6645,10 +6604,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut start: usize = 0;
@@ -6746,10 +6703,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut start: usize = 0;
@@ -6854,11 +6809,8 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
             let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut level: c_int = 0;
             {
@@ -6954,11 +6906,8 @@ pub mod xmltok_impl_c {
         let mut ptr = 0usize;
         let mut end = input.len();
         let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-        #[allow(unused_variables)]
         let read_ptr = |ptr: usize| input[ptr];
         let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-        #[allow(unused_variables)]
-        let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
         let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
         ptr = ptr.wrapping_offset(2);
         end = end.wrapping_offset(-(2));
@@ -7428,11 +7377,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if c_char_ptr_diff(end, ptr) >= 2 as c_long {
                 if !(read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x2d) {
@@ -7509,10 +7454,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
@@ -7655,10 +7597,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut tok: c_int = 0;
@@ -7875,11 +7814,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             pub static CDATA_LSQB: [c_char; 6] = [
                 ASCII_C as c_char,
@@ -7917,11 +7852,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if ptr >= end {
                 break 'iife_ret_46 XML_TOK_NONE_1;
@@ -8058,11 +7989,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                 break 'iife_ret_47 XML_TOK_PARTIAL_1;
@@ -8219,11 +8146,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if c_char_ptr_diff(end, ptr) >= 2 as c_long {
                 match if read_ptr_at(ptr, 0) as c_int == 0 {
@@ -8271,10 +8194,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if c_char_ptr_diff(end, ptr) >= 2 as c_long {
@@ -8333,10 +8253,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
@@ -8475,10 +8392,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut hadColon: c_int = 0;
@@ -8866,10 +8780,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut hadColon: c_int = 0;
@@ -9232,10 +9143,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if ptr >= end {
@@ -9432,11 +9340,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                 break 'iife_ret_54 XML_TOK_PARTIAL_1;
@@ -9568,11 +9472,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                 break 'iife_ret_55 XML_TOK_PARTIAL_1;
@@ -9700,11 +9600,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             while c_char_ptr_diff(end, ptr) >= 2 as c_long {
                 let mut t: c_int = if read_ptr_at(ptr, 0) as c_int == 0 {
@@ -9774,10 +9670,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut tok: c_int = 0;
@@ -10239,10 +10132,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut start: usize = 0;
@@ -10342,10 +10232,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
             let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut start: usize = 0;
@@ -10452,11 +10339,7 @@ pub mod xmltok_impl_c {
             let mut ptr = 0usize;
             let mut end = input.len();
             let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-            #[allow(unused_variables)]
-            let read_ptr = |ptr: usize| input[ptr];
             let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-            #[allow(unused_variables)]
-            let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
             let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
             let mut level: c_int = 0;
             {
@@ -10553,11 +10436,7 @@ pub mod xmltok_impl_c {
         let mut ptr = 0usize;
         let mut end = input.len();
         let c_char_ptr_diff = |end: usize, start: usize| end.wrapping_sub(start) as c_long;
-        #[allow(unused_variables)]
-        let read_ptr = |ptr: usize| input[ptr];
         let read_ptr_at = |ptr: usize, offset: isize| input[ptr.wrapping_offset(offset)];
-        #[allow(unused_variables)]
-        let c_char_slice_from_ptr_end = |ptr: usize, end: usize| &input[ptr..end];
         let ptr_to = |ptr: usize| input.as_ptr().wrapping_add(ptr);
         ptr = ptr.wrapping_offset(2);
         end = end.wrapping_offset(-(2));
