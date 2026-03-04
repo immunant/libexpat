@@ -522,8 +522,9 @@ pub mod xmltok_impl_c {
                             if end - offset < 2 {
                                 break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            let ptr = input[offset..].as_ptr();
-                            if normal_enc.isInvalid2(enc, ptr) != 0 {
+                            let input_tail = &input[offset..];
+                            let ptr = input_tail.as_ptr();
+                            if normal_enc.isInvalid2(enc, input_tail) != 0 {
                                 next_tok = ptr;
                                 break 'iife_ret_1 XML_TOK_INVALID_1;
                             }
@@ -533,8 +534,9 @@ pub mod xmltok_impl_c {
                             if end - offset < 3 {
                                 break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            let ptr = input[offset..].as_ptr();
-                            if normal_enc.isInvalid3(enc, ptr) != 0 {
+                            let input_tail = &input[offset..];
+                            let ptr = input_tail.as_ptr();
+                            if normal_enc.isInvalid3(enc, input_tail) != 0 {
                                 next_tok = ptr;
                                 break 'iife_ret_1 XML_TOK_INVALID_1;
                             }
@@ -544,8 +546,9 @@ pub mod xmltok_impl_c {
                             if end - offset < 4 {
                                 break 'iife_ret_1 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            let ptr = input[offset..].as_ptr();
-                            if normal_enc.isInvalid4(enc, ptr) != 0 {
+                            let input_tail = &input[offset..];
+                            let ptr = input_tail.as_ptr();
+                            if normal_enc.isInvalid4(enc, input_tail) != 0 {
                                 next_tok = ptr;
                                 break 'iife_ret_1 XML_TOK_INVALID_1;
                             }
@@ -716,8 +719,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt2(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_4 XML_TOK_INVALID_1;
@@ -729,8 +732,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt3(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_4 XML_TOK_INVALID_1;
@@ -742,8 +745,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt4(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_4 XML_TOK_INVALID_1;
@@ -773,8 +776,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName2(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_4 XML_TOK_INVALID_1;
@@ -786,8 +789,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName3(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_4 XML_TOK_INVALID_1;
@@ -799,8 +802,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName4(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_4 XML_TOK_INVALID_1;
@@ -828,8 +831,7 @@ pub mod xmltok_impl_c {
                                     if end - offset < 2 {
                                         break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid2(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..])
                                         != 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -841,8 +843,7 @@ pub mod xmltok_impl_c {
                                     if end - offset < 3 {
                                         break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid3(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..])
                                         != 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -854,8 +855,7 @@ pub mod xmltok_impl_c {
                                     if end - offset < 4 {
                                         break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid4(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..])
                                         != 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -1007,7 +1007,7 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_6 XML_TOK_INVALID_1;
                     }
@@ -1017,7 +1017,7 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_6 XML_TOK_INVALID_1;
                     }
@@ -1027,7 +1027,7 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_6 XML_TOK_INVALID_1;
                     }
@@ -1045,8 +1045,7 @@ pub mod xmltok_impl_c {
                 match as_normal_encoding(enc).type_0[input[offset] as c_uchar as usize] as c_uint {
                     BT_LEAD2 => {
                         if end - offset < 2
-                            || as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr())
-                                != 0
+                            || as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
@@ -1055,8 +1054,7 @@ pub mod xmltok_impl_c {
                     }
                     BT_LEAD3 => {
                         if end - offset < 3
-                            || as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr())
-                                != 0
+                            || as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
@@ -1065,8 +1063,7 @@ pub mod xmltok_impl_c {
                     }
                     BT_LEAD4 => {
                         if end - offset < 4
-                            || as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr())
-                                != 0
+                            || as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
@@ -1110,8 +1107,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt2(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_7 XML_TOK_INVALID_1;
@@ -1123,8 +1120,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt3(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_7 XML_TOK_INVALID_1;
@@ -1136,8 +1133,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt4(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_7 XML_TOK_INVALID_1;
@@ -1167,8 +1164,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName2(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_7 XML_TOK_INVALID_1;
@@ -1180,8 +1177,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName3(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_7 XML_TOK_INVALID_1;
@@ -1193,8 +1190,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName4(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_7 XML_TOK_INVALID_1;
@@ -1348,8 +1345,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt2(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_10 XML_TOK_INVALID_1;
@@ -1361,8 +1358,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt3(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_10 XML_TOK_INVALID_1;
@@ -1374,8 +1371,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt4(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_10 XML_TOK_INVALID_1;
@@ -1413,8 +1410,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName2(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_10 XML_TOK_INVALID_1;
@@ -1426,8 +1423,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName3(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_10 XML_TOK_INVALID_1;
@@ -1439,8 +1436,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName4(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_10 XML_TOK_INVALID_1;
@@ -1487,8 +1484,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName2(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_11 XML_TOK_INVALID_1;
@@ -1500,8 +1497,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName3(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_11 XML_TOK_INVALID_1;
@@ -1513,8 +1510,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName4(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_11 XML_TOK_INVALID_1;
@@ -1547,11 +1544,8 @@ pub mod xmltok_impl_c {
                                 if end - offset < 2 {
                                     break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr())
-                                    != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt2(enc, input[offset..].as_ptr())
-                                        == 0
+                                if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                                    || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) == 0
                                 {
                                     *nextTokPtr = input.as_ptr().wrapping_add(offset);
                                     break 'iife_ret_11 XML_TOK_INVALID_1;
@@ -1563,11 +1557,8 @@ pub mod xmltok_impl_c {
                                 if end - offset < 3 {
                                     break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr())
-                                    != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt3(enc, input[offset..].as_ptr())
-                                        == 0
+                                if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                                    || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) == 0
                                 {
                                     *nextTokPtr = input.as_ptr().wrapping_add(offset);
                                     break 'iife_ret_11 XML_TOK_INVALID_1;
@@ -1579,11 +1570,8 @@ pub mod xmltok_impl_c {
                                 if end - offset < 4 {
                                     break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr())
-                                    != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt4(enc, input[offset..].as_ptr())
-                                        == 0
+                                if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                                    || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) == 0
                                 {
                                     *nextTokPtr = input.as_ptr().wrapping_add(offset);
                                     break 'iife_ret_11 XML_TOK_INVALID_1;
@@ -1669,8 +1657,7 @@ pub mod xmltok_impl_c {
                                     if end - offset < 2 {
                                         break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid2(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..])
                                         != 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -1682,8 +1669,7 @@ pub mod xmltok_impl_c {
                                     if end - offset < 3 {
                                         break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid3(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..])
                                         != 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -1695,8 +1681,7 @@ pub mod xmltok_impl_c {
                                     if end - offset < 4 {
                                         break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid4(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..])
                                         != 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -1762,10 +1747,10 @@ pub mod xmltok_impl_c {
                                                 break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                             }
                                             if as_normal_encoding(enc)
-                                                .isInvalid2(enc, input[offset..].as_ptr())
+                                                .isInvalid2(enc, &input[offset..])
                                                 != 0
                                                 || as_normal_encoding(enc)
-                                                    .isNmstrt2(enc, input[offset..].as_ptr())
+                                                    .isNmstrt2(enc, &input[offset..])
                                                     == 0
                                             {
                                                 *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -1780,10 +1765,10 @@ pub mod xmltok_impl_c {
                                                 break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                             }
                                             if as_normal_encoding(enc)
-                                                .isInvalid3(enc, input[offset..].as_ptr())
+                                                .isInvalid3(enc, &input[offset..])
                                                 != 0
                                                 || as_normal_encoding(enc)
-                                                    .isNmstrt3(enc, input[offset..].as_ptr())
+                                                    .isNmstrt3(enc, &input[offset..])
                                                     == 0
                                             {
                                                 *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -1798,10 +1783,10 @@ pub mod xmltok_impl_c {
                                                 break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
                                             }
                                             if as_normal_encoding(enc)
-                                                .isInvalid4(enc, input[offset..].as_ptr())
+                                                .isInvalid4(enc, &input[offset..])
                                                 != 0
                                                 || as_normal_encoding(enc)
-                                                    .isNmstrt4(enc, input[offset..].as_ptr())
+                                                    .isNmstrt4(enc, &input[offset..])
                                                     == 0
                                             {
                                                 *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -1903,8 +1888,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt2(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -1916,8 +1901,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt3(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -1929,8 +1914,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt4(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -2006,8 +1991,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName2(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -2019,8 +2004,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName3(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -2032,8 +2017,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName4(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -2066,11 +2051,8 @@ pub mod xmltok_impl_c {
                                 if end - offset < 2 {
                                     break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr())
-                                    != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt2(enc, input[offset..].as_ptr())
-                                        == 0
+                                if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                                    || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) == 0
                                 {
                                     *nextTokPtr = input.as_ptr().wrapping_add(offset);
                                     break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -2082,11 +2064,8 @@ pub mod xmltok_impl_c {
                                 if end - offset < 3 {
                                     break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr())
-                                    != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt3(enc, input[offset..].as_ptr())
-                                        == 0
+                                if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                                    || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) == 0
                                 {
                                     *nextTokPtr = input.as_ptr().wrapping_add(offset);
                                     break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -2098,11 +2077,8 @@ pub mod xmltok_impl_c {
                                 if end - offset < 4 {
                                     break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr())
-                                    != 0
-                                    || as_normal_encoding(enc)
-                                        .isNmstrt4(enc, input[offset..].as_ptr())
-                                        == 0
+                                if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                                    || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) == 0
                                 {
                                     *nextTokPtr = input.as_ptr().wrapping_add(offset);
                                     break 'iife_ret_12 XML_TOK_INVALID_1;
@@ -2141,11 +2117,9 @@ pub mod xmltok_impl_c {
                                     if end - offset < 2 {
                                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid2(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..])
                                         != 0
-                                        || as_normal_encoding(enc)
-                                            .isNmstrt2(enc, input[offset..].as_ptr())
+                                        || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..])
                                             == 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -2158,11 +2132,9 @@ pub mod xmltok_impl_c {
                                     if end - offset < 3 {
                                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid3(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..])
                                         != 0
-                                        || as_normal_encoding(enc)
-                                            .isNmstrt3(enc, input[offset..].as_ptr())
+                                        || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..])
                                             == 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -2175,11 +2147,9 @@ pub mod xmltok_impl_c {
                                     if end - offset < 4 {
                                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if as_normal_encoding(enc)
-                                        .isInvalid4(enc, input[offset..].as_ptr())
+                                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..])
                                         != 0
-                                        || as_normal_encoding(enc)
-                                            .isNmstrt4(enc, input[offset..].as_ptr())
+                                        || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..])
                                             == 0
                                     {
                                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -2325,7 +2295,7 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_13 XML_TOK_INVALID_1;
                     }
@@ -2335,7 +2305,7 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_13 XML_TOK_INVALID_1;
                     }
@@ -2345,7 +2315,7 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_13 XML_TOK_INVALID_1;
                     }
@@ -2364,8 +2334,7 @@ pub mod xmltok_impl_c {
                 match as_normal_encoding(enc).type_0[input[offset] as c_uchar as usize] as c_uint {
                     BT_LEAD2 => {
                         if end - offset < 2
-                            || as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr())
-                                != 0
+                            || as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
@@ -2375,8 +2344,7 @@ pub mod xmltok_impl_c {
                     }
                     BT_LEAD3 => {
                         if end - offset < 3
-                            || as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr())
-                                != 0
+                            || as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
@@ -2386,8 +2354,7 @@ pub mod xmltok_impl_c {
                     }
                     BT_LEAD4 => {
                         if end - offset < 4
-                            || as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr())
-                                != 0
+                            || as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
@@ -2459,8 +2426,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt2(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_14 XML_TOK_INVALID_1;
@@ -2472,8 +2439,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt3(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_14 XML_TOK_INVALID_1;
@@ -2485,8 +2452,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt4(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_14 XML_TOK_INVALID_1;
@@ -2520,8 +2487,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName2(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_14 XML_TOK_INVALID_1;
@@ -2533,8 +2500,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName3(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_14 XML_TOK_INVALID_1;
@@ -2546,8 +2513,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName4(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_14 XML_TOK_INVALID_1;
@@ -2595,8 +2562,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt2(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_15 XML_TOK_INVALID_1;
@@ -2608,8 +2575,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt3(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_15 XML_TOK_INVALID_1;
@@ -2621,8 +2588,8 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                        || as_normal_encoding(enc).isNmstrt4(enc, input[offset..].as_ptr()) == 0
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) == 0
                     {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_15 XML_TOK_INVALID_1;
@@ -2652,8 +2619,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName2(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_15 XML_TOK_INVALID_1;
@@ -2665,8 +2632,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName3(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_15 XML_TOK_INVALID_1;
@@ -2678,8 +2645,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName4(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_15 XML_TOK_INVALID_1;
@@ -2723,7 +2690,7 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0 {
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0 {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_16 XML_TOK_INVALID_1;
                         }
@@ -2733,7 +2700,7 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0 {
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0 {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_16 XML_TOK_INVALID_1;
                         }
@@ -2743,7 +2710,7 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0 {
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0 {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_16 XML_TOK_INVALID_1;
                         }
@@ -2937,14 +2904,14 @@ pub mod xmltok_impl_c {
                     if end - offset < 2 {
                         break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_17 XML_TOK_INVALID_1;
                     }
-                    if as_normal_encoding(enc).isNmstrt2(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isNmstrt2(enc, &input[offset..]) != 0 {
                         offset += 2;
                         tok = XML_TOK_NAME;
-                    } else if as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) != 0 {
+                    } else if as_normal_encoding(enc).isName2(enc, &input[offset..]) != 0 {
                         offset += 2;
                         tok = XML_TOK_NMTOKEN_1;
                     } else {
@@ -2957,14 +2924,14 @@ pub mod xmltok_impl_c {
                     if end - offset < 3 {
                         break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_17 XML_TOK_INVALID_1;
                     }
-                    if as_normal_encoding(enc).isNmstrt3(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isNmstrt3(enc, &input[offset..]) != 0 {
                         offset += 3;
                         tok = XML_TOK_NAME;
-                    } else if as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) != 0 {
+                    } else if as_normal_encoding(enc).isName3(enc, &input[offset..]) != 0 {
                         offset += 3;
                         tok = XML_TOK_NMTOKEN_1;
                     } else {
@@ -2977,14 +2944,14 @@ pub mod xmltok_impl_c {
                     if end - offset < 4 {
                         break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0 {
                         *nextTokPtr = input.as_ptr().wrapping_add(offset);
                         break 'iife_ret_17 XML_TOK_INVALID_1;
                     }
-                    if as_normal_encoding(enc).isNmstrt4(enc, input[offset..].as_ptr()) != 0 {
+                    if as_normal_encoding(enc).isNmstrt4(enc, &input[offset..]) != 0 {
                         offset += 4;
                         tok = XML_TOK_NAME;
-                    } else if as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) != 0 {
+                    } else if as_normal_encoding(enc).isName4(enc, &input[offset..]) != 0 {
                         offset += 4;
                         tok = XML_TOK_NMTOKEN_1;
                     } else {
@@ -3060,8 +3027,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName2(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName2(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_17 XML_TOK_INVALID_1;
@@ -3073,8 +3040,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName3(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName3(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_17 XML_TOK_INVALID_1;
@@ -3086,8 +3053,8 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0
-                            || as_normal_encoding(enc).isName4(enc, input[offset..].as_ptr()) == 0
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0
+                            || as_normal_encoding(enc).isName4(enc, &input[offset..]) == 0
                         {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_17 XML_TOK_INVALID_1;
@@ -3124,11 +3091,10 @@ pub mod xmltok_impl_c {
                                         if end - offset < 2 {
                                             break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if as_normal_encoding(enc)
-                                            .isInvalid2(enc, input[offset..].as_ptr())
+                                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..])
                                             != 0
                                             || as_normal_encoding(enc)
-                                                .isName2(enc, input[offset..].as_ptr())
+                                                .isName2(enc, &input[offset..])
                                                 == 0
                                         {
                                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -3141,11 +3107,10 @@ pub mod xmltok_impl_c {
                                         if end - offset < 3 {
                                             break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if as_normal_encoding(enc)
-                                            .isInvalid3(enc, input[offset..].as_ptr())
+                                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..])
                                             != 0
                                             || as_normal_encoding(enc)
-                                                .isName3(enc, input[offset..].as_ptr())
+                                                .isName3(enc, &input[offset..])
                                                 == 0
                                         {
                                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -3158,11 +3123,10 @@ pub mod xmltok_impl_c {
                                         if end - offset < 4 {
                                             break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if as_normal_encoding(enc)
-                                            .isInvalid4(enc, input[offset..].as_ptr())
+                                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..])
                                             != 0
                                             || as_normal_encoding(enc)
-                                                .isName4(enc, input[offset..].as_ptr())
+                                                .isName4(enc, &input[offset..])
                                                 == 0
                                         {
                                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
@@ -3407,7 +3371,7 @@ pub mod xmltok_impl_c {
                         if end - offset < 2 {
                             break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid2(enc, input[offset..].as_ptr()) != 0 {
+                        if as_normal_encoding(enc).isInvalid2(enc, &input[offset..]) != 0 {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_20 XML_TOK_INVALID_1;
                         }
@@ -3417,7 +3381,7 @@ pub mod xmltok_impl_c {
                         if end - offset < 3 {
                             break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid3(enc, input[offset..].as_ptr()) != 0 {
+                        if as_normal_encoding(enc).isInvalid3(enc, &input[offset..]) != 0 {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_20 XML_TOK_INVALID_1;
                         }
@@ -3427,7 +3391,7 @@ pub mod xmltok_impl_c {
                         if end - offset < 4 {
                             break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if as_normal_encoding(enc).isInvalid4(enc, input[offset..].as_ptr()) != 0 {
+                        if as_normal_encoding(enc).isInvalid4(enc, &input[offset..]) != 0 {
                             *nextTokPtr = input.as_ptr().wrapping_add(offset);
                             break 'iife_ret_20 XML_TOK_INVALID_1;
                         }
@@ -11356,15 +11320,15 @@ pub(crate) use xmltok_impl_c::normal_prologTok;
 pub(crate) use xmltok_impl_c::normal_skipS;
 pub(crate) use xmltok_impl_c::normal_updatePosition;
 trait NormalEncodingCheckFunctions {
-    fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
-    fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
-    fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
-    fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
-    fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
-    fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
-    fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
-    fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
-    fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int;
+    fn isName2(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
+    fn isName3(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
+    fn isName4(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
+    fn isNmstrt2(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
+    fn isNmstrt3(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
+    fn isNmstrt4(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
+    fn isInvalid2(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
+    fn isInvalid3(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
+    fn isInvalid4(&self, enc: &ENCODING, input: &[c_char]) -> c_int;
 }
 
 #[derive(Copy, Clone)]
@@ -11382,48 +11346,48 @@ impl normal_encoding {
     }
 
     #[inline]
-    fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isName2(enc, ptr)
+    fn isName2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isName2(enc, input)
     }
 
     #[inline]
-    fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isName3(enc, ptr)
+    fn isName3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isName3(enc, input)
     }
 
     #[inline]
-    fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isName4(enc, ptr)
+    fn isName4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isName4(enc, input)
     }
 
     #[inline]
-    fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isNmstrt2(enc, ptr)
+    fn isNmstrt2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isNmstrt2(enc, input)
     }
 
     #[inline]
-    fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isNmstrt3(enc, ptr)
+    fn isNmstrt3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isNmstrt3(enc, input)
     }
 
     #[inline]
-    fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isNmstrt4(enc, ptr)
+    fn isNmstrt4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isNmstrt4(enc, input)
     }
 
     #[inline]
-    fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isInvalid2(enc, ptr)
+    fn isInvalid2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isInvalid2(enc, input)
     }
 
     #[inline]
-    fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isInvalid3(enc, ptr)
+    fn isInvalid3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isInvalid3(enc, input)
     }
 
     #[inline]
-    fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        self.checkFunctions().isInvalid4(enc, ptr)
+    fn isInvalid4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        self.checkFunctions().isInvalid4(enc, input)
     }
 }
 
@@ -11473,58 +11437,58 @@ pub type C2RustUnnamed_9 = c_int;
 
 pub const US_ASCII_ENC: C2RustUnnamed_9 = 1;
 
-fn isNever(_enc: &ENCODING, mut _p: *const c_char) -> c_int {
+fn isNever(_enc: &ENCODING, _input: &[c_char]) -> c_int {
     0
 }
 
-fn utf8_isName2(_enc: &ENCODING, p: *const c_char) -> c_int {
-    let b0 = read_c_uchar_at(p, 0) as c_int;
-    let b1 = read_c_uchar_at(p, 1) as c_int;
+fn utf8_isName2(_enc: &ENCODING, input: &[c_char]) -> c_int {
+    let b0 = input[0] as c_uchar as c_int;
+    let b1 = input[1] as c_uchar as c_int;
     (namingBitmap[(((namePages[(b0 >> 2 & 7) as usize] as c_int) << 3)
         + ((b0 & 3) << 1)
         + (b1 >> 5 & 1)) as usize]
         & (1) << (b1 & 0x1f)) as c_int
 }
 
-fn utf8_isName3(_enc: &ENCODING, p: *const c_char) -> c_int {
-    let b0 = read_c_uchar_at(p, 0) as c_int;
-    let b1 = read_c_uchar_at(p, 1) as c_int;
-    let b2 = read_c_uchar_at(p, 2) as c_int;
+fn utf8_isName3(_enc: &ENCODING, input: &[c_char]) -> c_int {
+    let b0 = input[0] as c_uchar as c_int;
+    let b1 = input[1] as c_uchar as c_int;
+    let b2 = input[2] as c_uchar as c_int;
     (namingBitmap[(((namePages[(((b0 & 0xf) << 4) + (b1 >> 2 & 0xf)) as usize] as c_int) << 3)
         + ((b1 & 3) << 1)
         + (b2 >> 5 & 1)) as usize]
         & (1) << (b2 & 0x1f)) as c_int
 }
 
-fn utf8_isNmstrt2(_enc: &ENCODING, p: *const c_char) -> c_int {
-    let b0 = read_c_uchar_at(p, 0) as c_int;
-    let b1 = read_c_uchar_at(p, 1) as c_int;
+fn utf8_isNmstrt2(_enc: &ENCODING, input: &[c_char]) -> c_int {
+    let b0 = input[0] as c_uchar as c_int;
+    let b1 = input[1] as c_uchar as c_int;
     (namingBitmap[(((nmstrtPages[(b0 >> 2 & 7) as usize] as c_int) << 3)
         + ((b0 & 3) << 1)
         + (b1 >> 5 & 1)) as usize]
         & (1) << (b1 & 0x1f)) as c_int
 }
 
-fn utf8_isNmstrt3(_enc: &ENCODING, p: *const c_char) -> c_int {
-    let b0 = read_c_uchar_at(p, 0) as c_int;
-    let b1 = read_c_uchar_at(p, 1) as c_int;
-    let b2 = read_c_uchar_at(p, 2) as c_int;
+fn utf8_isNmstrt3(_enc: &ENCODING, input: &[c_char]) -> c_int {
+    let b0 = input[0] as c_uchar as c_int;
+    let b1 = input[1] as c_uchar as c_int;
+    let b2 = input[2] as c_uchar as c_int;
     (namingBitmap[(((nmstrtPages[(((b0 & 0xf) << 4) + (b1 >> 2 & 0xf)) as usize] as c_int) << 3)
         + ((b1 & 3) << 1)
         + (b2 >> 5 & 1)) as usize]
         & (1) << (b2 & 0x1f)) as c_int
 }
 
-fn utf8_isInvalid2(_enc: &ENCODING, p: *const c_char) -> c_int {
-    let b0 = read_c_uchar_at(p, 0) as c_int;
-    let b1 = read_c_uchar_at(p, 1) as c_int;
+fn utf8_isInvalid2(_enc: &ENCODING, input: &[c_char]) -> c_int {
+    let b0 = input[0] as c_uchar as c_int;
+    let b1 = input[1] as c_uchar as c_int;
     (b0 < 0xc2 || b1 & 0x80 == 0 || b1 & 0xc0 == 0xc0) as c_int
 }
 
-fn utf8_isInvalid3(_enc: &ENCODING, p: *const c_char) -> c_int {
-    let b0 = read_c_uchar_at(p, 0) as c_int;
-    let b1 = read_c_uchar_at(p, 1) as c_int;
-    let b2 = read_c_uchar_at(p, 2) as c_int;
+fn utf8_isInvalid3(_enc: &ENCODING, input: &[c_char]) -> c_int {
+    let b0 = input[0] as c_uchar as c_int;
+    let b1 = input[1] as c_uchar as c_int;
+    let b2 = input[2] as c_uchar as c_int;
     (b2 & 0x80 == 0
         || (if b0 == 0xef && b1 == 0xbf {
             (b2 > 0xbd) as c_int
@@ -11543,11 +11507,11 @@ fn utf8_isInvalid3(_enc: &ENCODING, p: *const c_char) -> c_int {
         }) != 0) as c_int
 }
 
-fn utf8_isInvalid4(_enc: &ENCODING, p: *const c_char) -> c_int {
-    let b0 = read_c_uchar_at(p, 0) as c_int;
-    let b1 = read_c_uchar_at(p, 1) as c_int;
-    let b2 = read_c_uchar_at(p, 2) as c_int;
-    let b3 = read_c_uchar_at(p, 3) as c_int;
+fn utf8_isInvalid4(_enc: &ENCODING, input: &[c_char]) -> c_int {
+    let b0 = input[0] as c_uchar as c_int;
+    let b1 = input[1] as c_uchar as c_int;
+    let b2 = input[2] as c_uchar as c_int;
+    let b3 = input[3] as c_uchar as c_int;
     (b3 & 0x80 == 0
         || b3 & 0xc0 == 0xc0
         || b2 & 0x80 == 0
@@ -11573,119 +11537,119 @@ fn missingNormalEncodingFunction() -> ! {
 struct Utf8NormalEncodingCheckFunctions;
 
 impl NormalEncodingCheckFunctions for Utf8NormalEncodingCheckFunctions {
-    fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        utf8_isName2(enc, ptr)
+    fn isName2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        utf8_isName2(enc, input)
     }
 
-    fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        utf8_isName3(enc, ptr)
+    fn isName3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        utf8_isName3(enc, input)
     }
 
-    fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        isNever(enc, ptr)
+    fn isName4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        isNever(enc, input)
     }
 
-    fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        utf8_isNmstrt2(enc, ptr)
+    fn isNmstrt2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        utf8_isNmstrt2(enc, input)
     }
 
-    fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        utf8_isNmstrt3(enc, ptr)
+    fn isNmstrt3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        utf8_isNmstrt3(enc, input)
     }
 
-    fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        isNever(enc, ptr)
+    fn isNmstrt4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        isNever(enc, input)
     }
 
-    fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        utf8_isInvalid2(enc, ptr)
+    fn isInvalid2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        utf8_isInvalid2(enc, input)
     }
 
-    fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        utf8_isInvalid3(enc, ptr)
+    fn isInvalid3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        utf8_isInvalid3(enc, input)
     }
 
-    fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        utf8_isInvalid4(enc, ptr)
+    fn isInvalid4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        utf8_isInvalid4(enc, input)
     }
 }
 
 struct UnknownNormalEncodingCheckFunctions;
 
 impl NormalEncodingCheckFunctions for UnknownNormalEncodingCheckFunctions {
-    fn isName2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isName(enc, ptr)
+    fn isName2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isName(enc, input)
     }
 
-    fn isName3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isName(enc, ptr)
+    fn isName3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isName(enc, input)
     }
 
-    fn isName4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isName(enc, ptr)
+    fn isName4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isName(enc, input)
     }
 
-    fn isNmstrt2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isNmstrt(enc, ptr)
+    fn isNmstrt2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isNmstrt(enc, input)
     }
 
-    fn isNmstrt3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isNmstrt(enc, ptr)
+    fn isNmstrt3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isNmstrt(enc, input)
     }
 
-    fn isNmstrt4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isNmstrt(enc, ptr)
+    fn isNmstrt4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isNmstrt(enc, input)
     }
 
-    fn isInvalid2(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isInvalid(enc, ptr)
+    fn isInvalid2(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isInvalid(enc, input)
     }
 
-    fn isInvalid3(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isInvalid(enc, ptr)
+    fn isInvalid3(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isInvalid(enc, input)
     }
 
-    fn isInvalid4(&self, enc: &ENCODING, ptr: *const c_char) -> c_int {
-        unknown_isInvalid(enc, ptr)
+    fn isInvalid4(&self, enc: &ENCODING, input: &[c_char]) -> c_int {
+        unknown_isInvalid(enc, input)
     }
 }
 
 struct MissingNormalEncodingCheckFunctions;
 
 impl NormalEncodingCheckFunctions for MissingNormalEncodingCheckFunctions {
-    fn isName2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isName2(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 
-    fn isName3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isName3(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 
-    fn isName4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isName4(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 
-    fn isNmstrt2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isNmstrt2(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 
-    fn isNmstrt3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isNmstrt3(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 
-    fn isNmstrt4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isNmstrt4(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 
-    fn isInvalid2(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isInvalid2(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 
-    fn isInvalid3(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isInvalid3(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 
-    fn isInvalid4(&self, _enc: &ENCODING, _ptr: *const c_char) -> c_int {
+    fn isInvalid4(&self, _enc: &ENCODING, _input: &[c_char]) -> c_int {
         missingNormalEncodingFunction()
     }
 }
@@ -17038,9 +17002,9 @@ pub(crate) fn XmlSizeOfUnknownEncoding() -> c_int {
     size_of::<unknown_encoding>() as c_int
 }
 
-fn unknown_isName(enc: &ENCODING, mut p: *const c_char) -> c_int {
+fn unknown_isName(enc: &ENCODING, input: &[c_char]) -> c_int {
     let uenc: &unknown_encoding = as_unknown_encoding(enc);
-    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
+    let c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, input.as_ptr());
     if c & !(0xffff) != 0 {
         return 0i32;
     }
@@ -17048,9 +17012,9 @@ fn unknown_isName(enc: &ENCODING, mut p: *const c_char) -> c_int {
         & (1) << (c & 0xff & 0x1f)) as c_int
 }
 
-fn unknown_isNmstrt(enc: &ENCODING, mut p: *const c_char) -> c_int {
+fn unknown_isNmstrt(enc: &ENCODING, input: &[c_char]) -> c_int {
     let uenc: &unknown_encoding = as_unknown_encoding(enc);
-    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
+    let c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, input.as_ptr());
     if c & !(0xffff) != 0 {
         return 0i32;
     }
@@ -17058,9 +17022,9 @@ fn unknown_isNmstrt(enc: &ENCODING, mut p: *const c_char) -> c_int {
         & (1) << (c & 0xff & 0x1f)) as c_int
 }
 
-fn unknown_isInvalid(enc: &ENCODING, mut p: *const c_char) -> c_int {
+fn unknown_isInvalid(enc: &ENCODING, input: &[c_char]) -> c_int {
     let uenc: &unknown_encoding = as_unknown_encoding(enc);
-    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
+    let c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, input.as_ptr());
     (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as c_int
 }
 
