@@ -388,6 +388,11 @@ fn as_normal_encoding(enc: &ENCODING) -> &normal_encoding {
 }
 
 #[inline]
+fn as_normal_encoding_mut<'a>(enc: *mut ENCODING) -> &'a mut normal_encoding {
+    unsafe { &mut *(enc as *mut normal_encoding) }
+}
+
+#[inline]
 fn as_unknown_encoding(enc: &ENCODING) -> &unknown_encoding {
     unsafe { &*(enc as *const ENCODING as *const unknown_encoding) }
 }
@@ -408,6 +413,35 @@ fn read_c_char(ptr: *const c_char) -> c_char {
 }
 
 #[inline]
+fn read_ptr<T: Copy>(ptr: *const T) -> T {
+    unsafe { *ptr }
+}
+
+#[inline]
+fn read_ptr_at<T: Copy>(ptr: *const T, offset: isize) -> T {
+    read_ptr(ptr.wrapping_offset(offset))
+}
+
+#[inline]
+fn write_ptr<T>(ptr: *mut T, value: T) {
+    unsafe {
+        *ptr = value;
+    }
+}
+
+#[inline]
+fn write_ptr_at<T>(ptr: *mut T, offset: isize, value: T) {
+    write_ptr(ptr.wrapping_offset(offset), value)
+}
+
+#[inline]
+fn copy_nonoverlapping_c_char(dst: *mut c_char, src: *const c_char, count: usize) {
+    unsafe {
+        core::ptr::copy_nonoverlapping(src, dst, count);
+    }
+}
+
+#[inline]
 fn read_c_uchar_at(ptr: *const c_char, offset: isize) -> c_uchar {
     unsafe { *((ptr as *const c_uchar).offset(offset)) }
 }
@@ -420,6 +454,26 @@ fn read_c_char_at(ptr: *const c_char, offset: isize) -> c_char {
 #[inline]
 fn c_char_ptr_diff(end: *const c_char, start: *const c_char) -> c_long {
     (end as usize).wrapping_sub(start as usize) as c_long
+}
+
+#[inline]
+fn c_ushort_ptr_diff(end: *const c_ushort, start: *const c_ushort) -> c_long {
+    ((end as usize).wrapping_sub(start as usize) / size_of::<c_ushort>()) as c_long
+}
+
+#[inline]
+fn mut_ref_from_ptr<'a, T>(ptr: *mut T) -> &'a mut T {
+    unsafe { &mut *ptr }
+}
+
+#[inline]
+fn ref_from_ptr<'a, T>(ptr: *const T) -> &'a T {
+    unsafe { &*ptr }
+}
+
+#[inline]
+fn attribute_mut<'a>(atts: *mut ATTRIBUTE, index: c_int) -> &'a mut ATTRIBUTE {
+    unsafe { &mut *atts.wrapping_offset(index as isize) }
 }
 
 pub mod xmltok_impl_c {
@@ -516,74 +570,74 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn normal_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_2: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_2 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_2: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) < 1 {
+                break 'iife_ret_2 XML_TOK_PARTIAL_1;
+            }
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_MINUS => {
+                    break 'iife_ret_2 ({
+                        let (tok_value, next_tok_value) = normal_scanComment(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
                 }
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_MINUS => {
-                        break 'iife_ret_2 ({
-                            let (tok_value, next_tok_value) = normal_scanComment(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_LSQB => {
-                        *nextTokPtr = ptr.offset(1);
-                        break 'iife_ret_2 XML_TOK_COND_SECT_OPEN_1;
-                    }
-                    BT_NMSTRT | BT_HEX => {
-                        ptr = ptr.offset(1isize);
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_2 XML_TOK_INVALID_1;
-                    }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.wrapping_offset(1);
+                    break 'iife_ret_2 XML_TOK_COND_SECT_OPEN_1;
                 }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    's_129: {
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_PERCNT => {
-                                if (end.offset_from(ptr) as c_long) < 2i32 as c_long {
-                                    break 'iife_ret_2 XML_TOK_PARTIAL_1;
-                                }
-                                match as_normal_encoding(enc).type_0
-                                    [*ptr.offset(1) as c_uchar as usize]
-                                    as c_uint
-                                {
-                                    BT_S | BT_CR | BT_LF | BT_PERCNT => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_2 XML_TOK_INVALID_1;
-                                    }
-                                    _ => {}
-                                }
+                BT_NMSTRT | BT_HEX => {
+                    ptr = ptr.wrapping_offset(1);
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_2 XML_TOK_INVALID_1;
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 {
+                's_129: {
+                    match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                        as c_uint
+                    {
+                        BT_PERCNT => {
+                            if c_char_ptr_diff(end, ptr) < 2 {
+                                break 'iife_ret_2 XML_TOK_PARTIAL_1;
                             }
-                            BT_S | BT_CR | BT_LF => {}
-                            BT_NMSTRT | BT_HEX => {
-                                ptr = ptr.offset(1);
-                                break 's_129;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_2 XML_TOK_INVALID_1;
+                            match as_normal_encoding(enc).type_0
+                                [read_c_char_at(ptr, 1) as c_uchar as usize]
+                                as c_uint
+                            {
+                                BT_S | BT_CR | BT_LF | BT_PERCNT => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_2 XML_TOK_INVALID_1;
+                                }
+                                _ => {}
                             }
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_2 XML_TOK_DECL_OPEN_1;
+                        BT_S | BT_CR | BT_LF => {}
+                        BT_NMSTRT | BT_HEX => {
+                            ptr = ptr.wrapping_offset(1);
+                            break 's_129;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_2 XML_TOK_INVALID_1;
+                        }
                     }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_2 XML_TOK_DECL_OPEN_1;
                 }
-                break 'iife_ret_2 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_2 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_checkPiTarget(_enc: &ENCODING, input: &[c_char]) -> CheckPiTargetResult {
@@ -630,1363 +684,1427 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn normal_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_4: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut tok: c_int = 0;
-                let mut target: *const c_char = ptr;
-                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_4 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_4: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            let mut tok: c_int = 0;
+            let target: *const c_char = ptr;
+            if c_char_ptr_diff(end, ptr) < 1 {
+                break 'iife_ret_4 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_4 XML_TOK_INVALID_1;
                 }
-                let mut current_block_32: u64;
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 11470911313929454839;
+                }
+                BT_LEAD2 => {
+                    if c_char_ptr_diff(end, ptr) < 2 {
+                        break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_4 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_32 = 14763689060501151050;
+                }
+                BT_LEAD3 => {
+                    if c_char_ptr_diff(end, ptr) < 3 {
+                        break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_4 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(3);
+                    current_block_32 = 14763689060501151050;
+                }
+                BT_LEAD4 => {
+                    if c_char_ptr_diff(end, ptr) < 4 {
+                        break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_4 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(4);
+                    current_block_32 = 14763689060501151050;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_4 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 11470911313929454839 {
+                ptr = ptr.wrapping_offset(1);
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 {
+                let mut current_block_118: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
                     BT_NONASCII => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_4 XML_TOK_INVALID_1;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 11470911313929454839;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_118 = 8485341570193076947;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if c_char_ptr_diff(end, ptr) < 2 {
                             break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_4 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(2);
-                        current_block_32 = 14763689060501151050;
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_118 = 13349765058737954042;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if c_char_ptr_diff(end, ptr) < 3 {
                             break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_4 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(3);
-                        current_block_32 = 14763689060501151050;
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_118 = 13349765058737954042;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if c_char_ptr_diff(end, ptr) < 4 {
                             break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_4 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(4);
-                        current_block_32 = 14763689060501151050;
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_118 = 13349765058737954042;
                     }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_4 XML_TOK_INVALID_1;
-                    }
-                }
-                if current_block_32 == 11470911313929454839 {
-                    ptr = ptr.offset(1isize);
-                }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_118: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
+                    BT_S | BT_CR | BT_LF => {
+                        if {
+                            let (ok_value, tok_value) =
+                                normal_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
                             *nextTokPtr = ptr;
                             break 'iife_ret_4 XML_TOK_INVALID_1;
                         }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_118 = 8485341570193076947;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        ptr = ptr.wrapping_offset(1);
+                        while c_char_ptr_diff(end, ptr) >= 1 {
+                            match as_normal_encoding(enc).type_0
+                                [read_c_char(ptr) as c_uchar as usize]
+                                as c_uint
                             {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_4 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_118 = 13349765058737954042;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_4 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_118 = 13349765058737954042;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_4 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_118 = 13349765058737954042;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            if {
-                                let (ok_value, tok_value) = normal_checkPiTarget(
-                                    enc,
-                                    c_char_slice_from_ptr_end(target, ptr),
-                                );
-                                tok = tok_value;
-                                ok_value
-                            } == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_4 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(1);
-                            while end.offset_from(ptr) as c_long >= 1 as c_long {
-                                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                    as c_uint
-                                {
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_4 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(2isize);
+                                BT_LEAD2 => {
+                                    if c_char_ptr_diff(end, ptr) < 2 {
+                                        break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_4 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(3isize);
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_4 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(4isize);
-                                    }
-                                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                                         *nextTokPtr = ptr;
                                         break 'iife_ret_4 XML_TOK_INVALID_1;
                                     }
-                                    BT_QUEST => {
-                                        ptr = ptr.offset(1);
-                                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                            break 'iife_ret_4 XML_TOK_PARTIAL_1;
-                                        }
-                                        if *ptr as c_int == 0x3e {
-                                            *nextTokPtr = ptr.offset(1);
-                                            break 'iife_ret_4 tok;
-                                        }
+                                    ptr = ptr.wrapping_offset(2);
+                                }
+                                BT_LEAD3 => {
+                                    if c_char_ptr_diff(end, ptr) < 3 {
+                                        break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    _ => {
-                                        ptr = ptr.offset(1isize);
+                                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_4 XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(3);
+                                }
+                                BT_LEAD4 => {
+                                    if c_char_ptr_diff(end, ptr) < 4 {
+                                        break 'iife_ret_4 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_4 XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(4);
+                                }
+                                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_4 XML_TOK_INVALID_1;
+                                }
+                                BT_QUEST => {
+                                    ptr = ptr.wrapping_offset(1);
+                                    if c_char_ptr_diff(end, ptr) < 1 {
+                                        break 'iife_ret_4 XML_TOK_PARTIAL_1;
+                                    }
+                                    if read_c_char(ptr) as c_int == 0x3e {
+                                        *nextTokPtr = ptr.wrapping_offset(1);
+                                        break 'iife_ret_4 tok;
                                     }
                                 }
+                                _ => {
+                                    ptr = ptr.wrapping_offset(1);
+                                }
                             }
-                            break 'iife_ret_4 XML_TOK_PARTIAL_1;
                         }
-                        BT_QUEST => {
-                            if {
-                                let (ok_value, tok_value) = normal_checkPiTarget(
-                                    enc,
-                                    c_char_slice_from_ptr_end(target, ptr),
-                                );
-                                tok = tok_value;
-                                ok_value
-                            } == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_4 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                break 'iife_ret_4 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr as c_int == 0x3e {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_4 tok;
-                            }
-                            current_block_118 = 11310415194689177606;
-                        }
-                        _ => {
-                            current_block_118 = 11310415194689177606;
-                        }
+                        break 'iife_ret_4 XML_TOK_PARTIAL_1;
                     }
-                    match current_block_118 {
-                        11310415194689177606 => {
+                    BT_QUEST => {
+                        if {
+                            let (ok_value, tok_value) =
+                                normal_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
                             *nextTokPtr = ptr;
                             break 'iife_ret_4 XML_TOK_INVALID_1;
                         }
-                        8485341570193076947 => {
-                            ptr = ptr.offset(1isize);
+                        ptr = ptr.wrapping_offset(1);
+                        if c_char_ptr_diff(end, ptr) < 1 {
+                            break 'iife_ret_4 XML_TOK_PARTIAL_1;
                         }
-                        _ => {}
+                        if read_c_char(ptr) as c_int == 0x3e {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_4 tok;
+                        }
+                        current_block_118 = 11310415194689177606;
+                    }
+                    _ => {
+                        current_block_118 = 11310415194689177606;
                     }
                 }
-                break 'iife_ret_4 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+                match current_block_118 {
+                    11310415194689177606 => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_4 XML_TOK_INVALID_1;
+                    }
+                    8485341570193076947 => {
+                        ptr = ptr.wrapping_offset(1);
+                    }
+                    _ => {}
+                }
+            }
+            break 'iife_ret_4 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanCdataSection(_enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_5: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                pub static CDATA_LSQB: [c_char; 6] = [
-                    ASCII_C as c_char,
-                    ASCII_D as c_char,
-                    ASCII_A as c_char,
-                    ASCII_T as c_char,
-                    ASCII_A as c_char,
-                    ASCII_LSQB as c_char,
-                ];
-                let mut i: c_int = 0;
-                if (end.offset_from(ptr) as c_long) < 6i32 as c_long {
-                    break 'iife_ret_5 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_5: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            pub static CDATA_LSQB: [c_char; 6] = [
+                ASCII_C as c_char,
+                ASCII_D as c_char,
+                ASCII_A as c_char,
+                ASCII_T as c_char,
+                ASCII_A as c_char,
+                ASCII_LSQB as c_char,
+            ];
+            let mut i: c_int = 0;
+            if c_char_ptr_diff(end, ptr) < 6 {
+                break 'iife_ret_5 XML_TOK_PARTIAL_1;
+            }
+            i = 0;
+            while i < 6 {
+                if read_c_char(ptr) as c_int != CDATA_LSQB[i as usize] as c_int {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_5 XML_TOK_INVALID_1;
                 }
-                i = 0;
-                while i < 6 {
-                    if *ptr as c_int != CDATA_LSQB[i as usize] as c_int {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_5 XML_TOK_INVALID_1;
-                    }
-                    i += 1;
-                    ptr = ptr.offset(1);
-                }
-                *nextTokPtr = ptr;
-                break 'iife_ret_5 XML_TOK_CDATA_SECT_OPEN_1;
-            };
-            (tok, next_tok)
-        }
+                i += 1;
+                ptr = ptr.wrapping_offset(1);
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_5 XML_TOK_CDATA_SECT_OPEN_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_cdataSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_6: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if ptr >= end {
-                    break 'iife_ret_6 XML_TOK_NONE_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_6: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            if ptr >= end {
+                break 'iife_ret_6 XML_TOK_NONE_1;
+            }
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(1);
+                    if c_char_ptr_diff(end, ptr) < 1 {
+                        break 'iife_ret_6 XML_TOK_PARTIAL_1;
+                    }
+                    if read_c_char(ptr) as c_int == 0x5d {
+                        ptr = ptr.wrapping_offset(1);
+                        if c_char_ptr_diff(end, ptr) < 1 {
+                            break 'iife_ret_6 XML_TOK_PARTIAL_1;
+                        }
+                        if read_c_char(ptr) as c_int != 0x3e {
+                            ptr = ptr.wrapping_offset(-1);
+                        } else {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_6 XML_TOK_CDATA_SECT_CLOSE_1;
+                        }
+                    }
                 }
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_RSQB => {
-                        ptr = ptr.offset(1);
-                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                            break 'iife_ret_6 XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr as c_int == 0x5d {
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                break 'iife_ret_6 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr as c_int != 0x3e {
-                                ptr = ptr.offset(-(1isize));
-                            } else {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_6 XML_TOK_CDATA_SECT_CLOSE_1;
-                            }
-                        }
+                BT_CR => {
+                    ptr = ptr.wrapping_offset(1);
+                    if c_char_ptr_diff(end, ptr) < 1 {
+                        break 'iife_ret_6 XML_TOK_PARTIAL_1;
                     }
-                    BT_CR => {
-                        ptr = ptr.offset(1);
-                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                            break 'iife_ret_6 XML_TOK_PARTIAL_1;
-                        }
-                        if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                            == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(1isize);
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_6 XML_TOK_DATA_NEWLINE_1;
+                    if as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_int
+                        == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(1);
                     }
-                    BT_LF => {
-                        *nextTokPtr = ptr.offset(1);
-                        break 'iife_ret_6 XML_TOK_DATA_NEWLINE_1;
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_6 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.wrapping_offset(1);
+                    break 'iife_ret_6 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LEAD2 => {
+                    if c_char_ptr_diff(end, ptr) < 2 {
+                        break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_6 XML_TOK_INVALID_1;
-                        }
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_6 XML_TOK_INVALID_1;
-                        }
-                        ptr = ptr.offset(3isize);
-                    }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_6 XML_TOK_INVALID_1;
-                        }
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                         *nextTokPtr = ptr;
                         break 'iife_ret_6 XML_TOK_INVALID_1;
                     }
-                    _ => {
-                        ptr = ptr.offset(1isize);
-                    }
+                    ptr = ptr.wrapping_offset(2);
                 }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2
-                                || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(2isize);
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3
-                                || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(3isize);
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4
-                                || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                BT_LEAD3 => {
+                    if c_char_ptr_diff(end, ptr) < 3 {
+                        break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_6 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(3);
+                }
+                BT_LEAD4 => {
+                    if c_char_ptr_diff(end, ptr) < 4 {
+                        break 'iife_ret_6 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_6 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(4);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_6 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(1);
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 {
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_LEAD2 => {
+                        if c_char_ptr_diff(end, ptr) < 2
+                            || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        {
                             *nextTokPtr = ptr;
                             break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
                         }
-                        _ => {
-                            ptr = ptr.offset(1isize);
+                        ptr = ptr.wrapping_offset(2);
+                    }
+                    BT_LEAD3 => {
+                        if c_char_ptr_diff(end, ptr) < 3
+                            || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
                         }
+                        ptr = ptr.wrapping_offset(3);
+                    }
+                    BT_LEAD4 => {
+                        if c_char_ptr_diff(end, ptr) < 4
+                            || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(4);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(1);
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_6 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_7: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_7 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_7: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) < 1 {
+                break 'iife_ret_7 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_7 XML_TOK_INVALID_1;
                 }
-                let mut current_block_32: u64;
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 4324628675098861213;
+                }
+                BT_LEAD2 => {
+                    if c_char_ptr_diff(end, ptr) < 2 {
+                        break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_7 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_32 = 7056779235015430508;
+                }
+                BT_LEAD3 => {
+                    if c_char_ptr_diff(end, ptr) < 3 {
+                        break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_7 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(3);
+                    current_block_32 = 7056779235015430508;
+                }
+                BT_LEAD4 => {
+                    if c_char_ptr_diff(end, ptr) < 4 {
+                        break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_7 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(4);
+                    current_block_32 = 7056779235015430508;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_7 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 4324628675098861213 {
+                ptr = ptr.wrapping_offset(1);
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 {
+                let mut current_block_73: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
                     BT_NONASCII => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_7 XML_TOK_INVALID_1;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 4324628675098861213;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_73 = 14883924698754021420;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if c_char_ptr_diff(end, ptr) < 2 {
                             break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_7 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(2);
-                        current_block_32 = 7056779235015430508;
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_73 = 981995395831942902;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if c_char_ptr_diff(end, ptr) < 3 {
                             break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_7 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(3);
-                        current_block_32 = 7056779235015430508;
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_73 = 981995395831942902;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if c_char_ptr_diff(end, ptr) < 4 {
                             break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_7 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(4);
-                        current_block_32 = 7056779235015430508;
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.wrapping_offset(1);
+                        while c_char_ptr_diff(end, ptr) >= 1 {
+                            match as_normal_encoding(enc).type_0
+                                [read_c_char(ptr) as c_uchar as usize]
+                                as c_uint
+                            {
+                                BT_S | BT_CR | BT_LF => {}
+                                BT_GT => {
+                                    *nextTokPtr = ptr.wrapping_offset(1);
+                                    break 'iife_ret_7 XML_TOK_END_TAG_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_7 XML_TOK_INVALID_1;
+                                }
+                            }
+                            ptr = ptr.wrapping_offset(1);
+                        }
+                        break 'iife_ret_7 XML_TOK_PARTIAL_1;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.wrapping_offset(1);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_GT => {
+                        *nextTokPtr = ptr.wrapping_offset(1);
+                        break 'iife_ret_7 XML_TOK_END_TAG_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_7 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_32 == 4324628675098861213 {
-                    ptr = ptr.offset(1isize);
+                if current_block_73 == 14883924698754021420 {
+                    ptr = ptr.wrapping_offset(1);
                 }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_73: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_7 XML_TOK_INVALID_1;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_73 = 14883924698754021420;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_7 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_73 = 981995395831942902;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_7 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_73 = 981995395831942902;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_7 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_7 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_73 = 981995395831942902;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            ptr = ptr.offset(1);
-                            while end.offset_from(ptr) as c_long >= 1 as c_long {
-                                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                    as c_uint
-                                {
-                                    BT_S | BT_CR | BT_LF => {}
-                                    BT_GT => {
-                                        *nextTokPtr = ptr.offset(1);
-                                        break 'iife_ret_7 XML_TOK_END_TAG_1;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_7 XML_TOK_INVALID_1;
-                                    }
-                                }
-                                ptr = ptr.offset(1);
-                            }
-                            break 'iife_ret_7 XML_TOK_PARTIAL_1;
-                        }
-                        BT_COLON_0 => {
-                            ptr = ptr.offset(1);
-                            current_block_73 = 981995395831942902;
-                        }
-                        BT_GT => {
-                            *nextTokPtr = ptr.offset(1);
-                            break 'iife_ret_7 XML_TOK_END_TAG_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_7 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_73 == 14883924698754021420 {
-                        ptr = ptr.offset(1isize);
-                    }
-                }
-                break 'iife_ret_7 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_7 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_8: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 1 as c_long {
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_8: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) >= 1 {
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_DIGIT | BT_HEX => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_8 XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.wrapping_offset(1);
+                while c_char_ptr_diff(end, ptr) >= 1 {
+                    match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                        as c_uint
+                    {
                         BT_DIGIT | BT_HEX => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_8 XML_TOK_CHAR_REF_1;
+                        }
                         _ => {
                             *nextTokPtr = ptr;
                             break 'iife_ret_8 XML_TOK_INVALID_1;
                         }
                     }
-                    ptr = ptr.offset(1);
-                    while end.offset_from(ptr) as c_long >= 1 as c_long {
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_DIGIT | BT_HEX => {}
-                            BT_SEMI => {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_8 XML_TOK_CHAR_REF_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_8 XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(1);
-                    }
+                    ptr = ptr.wrapping_offset(1);
                 }
-                break 'iife_ret_8 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_8 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_9: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 1 as c_long {
-                    if *ptr as c_int == 0x78 {
-                        break 'iife_ret_9 ({
-                            let (tok_value, next_tok_value) = normal_scanHexCharRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_9: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) >= 1 {
+                if read_c_char(ptr) as c_int == 0x78 {
+                    break 'iife_ret_9 ({
+                        let (tok_value, next_tok_value) = normal_scanHexCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_DIGIT => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_9 XML_TOK_INVALID_1;
                     }
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                }
+                ptr = ptr.wrapping_offset(1);
+                while c_char_ptr_diff(end, ptr) >= 1 {
+                    match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                        as c_uint
+                    {
                         BT_DIGIT => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_9 XML_TOK_CHAR_REF_1;
+                        }
                         _ => {
                             *nextTokPtr = ptr;
                             break 'iife_ret_9 XML_TOK_INVALID_1;
                         }
                     }
-                    ptr = ptr.offset(1);
-                    while end.offset_from(ptr) as c_long >= 1 as c_long {
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_DIGIT => {}
-                            BT_SEMI => {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_9 XML_TOK_CHAR_REF_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_9 XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(1);
-                    }
+                    ptr = ptr.wrapping_offset(1);
                 }
-                break 'iife_ret_9 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_9 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_10: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_10 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_10: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) < 1 {
+                break 'iife_ret_10 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_33: u64;
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_10 XML_TOK_INVALID_1;
                 }
-                let mut current_block_33: u64;
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NMSTRT | BT_HEX => {
+                    current_block_33 = 8911980980495988282;
+                }
+                BT_LEAD2 => {
+                    if c_char_ptr_diff(end, ptr) < 2 {
+                        break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_10 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_33 = 14763689060501151050;
+                }
+                BT_LEAD3 => {
+                    if c_char_ptr_diff(end, ptr) < 3 {
+                        break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_10 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(3);
+                    current_block_33 = 14763689060501151050;
+                }
+                BT_LEAD4 => {
+                    if c_char_ptr_diff(end, ptr) < 4 {
+                        break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_10 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(4);
+                    current_block_33 = 14763689060501151050;
+                }
+                BT_NUM => {
+                    break 'iife_ret_10 ({
+                        let (tok_value, next_tok_value) = normal_scanCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_10 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_33 == 8911980980495988282 {
+                ptr = ptr.wrapping_offset(1);
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 {
+                let mut current_block_64: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
                     BT_NONASCII => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_10 XML_TOK_INVALID_1;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_33 = 8911980980495988282;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_64 = 11948064939145634034;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if c_char_ptr_diff(end, ptr) < 2 {
                             break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_10 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(2);
-                        current_block_33 = 14763689060501151050;
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_64 = 10930818133215224067;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if c_char_ptr_diff(end, ptr) < 3 {
                             break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_10 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(3);
-                        current_block_33 = 14763689060501151050;
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_64 = 10930818133215224067;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if c_char_ptr_diff(end, ptr) < 4 {
                             break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_10 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(4);
-                        current_block_33 = 14763689060501151050;
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_64 = 10930818133215224067;
                     }
-                    BT_NUM => {
-                        break 'iife_ret_10 ({
-                            let (tok_value, next_tok_value) = normal_scanCharRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.wrapping_offset(1);
+                        break 'iife_ret_10 XML_TOK_ENTITY_REF_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_10 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_33 == 8911980980495988282 {
-                    ptr = ptr.offset(1isize);
+                if current_block_64 == 11948064939145634034 {
+                    ptr = ptr.wrapping_offset(1);
                 }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_64: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_10 XML_TOK_INVALID_1;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_64 = 11948064939145634034;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_10 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_64 = 10930818133215224067;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_10 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_64 = 10930818133215224067;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_10 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_10 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_64 = 10930818133215224067;
-                        }
-                        BT_SEMI => {
-                            *nextTokPtr = ptr.offset(1);
-                            break 'iife_ret_10 XML_TOK_ENTITY_REF_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_10 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_64 == 11948064939145634034 {
-                        ptr = ptr.offset(1isize);
-                    }
-                }
-                break 'iife_ret_10 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_10 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_11: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut hadColon: c_int = 0;
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_186: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_11 XML_TOK_INVALID_1;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_186 = 3818392175876617014;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_11 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_186 = 1634947208139838470;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_11 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_186 = 1634947208139838470;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_11 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_186 = 1634947208139838470;
-                        }
-                        BT_COLON_0 => {
-                            if hadColon != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_11 XML_TOK_INVALID_1;
-                            }
-                            hadColon = 1;
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                break 'iife_ret_11 XML_TOK_PARTIAL_1;
-                            }
-                            let mut current_block_64: u64;
-                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                            {
-                                BT_NONASCII => {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_11 XML_TOK_INVALID_1;
-                                }
-                                BT_NMSTRT | BT_HEX => {
-                                    current_block_64 = 7083593080606520045;
-                                }
-                                BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
-                                        break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_11 XML_TOK_INVALID_1;
-                                    }
-                                    ptr = ptr.offset(2);
-                                    current_block_64 = 10930818133215224067;
-                                }
-                                BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
-                                        break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_11 XML_TOK_INVALID_1;
-                                    }
-                                    ptr = ptr.offset(3);
-                                    current_block_64 = 10930818133215224067;
-                                }
-                                BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
-                                        break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_11 XML_TOK_INVALID_1;
-                                    }
-                                    ptr = ptr.offset(4);
-                                    current_block_64 = 10930818133215224067;
-                                }
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_11 XML_TOK_INVALID_1;
-                                }
-                            }
-                            if current_block_64 == 7083593080606520045 {
-                                ptr = ptr.offset(1isize);
-                            }
-                            current_block_186 = 1634947208139838470;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            loop {
-                                let mut t: c_int = 0;
-                                ptr = ptr.offset(1);
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    break 'iife_ret_11 XML_TOK_PARTIAL_1;
-                                }
-                                t = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                    as c_int;
-                                if t == BT_EQUALS as c_int {
-                                    break;
-                                }
-                                match t {
-                                    21 | 10 | 9 => {}
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_11 XML_TOK_INVALID_1;
-                                    }
-                                }
-                            }
-                            current_block_186 = 10853015579903106591;
-                        }
-                        BT_EQUALS => {
-                            current_block_186 = 10853015579903106591;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_11 XML_TOK_INVALID_1;
-                        }
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_11: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut hadColon: c_int = 0;
+            while c_char_ptr_diff(end, ptr) >= 1 as c_long {
+                let mut current_block_186: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_11 XML_TOK_INVALID_1;
                     }
-                    match current_block_186 {
-                        10853015579903106591 => {
-                            let mut open: c_int = 0;
-                            hadColon = 0;
-                            loop {
-                                ptr = ptr.offset(1);
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    break 'iife_ret_11 XML_TOK_PARTIAL_1;
-                                }
-                                open = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                    as c_int;
-                                if open == BT_QUOT as c_int || open == BT_APOS as c_int {
-                                    break;
-                                }
-                                match open {
-                                    21 | 10 | 9 => {}
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_11 XML_TOK_INVALID_1;
-                                    }
-                                }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_186 = 3818392175876617014;
+                    }
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_11 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_11 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_11 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_11 XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.wrapping_offset(1);
+                        if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                            break 'iife_ret_11 XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_64: u64;
+                        match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                            as c_uint
+                        {
+                            BT_NONASCII => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_11 XML_TOK_INVALID_1;
                             }
-                            ptr = ptr.offset(1);
-                            loop {
-                                let mut t_0: c_int = 0;
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    break 'iife_ret_11 XML_TOK_PARTIAL_1;
-                                }
-                                t_0 = as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                    as c_int;
-                                if t_0 == open {
-                                    break;
-                                }
-                                match t_0 {
-                                    5 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_11 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                    6 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_11 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(3isize);
-                                    }
-                                    7 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_11 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(4isize);
-                                    }
-                                    0 | 1 | 8 => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_11 XML_TOK_INVALID_1;
-                                    }
-                                    3 => {
-                                        let mut tok: c_int = {
-                                            let (tok_value, next_tok_value) = normal_scanRef(
-                                                enc,
-                                                c_char_slice_from_ptr_end(ptr.offset(1), end),
-                                            );
-                                            ptr = next_tok_value;
-                                            tok_value
-                                        };
-                                        if tok <= 0 {
-                                            if tok == XML_TOK_INVALID_1 {
-                                                *nextTokPtr = ptr;
-                                            }
-                                            break 'iife_ret_11 tok;
-                                        }
-                                    }
-                                    2 => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_11 XML_TOK_INVALID_1;
-                                    }
-                                    _ => {
-                                        ptr = ptr.offset(1isize);
-                                    }
-                                }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_64 = 7083593080606520045;
                             }
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
+                            BT_LEAD2 => {
+                                if (c_char_ptr_diff(end, ptr)) < 2 {
+                                    break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_11 XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.wrapping_offset(2);
+                                current_block_64 = 10930818133215224067;
+                            }
+                            BT_LEAD3 => {
+                                if (c_char_ptr_diff(end, ptr)) < 3 {
+                                    break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_11 XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.wrapping_offset(3);
+                                current_block_64 = 10930818133215224067;
+                            }
+                            BT_LEAD4 => {
+                                if (c_char_ptr_diff(end, ptr)) < 4 {
+                                    break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_11 XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.wrapping_offset(4);
+                                current_block_64 = 10930818133215224067;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_11 XML_TOK_INVALID_1;
+                            }
+                        }
+                        if current_block_64 == 7083593080606520045 {
+                            ptr = ptr.wrapping_offset(1isize);
+                        }
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        loop {
+                            let mut t: c_int = 0;
+                            ptr = ptr.wrapping_offset(1);
+                            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
                                 break 'iife_ret_11 XML_TOK_PARTIAL_1;
                             }
-                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                            {
-                                BT_S | BT_CR | BT_LF => {
-                                    loop {
-                                        ptr = ptr.offset(1);
-                                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                            break 'iife_ret_11 XML_TOK_PARTIAL_1;
-                                        }
-                                        match as_normal_encoding(enc).type_0
-                                            [*ptr as c_uchar as usize]
-                                            as c_uint
-                                        {
-                                            BT_NONASCII => {
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_11 XML_TOK_INVALID_1;
-                                            }
-                                            BT_NMSTRT | BT_HEX => {
-                                                current_block_186 = 11210999262882855128;
-                                                break;
-                                            }
-                                            BT_LEAD2 => {
-                                                if (end.offset_from(ptr) as c_long) < 2 {
-                                                    break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                                    || as_normal_encoding(enc).isNmstrt2(enc, ptr)
-                                                        == 0
-                                                {
-                                                    *nextTokPtr = ptr;
-                                                    break 'iife_ret_11 XML_TOK_INVALID_1;
-                                                }
-                                                ptr = ptr.offset(2);
-                                                current_block_186 = 1634947208139838470;
-                                                break;
-                                            }
-                                            BT_LEAD3 => {
-                                                if (end.offset_from(ptr) as c_long) < 3 {
-                                                    break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                                    || as_normal_encoding(enc).isNmstrt3(enc, ptr)
-                                                        == 0
-                                                {
-                                                    *nextTokPtr = ptr;
-                                                    break 'iife_ret_11 XML_TOK_INVALID_1;
-                                                }
-                                                ptr = ptr.offset(3);
-                                                current_block_186 = 1634947208139838470;
-                                                break;
-                                            }
-                                            BT_LEAD4 => {
-                                                if (end.offset_from(ptr) as c_long) < 4 {
-                                                    break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                                    || as_normal_encoding(enc).isNmstrt4(enc, ptr)
-                                                        == 0
-                                                {
-                                                    *nextTokPtr = ptr;
-                                                    break 'iife_ret_11 XML_TOK_INVALID_1;
-                                                }
-                                                ptr = ptr.offset(4);
-                                                current_block_186 = 1634947208139838470;
-                                                break;
-                                            }
-                                            BT_S | BT_CR | BT_LF => {}
-                                            BT_GT => {
-                                                current_block_186 = 2944436519209994553;
-                                                break;
-                                            }
-                                            BT_SOL => {
-                                                current_block_186 = 398073151373002430;
-                                                break;
-                                            }
-                                            _ => {
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_11 XML_TOK_INVALID_1;
-                                            }
-                                        }
-                                    }
-                                    match current_block_186 {
-                                        2944436519209994553 => {}
-                                        398073151373002430 => {}
-                                        1634947208139838470 => {}
-                                        _ => {
-                                            ptr = ptr.offset(1);
-                                            current_block_186 = 1634947208139838470;
-                                        }
-                                    }
-                                }
-                                BT_SOL => {
-                                    current_block_186 = 398073151373002430;
-                                }
-                                BT_GT => {
-                                    current_block_186 = 2944436519209994553;
-                                }
+                            t = as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                                as c_int;
+                            if t == BT_EQUALS as c_int {
+                                break;
+                            }
+                            match t {
+                                21 | 10 | 9 => {}
                                 _ => {
                                     *nextTokPtr = ptr;
                                     break 'iife_ret_11 XML_TOK_INVALID_1;
                                 }
                             }
-                            match current_block_186 {
-                                1634947208139838470 => {}
-                                _ => match current_block_186 {
-                                    398073151373002430 => {
-                                        ptr = ptr.offset(1);
-                                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                            break 'iife_ret_11 XML_TOK_PARTIAL_1;
-                                        }
-                                        if *ptr as c_int != 0x3e {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_11 XML_TOK_INVALID_1;
-                                        }
-                                        *nextTokPtr = ptr.offset(1);
-                                        break 'iife_ret_11 XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr.offset(1);
-                                        break 'iife_ret_11 XML_TOK_START_TAG_WITH_ATTS_1;
-                                    }
-                                },
-                            }
                         }
-                        3818392175876617014 => {
-                            ptr = ptr.offset(1isize);
-                        }
-                        _ => {}
+                        current_block_186 = 10853015579903106591;
+                    }
+                    BT_EQUALS => {
+                        current_block_186 = 10853015579903106591;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_11 XML_TOK_INVALID_1;
                     }
                 }
-                break 'iife_ret_11 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+                match current_block_186 {
+                    10853015579903106591 => {
+                        let mut open: c_int = 0;
+                        hadColon = 0;
+                        loop {
+                            ptr = ptr.wrapping_offset(1);
+                            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                                break 'iife_ret_11 XML_TOK_PARTIAL_1;
+                            }
+                            open = as_normal_encoding(enc).type_0
+                                [read_c_char(ptr) as c_uchar as usize]
+                                as c_int;
+                            if open == BT_QUOT as c_int || open == BT_APOS as c_int {
+                                break;
+                            }
+                            match open {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_11 XML_TOK_INVALID_1;
+                                }
+                            }
+                        }
+                        ptr = ptr.wrapping_offset(1);
+                        loop {
+                            let mut t_0: c_int = 0;
+                            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                                break 'iife_ret_11 XML_TOK_PARTIAL_1;
+                            }
+                            t_0 = as_normal_encoding(enc).type_0
+                                [read_c_char(ptr) as c_uchar as usize]
+                                as c_int;
+                            if t_0 == open {
+                                break;
+                            }
+                            match t_0 {
+                                5 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                                        break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_11 XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                                6 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                                        break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_11 XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(3isize);
+                                }
+                                7 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                                        break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_11 XML_TOK_INVALID_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(4isize);
+                                }
+                                0 | 1 | 8 => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_11 XML_TOK_INVALID_1;
+                                }
+                                3 => {
+                                    let mut tok: c_int = {
+                                        let (tok_value, next_tok_value) = normal_scanRef(
+                                            enc,
+                                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1), end),
+                                        );
+                                        ptr = next_tok_value;
+                                        tok_value
+                                    };
+                                    if tok <= 0 {
+                                        if tok == XML_TOK_INVALID_1 {
+                                            *nextTokPtr = ptr;
+                                        }
+                                        break 'iife_ret_11 tok;
+                                    }
+                                }
+                                2 => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_11 XML_TOK_INVALID_1;
+                                }
+                                _ => {
+                                    ptr = ptr.wrapping_offset(1isize);
+                                }
+                            }
+                        }
+                        ptr = ptr.wrapping_offset(1);
+                        if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                            break 'iife_ret_11 XML_TOK_PARTIAL_1;
+                        }
+                        match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                            as c_uint
+                        {
+                            BT_S | BT_CR | BT_LF => {
+                                loop {
+                                    ptr = ptr.wrapping_offset(1);
+                                    if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                                        break 'iife_ret_11 XML_TOK_PARTIAL_1;
+                                    }
+                                    match as_normal_encoding(enc).type_0
+                                        [read_c_char(ptr) as c_uchar as usize]
+                                        as c_uint
+                                    {
+                                        BT_NONASCII => {
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_11 XML_TOK_INVALID_1;
+                                        }
+                                        BT_NMSTRT | BT_HEX => {
+                                            current_block_186 = 11210999262882855128;
+                                            break;
+                                        }
+                                        BT_LEAD2 => {
+                                            if (c_char_ptr_diff(end, ptr)) < 2 {
+                                                break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                                || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                break 'iife_ret_11 XML_TOK_INVALID_1;
+                                            }
+                                            ptr = ptr.wrapping_offset(2);
+                                            current_block_186 = 1634947208139838470;
+                                            break;
+                                        }
+                                        BT_LEAD3 => {
+                                            if (c_char_ptr_diff(end, ptr)) < 3 {
+                                                break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                                || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                break 'iife_ret_11 XML_TOK_INVALID_1;
+                                            }
+                                            ptr = ptr.wrapping_offset(3);
+                                            current_block_186 = 1634947208139838470;
+                                            break;
+                                        }
+                                        BT_LEAD4 => {
+                                            if (c_char_ptr_diff(end, ptr)) < 4 {
+                                                break 'iife_ret_11 XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                                || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                break 'iife_ret_11 XML_TOK_INVALID_1;
+                                            }
+                                            ptr = ptr.wrapping_offset(4);
+                                            current_block_186 = 1634947208139838470;
+                                            break;
+                                        }
+                                        BT_S | BT_CR | BT_LF => {}
+                                        BT_GT => {
+                                            current_block_186 = 2944436519209994553;
+                                            break;
+                                        }
+                                        BT_SOL => {
+                                            current_block_186 = 398073151373002430;
+                                            break;
+                                        }
+                                        _ => {
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_11 XML_TOK_INVALID_1;
+                                        }
+                                    }
+                                }
+                                match current_block_186 {
+                                    2944436519209994553 => {}
+                                    398073151373002430 => {}
+                                    1634947208139838470 => {}
+                                    _ => {
+                                        ptr = ptr.wrapping_offset(1);
+                                        current_block_186 = 1634947208139838470;
+                                    }
+                                }
+                            }
+                            BT_SOL => {
+                                current_block_186 = 398073151373002430;
+                            }
+                            BT_GT => {
+                                current_block_186 = 2944436519209994553;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_11 XML_TOK_INVALID_1;
+                            }
+                        }
+                        match current_block_186 {
+                            1634947208139838470 => {}
+                            _ => match current_block_186 {
+                                398073151373002430 => {
+                                    ptr = ptr.wrapping_offset(1);
+                                    if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                                        break 'iife_ret_11 XML_TOK_PARTIAL_1;
+                                    }
+                                    if read_c_char(ptr) as c_int != 0x3e {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_11 XML_TOK_INVALID_1;
+                                    }
+                                    *nextTokPtr = ptr.wrapping_offset(1);
+                                    break 'iife_ret_11 XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr.wrapping_offset(1);
+                                    break 'iife_ret_11 XML_TOK_START_TAG_WITH_ATTS_1;
+                                }
+                            },
+                        }
+                    }
+                    3818392175876617014 => {
+                        ptr = ptr.wrapping_offset(1isize);
+                    }
+                    _ => {}
+                }
+            }
+            break 'iife_ret_11 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_12: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut hadColon: c_int = 0;
-                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_12 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_12: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut hadColon: c_int = 0;
+            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                break 'iife_ret_12 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_45: u64;
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_12 XML_TOK_INVALID_1;
                 }
-                let mut current_block_45: u64;
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NMSTRT | BT_HEX => {
+                    current_block_45 = 2165477741955893522;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_12 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_45 = 8180496224585318153;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_12 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(3);
+                    current_block_45 = 8180496224585318153;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_12 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(4);
+                    current_block_45 = 8180496224585318153;
+                }
+                BT_EXCL => {
+                    ptr = ptr.wrapping_offset(1);
+                    if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                        break 'iife_ret_12 XML_TOK_PARTIAL_1;
+                    }
+                    match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                        as c_uint
+                    {
+                        BT_MINUS => {
+                            break 'iife_ret_12 ({
+                                let (tok_value, next_tok_value) = normal_scanComment(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        BT_LSQB => {
+                            break 'iife_ret_12 ({
+                                let (tok_value, next_tok_value) = normal_scanCdataSection(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_12 XML_TOK_INVALID_1;
+                }
+                BT_QUEST => {
+                    break 'iife_ret_12 ({
+                        let (tok_value, next_tok_value) = normal_scanPi(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_SOL => {
+                    break 'iife_ret_12 ({
+                        let (tok_value, next_tok_value) = normal_scanEndTag(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_12 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_45 == 2165477741955893522 {
+                ptr = ptr.wrapping_offset(1isize);
+            }
+            hadColon = 0;
+            while c_char_ptr_diff(end, ptr) >= 1 as c_long {
+                let mut current_block_161: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
                     BT_NONASCII => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_12 XML_TOK_INVALID_1;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_45 = 2165477741955893522;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_161 = 6701753098489376273;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_12 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(2);
-                        current_block_45 = 8180496224585318153;
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_161 = 14714495436747744489;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_12 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(3);
-                        current_block_45 = 8180496224585318153;
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_161 = 14714495436747744489;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_12 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(4);
-                        current_block_45 = 8180496224585318153;
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_161 = 14714495436747744489;
                     }
-                    BT_EXCL => {
-                        ptr = ptr.offset(1);
-                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                            break 'iife_ret_12 XML_TOK_PARTIAL_1;
-                        }
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_MINUS => {
-                                break 'iife_ret_12 ({
-                                    let (tok_value, next_tok_value) = normal_scanComment(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            BT_LSQB => {
-                                break 'iife_ret_12 ({
-                                    let (tok_value, next_tok_value) = normal_scanCdataSection(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_12 XML_TOK_INVALID_1;
-                    }
-                    BT_QUEST => {
-                        break 'iife_ret_12 ({
-                            let (tok_value, next_tok_value) = normal_scanPi(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_SOL => {
-                        break 'iife_ret_12 ({
-                            let (tok_value, next_tok_value) = normal_scanEndTag(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_12 XML_TOK_INVALID_1;
-                    }
-                }
-                if current_block_45 == 2165477741955893522 {
-                    ptr = ptr.offset(1isize);
-                }
-                hadColon = 0;
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_161: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
                             *nextTokPtr = ptr;
                             break 'iife_ret_12 XML_TOK_INVALID_1;
                         }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_161 = 6701753098489376273;
+                        hadColon = 1;
+                        ptr = ptr.wrapping_offset(1);
+                        if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                            break 'iife_ret_12 XML_TOK_PARTIAL_1;
                         }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                            {
+                        let mut current_block_112: u64;
+                        match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                            as c_uint
+                        {
+                            BT_NONASCII => {
                                 *nextTokPtr = ptr;
                                 break 'iife_ret_12 XML_TOK_INVALID_1;
                             }
-                            ptr = ptr.offset(2);
-                            current_block_161 = 14714495436747744489;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_112 = 9169466483824547789;
                             }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                            {
+                            BT_LEAD2 => {
+                                if (c_char_ptr_diff(end, ptr)) < 2 {
+                                    break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_12 XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.wrapping_offset(2);
+                                current_block_112 = 2616667235040759262;
+                            }
+                            BT_LEAD3 => {
+                                if (c_char_ptr_diff(end, ptr)) < 3 {
+                                    break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_12 XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.wrapping_offset(3);
+                                current_block_112 = 2616667235040759262;
+                            }
+                            BT_LEAD4 => {
+                                if (c_char_ptr_diff(end, ptr)) < 4 {
+                                    break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                    || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_12 XML_TOK_INVALID_1;
+                                }
+                                ptr = ptr.wrapping_offset(4);
+                                current_block_112 = 2616667235040759262;
+                            }
+                            _ => {
                                 *nextTokPtr = ptr;
                                 break 'iife_ret_12 XML_TOK_INVALID_1;
                             }
-                            ptr = ptr.offset(3);
-                            current_block_161 = 14714495436747744489;
                         }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_12 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_161 = 14714495436747744489;
+                        if current_block_112 == 9169466483824547789 {
+                            ptr = ptr.wrapping_offset(1isize);
                         }
-                        BT_COLON_0 => {
-                            if hadColon != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_12 XML_TOK_INVALID_1;
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.wrapping_offset(1);
+                        loop {
+                            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                                current_block_161 = 13215501469961642988;
+                                break;
                             }
-                            hadColon = 1;
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                break 'iife_ret_12 XML_TOK_PARTIAL_1;
-                            }
-                            let mut current_block_112: u64;
-                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            match as_normal_encoding(enc).type_0
+                                [read_c_char(ptr) as c_uchar as usize]
+                                as c_uint
                             {
                                 BT_NONASCII => {
                                     *nextTokPtr = ptr;
                                     break 'iife_ret_12 XML_TOK_INVALID_1;
                                 }
                                 BT_NMSTRT | BT_HEX => {
-                                    current_block_112 = 9169466483824547789;
+                                    current_block_161 = 7939927167482451446;
                                 }
                                 BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                    if (c_char_ptr_diff(end, ptr)) < 2 {
                                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
@@ -1995,11 +2113,11 @@ pub mod xmltok_impl_c {
                                         *nextTokPtr = ptr;
                                         break 'iife_ret_12 XML_TOK_INVALID_1;
                                     }
-                                    ptr = ptr.offset(2);
-                                    current_block_112 = 2616667235040759262;
+                                    ptr = ptr.wrapping_offset(2);
+                                    current_block_161 = 16314074004867283505;
                                 }
                                 BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                    if (c_char_ptr_diff(end, ptr)) < 3 {
                                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
@@ -2008,11 +2126,11 @@ pub mod xmltok_impl_c {
                                         *nextTokPtr = ptr;
                                         break 'iife_ret_12 XML_TOK_INVALID_1;
                                     }
-                                    ptr = ptr.offset(3);
-                                    current_block_112 = 2616667235040759262;
+                                    ptr = ptr.wrapping_offset(3);
+                                    current_block_161 = 16314074004867283505;
                                 }
                                 BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                    if (c_char_ptr_diff(end, ptr)) < 4 {
                                         break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
@@ -2021,598 +2139,528 @@ pub mod xmltok_impl_c {
                                         *nextTokPtr = ptr;
                                         break 'iife_ret_12 XML_TOK_INVALID_1;
                                     }
-                                    ptr = ptr.offset(4);
-                                    current_block_112 = 2616667235040759262;
+                                    ptr = ptr.wrapping_offset(4);
+                                    current_block_161 = 16314074004867283505;
+                                }
+                                BT_GT => {
+                                    current_block_161 = 5640065479517572396;
+                                    break;
+                                }
+                                BT_SOL => {
+                                    current_block_161 = 12549409781983877175;
+                                    break;
+                                }
+                                BT_S | BT_CR | BT_LF => {
+                                    ptr = ptr.wrapping_offset(1);
+                                    continue;
                                 }
                                 _ => {
                                     *nextTokPtr = ptr;
                                     break 'iife_ret_12 XML_TOK_INVALID_1;
                                 }
                             }
-                            if current_block_112 == 9169466483824547789 {
-                                ptr = ptr.offset(1isize);
+                            if current_block_161 == 7939927167482451446 {
+                                ptr = ptr.wrapping_offset(1isize);
                             }
-                            current_block_161 = 14714495436747744489;
+                            break 'iife_ret_12 ({
+                                let (tok_value, next_tok_value) =
+                                    normal_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
                         }
-                        BT_S | BT_CR | BT_LF => {
-                            ptr = ptr.offset(1);
-                            loop {
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    current_block_161 = 13215501469961642988;
-                                    break;
-                                }
-                                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                    as c_uint
-                                {
-                                    BT_NONASCII => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_12 XML_TOK_INVALID_1;
-                                    }
-                                    BT_NMSTRT | BT_HEX => {
-                                        current_block_161 = 7939927167482451446;
-                                    }
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_12 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(2);
-                                        current_block_161 = 16314074004867283505;
-                                    }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_12 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(3);
-                                        current_block_161 = 16314074004867283505;
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_12 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_12 XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(4);
-                                        current_block_161 = 16314074004867283505;
-                                    }
-                                    BT_GT => {
-                                        current_block_161 = 5640065479517572396;
-                                        break;
-                                    }
-                                    BT_SOL => {
-                                        current_block_161 = 12549409781983877175;
-                                        break;
-                                    }
-                                    BT_S | BT_CR | BT_LF => {
-                                        ptr = ptr.offset(1);
-                                        continue;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_12 XML_TOK_INVALID_1;
-                                    }
-                                }
-                                if current_block_161 == 7939927167482451446 {
-                                    ptr = ptr.offset(1isize);
-                                }
-                                break 'iife_ret_12 ({
-                                    let (tok_value, next_tok_value) =
-                                        normal_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            match current_block_161 {
-                                5640065479517572396 => {}
-                                12549409781983877175 => {}
-                                _ => break 'iife_ret_12 XML_TOK_PARTIAL_1,
-                            }
+                        match current_block_161 {
+                            5640065479517572396 => {}
+                            12549409781983877175 => {}
+                            _ => break 'iife_ret_12 XML_TOK_PARTIAL_1,
                         }
-                        BT_GT => {
-                            current_block_161 = 5640065479517572396;
+                    }
+                    BT_GT => {
+                        current_block_161 = 5640065479517572396;
+                    }
+                    BT_SOL => {
+                        current_block_161 = 12549409781983877175;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_12 XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_161 {
+                    12549409781983877175 => {
+                        ptr = ptr.wrapping_offset(1);
+                        if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                            break 'iife_ret_12 XML_TOK_PARTIAL_1;
                         }
-                        BT_SOL => {
-                            current_block_161 = 12549409781983877175;
-                        }
-                        _ => {
+                        if read_c_char(ptr) as c_int != 0x3e {
                             *nextTokPtr = ptr;
                             break 'iife_ret_12 XML_TOK_INVALID_1;
                         }
+                        *nextTokPtr = ptr.wrapping_offset(1);
+                        break 'iife_ret_12 XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
                     }
-                    match current_block_161 {
-                        12549409781983877175 => {
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                break 'iife_ret_12 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr as c_int != 0x3e {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_12 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(1);
-                            break 'iife_ret_12 XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
-                        }
-                        5640065479517572396 => {
-                            *nextTokPtr = ptr.offset(1);
-                            break 'iife_ret_12 XML_TOK_START_TAG_NO_ATTS_1;
-                        }
-                        6701753098489376273 => {
-                            ptr = ptr.offset(1isize);
-                        }
-                        _ => {}
+                    5640065479517572396 => {
+                        *nextTokPtr = ptr.wrapping_offset(1);
+                        break 'iife_ret_12 XML_TOK_START_TAG_NO_ATTS_1;
                     }
+                    6701753098489376273 => {
+                        ptr = ptr.wrapping_offset(1isize);
+                    }
+                    _ => {}
                 }
-                break 'iife_ret_12 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_12 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_13: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if ptr >= end {
-                    break 'iife_ret_13 XML_TOK_NONE_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_13: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if ptr >= end {
+                break 'iife_ret_13 XML_TOK_NONE_1;
+            }
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_LT => {
+                    break 'iife_ret_13 ({
+                        let (tok_value, next_tok_value) = normal_scanLt(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
                 }
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_LT => {
-                        break 'iife_ret_13 ({
-                            let (tok_value, next_tok_value) = normal_scanLt(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+                BT_AMP => {
+                    break 'iife_ret_13 ({
+                        let (tok_value, next_tok_value) = normal_scanRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_CR => {
+                    ptr = ptr.wrapping_offset(1);
+                    if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                        break 'iife_ret_13 XML_TOK_TRAILING_CR_1;
                     }
-                    BT_AMP => {
-                        break 'iife_ret_13 ({
-                            let (tok_value, next_tok_value) = normal_scanRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+                    if as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_int
+                        == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(1isize);
                     }
-                    BT_CR => {
-                        ptr = ptr.offset(1);
-                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                            break 'iife_ret_13 XML_TOK_TRAILING_CR_1;
-                        }
-                        if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                            == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(1isize);
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_13 XML_TOK_DATA_NEWLINE_1;
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_13 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.wrapping_offset(1);
+                    break 'iife_ret_13 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(1);
+                    if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                        break 'iife_ret_13 XML_TOK_TRAILING_RSQB_1;
                     }
-                    BT_LF => {
-                        *nextTokPtr = ptr.offset(1);
-                        break 'iife_ret_13 XML_TOK_DATA_NEWLINE_1;
-                    }
-                    BT_RSQB => {
-                        ptr = ptr.offset(1);
-                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
+                    if read_c_char(ptr) as c_int == 0x5d {
+                        ptr = ptr.wrapping_offset(1);
+                        if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
                             break 'iife_ret_13 XML_TOK_TRAILING_RSQB_1;
                         }
-                        if *ptr as c_int == 0x5d {
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                break 'iife_ret_13 XML_TOK_TRAILING_RSQB_1;
-                            }
-                            if *ptr as c_int != 0x3e {
-                                ptr = ptr.offset(-(1isize));
-                            } else {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_13 XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                        if read_c_char(ptr) as c_int != 0x3e {
+                            ptr = ptr.wrapping_offset(-(1isize));
+                        } else {
                             *nextTokPtr = ptr;
                             break 'iife_ret_13 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(2isize);
                     }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_13 XML_TOK_INVALID_1;
-                        }
-                        ptr = ptr.offset(3isize);
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_13 XML_TOK_INVALID_1;
-                        }
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                         *nextTokPtr = ptr;
                         break 'iife_ret_13 XML_TOK_INVALID_1;
                     }
-                    _ => {
-                        ptr = ptr.offset(1isize);
-                    }
+                    ptr = ptr.wrapping_offset(2isize);
                 }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_76: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2
-                                || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3
-                                || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4
-                                || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_RSQB => {
-                            if end.offset_from(ptr) as c_long >= 2i32 as c_long {
-                                if *ptr.offset(1) as c_int != 0x5d {
-                                    ptr = ptr.offset(1);
-                                    current_block_76 = 7158658067966855297;
-                                } else if end.offset_from(ptr) as c_long >= 3i32 as c_long {
-                                    if *ptr.offset(2i32 as isize) as c_int != 0x3e {
-                                        ptr = ptr.offset(1isize);
-                                    } else {
-                                        *nextTokPtr = ptr.offset(2i32 as isize);
-                                        break 'iife_ret_13 XML_TOK_INVALID_1;
-                                    }
-                                    current_block_76 = 7158658067966855297;
-                                } else {
-                                    current_block_76 = 1999360611754201214;
-                                }
-                            } else {
-                                current_block_76 = 1999360611754201214;
-                            }
-                        }
-                        BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
-                            current_block_76 = 1999360611754201214;
-                        }
-                        _ => {
-                            ptr = ptr.offset(1);
-                            current_block_76 = 7158658067966855297;
-                        }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    match current_block_76 {
-                        7158658067966855297 => {}
-                        _ => {
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_13 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_13 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_13 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_13 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(1isize);
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 as c_long {
+                let mut current_block_76: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2
+                            || as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        {
                             *nextTokPtr = ptr;
                             break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
                         }
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3
+                            || as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4
+                            || as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_RSQB => {
+                        if c_char_ptr_diff(end, ptr) >= 2i32 as c_long {
+                            if read_c_char_at(ptr, 1) as c_int != 0x5d {
+                                ptr = ptr.wrapping_offset(1);
+                                current_block_76 = 7158658067966855297;
+                            } else if c_char_ptr_diff(end, ptr) >= 3i32 as c_long {
+                                if read_c_char_at(ptr, 2i32 as isize) as c_int != 0x3e {
+                                    ptr = ptr.wrapping_offset(1isize);
+                                } else {
+                                    *nextTokPtr = ptr.wrapping_offset(2i32 as isize);
+                                    break 'iife_ret_13 XML_TOK_INVALID_1;
+                                }
+                                current_block_76 = 7158658067966855297;
+                            } else {
+                                current_block_76 = 1999360611754201214;
+                            }
+                        } else {
+                            current_block_76 = 1999360611754201214;
+                        }
+                    }
+                    BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
+                        current_block_76 = 1999360611754201214;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(1);
+                        current_block_76 = 7158658067966855297;
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+                match current_block_76 {
+                    7158658067966855297 => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_13 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_14: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_14 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_14: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) < 1 {
+                break 'iife_ret_14 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_34: u64;
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_14 XML_TOK_INVALID_1;
                 }
-                let mut current_block_34: u64;
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NMSTRT | BT_HEX => {
+                    current_block_34 = 12478441211659886388;
+                }
+                BT_LEAD2 => {
+                    if c_char_ptr_diff(end, ptr) < 2 {
+                        break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_14 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_34 = 4761528863920922185;
+                }
+                BT_LEAD3 => {
+                    if c_char_ptr_diff(end, ptr) < 3 {
+                        break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_14 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(3);
+                    current_block_34 = 4761528863920922185;
+                }
+                BT_LEAD4 => {
+                    if c_char_ptr_diff(end, ptr) < 4 {
+                        break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_14 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(4);
+                    current_block_34 = 4761528863920922185;
+                }
+                BT_S | BT_LF | BT_CR | BT_PERCNT => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_14 XML_TOK_PERCENT_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_14 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_34 == 12478441211659886388 {
+                ptr = ptr.wrapping_offset(1);
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 {
+                let mut current_block_65: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
                     BT_NONASCII => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_14 XML_TOK_INVALID_1;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_34 = 12478441211659886388;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_65 = 7770117754142564343;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if c_char_ptr_diff(end, ptr) < 2 {
                             break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_14 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(2);
-                        current_block_34 = 4761528863920922185;
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_65 = 16415152177862271243;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if c_char_ptr_diff(end, ptr) < 3 {
                             break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_14 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(3);
-                        current_block_34 = 4761528863920922185;
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_65 = 16415152177862271243;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if c_char_ptr_diff(end, ptr) < 4 {
                             break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_14 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(4);
-                        current_block_34 = 4761528863920922185;
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_65 = 16415152177862271243;
                     }
-                    BT_S | BT_LF | BT_CR | BT_PERCNT => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_14 XML_TOK_PERCENT_1;
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.wrapping_offset(1);
+                        break 'iife_ret_14 XML_TOK_PARAM_ENTITY_REF_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_14 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_34 == 12478441211659886388 {
-                    ptr = ptr.offset(1isize);
+                if current_block_65 == 7770117754142564343 {
+                    ptr = ptr.wrapping_offset(1);
                 }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_65: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_14 XML_TOK_INVALID_1;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_65 = 7770117754142564343;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_14 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_65 = 16415152177862271243;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_14 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_65 = 16415152177862271243;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_14 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_14 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_65 = 16415152177862271243;
-                        }
-                        BT_SEMI => {
-                            *nextTokPtr = ptr.offset(1);
-                            break 'iife_ret_14 XML_TOK_PARAM_ENTITY_REF_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_14 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_65 == 7770117754142564343 {
-                        ptr = ptr.offset(1isize);
-                    }
-                }
-                break 'iife_ret_14 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_14 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_15: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_15 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_15: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) < 1 {
+                break 'iife_ret_15 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_NONASCII => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_15 XML_TOK_INVALID_1;
                 }
-                let mut current_block_32: u64;
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 1867613116081924762;
+                }
+                BT_LEAD2 => {
+                    if c_char_ptr_diff(end, ptr) < 2 {
+                        break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_15 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_32 = 7056779235015430508;
+                }
+                BT_LEAD3 => {
+                    if c_char_ptr_diff(end, ptr) < 3 {
+                        break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_15 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(3);
+                    current_block_32 = 7056779235015430508;
+                }
+                BT_LEAD4 => {
+                    if c_char_ptr_diff(end, ptr) < 4 {
+                        break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                        || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_15 XML_TOK_INVALID_1;
+                    }
+                    ptr = ptr.wrapping_offset(4);
+                    current_block_32 = 7056779235015430508;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_15 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 1867613116081924762 {
+                ptr = ptr.wrapping_offset(1);
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 {
+                let mut current_block_63: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
                     BT_NONASCII => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_15 XML_TOK_INVALID_1;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 1867613116081924762;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_63 = 226587729178875444;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if c_char_ptr_diff(end, ptr) < 2 {
                             break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt2(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_15 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(2);
-                        current_block_32 = 7056779235015430508;
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_63 = 10380409671385728102;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if c_char_ptr_diff(end, ptr) < 3 {
                             break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt3(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_15 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(3);
-                        current_block_32 = 7056779235015430508;
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_63 = 10380409671385728102;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if c_char_ptr_diff(end, ptr) < 4 {
                             break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                            || as_normal_encoding(enc).isNmstrt4(enc, ptr) == 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_15 XML_TOK_INVALID_1;
                         }
-                        ptr = ptr.offset(4);
-                        current_block_32 = 7056779235015430508;
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_63 = 10380409671385728102;
+                    }
+                    BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_15 XML_TOK_POUND_NAME_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_15 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_32 == 1867613116081924762 {
-                    ptr = ptr.offset(1isize);
+                if current_block_63 == 226587729178875444 {
+                    ptr = ptr.wrapping_offset(1);
                 }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_63: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_15 XML_TOK_INVALID_1;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_63 = 226587729178875444;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_15 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_63 = 10380409671385728102;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_15 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_63 = 10380409671385728102;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_15 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_15 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_63 = 10380409671385728102;
-                        }
-                        BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_15 XML_TOK_POUND_NAME_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_15 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_63 == 226587729178875444 {
-                        ptr = ptr.offset(1isize);
-                    }
-                }
-                break 'iife_ret_15 -XML_TOK_POUND_NAME_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_15 -XML_TOK_POUND_NAME_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_scanLit(
@@ -2620,841 +2668,842 @@ pub mod xmltok_impl_c {
         enc: &ENCODING,
         input: &[c_char],
     ) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_16: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut t: c_int =
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int;
-                    match t {
-                        5 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_16 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2isize);
-                        }
-                        6 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_16 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3isize);
-                        }
-                        7 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_16 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4isize);
-                        }
-                        0 | 1 | 8 => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_16 XML_TOK_INVALID_1;
-                        }
-                        12 | 13 => {
-                            ptr = ptr.offset(1);
-                            if t == open {
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    break 'iife_ret_16 -XML_TOK_LITERAL_1;
-                                }
-                                *nextTokPtr = ptr;
-                                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                    as c_uint
-                                {
-                                    BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
-                                        break 'iife_ret_16 XML_TOK_LITERAL_1
-                                    }
-                                    _ => break 'iife_ret_16 XML_TOK_INVALID_1,
-                                }
-                            }
-                        }
-                        _ => {
-                            ptr = ptr.offset(1isize);
-                        }
-                    }
-                }
-                break 'iife_ret_16 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn normal_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_17: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut tok: c_int = 0;
-                if ptr >= end {
-                    break 'iife_ret_17 XML_TOK_NONE_1;
-                }
-                let mut current_block_124: u64;
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_QUOT => {
-                        break 'iife_ret_17 ({
-                            let (tok_value, next_tok_value) = normal_scanLit(
-                                BT_QUOT as c_int,
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_APOS => {
-                        break 'iife_ret_17 ({
-                            let (tok_value, next_tok_value) = normal_scanLit(
-                                BT_APOS as c_int,
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_LT => {
-                        ptr = ptr.offset(1);
-                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                            break 'iife_ret_17 XML_TOK_PARTIAL_1;
-                        }
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_EXCL => {
-                                break 'iife_ret_17 ({
-                                    let (tok_value, next_tok_value) = normal_scanDecl(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            BT_QUEST => {
-                                break 'iife_ret_17 ({
-                                    let (tok_value, next_tok_value) = normal_scanPi(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
-                                *nextTokPtr = ptr.offset(-(1));
-                                break 'iife_ret_17 XML_TOK_INSTANCE_START;
-                            }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_17 XML_TOK_INVALID_1;
-                    }
-                    BT_CR => {
-                        if ptr.offset(1) == end {
-                            *nextTokPtr = end;
-                            break 'iife_ret_17 -XML_TOK_PROLOG_S_1;
-                        }
-                        current_block_124 = 6405334113228567422;
-                    }
-                    BT_S | BT_LF => {
-                        current_block_124 = 6405334113228567422;
-                    }
-                    BT_PERCNT => {
-                        break 'iife_ret_17 ({
-                            let (tok_value, next_tok_value) = normal_scanPercent(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_COMMA => {
-                        *nextTokPtr = ptr.offset(1);
-                        break 'iife_ret_17 XML_TOK_COMMA_1;
-                    }
-                    BT_LSQB => {
-                        *nextTokPtr = ptr.offset(1);
-                        break 'iife_ret_17 XML_TOK_OPEN_BRACKET_1;
-                    }
-                    BT_RSQB => {
-                        ptr = ptr.offset(1);
-                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                            break 'iife_ret_17 -XML_TOK_CLOSE_BRACKET_1;
-                        }
-                        if *ptr as c_int == 0x5d {
-                            if (end.offset_from(ptr) as c_long) < 2i32 as c_long {
-                                break 'iife_ret_17 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(1) as c_int == 0x3e {
-                                *nextTokPtr = ptr.offset(2i32 as isize);
-                                break 'iife_ret_17 XML_TOK_COND_SECT_CLOSE_1;
-                            }
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_17 XML_TOK_CLOSE_BRACKET_1;
-                    }
-                    BT_LPAR => {
-                        *nextTokPtr = ptr.offset(1);
-                        break 'iife_ret_17 XML_TOK_OPEN_PAREN_1;
-                    }
-                    BT_RPAR => {
-                        ptr = ptr.offset(1);
-                        if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                            break 'iife_ret_17 -XML_TOK_CLOSE_PAREN_1;
-                        }
-                        match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                            BT_AST => {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_17 XML_TOK_CLOSE_PAREN_ASTERISK_1;
-                            }
-                            BT_QUEST => {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_17 XML_TOK_CLOSE_PAREN_QUESTION_1;
-                            }
-                            BT_PLUS => {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_17 XML_TOK_CLOSE_PAREN_PLUS_1;
-                            }
-                            BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_17 XML_TOK_CLOSE_PAREN_1;
-                            }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_17 XML_TOK_INVALID_1;
-                    }
-                    BT_VERBAR => {
-                        *nextTokPtr = ptr.offset(1);
-                        break 'iife_ret_17 XML_TOK_OR_1;
-                    }
-                    BT_GT => {
-                        *nextTokPtr = ptr.offset(1);
-                        break 'iife_ret_17 XML_TOK_DECL_CLOSE_1;
-                    }
-                    BT_NUM => {
-                        break 'iife_ret_17 ({
-                            let (tok_value, next_tok_value) = normal_scanPoundName(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_16: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            while c_char_ptr_diff(end, ptr) >= 1 {
+                let t: c_int =
+                    as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_int;
+                match t {
+                    5 => {
+                        if c_char_ptr_diff(end, ptr) < 2 {
+                            break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                             *nextTokPtr = ptr;
-                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                            break 'iife_ret_16 XML_TOK_INVALID_1;
                         }
-                        if as_normal_encoding(enc).isNmstrt2(enc, ptr) != 0 {
-                            ptr = ptr.offset(2);
-                            tok = XML_TOK_NAME;
-                        } else if as_normal_encoding(enc).isName2(enc, ptr) != 0 {
-                            ptr = ptr.offset(2);
-                            tok = XML_TOK_NMTOKEN_1;
-                        } else {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_17 XML_TOK_INVALID_1;
-                        }
-                        current_block_124 = 2956972668325154207;
+                        ptr = ptr.wrapping_offset(2);
                     }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                    6 => {
+                        if c_char_ptr_diff(end, ptr) < 3 {
+                            break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
                             *nextTokPtr = ptr;
-                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                            break 'iife_ret_16 XML_TOK_INVALID_1;
                         }
-                        if as_normal_encoding(enc).isNmstrt3(enc, ptr) != 0 {
-                            ptr = ptr.offset(3);
-                            tok = XML_TOK_NAME;
-                        } else if as_normal_encoding(enc).isName3(enc, ptr) != 0 {
-                            ptr = ptr.offset(3);
-                            tok = XML_TOK_NMTOKEN_1;
-                        } else {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_17 XML_TOK_INVALID_1;
-                        }
-                        current_block_124 = 2956972668325154207;
+                        ptr = ptr.wrapping_offset(3);
                     }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                    7 => {
+                        if c_char_ptr_diff(end, ptr) < 4 {
+                            break 'iife_ret_16 XML_TOK_PARTIAL_CHAR_1;
                         }
                         if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
                             *nextTokPtr = ptr;
-                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                            break 'iife_ret_16 XML_TOK_INVALID_1;
                         }
-                        if as_normal_encoding(enc).isNmstrt4(enc, ptr) != 0 {
-                            ptr = ptr.offset(4);
-                            tok = XML_TOK_NAME;
-                        } else if as_normal_encoding(enc).isName4(enc, ptr) != 0 {
-                            ptr = ptr.offset(4);
-                            tok = XML_TOK_NMTOKEN_1;
-                        } else {
+                        ptr = ptr.wrapping_offset(4);
+                    }
+                    0 | 1 | 8 => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_16 XML_TOK_INVALID_1;
+                    }
+                    12 | 13 => {
+                        ptr = ptr.wrapping_offset(1);
+                        if t == open {
+                            if c_char_ptr_diff(end, ptr) < 1 {
+                                break 'iife_ret_16 -XML_TOK_LITERAL_1;
+                            }
+                            *nextTokPtr = ptr;
+                            match as_normal_encoding(enc).type_0
+                                [read_c_char(ptr) as c_uchar as usize]
+                                as c_uint
+                            {
+                                BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
+                                    break 'iife_ret_16 XML_TOK_LITERAL_1
+                                }
+                                _ => break 'iife_ret_16 XML_TOK_INVALID_1,
+                            }
+                        }
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(1);
+                    }
+                }
+            }
+            break 'iife_ret_16 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn normal_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_17: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut tok: c_int = 0;
+            if ptr >= end {
+                break 'iife_ret_17 XML_TOK_NONE_1;
+            }
+            let mut current_block_124: u64;
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_QUOT => {
+                    break 'iife_ret_17 ({
+                        let (tok_value, next_tok_value) = normal_scanLit(
+                            BT_QUOT as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_APOS => {
+                    break 'iife_ret_17 ({
+                        let (tok_value, next_tok_value) = normal_scanLit(
+                            BT_APOS as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_LT => {
+                    ptr = ptr.wrapping_offset(1);
+                    if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                        break 'iife_ret_17 XML_TOK_PARTIAL_1;
+                    }
+                    match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                        as c_uint
+                    {
+                        BT_EXCL => {
+                            break 'iife_ret_17 ({
+                                let (tok_value, next_tok_value) = normal_scanDecl(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        BT_QUEST => {
+                            break 'iife_ret_17 ({
+                                let (tok_value, next_tok_value) = normal_scanPi(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
+                            *nextTokPtr = ptr.wrapping_offset(-(1));
+                            break 'iife_ret_17 XML_TOK_INSTANCE_START;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_17 XML_TOK_INVALID_1;
+                }
+                BT_CR => {
+                    if ptr.wrapping_offset(1) == end {
+                        *nextTokPtr = end;
+                        break 'iife_ret_17 -XML_TOK_PROLOG_S_1;
+                    }
+                    current_block_124 = 6405334113228567422;
+                }
+                BT_S | BT_LF => {
+                    current_block_124 = 6405334113228567422;
+                }
+                BT_PERCNT => {
+                    break 'iife_ret_17 ({
+                        let (tok_value, next_tok_value) = normal_scanPercent(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_COMMA => {
+                    *nextTokPtr = ptr.wrapping_offset(1);
+                    break 'iife_ret_17 XML_TOK_COMMA_1;
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.wrapping_offset(1);
+                    break 'iife_ret_17 XML_TOK_OPEN_BRACKET_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(1);
+                    if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                        break 'iife_ret_17 -XML_TOK_CLOSE_BRACKET_1;
+                    }
+                    if read_c_char(ptr) as c_int == 0x5d {
+                        if (c_char_ptr_diff(end, ptr)) < 2i32 as c_long {
+                            break 'iife_ret_17 XML_TOK_PARTIAL_1;
+                        }
+                        if read_c_char_at(ptr, 1) as c_int == 0x3e {
+                            *nextTokPtr = ptr.wrapping_offset(2i32 as isize);
+                            break 'iife_ret_17 XML_TOK_COND_SECT_CLOSE_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_17 XML_TOK_CLOSE_BRACKET_1;
+                }
+                BT_LPAR => {
+                    *nextTokPtr = ptr.wrapping_offset(1);
+                    break 'iife_ret_17 XML_TOK_OPEN_PAREN_1;
+                }
+                BT_RPAR => {
+                    ptr = ptr.wrapping_offset(1);
+                    if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                        break 'iife_ret_17 -XML_TOK_CLOSE_PAREN_1;
+                    }
+                    match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                        as c_uint
+                    {
+                        BT_AST => {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_17 XML_TOK_CLOSE_PAREN_ASTERISK_1;
+                        }
+                        BT_QUEST => {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_17 XML_TOK_CLOSE_PAREN_QUESTION_1;
+                        }
+                        BT_PLUS => {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_17 XML_TOK_CLOSE_PAREN_PLUS_1;
+                        }
+                        BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_17 XML_TOK_CLOSE_PAREN_1;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_17 XML_TOK_INVALID_1;
+                }
+                BT_VERBAR => {
+                    *nextTokPtr = ptr.wrapping_offset(1);
+                    break 'iife_ret_17 XML_TOK_OR_1;
+                }
+                BT_GT => {
+                    *nextTokPtr = ptr.wrapping_offset(1);
+                    break 'iife_ret_17 XML_TOK_DECL_CLOSE_1;
+                }
+                BT_NUM => {
+                    break 'iife_ret_17 ({
+                        let (tok_value, next_tok_value) = normal_scanPoundName(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_17 XML_TOK_INVALID_1;
+                    }
+                    if as_normal_encoding(enc).isNmstrt2(enc, ptr) != 0 {
+                        ptr = ptr.wrapping_offset(2);
+                        tok = XML_TOK_NAME;
+                    } else if as_normal_encoding(enc).isName2(enc, ptr) != 0 {
+                        ptr = ptr.wrapping_offset(2);
+                        tok = XML_TOK_NMTOKEN_1;
+                    } else {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_17 XML_TOK_INVALID_1;
+                    }
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_17 XML_TOK_INVALID_1;
+                    }
+                    if as_normal_encoding(enc).isNmstrt3(enc, ptr) != 0 {
+                        ptr = ptr.wrapping_offset(3);
+                        tok = XML_TOK_NAME;
+                    } else if as_normal_encoding(enc).isName3(enc, ptr) != 0 {
+                        ptr = ptr.wrapping_offset(3);
+                        tok = XML_TOK_NMTOKEN_1;
+                    } else {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_17 XML_TOK_INVALID_1;
+                    }
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_17 XML_TOK_INVALID_1;
+                    }
+                    if as_normal_encoding(enc).isNmstrt4(enc, ptr) != 0 {
+                        ptr = ptr.wrapping_offset(4);
+                        tok = XML_TOK_NAME;
+                    } else if as_normal_encoding(enc).isName4(enc, ptr) != 0 {
+                        ptr = ptr.wrapping_offset(4);
+                        tok = XML_TOK_NMTOKEN_1;
+                    } else {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_17 XML_TOK_INVALID_1;
+                    }
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    tok = XML_TOK_NAME;
+                    ptr = ptr.wrapping_offset(1);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
+                    tok = XML_TOK_NMTOKEN_1;
+                    ptr = ptr.wrapping_offset(1);
+                    current_block_124 = 2956972668325154207;
+                }
+                29 | _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_17 XML_TOK_INVALID_1;
+                }
+            }
+            match current_block_124 {
+                2956972668325154207 => {}
+                _ => {
+                    loop {
+                        ptr = ptr.wrapping_offset(1);
+                        if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                            break;
+                        }
+                        let mut current_block_32: u64;
+                        match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                            as c_uint
+                        {
+                            BT_S | BT_LF => {
+                                current_block_32 = 17500079516916021833;
+                            }
+                            BT_CR => {
+                                if ptr.wrapping_offset(1) != end {
+                                    current_block_32 = 17500079516916021833;
+                                } else {
+                                    current_block_32 = 3687018382384043009;
+                                }
+                            }
+                            _ => {
+                                current_block_32 = 3687018382384043009;
+                            }
+                        }
+                        match current_block_32 {
+                            17500079516916021833 => {}
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_17 XML_TOK_PROLOG_S_1;
+                            }
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_17 XML_TOK_PROLOG_S_1;
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 1 as c_long {
+                let mut current_block_210: u64;
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_NONASCII => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_17 XML_TOK_INVALID_1;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_210 = 17210391895989911948;
+                    }
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                        {
                             *nextTokPtr = ptr;
                             break 'iife_ret_17 XML_TOK_INVALID_1;
                         }
-                        current_block_124 = 2956972668325154207;
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_210 = 14244298717249035578;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        tok = XML_TOK_NAME;
-                        ptr = ptr.offset(1);
-                        current_block_124 = 2956972668325154207;
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_210 = 14244298717249035578;
                     }
-                    BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
-                        tok = XML_TOK_NMTOKEN_1;
-                        ptr = ptr.offset(1);
-                        current_block_124 = 2956972668325154207;
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_210 = 14244298717249035578;
                     }
-                    29 | _ => {
+                    BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
+                    | BT_LF => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_17 tok;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.wrapping_offset(1);
+                        match tok {
+                            XML_TOK_NAME => {
+                                if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                                    break 'iife_ret_17 XML_TOK_PARTIAL_1;
+                                }
+                                tok = XML_TOK_PREFIXED_NAME;
+                                let mut current_block_187: u64;
+                                match as_normal_encoding(enc).type_0
+                                    [read_c_char(ptr) as c_uchar as usize]
+                                    as c_uint
+                                {
+                                    BT_NONASCII => {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_17 XML_TOK_INVALID_1;
+                                    }
+                                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                                        current_block_187 = 2692573546887820791;
+                                    }
+                                    BT_LEAD2 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isName2(enc, ptr) == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                                        }
+                                        ptr = ptr.wrapping_offset(2);
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                    BT_LEAD3 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isName3(enc, ptr) == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                                        }
+                                        ptr = ptr.wrapping_offset(3);
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                    BT_LEAD4 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                                            break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
+                                            || as_normal_encoding(enc).isName4(enc, ptr) == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                                        }
+                                        ptr = ptr.wrapping_offset(4);
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                    _ => {
+                                        tok = XML_TOK_NMTOKEN_1;
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                }
+                                if current_block_187 == 2692573546887820791 {
+                                    ptr = ptr.wrapping_offset(1isize);
+                                }
+                            }
+                            XML_TOK_PREFIXED_NAME => {
+                                tok = XML_TOK_NMTOKEN_1;
+                            }
+                            _ => {}
+                        }
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_PLUS => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(1);
+                        break 'iife_ret_17 XML_TOK_NAME_PLUS_1;
+                    }
+                    BT_AST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(1);
+                        break 'iife_ret_17 XML_TOK_NAME_ASTERISK_1;
+                    }
+                    BT_QUEST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_17 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(1);
+                        break 'iife_ret_17 XML_TOK_NAME_QUESTION_1;
+                    }
+                    _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_17 XML_TOK_INVALID_1;
                     }
                 }
-                match current_block_124 {
-                    2956972668325154207 => {}
-                    _ => {
-                        loop {
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                break;
-                            }
-                            let mut current_block_32: u64;
-                            match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                            {
-                                BT_S | BT_LF => {
-                                    current_block_32 = 17500079516916021833;
-                                }
-                                BT_CR => {
-                                    if ptr.offset(1) != end {
-                                        current_block_32 = 17500079516916021833;
-                                    } else {
-                                        current_block_32 = 3687018382384043009;
-                                    }
-                                }
-                                _ => {
-                                    current_block_32 = 3687018382384043009;
-                                }
-                            }
-                            match current_block_32 {
-                                17500079516916021833 => {}
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_17 XML_TOK_PROLOG_S_1;
-                                }
-                            }
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_17 XML_TOK_PROLOG_S_1;
-                    }
+                if current_block_210 == 17210391895989911948 {
+                    ptr = ptr.wrapping_offset(1isize);
                 }
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    let mut current_block_210: u64;
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_NONASCII => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_17 XML_TOK_INVALID_1;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_210 = 17210391895989911948;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_210 = 14244298717249035578;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_210 = 14244298717249035578;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_210 = 14244298717249035578;
-                        }
-                        BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S
-                        | BT_CR | BT_LF => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_17 tok;
-                        }
-                        BT_COLON_0 => {
-                            ptr = ptr.offset(1);
-                            match tok {
-                                XML_TOK_NAME => {
-                                    if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                        break 'iife_ret_17 XML_TOK_PARTIAL_1;
-                                    }
-                                    tok = XML_TOK_PREFIXED_NAME;
-                                    let mut current_block_187: u64;
-                                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_uint
-                                    {
-                                        BT_NONASCII => {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_17 XML_TOK_INVALID_1;
-                                        }
-                                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                                            current_block_187 = 2692573546887820791;
-                                        }
-                                        BT_LEAD2 => {
-                                            if (end.offset_from(ptr) as c_long) < 2 {
-                                                break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0
-                                                || as_normal_encoding(enc).isName2(enc, ptr) == 0
-                                            {
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                                            }
-                                            ptr = ptr.offset(2);
-                                            current_block_187 = 9812798724717783973;
-                                        }
-                                        BT_LEAD3 => {
-                                            if (end.offset_from(ptr) as c_long) < 3 {
-                                                break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0
-                                                || as_normal_encoding(enc).isName3(enc, ptr) == 0
-                                            {
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                                            }
-                                            ptr = ptr.offset(3);
-                                            current_block_187 = 9812798724717783973;
-                                        }
-                                        BT_LEAD4 => {
-                                            if (end.offset_from(ptr) as c_long) < 4 {
-                                                break 'iife_ret_17 XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0
-                                                || as_normal_encoding(enc).isName4(enc, ptr) == 0
-                                            {
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                                            }
-                                            ptr = ptr.offset(4);
-                                            current_block_187 = 9812798724717783973;
-                                        }
-                                        _ => {
-                                            tok = XML_TOK_NMTOKEN_1;
-                                            current_block_187 = 9812798724717783973;
-                                        }
-                                    }
-                                    if current_block_187 == 2692573546887820791 {
-                                        ptr = ptr.offset(1isize);
-                                    }
-                                }
-                                XML_TOK_PREFIXED_NAME => {
-                                    tok = XML_TOK_NMTOKEN_1;
-                                }
-                                _ => {}
-                            }
-                            current_block_210 = 14244298717249035578;
-                        }
-                        BT_PLUS => {
-                            if tok == XML_TOK_NMTOKEN_1 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(1);
-                            break 'iife_ret_17 XML_TOK_NAME_PLUS_1;
-                        }
-                        BT_AST => {
-                            if tok == XML_TOK_NMTOKEN_1 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(1);
-                            break 'iife_ret_17 XML_TOK_NAME_ASTERISK_1;
-                        }
-                        BT_QUEST => {
-                            if tok == XML_TOK_NMTOKEN_1 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_17 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(1);
-                            break 'iife_ret_17 XML_TOK_NAME_QUESTION_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_17 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_210 == 17210391895989911948 {
-                        ptr = ptr.offset(1isize);
-                    }
-                }
-                break 'iife_ret_17 -tok;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_17 -tok;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_attributeValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_18: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut start: *const c_char = null::<c_char>();
-                if ptr >= end {
-                    break 'iife_ret_18 XML_TOK_NONE_1;
-                } else if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_18 XML_TOK_PARTIAL_1;
-                }
-                start = ptr;
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_LEAD2 => {
-                            ptr = ptr.offset(2isize);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_18: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                break 'iife_ret_18 XML_TOK_NONE_1;
+            } else if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                break 'iife_ret_18 XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while c_char_ptr_diff(end, ptr) >= 1 as c_long {
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_LEAD2 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            break 'iife_ret_18 ({
+                                let (tok_value, next_tok_value) = normal_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
                         }
-                        BT_LEAD3 => {
-                            ptr = ptr.offset(3isize);
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LT => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_18 XML_TOK_INVALID_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_18 XML_TOK_DATA_NEWLINE_1;
                         }
-                        BT_LEAD4 => {
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_AMP => {
-                            if ptr == start {
-                                break 'iife_ret_18 ({
-                                    let (tok_value, next_tok_value) = normal_scanRef(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.wrapping_offset(1);
+                            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                                break 'iife_ret_18 XML_TOK_TRAILING_CR_1;
+                            }
+                            if as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                                as c_int
+                                == BT_LF as c_int
+                            {
+                                ptr = ptr.wrapping_offset(1isize);
                             }
                             *nextTokPtr = ptr;
-                            break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
+                            break 'iife_ret_18 XML_TOK_DATA_NEWLINE_1;
                         }
-                        BT_LT => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_18 XML_TOK_INVALID_1;
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_S => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_18 XML_TOK_ATTRIBUTE_VALUE_S_1;
                         }
-                        BT_LF => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_18 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_CR => {
-                            if ptr == start {
-                                ptr = ptr.offset(1);
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    break 'iife_ret_18 XML_TOK_TRAILING_CR_1;
-                                }
-                                if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                                    == BT_LF as c_int
-                                {
-                                    ptr = ptr.offset(1isize);
-                                }
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_18 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_S => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_18 XML_TOK_ATTRIBUTE_VALUE_S_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
-                        }
-                        _ => {
-                            ptr = ptr.offset(1isize);
-                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(1isize);
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_18 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_19: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut start: *const c_char = null::<c_char>();
-                if ptr >= end {
-                    break 'iife_ret_19 XML_TOK_NONE_1;
-                } else if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                    break 'iife_ret_19 XML_TOK_PARTIAL_1;
-                }
-                start = ptr;
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_LEAD2 => {
-                            ptr = ptr.offset(2isize);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_19: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                break 'iife_ret_19 XML_TOK_NONE_1;
+            } else if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                break 'iife_ret_19 XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while c_char_ptr_diff(end, ptr) >= 1 as c_long {
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_LEAD2 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            break 'iife_ret_19 ({
+                                let (tok_value, next_tok_value) = normal_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(1isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
                         }
-                        BT_LEAD3 => {
-                            ptr = ptr.offset(3isize);
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_PERCNT => {
+                        if ptr == start {
+                            let mut tok: c_int = {
+                                let (tok_value, next_tok_value) = normal_scanPercent(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(1), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                            break 'iife_ret_19 if tok == XML_TOK_PERCENT_1 {
+                                XML_TOK_INVALID_1
+                            } else {
+                                tok
+                            };
                         }
-                        BT_LEAD4 => {
-                            ptr = ptr.offset(4isize);
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(1);
+                            break 'iife_ret_19 XML_TOK_DATA_NEWLINE_1;
                         }
-                        BT_AMP => {
-                            if ptr == start {
-                                break 'iife_ret_19 ({
-                                    let (tok_value, next_tok_value) = normal_scanRef(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(1isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.wrapping_offset(1);
+                            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                                break 'iife_ret_19 XML_TOK_TRAILING_CR_1;
+                            }
+                            if as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize]
+                                as c_int
+                                == BT_LF as c_int
+                            {
+                                ptr = ptr.wrapping_offset(1isize);
                             }
                             *nextTokPtr = ptr;
-                            break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
+                            break 'iife_ret_19 XML_TOK_DATA_NEWLINE_1;
                         }
-                        BT_PERCNT => {
-                            if ptr == start {
-                                let mut tok: c_int = {
-                                    let (tok_value, next_tok_value) = normal_scanPercent(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(1), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                };
-                                break 'iife_ret_19 if tok == XML_TOK_PERCENT_1 {
-                                    XML_TOK_INVALID_1
-                                } else {
-                                    tok
-                                };
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_LF => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(1);
-                                break 'iife_ret_19 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_CR => {
-                            if ptr == start {
-                                ptr = ptr.offset(1);
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    break 'iife_ret_19 XML_TOK_TRAILING_CR_1;
-                                }
-                                if as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                                    == BT_LF as c_int
-                                {
-                                    ptr = ptr.offset(1isize);
-                                }
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_19 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
-                        }
-                        _ => {
-                            ptr = ptr.offset(1isize);
-                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(1isize);
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_19 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn normal_ignoreSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_20: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut level: c_int = 0;
-                while end.offset_from(ptr) as c_long >= 1 as c_long {
-                    match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_20 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2isize);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_20: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut level: c_int = 0;
+            while c_char_ptr_diff(end, ptr) >= 1 as c_long {
+                match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint
+                {
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_20 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3isize);
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_20 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                        if as_normal_encoding(enc).isInvalid2(enc, ptr) != 0 {
                             *nextTokPtr = ptr;
                             break 'iife_ret_20 XML_TOK_INVALID_1;
                         }
-                        BT_LT => {
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid3(enc, ptr) != 0 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_20 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_20 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        if as_normal_encoding(enc).isInvalid4(enc, ptr) != 0 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_20 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_20 XML_TOK_INVALID_1;
+                    }
+                    BT_LT => {
+                        ptr = ptr.wrapping_offset(1);
+                        if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                            break 'iife_ret_20 XML_TOK_PARTIAL_1;
+                        }
+                        if read_c_char(ptr) as c_int == 0x21 {
+                            ptr = ptr.wrapping_offset(1);
+                            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
                                 break 'iife_ret_20 XML_TOK_PARTIAL_1;
                             }
-                            if *ptr as c_int == 0x21 {
-                                ptr = ptr.offset(1);
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    break 'iife_ret_20 XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr as c_int == 0x5b {
-                                    level += 1;
-                                    ptr = ptr.offset(1isize);
-                                }
+                            if read_c_char(ptr) as c_int == 0x5b {
+                                level += 1;
+                                ptr = ptr.wrapping_offset(1isize);
                             }
                         }
-                        BT_RSQB => {
-                            ptr = ptr.offset(1);
-                            if (end.offset_from(ptr) as c_long) < 1 as c_long {
+                    }
+                    BT_RSQB => {
+                        ptr = ptr.wrapping_offset(1);
+                        if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
+                            break 'iife_ret_20 XML_TOK_PARTIAL_1;
+                        }
+                        if read_c_char(ptr) as c_int == 0x5d {
+                            ptr = ptr.wrapping_offset(1);
+                            if (c_char_ptr_diff(end, ptr)) < 1 as c_long {
                                 break 'iife_ret_20 XML_TOK_PARTIAL_1;
                             }
-                            if *ptr as c_int == 0x5d {
-                                ptr = ptr.offset(1);
-                                if (end.offset_from(ptr) as c_long) < 1 as c_long {
-                                    break 'iife_ret_20 XML_TOK_PARTIAL_1;
+                            if read_c_char(ptr) as c_int == 0x3e {
+                                ptr = ptr.wrapping_offset(1);
+                                if level == 0 {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_20 XML_TOK_IGNORE_SECT_1;
                                 }
-                                if *ptr as c_int == 0x3e {
-                                    ptr = ptr.offset(1);
-                                    if level == 0 {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_20 XML_TOK_IGNORE_SECT_1;
-                                    }
-                                    level -= 1;
-                                }
+                                level -= 1;
                             }
-                        }
-                        _ => {
-                            ptr = ptr.offset(1isize);
-                        }
-                    }
-                }
-                break 'iife_ret_20 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn normal_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe {
-            let mut badPtrVal: *const c_char = null::<c_char>();
-            let badPtr = &mut badPtrVal;
-            let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            ptr = ptr.offset(1);
-            end = end.offset(-(1));
-            while end.offset_from(ptr) as c_long >= 1 as c_long {
-                let mut current_block_8: u64;
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16
-                    | 33 | 30 | 19 | 23 => {
-                        current_block_8 = 5143058163439228106;
-                    }
-                    BT_S => {
-                        if *ptr as c_int == 0x9 {
-                            *badPtr = ptr;
-                            return (0i32, badPtrVal);
-                        }
-                        current_block_8 = 5143058163439228106;
-                    }
-                    BT_NAME | BT_NMSTRT => {
-                        if *ptr as c_int & !(0x7f) == 0 {
-                            current_block_8 = 5143058163439228106;
-                        } else {
-                            current_block_8 = 10293610489198370764;
                         }
                     }
                     _ => {
+                        ptr = ptr.wrapping_offset(1isize);
+                    }
+                }
+            }
+            break 'iife_ret_20 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn normal_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        let mut badPtrVal: *const c_char = null::<c_char>();
+        let badPtr = &mut badPtrVal;
+        let mut ptr = input.as_ptr();
+        let mut end = ptr.wrapping_add(input.len());
+        ptr = ptr.wrapping_offset(1);
+        end = end.wrapping_offset(-1);
+        while c_char_ptr_diff(end, ptr) >= 1 {
+            let mut current_block_8: u64;
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
+                | 30 | 19 | 23 => {
+                    current_block_8 = 5143058163439228106;
+                }
+                BT_S => {
+                    if read_c_char(ptr) as c_int == 0x9 {
+                        *badPtr = ptr;
+                        return (0i32, badPtrVal);
+                    }
+                    current_block_8 = 5143058163439228106;
+                }
+                BT_NAME | BT_NMSTRT => {
+                    if read_c_char(ptr) as c_int & !(0x7f) == 0 {
+                        current_block_8 = 5143058163439228106;
+                    } else {
                         current_block_8 = 10293610489198370764;
                     }
                 }
-                if current_block_8 == 10293610489198370764 {
-                    match *ptr as c_int {
-                        36 | 64 => {}
-                        _ => {
-                            *badPtr = ptr;
-                            return (0i32, badPtrVal);
-                        }
+                _ => {
+                    current_block_8 = 10293610489198370764;
+                }
+            }
+            if current_block_8 == 10293610489198370764 {
+                match read_c_char(ptr) as c_int {
+                    36 | 64 => {}
+                    _ => {
+                        *badPtr = ptr;
+                        return (0i32, badPtrVal);
                     }
                 }
-                ptr = ptr.offset(1);
             }
-            (1, badPtrVal)
+            ptr = ptr.wrapping_offset(1);
         }
+        (1, badPtrVal)
     }
 
     pub(crate) fn normal_getAtts(
@@ -3463,128 +3512,127 @@ pub mod xmltok_impl_c {
         mut attsMax: c_int,
         mut atts: *mut ATTRIBUTE,
     ) -> c_int {
-        unsafe {
-            let mut state: C2RustUnnamed_3 = inName;
-            let mut nAtts: c_int = 0;
-            let mut open: c_int = 0;
-            ptr = ptr.offset(1);
-            loop {
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_LEAD2 => {
-                        if state == other {
-                            if nAtts < attsMax {
-                                let fresh10 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh10 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName;
-                        }
-                        ptr = ptr.offset((2i32 - 1i32) as isize);
-                    }
-                    BT_LEAD3 => {
-                        if state == other {
-                            if nAtts < attsMax {
-                                let fresh11 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh11 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName;
-                        }
-                        ptr = ptr.offset((3i32 - 1i32) as isize);
-                    }
-                    BT_LEAD4 => {
-                        if state == other {
-                            if nAtts < attsMax {
-                                let fresh12 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh12 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName;
-                        }
-                        ptr = ptr.offset((4i32 - 1i32) as isize);
-                    }
-                    BT_NONASCII | BT_NMSTRT | BT_HEX => {
-                        if state == other {
-                            if nAtts < attsMax {
-                                let fresh13 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh13 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName;
-                        }
-                    }
-                    BT_QUOT => {
-                        if state != inValue {
-                            if nAtts < attsMax {
-                                let fresh14 = &mut (*atts.offset(nAtts as isize)).valuePtr;
-                                *fresh14 = ptr.offset(1isize);
-                            }
-                            state = inValue;
-                            open = BT_QUOT as c_int;
-                        } else if open == BT_QUOT as c_int {
-                            state = other;
-                            if nAtts < attsMax {
-                                let fresh15 = &mut (*atts.offset(nAtts as isize)).valueEnd;
-                                *fresh15 = ptr;
-                            }
-                            nAtts += 1;
-                        }
-                    }
-                    BT_APOS => {
-                        if state != inValue {
-                            if nAtts < attsMax {
-                                let fresh16 = &mut (*atts.offset(nAtts as isize)).valuePtr;
-                                *fresh16 = ptr.offset(1isize);
-                            }
-                            state = inValue;
-                            open = BT_APOS as c_int;
-                        } else if open == BT_APOS as c_int {
-                            state = other;
-                            if nAtts < attsMax {
-                                let fresh17 = &mut (*atts.offset(nAtts as isize)).valueEnd;
-                                *fresh17 = ptr;
-                            }
-                            nAtts += 1;
-                        }
-                    }
-                    BT_AMP => {
+        let mut state: C2RustUnnamed_3 = inName;
+        let mut nAtts: c_int = 0;
+        let mut open: c_int = 0;
+        ptr = ptr.wrapping_offset(1);
+        loop {
+            match as_normal_encoding(enc).type_0[read_c_char(ptr) as c_uchar as usize] as c_uint {
+                BT_LEAD2 => {
+                    if state == other {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
                         }
+                        state = inName;
                     }
-                    BT_S => {
-                        if state == inName {
-                            state = other;
-                        } else if state == inValue
-                            && nAtts < attsMax
-                            && (*atts.offset(nAtts as isize)).normalized as c_int != 0
-                            && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                                || *ptr as c_int != ASCII_SPACE
-                                || *ptr.offset(1) as c_int == ASCII_SPACE
+                    ptr = ptr.wrapping_offset((2i32 - 1i32) as isize);
+                }
+                BT_LEAD3 => {
+                    if state == other {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName;
+                    }
+                    ptr = ptr.wrapping_offset((3i32 - 1i32) as isize);
+                }
+                BT_LEAD4 => {
+                    if state == other {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName;
+                    }
+                    ptr = ptr.wrapping_offset((4i32 - 1i32) as isize);
+                }
+                BT_NONASCII | BT_NMSTRT | BT_HEX => {
+                    if state == other {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName;
+                    }
+                }
+                BT_QUOT => {
+                    if state != inValue {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valuePtr = ptr.wrapping_offset(1);
+                        }
+                        state = inValue;
+                        open = BT_QUOT as c_int;
+                    } else if open == BT_QUOT as c_int {
+                        state = other;
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valueEnd = ptr;
+                        }
+                        nAtts += 1;
+                    }
+                }
+                BT_APOS => {
+                    if state != inValue {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valuePtr = ptr.wrapping_offset(1);
+                        }
+                        state = inValue;
+                        open = BT_APOS as c_int;
+                    } else if open == BT_APOS as c_int {
+                        state = other;
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valueEnd = ptr;
+                        }
+                        nAtts += 1;
+                    }
+                }
+                BT_AMP => {
+                    if nAtts < attsMax {
+                        attribute_mut(atts, nAtts).normalized = 0i8;
+                    }
+                }
+                BT_S => {
+                    if state == inName {
+                        state = other;
+                    } else if state == inValue && nAtts < attsMax {
+                        let att = attribute_mut(atts, nAtts);
+                        if att.normalized as c_int != 0
+                            && (ptr == att.valuePtr
+                                || read_c_char(ptr) as c_int != ASCII_SPACE
+                                || read_c_char_at(ptr, 1) as c_int == ASCII_SPACE
                                 || as_normal_encoding(enc).type_0
-                                    [*ptr.offset(1) as c_uchar as usize]
+                                    [read_c_char_at(ptr, 1) as c_uchar as usize]
                                     as c_int
                                     == open)
                         {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
+                            att.normalized = 0i8;
                         }
                     }
-                    BT_CR | BT_LF => {
-                        if state == inName {
-                            state = other;
-                        } else if state == inValue && nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
-                        }
-                    }
-                    BT_GT | BT_SOL => {
-                        if state != inValue {
-                            return nAtts;
-                        }
-                    }
-                    _ => {}
                 }
-                ptr = ptr.offset(1);
+                BT_CR | BT_LF => {
+                    if state == inName {
+                        state = other;
+                    } else if state == inValue && nAtts < attsMax {
+                        attribute_mut(atts, nAtts).normalized = 0i8;
+                    }
+                }
+                BT_GT | BT_SOL => {
+                    if state != inValue {
+                        return nAtts;
+                    }
+                }
+                _ => {}
             }
+            ptr = ptr.wrapping_offset(1);
         }
     }
 
@@ -3741,7 +3789,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn normal_updatePosition(enc: &ENCODING, input: &[c_char], mut pos: *mut POSITION) {
-        let pos = unsafe { &mut *pos };
+        let pos = mut_ref_from_ptr(pos);
         let mut ptr = input.as_ptr();
         let end = ptr.wrapping_add(input.len());
         while c_char_ptr_diff(end, ptr) >= 1 {
@@ -3783,161 +3831,159 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn little2_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_21: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 2 as c_long {
-                    if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x2d) {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_21 XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= 2 as c_long {
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    break 'iife_ret_21 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(2isize);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_21: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                if !(read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x2d) {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_21 XML_TOK_INVALID_1;
+                }
+                ptr = ptr.wrapping_offset(2);
+                while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                    match if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                    } {
+                        BT_LEAD2 => {
+                            if (c_char_ptr_diff(end, ptr)) < 2 {
+                                break 'iife_ret_21 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    break 'iife_ret_21 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(3isize);
+                            ptr = ptr.wrapping_offset(2isize);
+                        }
+                        BT_LEAD3 => {
+                            if (c_char_ptr_diff(end, ptr)) < 3 {
+                                break 'iife_ret_21 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    break 'iife_ret_21 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(4isize);
+                            ptr = ptr.wrapping_offset(3isize);
+                        }
+                        BT_LEAD4 => {
+                            if (c_char_ptr_diff(end, ptr)) < 4 {
+                                break 'iife_ret_21 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_21 XML_TOK_INVALID_1;
+                            ptr = ptr.wrapping_offset(4isize);
+                        }
+                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_21 XML_TOK_INVALID_1;
+                        }
+                        BT_MINUS => {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_21 XML_TOK_PARTIAL_1;
                             }
-                            BT_MINUS => {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
+                            if read_ptr_at(ptr, 1) as c_int == 0
+                                && read_ptr_at(ptr, 0) as c_int == 0x2d
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                                     break 'iife_ret_21 XML_TOK_PARTIAL_1;
                                 }
-                                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x2d {
-                                    ptr = ptr.offset(2);
-                                    if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                        break 'iife_ret_21 XML_TOK_PARTIAL_1;
-                                    }
-                                    if !(*ptr.offset(1) as c_int == 0
-                                        && *ptr.offset(0) as c_int == 0x3e)
-                                    {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_21 XML_TOK_INVALID_1;
-                                    }
-                                    *nextTokPtr = ptr.offset(2);
-                                    break 'iife_ret_21 XML_TOK_COMMENT_1;
+                                if !(read_ptr_at(ptr, 1) as c_int == 0
+                                    && read_ptr_at(ptr, 0) as c_int == 0x3e)
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_21 XML_TOK_INVALID_1;
                                 }
+                                *nextTokPtr = ptr.wrapping_offset(2);
+                                break 'iife_ret_21 XML_TOK_COMMENT_1;
                             }
-                            _ => {
-                                ptr = ptr.offset(2isize);
-                            }
+                        }
+                        _ => {
+                            ptr = ptr.wrapping_offset(2isize);
                         }
                     }
                 }
-                break 'iife_ret_21 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_21 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_22: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_22 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_22: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_22 XML_TOK_PARTIAL_1;
+            }
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_MINUS => {
+                    break 'iife_ret_22 ({
+                        let (tok_value, next_tok_value) = little2_scanComment(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
                 }
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_MINUS => {
-                        break 'iife_ret_22 ({
-                            let (tok_value, next_tok_value) = little2_scanComment(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_LSQB => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_22 XML_TOK_COND_SECT_OPEN_1;
-                    }
-                    BT_NMSTRT | BT_HEX => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_22 XML_TOK_INVALID_1;
-                    }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_22 XML_TOK_COND_SECT_OPEN_1;
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    's_129: {
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_PERCNT => {
-                                if (end.offset_from(ptr) as c_long) < (2i32 * 2) as c_long {
-                                    break 'iife_ret_22 XML_TOK_PARTIAL_1;
-                                }
-                                match if *ptr.offset(2).offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(2) as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(
-                                        *ptr.offset(2).offset(1),
-                                        *ptr.offset(2).offset(0),
-                                    ) as c_uint
-                                } {
-                                    BT_S | BT_CR | BT_LF | BT_PERCNT => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_22 XML_TOK_INVALID_1;
-                                    }
-                                    _ => {}
-                                }
+                BT_NMSTRT | BT_HEX => {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_22 XML_TOK_INVALID_1;
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                's_129: {
+                    match if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                    } {
+                        BT_PERCNT => {
+                            if (c_char_ptr_diff(end, ptr)) < (2i32 * 2) as c_long {
+                                break 'iife_ret_22 XML_TOK_PARTIAL_1;
                             }
-                            BT_S | BT_CR | BT_LF => {}
-                            BT_NMSTRT | BT_HEX => {
-                                ptr = ptr.offset(2);
-                                break 's_129;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_22 XML_TOK_INVALID_1;
+                            match if read_ptr_at(ptr.wrapping_offset(2), 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 2) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(
+                                    read_ptr_at(ptr.wrapping_offset(2), 1),
+                                    read_ptr_at(ptr.wrapping_offset(2), 0),
+                                ) as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF | BT_PERCNT => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_22 XML_TOK_INVALID_1;
+                                }
+                                _ => {}
                             }
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_22 XML_TOK_DECL_OPEN_1;
+                        BT_S | BT_CR | BT_LF => {}
+                        BT_NMSTRT | BT_HEX => {
+                            ptr = ptr.wrapping_offset(2);
+                            break 's_129;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_22 XML_TOK_INVALID_1;
+                        }
                     }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_22 XML_TOK_DECL_OPEN_1;
                 }
-                break 'iife_ret_22 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_22 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_checkPiTarget(_enc: &ENCODING, input: &[c_char]) -> CheckPiTargetResult {
@@ -3996,1952 +4042,1941 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn little2_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_24: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut tok: c_int = 0;
-                let mut target: *const c_char = ptr;
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_24 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_24: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut tok: c_int = 0;
+            let mut target: *const c_char = ptr;
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_24 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_24 XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 14358794669692889688;
                 }
-                let mut current_block_32: u64;
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 14358794669692889688;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_24 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_24 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_24 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_24 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 14358794669692889688 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_118: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_24 XML_TOK_INVALID_1;
                         }
-                        current_block_32 = 14358794669692889688;
+                        current_block_118 = 15890151712677504458;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 14358794669692889688;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_118 = 15890151712677504458;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_24 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_24 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_24 XML_TOK_INVALID_1;
                     }
+                    BT_S | BT_CR | BT_LF => {
+                        if {
+                            let (ok_value, tok_value) =
+                                little2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_24 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                                    as c_uint
+                            } {
+                                BT_LEAD2 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                                        break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                                BT_LEAD3 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                                        break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(3isize);
+                                }
+                                BT_LEAD4 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                                        break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(4isize);
+                                }
+                                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_24 XML_TOK_INVALID_1;
+                                }
+                                BT_QUEST => {
+                                    ptr = ptr.wrapping_offset(2);
+                                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                        break 'iife_ret_24 XML_TOK_PARTIAL_1;
+                                    }
+                                    if read_ptr_at(ptr, 1) as c_int == 0
+                                        && read_ptr_at(ptr, 0) as c_int == 0x3e
+                                    {
+                                        *nextTokPtr = ptr.wrapping_offset(2);
+                                        break 'iife_ret_24 tok;
+                                    }
+                                }
+                                _ => {
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                            }
+                        }
+                        break 'iife_ret_24 XML_TOK_PARTIAL_1;
+                    }
+                    BT_QUEST => {
+                        if {
+                            let (ok_value, tok_value) =
+                                little2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_24 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_24 XML_TOK_PARTIAL_1;
+                        }
+                        if read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x3e
+                        {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_24 tok;
+                        }
+                        current_block_118 = 7312756018063861309;
+                    }
                     _ => {
+                        current_block_118 = 7312756018063861309;
+                    }
+                }
+                match current_block_118 {
+                    7312756018063861309 => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_24 XML_TOK_INVALID_1;
                     }
-                }
-                if current_block_32 == 14358794669692889688 {
-                    ptr = ptr.offset(2isize);
-                }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_118: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_24 XML_TOK_INVALID_1;
-                            }
-                            current_block_118 = 15890151712677504458;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_118 = 15890151712677504458;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_24 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_24 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_24 XML_TOK_INVALID_1;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            if {
-                                let (ok_value, tok_value) = little2_checkPiTarget(
-                                    enc,
-                                    c_char_slice_from_ptr_end(target, ptr),
-                                );
-                                tok = tok_value;
-                                ok_value
-                            } == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_24 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            while end.offset_from(ptr) as c_long >= 2 as c_long {
-                                match if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                                } {
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(3isize);
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_24 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(4isize);
-                                    }
-                                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_24 XML_TOK_INVALID_1;
-                                    }
-                                    BT_QUEST => {
-                                        ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                            break 'iife_ret_24 XML_TOK_PARTIAL_1;
-                                        }
-                                        if *ptr.offset(1) as c_int == 0
-                                            && *ptr.offset(0) as c_int == 0x3e
-                                        {
-                                            *nextTokPtr = ptr.offset(2);
-                                            break 'iife_ret_24 tok;
-                                        }
-                                    }
-                                    _ => {
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                }
-                            }
-                            break 'iife_ret_24 XML_TOK_PARTIAL_1;
-                        }
-                        BT_QUEST => {
-                            if {
-                                let (ok_value, tok_value) = little2_checkPiTarget(
-                                    enc,
-                                    c_char_slice_from_ptr_end(target, ptr),
-                                );
-                                tok = tok_value;
-                                ok_value
-                            } == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_24 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_24 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_24 tok;
-                            }
-                            current_block_118 = 7312756018063861309;
-                        }
-                        _ => {
-                            current_block_118 = 7312756018063861309;
-                        }
+                    15890151712677504458 => {
+                        ptr = ptr.wrapping_offset(2isize);
                     }
-                    match current_block_118 {
-                        7312756018063861309 => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_24 XML_TOK_INVALID_1;
-                        }
-                        15890151712677504458 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
-                    }
+                    _ => {}
                 }
-                break 'iife_ret_24 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_24 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanCdataSection(_enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_25: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                pub static CDATA_LSQB: [c_char; 6] = [
-                    ASCII_C as c_char,
-                    ASCII_D as c_char,
-                    ASCII_A as c_char,
-                    ASCII_T as c_char,
-                    ASCII_A as c_char,
-                    ASCII_LSQB as c_char,
-                ];
-                let mut i: c_int = 0;
-                if (end.offset_from(ptr) as c_long) < (6i32 * 2) as c_long {
-                    break 'iife_ret_25 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_25: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            pub static CDATA_LSQB: [c_char; 6] = [
+                ASCII_C as c_char,
+                ASCII_D as c_char,
+                ASCII_A as c_char,
+                ASCII_T as c_char,
+                ASCII_A as c_char,
+                ASCII_LSQB as c_char,
+            ];
+            let mut i: c_int = 0;
+            if (c_char_ptr_diff(end, ptr)) < (6i32 * 2) as c_long {
+                break 'iife_ret_25 XML_TOK_PARTIAL_1;
+            }
+            i = 0;
+            while i < 6 {
+                if !(read_ptr_at(ptr, 1) as c_int == 0
+                    && read_ptr_at(ptr, 0) as c_int == CDATA_LSQB[i as usize] as c_int)
+                {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_25 XML_TOK_INVALID_1;
                 }
-                i = 0;
-                while i < 6 {
-                    if !(*ptr.offset(1) as c_int == 0
-                        && *ptr.offset(0) as c_int == CDATA_LSQB[i as usize] as c_int)
-                    {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_25 XML_TOK_INVALID_1;
-                    }
-                    i += 1;
-                    ptr = ptr.offset(2);
-                }
-                *nextTokPtr = ptr;
-                break 'iife_ret_25 XML_TOK_CDATA_SECT_OPEN_1;
-            };
-            (tok, next_tok)
-        }
+                i += 1;
+                ptr = ptr.wrapping_offset(2);
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_25 XML_TOK_CDATA_SECT_OPEN_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_cdataSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_26: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if ptr >= end {
-                    break 'iife_ret_26 XML_TOK_NONE_1;
-                }
-                {
-                    let mut n: size_t = end.offset_from(ptr) as size_t;
-                    if n & (2i32 - 1) as size_t != 0 {
-                        n &= !(2i32 - 1) as size_t;
-                        if n == 0 {
-                            break 'iife_ret_26 XML_TOK_PARTIAL_1;
-                        }
-                        end = ptr.add(n);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_26: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if ptr >= end {
+                break 'iife_ret_26 XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = c_char_ptr_diff(end, ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        break 'iife_ret_26 XML_TOK_PARTIAL_1;
                     }
+                    end = ptr.wrapping_add(n);
                 }
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_RSQB => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_26 XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_26 XML_TOK_PARTIAL_1;
-                            }
-                            if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
-                                ptr = ptr.offset(-(2isize));
-                            } else {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_26 XML_TOK_CDATA_SECT_CLOSE_1;
-                            }
-                        }
+            }
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_26 XML_TOK_PARTIAL_1;
                     }
-                    BT_CR => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
+                    if read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x5d {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                             break 'iife_ret_26 XML_TOK_PARTIAL_1;
                         }
-                        if (if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                        }) == BT_LF as c_int
+                        if !(read_ptr_at(ptr, 1) as c_int == 0
+                            && read_ptr_at(ptr, 0) as c_int == 0x3e)
                         {
-                            ptr = ptr.offset(2isize);
+                            ptr = ptr.wrapping_offset(-(2isize));
+                        } else {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_26 XML_TOK_CDATA_SECT_CLOSE_1;
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_26 XML_TOK_DATA_NEWLINE_1;
-                    }
-                    BT_LF => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_26 XML_TOK_DATA_NEWLINE_1;
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_26 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_26 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(3isize);
-                    }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_26 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_26 XML_TOK_INVALID_1;
-                    }
-                    _ => {
-                        ptr = ptr.offset(2isize);
                     }
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                BT_CR => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_26 XML_TOK_PARTIAL_1;
+                    }
+                    if (if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_int
                     } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(2isize);
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(3isize);
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                    }) == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_26 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_26 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_26 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_26 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_26 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_26 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             *nextTokPtr = ptr;
                             break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
                         }
-                        _ => {
-                            ptr = ptr.offset(2isize);
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
                         }
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2isize);
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_26 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_27: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_27 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_27: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_27 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_27 XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 8654814784450400207;
                 }
-                let mut current_block_32: u64;
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 8654814784450400207;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_27 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_27 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_27 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_27 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 8654814784450400207 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_73: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_27 XML_TOK_INVALID_1;
                         }
-                        current_block_32 = 8654814784450400207;
+                        current_block_73 = 16411184819389759620;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 8654814784450400207;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_73 = 16411184819389759620;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_27 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_27 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_27 XML_TOK_INVALID_1;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.wrapping_offset(2);
+                        while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                                    as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF => {}
+                                BT_GT => {
+                                    *nextTokPtr = ptr.wrapping_offset(2);
+                                    break 'iife_ret_27 XML_TOK_END_TAG_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_27 XML_TOK_INVALID_1;
+                                }
+                            }
+                            ptr = ptr.wrapping_offset(2);
+                        }
+                        break 'iife_ret_27 XML_TOK_PARTIAL_1;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_GT => {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_27 XML_TOK_END_TAG_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_27 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_32 == 8654814784450400207 {
-                    ptr = ptr.offset(2isize);
+                if current_block_73 == 16411184819389759620 {
+                    ptr = ptr.wrapping_offset(2isize);
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_73: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_27 XML_TOK_INVALID_1;
-                            }
-                            current_block_73 = 16411184819389759620;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_73 = 16411184819389759620;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_27 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_27 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_27 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_27 XML_TOK_INVALID_1;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            ptr = ptr.offset(2);
-                            while end.offset_from(ptr) as c_long >= 2 as c_long {
-                                match if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                                } {
-                                    BT_S | BT_CR | BT_LF => {}
-                                    BT_GT => {
-                                        *nextTokPtr = ptr.offset(2);
-                                        break 'iife_ret_27 XML_TOK_END_TAG_1;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_27 XML_TOK_INVALID_1;
-                                    }
-                                }
-                                ptr = ptr.offset(2);
-                            }
-                            break 'iife_ret_27 XML_TOK_PARTIAL_1;
-                        }
-                        BT_COLON_0 => {
-                            ptr = ptr.offset(2);
-                            current_block_73 = 981995395831942902;
-                        }
-                        BT_GT => {
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_27 XML_TOK_END_TAG_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_27 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_73 == 16411184819389759620 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_27 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_27 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_28: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_28: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                } {
+                    BT_DIGIT | BT_HEX => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_28 XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.wrapping_offset(2);
+                while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                    match if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                     } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                     } {
                         BT_DIGIT | BT_HEX => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_28 XML_TOK_CHAR_REF_1;
+                        }
                         _ => {
                             *nextTokPtr = ptr;
                             break 'iife_ret_28 XML_TOK_INVALID_1;
                         }
                     }
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= 2 as c_long {
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_DIGIT | BT_HEX => {}
-                            BT_SEMI => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_28 XML_TOK_CHAR_REF_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_28 XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(2);
-                    }
+                    ptr = ptr.wrapping_offset(2);
                 }
-                break 'iife_ret_28 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_28 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_29: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 2 as c_long {
-                    if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x78 {
-                        break 'iife_ret_29 ({
-                            let (tok_value, next_tok_value) = little2_scanHexCharRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_29: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                if read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x78 {
+                    break 'iife_ret_29 ({
+                        let (tok_value, next_tok_value) = little2_scanHexCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                } {
+                    BT_DIGIT => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_29 XML_TOK_INVALID_1;
                     }
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                }
+                ptr = ptr.wrapping_offset(2);
+                while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                    match if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                     } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                     } {
                         BT_DIGIT => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_29 XML_TOK_CHAR_REF_1;
+                        }
                         _ => {
                             *nextTokPtr = ptr;
                             break 'iife_ret_29 XML_TOK_INVALID_1;
                         }
                     }
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= 2 as c_long {
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_DIGIT => {}
-                            BT_SEMI => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_29 XML_TOK_CHAR_REF_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_29 XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(2);
-                    }
+                    ptr = ptr.wrapping_offset(2);
                 }
-                break 'iife_ret_29 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_29 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_30: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_30 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_30: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_30 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_33: u64;
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_30 XML_TOK_INVALID_1;
+                    }
+                    current_block_33 = 6679362556518655255;
                 }
-                let mut current_block_33: u64;
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_33 = 6679362556518655255;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_30 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_30 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_30 XML_TOK_INVALID_1;
+                }
+                BT_NUM => {
+                    break 'iife_ret_30 ({
+                        let (tok_value, next_tok_value) = little2_scanCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_30 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_33 == 6679362556518655255 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_64: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_30 XML_TOK_INVALID_1;
                         }
-                        current_block_33 = 6679362556518655255;
+                        current_block_64 = 405996089697802199;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_33 = 6679362556518655255;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_64 = 405996089697802199;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_30 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_30 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_30 XML_TOK_INVALID_1;
                     }
-                    BT_NUM => {
-                        break 'iife_ret_30 ({
-                            let (tok_value, next_tok_value) = little2_scanCharRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_30 XML_TOK_ENTITY_REF_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_30 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_33 == 6679362556518655255 {
-                    ptr = ptr.offset(2isize);
+                if current_block_64 == 405996089697802199 {
+                    ptr = ptr.wrapping_offset(2isize);
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_64: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_30 XML_TOK_INVALID_1;
-                            }
-                            current_block_64 = 405996089697802199;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_64 = 405996089697802199;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_30 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_30 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_30 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_30 XML_TOK_INVALID_1;
-                        }
-                        BT_SEMI => {
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_30 XML_TOK_ENTITY_REF_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_30 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_64 == 405996089697802199 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_30 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_30 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_31: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut hadColon: c_int = 0;
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_186: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_31 XML_TOK_INVALID_1;
-                            }
-                            current_block_186 = 17747718632989559416;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_186 = 17747718632989559416;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                            }
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_31: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut hadColon: c_int = 0;
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_186: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_int)
+                            << 3)
+                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
                             *nextTokPtr = ptr;
                             break 'iife_ret_31 XML_TOK_INVALID_1;
                         }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_31 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_31 XML_TOK_INVALID_1;
-                        }
-                        BT_COLON_0 => {
-                            if hadColon != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_31 XML_TOK_INVALID_1;
-                            }
-                            hadColon = 1;
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_31 XML_TOK_PARTIAL_1;
-                            }
-                            let mut current_block_64: u64;
-                            match if *ptr.offset(1) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                            } else {
-                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                            } {
-                                BT_NONASCII => {
-                                    if namingBitmap[(((nmstrtPages
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_int)
-                                        << 3)
-                                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                        as usize]
-                                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                        == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_31 XML_TOK_INVALID_1;
-                                    }
-                                    current_block_64 = 12531724302225488581;
-                                }
-                                BT_NMSTRT | BT_HEX => {
-                                    current_block_64 = 12531724302225488581;
-                                }
-                                BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
-                                        break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_31 XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
-                                        break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_31 XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
-                                        break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_31 XML_TOK_INVALID_1;
-                                }
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_31 XML_TOK_INVALID_1;
-                                }
-                            }
-                            if current_block_64 == 12531724302225488581 {
-                                ptr = ptr.offset(2isize);
-                            }
-                            current_block_186 = 1634947208139838470;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            loop {
-                                let mut t: c_int = 0;
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_31 XML_TOK_PARTIAL_1;
-                                }
-                                t = if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                                };
-                                if t == BT_EQUALS as c_int {
-                                    break;
-                                }
-                                match t {
-                                    21 | 10 | 9 => {}
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_31 XML_TOK_INVALID_1;
-                                    }
-                                }
-                            }
-                            current_block_186 = 10853015579903106591;
-                        }
-                        BT_EQUALS => {
-                            current_block_186 = 10853015579903106591;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_31 XML_TOK_INVALID_1;
-                        }
+                        current_block_186 = 17747718632989559416;
                     }
-                    match current_block_186 {
-                        10853015579903106591 => {
-                            let mut open: c_int = 0;
-                            hadColon = 0;
-                            loop {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_31 XML_TOK_PARTIAL_1;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_186 = 17747718632989559416;
+                    }
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_31 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_31 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_31 XML_TOK_INVALID_1;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_31 XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_31 XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_64: u64;
+                        match if read_ptr_at(ptr, 1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                as c_uint
+                        } else {
+                            unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                        } {
+                            BT_NONASCII => {
+                                if namingBitmap[(((nmstrtPages
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_int)
+                                    << 3)
+                                    + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                                    as usize]
+                                    & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                                    == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_31 XML_TOK_INVALID_1;
                                 }
-                                open = if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                                };
-                                if open == BT_QUOT as c_int || open == BT_APOS as c_int {
-                                    break;
-                                }
-                                match open {
-                                    21 | 10 | 9 => {}
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_31 XML_TOK_INVALID_1;
-                                    }
-                                }
+                                current_block_64 = 12531724302225488581;
                             }
-                            ptr = ptr.offset(2);
-                            loop {
-                                let mut t_0: c_int = 0;
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_31 XML_TOK_PARTIAL_1;
-                                }
-                                t_0 = if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                                };
-                                if t_0 == open {
-                                    break;
-                                }
-                                match t_0 {
-                                    5 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                    6 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(3isize);
-                                    }
-                                    7 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(4isize);
-                                    }
-                                    0 | 1 | 8 => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_31 XML_TOK_INVALID_1;
-                                    }
-                                    3 => {
-                                        let mut tok: c_int = {
-                                            let (tok_value, next_tok_value) = little2_scanRef(
-                                                enc,
-                                                c_char_slice_from_ptr_end(ptr.offset(2), end),
-                                            );
-                                            ptr = next_tok_value;
-                                            tok_value
-                                        };
-                                        if tok <= 0 {
-                                            if tok == XML_TOK_INVALID_1 {
-                                                *nextTokPtr = ptr;
-                                            }
-                                            break 'iife_ret_31 tok;
-                                        }
-                                    }
-                                    2 => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_31 XML_TOK_INVALID_1;
-                                    }
-                                    _ => {
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_64 = 12531724302225488581;
                             }
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
+                            BT_LEAD2 => {
+                                if (c_char_ptr_diff(end, ptr)) < 2 {
+                                    break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_31 XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD3 => {
+                                if (c_char_ptr_diff(end, ptr)) < 3 {
+                                    break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_31 XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD4 => {
+                                if (c_char_ptr_diff(end, ptr)) < 4 {
+                                    break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_31 XML_TOK_INVALID_1;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_31 XML_TOK_INVALID_1;
+                            }
+                        }
+                        if current_block_64 == 12531724302225488581 {
+                            ptr = ptr.wrapping_offset(2isize);
+                        }
+                        current_block_186 = 1634947208139838470;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        loop {
+                            let mut t: c_int = 0;
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                                 break 'iife_ret_31 XML_TOK_PARTIAL_1;
                             }
-                            match if *ptr.offset(1) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            t = if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_int
                             } else {
-                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                            } {
-                                BT_S | BT_CR | BT_LF => {
-                                    loop {
-                                        ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                            break 'iife_ret_31 XML_TOK_PARTIAL_1;
-                                        }
-                                        match if *ptr.offset(1) as c_int == 0 {
-                                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                                as c_uint
-                                        } else {
-                                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                                                as c_uint
-                                        } {
-                                            BT_NONASCII => {
-                                                if namingBitmap[(((nmstrtPages
-                                                    [*ptr.offset(1) as c_uchar as usize]
-                                                    as c_int)
-                                                    << 3)
-                                                    + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                                    as usize]
-                                                    & (1)
-                                                        << (*ptr.offset(0) as c_uchar as c_int
-                                                            & 0x1f)
-                                                    == 0
-                                                {
-                                                    *nextTokPtr = ptr;
-                                                    break 'iife_ret_31 XML_TOK_INVALID_1;
-                                                }
-                                                current_block_186 = 923465642386550266;
-                                                break;
-                                            }
-                                            BT_NMSTRT | BT_HEX => {
-                                                current_block_186 = 923465642386550266;
-                                                break;
-                                            }
-                                            BT_LEAD2 => {
-                                                if (end.offset_from(ptr) as c_long) < 2 {
-                                                    break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_31 XML_TOK_INVALID_1;
-                                            }
-                                            BT_LEAD3 => {
-                                                if (end.offset_from(ptr) as c_long) < 3 {
-                                                    break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_31 XML_TOK_INVALID_1;
-                                            }
-                                            BT_LEAD4 => {
-                                                if (end.offset_from(ptr) as c_long) < 4 {
-                                                    break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_31 XML_TOK_INVALID_1;
-                                            }
-                                            BT_S | BT_CR | BT_LF => {}
-                                            BT_GT => {
-                                                current_block_186 = 15103464935601583148;
-                                                break;
-                                            }
-                                            BT_SOL => {
-                                                current_block_186 = 619033562305054167;
-                                                break;
-                                            }
-                                            _ => {
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_31 XML_TOK_INVALID_1;
-                                            }
-                                        }
-                                    }
-                                    match current_block_186 {
-                                        15103464935601583148 => {}
-                                        619033562305054167 => {}
-                                        1634947208139838470 => {}
-                                        _ => {
-                                            ptr = ptr.offset(2);
-                                            current_block_186 = 1634947208139838470;
-                                        }
-                                    }
-                                }
-                                BT_SOL => {
-                                    current_block_186 = 619033562305054167;
-                                }
-                                BT_GT => {
-                                    current_block_186 = 15103464935601583148;
-                                }
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                            };
+                            if t == BT_EQUALS as c_int {
+                                break;
+                            }
+                            match t {
+                                21 | 10 | 9 => {}
                                 _ => {
                                     *nextTokPtr = ptr;
                                     break 'iife_ret_31 XML_TOK_INVALID_1;
                                 }
                             }
-                            match current_block_186 {
-                                1634947208139838470 => {}
-                                _ => match current_block_186 {
-                                    619033562305054167 => {
-                                        ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                            break 'iife_ret_31 XML_TOK_PARTIAL_1;
+                        }
+                        current_block_186 = 10853015579903106591;
+                    }
+                    BT_EQUALS => {
+                        current_block_186 = 10853015579903106591;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_31 XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_186 {
+                    10853015579903106591 => {
+                        let mut open: c_int = 0;
+                        hadColon = 0;
+                        loop {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_31 XML_TOK_PARTIAL_1;
+                            }
+                            open = if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                            };
+                            if open == BT_QUOT as c_int || open == BT_APOS as c_int {
+                                break;
+                            }
+                            match open {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_31 XML_TOK_INVALID_1;
+                                }
+                            }
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        loop {
+                            let mut t_0: c_int = 0;
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_31 XML_TOK_PARTIAL_1;
+                            }
+                            t_0 = if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                            };
+                            if t_0 == open {
+                                break;
+                            }
+                            match t_0 {
+                                5 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                                        break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                                6 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                                        break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(3isize);
+                                }
+                                7 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                                        break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(4isize);
+                                }
+                                0 | 1 | 8 => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_31 XML_TOK_INVALID_1;
+                                }
+                                3 => {
+                                    let mut tok: c_int = {
+                                        let (tok_value, next_tok_value) = little2_scanRef(
+                                            enc,
+                                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2), end),
+                                        );
+                                        ptr = next_tok_value;
+                                        tok_value
+                                    };
+                                    if tok <= 0 {
+                                        if tok == XML_TOK_INVALID_1 {
+                                            *nextTokPtr = ptr;
                                         }
-                                        if !(*ptr.offset(1) as c_int == 0
-                                            && *ptr.offset(0) as c_int == 0x3e)
-                                        {
+                                        break 'iife_ret_31 tok;
+                                    }
+                                }
+                                2 => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_31 XML_TOK_INVALID_1;
+                                }
+                                _ => {
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                            }
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_31 XML_TOK_PARTIAL_1;
+                        }
+                        match if read_ptr_at(ptr, 1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                as c_uint
+                        } else {
+                            unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                        } {
+                            BT_S | BT_CR | BT_LF => {
+                                loop {
+                                    ptr = ptr.wrapping_offset(2);
+                                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                        break 'iife_ret_31 XML_TOK_PARTIAL_1;
+                                    }
+                                    match if read_ptr_at(ptr, 1) as c_int == 0 {
+                                        as_normal_encoding(enc).type_0
+                                            [read_ptr(ptr) as c_uchar as usize]
+                                            as c_uint
+                                    } else {
+                                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                                            as c_uint
+                                    } {
+                                        BT_NONASCII => {
+                                            if namingBitmap[(((nmstrtPages
+                                                [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                                as c_int)
+                                                << 3)
+                                                + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                                                as usize]
+                                                & (1)
+                                                    << (read_ptr_at(ptr, 0) as c_uchar as c_int
+                                                        & 0x1f)
+                                                == 0
+                                            {
+                                                *nextTokPtr = ptr;
+                                                break 'iife_ret_31 XML_TOK_INVALID_1;
+                                            }
+                                            current_block_186 = 923465642386550266;
+                                            break;
+                                        }
+                                        BT_NMSTRT | BT_HEX => {
+                                            current_block_186 = 923465642386550266;
+                                            break;
+                                        }
+                                        BT_LEAD2 => {
+                                            if (c_char_ptr_diff(end, ptr)) < 2 {
+                                                break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                            }
                                             *nextTokPtr = ptr;
                                             break 'iife_ret_31 XML_TOK_INVALID_1;
                                         }
-                                        *nextTokPtr = ptr.offset(2);
-                                        break 'iife_ret_31 XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
+                                        BT_LEAD3 => {
+                                            if (c_char_ptr_diff(end, ptr)) < 3 {
+                                                break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_31 XML_TOK_INVALID_1;
+                                        }
+                                        BT_LEAD4 => {
+                                            if (c_char_ptr_diff(end, ptr)) < 4 {
+                                                break 'iife_ret_31 XML_TOK_PARTIAL_CHAR_1;
+                                            }
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_31 XML_TOK_INVALID_1;
+                                        }
+                                        BT_S | BT_CR | BT_LF => {}
+                                        BT_GT => {
+                                            current_block_186 = 15103464935601583148;
+                                            break;
+                                        }
+                                        BT_SOL => {
+                                            current_block_186 = 619033562305054167;
+                                            break;
+                                        }
+                                        _ => {
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_31 XML_TOK_INVALID_1;
+                                        }
                                     }
+                                }
+                                match current_block_186 {
+                                    15103464935601583148 => {}
+                                    619033562305054167 => {}
+                                    1634947208139838470 => {}
                                     _ => {
-                                        *nextTokPtr = ptr.offset(2);
-                                        break 'iife_ret_31 XML_TOK_START_TAG_WITH_ATTS_1;
+                                        ptr = ptr.wrapping_offset(2);
+                                        current_block_186 = 1634947208139838470;
                                     }
-                                },
+                                }
+                            }
+                            BT_SOL => {
+                                current_block_186 = 619033562305054167;
+                            }
+                            BT_GT => {
+                                current_block_186 = 15103464935601583148;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_31 XML_TOK_INVALID_1;
                             }
                         }
-                        17747718632989559416 => {
-                            ptr = ptr.offset(2isize);
+                        match current_block_186 {
+                            1634947208139838470 => {}
+                            _ => match current_block_186 {
+                                619033562305054167 => {
+                                    ptr = ptr.wrapping_offset(2);
+                                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                        break 'iife_ret_31 XML_TOK_PARTIAL_1;
+                                    }
+                                    if !(read_ptr_at(ptr, 1) as c_int == 0
+                                        && read_ptr_at(ptr, 0) as c_int == 0x3e)
+                                    {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_31 XML_TOK_INVALID_1;
+                                    }
+                                    *nextTokPtr = ptr.wrapping_offset(2);
+                                    break 'iife_ret_31 XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr.wrapping_offset(2);
+                                    break 'iife_ret_31 XML_TOK_START_TAG_WITH_ATTS_1;
+                                }
+                            },
                         }
-                        _ => {}
                     }
+                    17747718632989559416 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    _ => {}
                 }
-                break 'iife_ret_31 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_31 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_32: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut hadColon: c_int = 0;
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_32 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_32: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut hadColon: c_int = 0;
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_32 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_45: u64;
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_32 XML_TOK_INVALID_1;
+                    }
+                    current_block_45 = 18046087305847344724;
                 }
-                let mut current_block_45: u64;
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_45 = 18046087305847344724;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_32 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_32 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_32 XML_TOK_INVALID_1;
+                }
+                BT_EXCL => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_32 XML_TOK_PARTIAL_1;
+                    }
+                    match if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                    } {
+                        BT_MINUS => {
+                            break 'iife_ret_32 ({
+                                let (tok_value, next_tok_value) = little2_scanComment(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        BT_LSQB => {
+                            break 'iife_ret_32 ({
+                                let (tok_value, next_tok_value) = little2_scanCdataSection(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_32 XML_TOK_INVALID_1;
+                }
+                BT_QUEST => {
+                    break 'iife_ret_32 ({
+                        let (tok_value, next_tok_value) = little2_scanPi(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_SOL => {
+                    break 'iife_ret_32 ({
+                        let (tok_value, next_tok_value) = little2_scanEndTag(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_32 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_45 == 18046087305847344724 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            hadColon = 0;
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_161: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_32 XML_TOK_INVALID_1;
                         }
-                        current_block_45 = 18046087305847344724;
+                        current_block_161 = 8998928240368606981;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_45 = 18046087305847344724;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_161 = 8998928240368606981;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_32 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_32 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_32 XML_TOK_INVALID_1;
                     }
-                    BT_EXCL => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_32 XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                             break 'iife_ret_32 XML_TOK_PARTIAL_1;
                         }
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                        let mut current_block_112: u64;
+                        match if read_ptr_at(ptr, 1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                as c_uint
                         } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                            unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                         } {
-                            BT_MINUS => {
-                                break 'iife_ret_32 ({
-                                    let (tok_value, next_tok_value) = little2_scanComment(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
+                            BT_NONASCII => {
+                                if namingBitmap[(((nmstrtPages
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_int)
+                                    << 3)
+                                    + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                                    as usize]
+                                    & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                                    == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_32 XML_TOK_INVALID_1;
+                                }
+                                current_block_112 = 14391208795021697965;
                             }
-                            BT_LSQB => {
-                                break 'iife_ret_32 ({
-                                    let (tok_value, next_tok_value) = little2_scanCdataSection(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_112 = 14391208795021697965;
                             }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_32 XML_TOK_INVALID_1;
-                    }
-                    BT_QUEST => {
-                        break 'iife_ret_32 ({
-                            let (tok_value, next_tok_value) = little2_scanPi(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_SOL => {
-                        break 'iife_ret_32 ({
-                            let (tok_value, next_tok_value) = little2_scanEndTag(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_32 XML_TOK_INVALID_1;
-                    }
-                }
-                if current_block_45 == 18046087305847344724 {
-                    ptr = ptr.offset(2isize);
-                }
-                hadColon = 0;
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_161: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
+                            BT_LEAD2 => {
+                                if (c_char_ptr_diff(end, ptr)) < 2 {
+                                    break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
+                                }
                                 *nextTokPtr = ptr;
                                 break 'iife_ret_32 XML_TOK_INVALID_1;
                             }
-                            current_block_161 = 8998928240368606981;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_161 = 8998928240368606981;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_32 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_32 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_32 XML_TOK_INVALID_1;
-                        }
-                        BT_COLON_0 => {
-                            if hadColon != 0 {
+                            BT_LEAD3 => {
+                                if (c_char_ptr_diff(end, ptr)) < 3 {
+                                    break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
+                                }
                                 *nextTokPtr = ptr;
                                 break 'iife_ret_32 XML_TOK_INVALID_1;
                             }
-                            hadColon = 1;
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_32 XML_TOK_PARTIAL_1;
+                            BT_LEAD4 => {
+                                if (c_char_ptr_diff(end, ptr)) < 4 {
+                                    break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_32 XML_TOK_INVALID_1;
                             }
-                            let mut current_block_112: u64;
-                            match if *ptr.offset(1) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_32 XML_TOK_INVALID_1;
+                            }
+                        }
+                        if current_block_112 == 14391208795021697965 {
+                            ptr = ptr.wrapping_offset(2isize);
+                        }
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.wrapping_offset(2);
+                        loop {
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                current_block_161 = 13215501469961642988;
+                                break;
+                            }
+                            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_uint
                             } else {
-                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                                    as c_uint
                             } {
                                 BT_NONASCII => {
                                     if namingBitmap[(((nmstrtPages
-                                        [*ptr.offset(1) as c_uchar as usize]
+                                        [read_ptr_at(ptr, 1) as c_uchar as usize]
                                         as c_int)
                                         << 3)
-                                        + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
                                         as usize]
-                                        & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
                                         == 0
                                     {
                                         *nextTokPtr = ptr;
                                         break 'iife_ret_32 XML_TOK_INVALID_1;
                                     }
-                                    current_block_112 = 14391208795021697965;
+                                    current_block_161 = 2369392326157537288;
                                 }
                                 BT_NMSTRT | BT_HEX => {
-                                    current_block_112 = 14391208795021697965;
+                                    current_block_161 = 2369392326157537288;
                                 }
                                 BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
+                                    if (c_char_ptr_diff(end, ptr)) < 2 {
                                         break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     *nextTokPtr = ptr;
                                     break 'iife_ret_32 XML_TOK_INVALID_1;
                                 }
                                 BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
+                                    if (c_char_ptr_diff(end, ptr)) < 3 {
                                         break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     *nextTokPtr = ptr;
                                     break 'iife_ret_32 XML_TOK_INVALID_1;
                                 }
                                 BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
+                                    if (c_char_ptr_diff(end, ptr)) < 4 {
                                         break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     *nextTokPtr = ptr;
                                     break 'iife_ret_32 XML_TOK_INVALID_1;
+                                }
+                                BT_GT => {
+                                    current_block_161 = 1918622160084604696;
+                                    break;
+                                }
+                                BT_SOL => {
+                                    current_block_161 = 1114269873380682160;
+                                    break;
+                                }
+                                BT_S | BT_CR | BT_LF => {
+                                    ptr = ptr.wrapping_offset(2);
+                                    continue;
                                 }
                                 _ => {
                                     *nextTokPtr = ptr;
                                     break 'iife_ret_32 XML_TOK_INVALID_1;
                                 }
                             }
-                            if current_block_112 == 14391208795021697965 {
-                                ptr = ptr.offset(2isize);
+                            if current_block_161 == 2369392326157537288 {
+                                ptr = ptr.wrapping_offset(2isize);
                             }
-                            current_block_161 = 14714495436747744489;
+                            break 'iife_ret_32 ({
+                                let (tok_value, next_tok_value) =
+                                    little2_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
                         }
-                        BT_S | BT_CR | BT_LF => {
-                            ptr = ptr.offset(2);
-                            loop {
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    current_block_161 = 13215501469961642988;
-                                    break;
-                                }
-                                match if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                                } {
-                                    BT_NONASCII => {
-                                        if namingBitmap[(((nmstrtPages
-                                            [*ptr.offset(1) as c_uchar as usize]
-                                            as c_int)
-                                            << 3)
-                                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                            as usize]
-                                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                            == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_32 XML_TOK_INVALID_1;
-                                        }
-                                        current_block_161 = 2369392326157537288;
-                                    }
-                                    BT_NMSTRT | BT_HEX => {
-                                        current_block_161 = 2369392326157537288;
-                                    }
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_32 XML_TOK_INVALID_1;
-                                    }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_32 XML_TOK_INVALID_1;
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_32 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_32 XML_TOK_INVALID_1;
-                                    }
-                                    BT_GT => {
-                                        current_block_161 = 1918622160084604696;
-                                        break;
-                                    }
-                                    BT_SOL => {
-                                        current_block_161 = 1114269873380682160;
-                                        break;
-                                    }
-                                    BT_S | BT_CR | BT_LF => {
-                                        ptr = ptr.offset(2);
-                                        continue;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_32 XML_TOK_INVALID_1;
-                                    }
-                                }
-                                if current_block_161 == 2369392326157537288 {
-                                    ptr = ptr.offset(2isize);
-                                }
-                                break 'iife_ret_32 ({
-                                    let (tok_value, next_tok_value) =
-                                        little2_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            match current_block_161 {
-                                1918622160084604696 => {}
-                                1114269873380682160 => {}
-                                _ => break 'iife_ret_32 XML_TOK_PARTIAL_1,
-                            }
+                        match current_block_161 {
+                            1918622160084604696 => {}
+                            1114269873380682160 => {}
+                            _ => break 'iife_ret_32 XML_TOK_PARTIAL_1,
                         }
-                        BT_GT => {
-                            current_block_161 = 1918622160084604696;
+                    }
+                    BT_GT => {
+                        current_block_161 = 1918622160084604696;
+                    }
+                    BT_SOL => {
+                        current_block_161 = 1114269873380682160;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_32 XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_161 {
+                    1114269873380682160 => {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_32 XML_TOK_PARTIAL_1;
                         }
-                        BT_SOL => {
-                            current_block_161 = 1114269873380682160;
-                        }
-                        _ => {
+                        if !(read_ptr_at(ptr, 1) as c_int == 0
+                            && read_ptr_at(ptr, 0) as c_int == 0x3e)
+                        {
                             *nextTokPtr = ptr;
                             break 'iife_ret_32 XML_TOK_INVALID_1;
                         }
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_32 XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
                     }
-                    match current_block_161 {
-                        1114269873380682160 => {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_32 XML_TOK_PARTIAL_1;
-                            }
-                            if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_32 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_32 XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
-                        }
-                        1918622160084604696 => {
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_32 XML_TOK_START_TAG_NO_ATTS_1;
-                        }
-                        8998928240368606981 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
+                    1918622160084604696 => {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_32 XML_TOK_START_TAG_NO_ATTS_1;
                     }
+                    8998928240368606981 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    _ => {}
                 }
-                break 'iife_ret_32 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_32 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_33: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if ptr >= end {
-                    break 'iife_ret_33 XML_TOK_NONE_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_33: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if ptr >= end {
+                break 'iife_ret_33 XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = c_char_ptr_diff(end, ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        break 'iife_ret_33 XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.wrapping_add(n);
                 }
-                {
-                    let mut n: size_t = end.offset_from(ptr) as size_t;
-                    if n & (2i32 - 1) as size_t != 0 {
-                        n &= !(2i32 - 1) as size_t;
-                        if n == 0 {
-                            break 'iife_ret_33 XML_TOK_PARTIAL_1;
-                        }
-                        end = ptr.add(n);
-                    }
+            }
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_LT => {
+                    break 'iife_ret_33 ({
+                        let (tok_value, next_tok_value) = little2_scanLt(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
                 }
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_LT => {
-                        break 'iife_ret_33 ({
-                            let (tok_value, next_tok_value) = little2_scanLt(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+                BT_AMP => {
+                    break 'iife_ret_33 ({
+                        let (tok_value, next_tok_value) = little2_scanRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_CR => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_33 XML_TOK_TRAILING_CR_1;
                     }
-                    BT_AMP => {
-                        break 'iife_ret_33 ({
-                            let (tok_value, next_tok_value) = little2_scanRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+                    if (if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_int
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                    }) == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(2isize);
                     }
-                    BT_CR => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_33 XML_TOK_TRAILING_CR_1;
-                        }
-                        if (if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                        }) == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(2isize);
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_33 XML_TOK_DATA_NEWLINE_1;
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_33 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_33 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_33 XML_TOK_TRAILING_RSQB_1;
                     }
-                    BT_LF => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_33 XML_TOK_DATA_NEWLINE_1;
-                    }
-                    BT_RSQB => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
+                    if read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x5d {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                             break 'iife_ret_33 XML_TOK_TRAILING_RSQB_1;
                         }
-                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_33 XML_TOK_TRAILING_RSQB_1;
-                            }
-                            if !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e) {
-                                ptr = ptr.offset(-(2isize));
-                            } else {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_33 XML_TOK_INVALID_1;
-                            }
+                        if !(read_ptr_at(ptr, 1) as c_int == 0
+                            && read_ptr_at(ptr, 0) as c_int == 0x3e)
+                        {
+                            ptr = ptr.wrapping_offset(-(2isize));
+                        } else {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_33 XML_TOK_INVALID_1;
                         }
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_33 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_33 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(3isize);
-                    }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_33 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_33 XML_TOK_INVALID_1;
-                    }
-                    _ => {
-                        ptr = ptr.offset(2isize);
                     }
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_76: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_RSQB => {
-                            if end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long {
-                                if !(*ptr.offset(2).offset(1) as c_int == 0
-                                    && *ptr.offset(2).offset(0) as c_int == 0x5d)
-                                {
-                                    ptr = ptr.offset(2);
-                                    current_block_76 = 7158658067966855297;
-                                } else if end.offset_from(ptr) as c_long >= (3i32 * 2) as c_long {
-                                    if !(*ptr.offset((2i32 * 2) as isize).offset(1) as c_int == 0
-                                        && *ptr.offset((2i32 * 2) as isize).offset(0) as c_int
-                                            == 0x3e)
-                                    {
-                                        ptr = ptr.offset(2isize);
-                                    } else {
-                                        *nextTokPtr = ptr.offset((2i32 * 2) as isize);
-                                        break 'iife_ret_33 XML_TOK_INVALID_1;
-                                    }
-                                    current_block_76 = 7158658067966855297;
-                                } else {
-                                    current_block_76 = 17804070343020517427;
-                                }
-                            } else {
-                                current_block_76 = 17804070343020517427;
-                            }
-                        }
-                        BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
-                            current_block_76 = 17804070343020517427;
-                        }
-                        _ => {
-                            ptr = ptr.offset(2);
-                            current_block_76 = 7158658067966855297;
-                        }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_33 XML_TOK_PARTIAL_CHAR_1;
                     }
-                    match current_block_76 {
-                        7158658067966855297 => {}
-                        _ => {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_33 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_33 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_33 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_76: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             *nextTokPtr = ptr;
                             break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
                         }
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_RSQB => {
+                        if c_char_ptr_diff(end, ptr) >= (2i32 * 2) as c_long {
+                            if !(read_ptr_at(ptr.wrapping_offset(2), 1) as c_int == 0
+                                && read_ptr_at(ptr.wrapping_offset(2), 0) as c_int == 0x5d)
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                current_block_76 = 7158658067966855297;
+                            } else if c_char_ptr_diff(end, ptr) >= (3i32 * 2) as c_long {
+                                if !(read_ptr_at(ptr.wrapping_offset((2i32 * 2) as isize), 1)
+                                    as c_int
+                                    == 0
+                                    && read_ptr_at(ptr.wrapping_offset((2i32 * 2) as isize), 0)
+                                        as c_int
+                                        == 0x3e)
+                                {
+                                    ptr = ptr.wrapping_offset(2isize);
+                                } else {
+                                    *nextTokPtr = ptr.wrapping_offset((2i32 * 2) as isize);
+                                    break 'iife_ret_33 XML_TOK_INVALID_1;
+                                }
+                                current_block_76 = 7158658067966855297;
+                            } else {
+                                current_block_76 = 17804070343020517427;
+                            }
+                        } else {
+                            current_block_76 = 17804070343020517427;
+                        }
+                    }
+                    BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
+                        current_block_76 = 17804070343020517427;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_76 = 7158658067966855297;
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+                match current_block_76 {
+                    7158658067966855297 => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_33 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_34: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_34 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_34: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_34 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_34: u64;
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_34 XML_TOK_INVALID_1;
+                    }
+                    current_block_34 = 27123471380826226;
                 }
-                let mut current_block_34: u64;
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_34 = 27123471380826226;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_34 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_34 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_34 XML_TOK_INVALID_1;
+                }
+                BT_S | BT_LF | BT_CR | BT_PERCNT => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_34 XML_TOK_PERCENT_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_34 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_34 == 27123471380826226 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_65: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_34 XML_TOK_INVALID_1;
                         }
-                        current_block_34 = 27123471380826226;
+                        current_block_65 = 8394962855094477842;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_34 = 27123471380826226;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_65 = 8394962855094477842;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_34 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_34 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_34 XML_TOK_INVALID_1;
                     }
-                    BT_S | BT_LF | BT_CR | BT_PERCNT => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_34 XML_TOK_PERCENT_1;
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_34 XML_TOK_PARAM_ENTITY_REF_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_34 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_34 == 27123471380826226 {
-                    ptr = ptr.offset(2isize);
+                if current_block_65 == 8394962855094477842 {
+                    ptr = ptr.wrapping_offset(2isize);
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_65: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_34 XML_TOK_INVALID_1;
-                            }
-                            current_block_65 = 8394962855094477842;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_65 = 8394962855094477842;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_34 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_34 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_34 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_34 XML_TOK_INVALID_1;
-                        }
-                        BT_SEMI => {
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_34 XML_TOK_PARAM_ENTITY_REF_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_34 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_65 == 8394962855094477842 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_34 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_34 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_35: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_35 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_35: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_35 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_35 XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 14940290876465470105;
                 }
-                let mut current_block_32: u64;
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 14940290876465470105;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_35 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_35 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_35 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_35 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 14940290876465470105 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_63: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_35 XML_TOK_INVALID_1;
                         }
-                        current_block_32 = 14940290876465470105;
+                        current_block_63 = 11497795575834122789;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 14940290876465470105;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_63 = 11497795575834122789;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_35 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_35 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_35 XML_TOK_INVALID_1;
+                    }
+                    BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_35 XML_TOK_POUND_NAME_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_35 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_32 == 14940290876465470105 {
-                    ptr = ptr.offset(2isize);
+                if current_block_63 == 11497795575834122789 {
+                    ptr = ptr.wrapping_offset(2isize);
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_63: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_35 XML_TOK_INVALID_1;
-                            }
-                            current_block_63 = 11497795575834122789;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_63 = 11497795575834122789;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_35 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_35 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_35 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_35 XML_TOK_INVALID_1;
-                        }
-                        BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_35 XML_TOK_POUND_NAME_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_35 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_63 == 11497795575834122789 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_35 -XML_TOK_POUND_NAME_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_35 -XML_TOK_POUND_NAME_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_scanLit(
@@ -5949,874 +5984,873 @@ pub mod xmltok_impl_c {
         enc: &ENCODING,
         input: &[c_char],
     ) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_36: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut t: c_int = if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                    };
-                    match t {
-                        5 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_36 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(2isize);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_36: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut t: c_int = if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_int
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                };
+                match t {
+                    5 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_36 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        6 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_36 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(3isize);
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    6 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_36 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        7 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_36 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(4isize);
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    7 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_36 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        0 | 1 | 8 => {
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    0 | 1 | 8 => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_36 XML_TOK_INVALID_1;
+                    }
+                    12 | 13 => {
+                        ptr = ptr.wrapping_offset(2);
+                        if t == open {
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_36 -XML_TOK_LITERAL_1;
+                            }
                             *nextTokPtr = ptr;
-                            break 'iife_ret_36 XML_TOK_INVALID_1;
-                        }
-                        12 | 13 => {
-                            ptr = ptr.offset(2);
-                            if t == open {
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_36 -XML_TOK_LITERAL_1;
+                            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                                    as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
+                                    break 'iife_ret_36 XML_TOK_LITERAL_1
                                 }
-                                *nextTokPtr = ptr;
-                                match if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                                } {
-                                    BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
-                                        break 'iife_ret_36 XML_TOK_LITERAL_1
-                                    }
-                                    _ => break 'iife_ret_36 XML_TOK_INVALID_1,
-                                }
+                                _ => break 'iife_ret_36 XML_TOK_INVALID_1,
                             }
-                        }
-                        _ => {
-                            ptr = ptr.offset(2isize);
                         }
                     }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
                 }
-                break 'iife_ret_36 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_36 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_37: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut tok: c_int = 0;
-                if ptr >= end {
-                    break 'iife_ret_37 XML_TOK_NONE_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_37: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut tok: c_int = 0;
+            if ptr >= end {
+                break 'iife_ret_37 XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = c_char_ptr_diff(end, ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        break 'iife_ret_37 XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.wrapping_add(n);
                 }
-                {
-                    let mut n: size_t = end.offset_from(ptr) as size_t;
-                    if n & (2i32 - 1) as size_t != 0 {
-                        n &= !(2i32 - 1) as size_t;
-                        if n == 0 {
+            }
+            let mut current_block_124: u64;
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_QUOT => {
+                    break 'iife_ret_37 ({
+                        let (tok_value, next_tok_value) = little2_scanLit(
+                            BT_QUOT as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_APOS => {
+                    break 'iife_ret_37 ({
+                        let (tok_value, next_tok_value) = little2_scanLit(
+                            BT_APOS as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_LT => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_37 XML_TOK_PARTIAL_1;
+                    }
+                    match if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                    } {
+                        BT_EXCL => {
+                            break 'iife_ret_37 ({
+                                let (tok_value, next_tok_value) = little2_scanDecl(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        BT_QUEST => {
+                            break 'iife_ret_37 ({
+                                let (tok_value, next_tok_value) = little2_scanPi(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
+                            *nextTokPtr = ptr.wrapping_offset(-(2));
+                            break 'iife_ret_37 XML_TOK_INSTANCE_START;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_37 XML_TOK_INVALID_1;
+                }
+                BT_CR => {
+                    if ptr.wrapping_offset(2) == end {
+                        *nextTokPtr = end;
+                        break 'iife_ret_37 -XML_TOK_PROLOG_S_1;
+                    }
+                    current_block_124 = 17513858719706519675;
+                }
+                BT_S | BT_LF => {
+                    current_block_124 = 17513858719706519675;
+                }
+                BT_PERCNT => {
+                    break 'iife_ret_37 ({
+                        let (tok_value, next_tok_value) = little2_scanPercent(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_COMMA => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_37 XML_TOK_COMMA_1;
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_37 XML_TOK_OPEN_BRACKET_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_37 -XML_TOK_CLOSE_BRACKET_1;
+                    }
+                    if read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x5d {
+                        if (c_char_ptr_diff(end, ptr)) < (2i32 * 2) as c_long {
                             break 'iife_ret_37 XML_TOK_PARTIAL_1;
                         }
-                        end = ptr.add(n);
+                        if read_ptr_at(ptr.wrapping_offset(2), 1) as c_int == 0
+                            && read_ptr_at(ptr.wrapping_offset(2), 0) as c_int == 0x3e
+                        {
+                            *nextTokPtr = ptr.wrapping_offset((2i32 * 2) as isize);
+                            break 'iife_ret_37 XML_TOK_COND_SECT_CLOSE_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_37 XML_TOK_CLOSE_BRACKET_1;
+                }
+                BT_LPAR => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_37 XML_TOK_OPEN_PAREN_1;
+                }
+                BT_RPAR => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_37 -XML_TOK_CLOSE_PAREN_1;
+                    }
+                    match if read_ptr_at(ptr, 1) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                    } {
+                        BT_AST => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_37 XML_TOK_CLOSE_PAREN_ASTERISK_1;
+                        }
+                        BT_QUEST => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_37 XML_TOK_CLOSE_PAREN_QUESTION_1;
+                        }
+                        BT_PLUS => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_37 XML_TOK_CLOSE_PAREN_PLUS_1;
+                        }
+                        BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_37 XML_TOK_CLOSE_PAREN_1;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_37 XML_TOK_INVALID_1;
+                }
+                BT_VERBAR => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_37 XML_TOK_OR_1;
+                }
+                BT_GT => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_37 XML_TOK_DECL_CLOSE_1;
+                }
+                BT_NUM => {
+                    break 'iife_ret_37 ({
+                        let (tok_value, next_tok_value) = little2_scanPoundName(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_37 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_37 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_37 XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    tok = XML_TOK_NAME;
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
+                    tok = XML_TOK_NMTOKEN_1;
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                        != 0
+                    {
+                        ptr = ptr.wrapping_offset(2);
+                        tok = XML_TOK_NAME;
+                        current_block_124 = 2956972668325154207;
+                    } else if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                        != 0
+                    {
+                        ptr = ptr.wrapping_offset(2);
+                        tok = XML_TOK_NMTOKEN_1;
+                        current_block_124 = 2956972668325154207;
+                    } else {
+                        current_block_124 = 2543942683527618915;
                     }
                 }
-                let mut current_block_124: u64;
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_QUOT => {
-                        break 'iife_ret_37 ({
-                            let (tok_value, next_tok_value) = little2_scanLit(
-                                BT_QUOT as c_int,
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_APOS => {
-                        break 'iife_ret_37 ({
-                            let (tok_value, next_tok_value) = little2_scanLit(
-                                BT_APOS as c_int,
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_LT => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_37 XML_TOK_PARTIAL_1;
+                _ => {
+                    current_block_124 = 2543942683527618915;
+                }
+            }
+            match current_block_124 {
+                2956972668325154207 => {}
+                17513858719706519675 => {
+                    loop {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break;
                         }
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+                        let mut current_block_32: u64;
+                        match if read_ptr_at(ptr, 1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                as c_uint
                         } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                            unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                         } {
-                            BT_EXCL => {
-                                break 'iife_ret_37 ({
-                                    let (tok_value, next_tok_value) = little2_scanDecl(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
+                            BT_S | BT_LF => {
+                                current_block_32 = 17500079516916021833;
                             }
-                            BT_QUEST => {
-                                break 'iife_ret_37 ({
-                                    let (tok_value, next_tok_value) = little2_scanPi(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
+                            BT_CR => {
+                                if ptr.wrapping_offset(2) != end {
+                                    current_block_32 = 17500079516916021833;
+                                } else {
+                                    current_block_32 = 17471725448347076649;
+                                }
                             }
-                            BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
-                                *nextTokPtr = ptr.offset(-(2));
-                                break 'iife_ret_37 XML_TOK_INSTANCE_START;
-                            }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_37 XML_TOK_INVALID_1;
-                    }
-                    BT_CR => {
-                        if ptr.offset(2) == end {
-                            *nextTokPtr = end;
-                            break 'iife_ret_37 -XML_TOK_PROLOG_S_1;
-                        }
-                        current_block_124 = 17513858719706519675;
-                    }
-                    BT_S | BT_LF => {
-                        current_block_124 = 17513858719706519675;
-                    }
-                    BT_PERCNT => {
-                        break 'iife_ret_37 ({
-                            let (tok_value, next_tok_value) = little2_scanPercent(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_COMMA => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_37 XML_TOK_COMMA_1;
-                    }
-                    BT_LSQB => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_37 XML_TOK_OPEN_BRACKET_1;
-                    }
-                    BT_RSQB => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_37 -XML_TOK_CLOSE_BRACKET_1;
-                        }
-                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
-                            if (end.offset_from(ptr) as c_long) < (2i32 * 2) as c_long {
-                                break 'iife_ret_37 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(2).offset(1) as c_int == 0
-                                && *ptr.offset(2).offset(0) as c_int == 0x3e
-                            {
-                                *nextTokPtr = ptr.offset((2i32 * 2) as isize);
-                                break 'iife_ret_37 XML_TOK_COND_SECT_CLOSE_1;
+                            _ => {
+                                current_block_32 = 17471725448347076649;
                             }
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_37 XML_TOK_CLOSE_BRACKET_1;
-                    }
-                    BT_LPAR => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_37 XML_TOK_OPEN_PAREN_1;
-                    }
-                    BT_RPAR => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_37 -XML_TOK_CLOSE_PAREN_1;
-                        }
-                        match if *ptr.offset(1) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                        } {
-                            BT_AST => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_37 XML_TOK_CLOSE_PAREN_ASTERISK_1;
-                            }
-                            BT_QUEST => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_37 XML_TOK_CLOSE_PAREN_QUESTION_1;
-                            }
-                            BT_PLUS => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_37 XML_TOK_CLOSE_PAREN_PLUS_1;
-                            }
-                            BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
+                        match current_block_32 {
+                            17500079516916021833 => {}
+                            _ => {
                                 *nextTokPtr = ptr;
-                                break 'iife_ret_37 XML_TOK_CLOSE_PAREN_1;
+                                break 'iife_ret_37 XML_TOK_PROLOG_S_1;
                             }
-                            _ => {}
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_37 XML_TOK_INVALID_1;
                     }
-                    BT_VERBAR => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_37 XML_TOK_OR_1;
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_37 XML_TOK_PROLOG_S_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_37 XML_TOK_INVALID_1;
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_210: u64;
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_int)
+                            << 3)
+                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_37 XML_TOK_INVALID_1;
+                        }
+                        current_block_210 = 786388639404123072;
                     }
-                    BT_GT => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_37 XML_TOK_DECL_CLOSE_1;
-                    }
-                    BT_NUM => {
-                        break 'iife_ret_37 ({
-                            let (tok_value, next_tok_value) = little2_scanPoundName(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_210 = 786388639404123072;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_37 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_37 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_37 XML_TOK_INVALID_1;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        tok = XML_TOK_NAME;
-                        ptr = ptr.offset(2);
-                        current_block_124 = 2956972668325154207;
+                    BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
+                    | BT_LF => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_37 tok;
                     }
-                    BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
-                        tok = XML_TOK_NMTOKEN_1;
-                        ptr = ptr.offset(2);
-                        current_block_124 = 2956972668325154207;
-                    }
-                    BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(1) as c_uchar as usize]
-                            as c_int)
-                            << 3)
-                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                            as usize]
-                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                            != 0
-                        {
-                            ptr = ptr.offset(2);
-                            tok = XML_TOK_NAME;
-                            current_block_124 = 2956972668325154207;
-                        } else if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                            as c_int)
-                            << 3)
-                            + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                            as usize]
-                            & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                            != 0
-                        {
-                            ptr = ptr.offset(2);
-                            tok = XML_TOK_NMTOKEN_1;
-                            current_block_124 = 2956972668325154207;
-                        } else {
-                            current_block_124 = 2543942683527618915;
-                        }
-                    }
-                    _ => {
-                        current_block_124 = 2543942683527618915;
-                    }
-                }
-                match current_block_124 {
-                    2956972668325154207 => {}
-                    17513858719706519675 => {
-                        loop {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break;
-                            }
-                            let mut current_block_32: u64;
-                            match if *ptr.offset(1) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                            } else {
-                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                            } {
-                                BT_S | BT_LF => {
-                                    current_block_32 = 17500079516916021833;
+                    BT_COLON_0 => {
+                        ptr = ptr.wrapping_offset(2);
+                        match tok {
+                            XML_TOK_NAME => {
+                                if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                    break 'iife_ret_37 XML_TOK_PARTIAL_1;
                                 }
-                                BT_CR => {
-                                    if ptr.offset(2) != end {
-                                        current_block_32 = 17500079516916021833;
-                                    } else {
-                                        current_block_32 = 17471725448347076649;
+                                tok = XML_TOK_PREFIXED_NAME;
+                                let mut current_block_187: u64;
+                                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                                    as_normal_encoding(enc).type_0
+                                        [read_ptr(ptr) as c_uchar as usize]
+                                        as c_uint
+                                } else {
+                                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                                        as c_uint
+                                } {
+                                    BT_NONASCII => {
+                                        if namingBitmap[(((namePages
+                                            [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                            as c_int)
+                                            << 3)
+                                            + (read_ptr_at(ptr, 0) as c_uchar as c_int >> 5))
+                                            as usize]
+                                            & (1)
+                                                << (read_ptr_at(ptr, 0) as c_uchar as c_int & 0x1f)
+                                            == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_37 XML_TOK_INVALID_1;
+                                        }
+                                        current_block_187 = 16869951820887225088;
+                                    }
+                                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                                        current_block_187 = 16869951820887225088;
+                                    }
+                                    BT_LEAD2 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                                            break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_37 XML_TOK_INVALID_1;
+                                    }
+                                    BT_LEAD3 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                                            break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_37 XML_TOK_INVALID_1;
+                                    }
+                                    BT_LEAD4 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                                            break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_37 XML_TOK_INVALID_1;
+                                    }
+                                    _ => {
+                                        tok = XML_TOK_NMTOKEN_1;
+                                        current_block_187 = 9812798724717783973;
                                     }
                                 }
-                                _ => {
-                                    current_block_32 = 17471725448347076649;
+                                if current_block_187 == 16869951820887225088 {
+                                    ptr = ptr.wrapping_offset(2isize);
                                 }
                             }
-                            match current_block_32 {
-                                17500079516916021833 => {}
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_37 XML_TOK_PROLOG_S_1;
-                                }
+                            XML_TOK_PREFIXED_NAME => {
+                                tok = XML_TOK_NMTOKEN_1;
                             }
+                            _ => {}
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_37 XML_TOK_PROLOG_S_1;
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_PLUS => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_37 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_37 XML_TOK_NAME_PLUS_1;
+                    }
+                    BT_AST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_37 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_37 XML_TOK_NAME_ASTERISK_1;
+                    }
+                    BT_QUEST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_37 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_37 XML_TOK_NAME_QUESTION_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_37 XML_TOK_INVALID_1;
                     }
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_210: u64;
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(1) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_37 XML_TOK_INVALID_1;
-                            }
-                            current_block_210 = 786388639404123072;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_210 = 786388639404123072;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_37 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_37 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_37 XML_TOK_INVALID_1;
-                        }
-                        BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S
-                        | BT_CR | BT_LF => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_37 tok;
-                        }
-                        BT_COLON_0 => {
-                            ptr = ptr.offset(2);
-                            match tok {
-                                XML_TOK_NAME => {
-                                    if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                        break 'iife_ret_37 XML_TOK_PARTIAL_1;
-                                    }
-                                    tok = XML_TOK_PREFIXED_NAME;
-                                    let mut current_block_187: u64;
-                                    match if *ptr.offset(1) as c_int == 0 {
-                                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                            as c_uint
-                                    } else {
-                                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                                    } {
-                                        BT_NONASCII => {
-                                            if namingBitmap[(((namePages
-                                                [*ptr.offset(1) as c_uchar as usize]
-                                                as c_int)
-                                                << 3)
-                                                + (*ptr.offset(0) as c_uchar as c_int >> 5))
-                                                as usize]
-                                                & (1) << (*ptr.offset(0) as c_uchar as c_int & 0x1f)
-                                                == 0
-                                            {
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_37 XML_TOK_INVALID_1;
-                                            }
-                                            current_block_187 = 16869951820887225088;
-                                        }
-                                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                                            current_block_187 = 16869951820887225088;
-                                        }
-                                        BT_LEAD2 => {
-                                            if (end.offset_from(ptr) as c_long) < 2 {
-                                                break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_37 XML_TOK_INVALID_1;
-                                        }
-                                        BT_LEAD3 => {
-                                            if (end.offset_from(ptr) as c_long) < 3 {
-                                                break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_37 XML_TOK_INVALID_1;
-                                        }
-                                        BT_LEAD4 => {
-                                            if (end.offset_from(ptr) as c_long) < 4 {
-                                                break 'iife_ret_37 XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_37 XML_TOK_INVALID_1;
-                                        }
-                                        _ => {
-                                            tok = XML_TOK_NMTOKEN_1;
-                                            current_block_187 = 9812798724717783973;
-                                        }
-                                    }
-                                    if current_block_187 == 16869951820887225088 {
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                }
-                                XML_TOK_PREFIXED_NAME => {
-                                    tok = XML_TOK_NMTOKEN_1;
-                                }
-                                _ => {}
-                            }
-                            current_block_210 = 14244298717249035578;
-                        }
-                        BT_PLUS => {
-                            if tok == XML_TOK_NMTOKEN_1 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_37 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_37 XML_TOK_NAME_PLUS_1;
-                        }
-                        BT_AST => {
-                            if tok == XML_TOK_NMTOKEN_1 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_37 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_37 XML_TOK_NAME_ASTERISK_1;
-                        }
-                        BT_QUEST => {
-                            if tok == XML_TOK_NMTOKEN_1 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_37 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_37 XML_TOK_NAME_QUESTION_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_37 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_210 == 786388639404123072 {
-                        ptr = ptr.offset(2isize);
-                    }
+                if current_block_210 == 786388639404123072 {
+                    ptr = ptr.wrapping_offset(2isize);
                 }
-                break 'iife_ret_37 -tok;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_37 -tok;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_attributeValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_38: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut start: *const c_char = null::<c_char>();
-                if ptr >= end {
-                    break 'iife_ret_38 XML_TOK_NONE_1;
-                } else if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_38 XML_TOK_PARTIAL_1;
-                }
-                start = ptr;
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            ptr = ptr.offset(2isize);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_38: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                break 'iife_ret_38 XML_TOK_NONE_1;
+            } else if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_38 XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            break 'iife_ret_38 ({
+                                let (tok_value, next_tok_value) = little2_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
                         }
-                        BT_LEAD3 => {
-                            ptr = ptr.offset(3isize);
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LT => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_38 XML_TOK_INVALID_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_38 XML_TOK_DATA_NEWLINE_1;
                         }
-                        BT_LEAD4 => {
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_AMP => {
-                            if ptr == start {
-                                break 'iife_ret_38 ({
-                                    let (tok_value, next_tok_value) = little2_scanRef(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_38 XML_TOK_TRAILING_CR_1;
+                            }
+                            if (if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                            }) == BT_LF as c_int
+                            {
+                                ptr = ptr.wrapping_offset(2isize);
                             }
                             *nextTokPtr = ptr;
-                            break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
+                            break 'iife_ret_38 XML_TOK_DATA_NEWLINE_1;
                         }
-                        BT_LT => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_38 XML_TOK_INVALID_1;
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_S => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_38 XML_TOK_ATTRIBUTE_VALUE_S_1;
                         }
-                        BT_LF => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_38 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_CR => {
-                            if ptr == start {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_38 XML_TOK_TRAILING_CR_1;
-                                }
-                                if (if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                                }) == BT_LF as c_int
-                                {
-                                    ptr = ptr.offset(2isize);
-                                }
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_38 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_S => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_38 XML_TOK_ATTRIBUTE_VALUE_S_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
-                        }
-                        _ => {
-                            ptr = ptr.offset(2isize);
-                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2isize);
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_38 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_39: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut start: *const c_char = null::<c_char>();
-                if ptr >= end {
-                    break 'iife_ret_39 XML_TOK_NONE_1;
-                } else if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_39 XML_TOK_PARTIAL_1;
-                }
-                start = ptr;
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            ptr = ptr.offset(2isize);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_39: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                break 'iife_ret_39 XML_TOK_NONE_1;
+            } else if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_39 XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            break 'iife_ret_39 ({
+                                let (tok_value, next_tok_value) = little2_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
                         }
-                        BT_LEAD3 => {
-                            ptr = ptr.offset(3isize);
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_PERCNT => {
+                        if ptr == start {
+                            let mut tok: c_int = {
+                                let (tok_value, next_tok_value) = little2_scanPercent(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                            break 'iife_ret_39 if tok == XML_TOK_PERCENT_1 {
+                                XML_TOK_INVALID_1
+                            } else {
+                                tok
+                            };
                         }
-                        BT_LEAD4 => {
-                            ptr = ptr.offset(4isize);
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_39 XML_TOK_DATA_NEWLINE_1;
                         }
-                        BT_AMP => {
-                            if ptr == start {
-                                break 'iife_ret_39 ({
-                                    let (tok_value, next_tok_value) = little2_scanRef(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_39 XML_TOK_TRAILING_CR_1;
+                            }
+                            if (if read_ptr_at(ptr, 1) as c_int == 0 {
+                                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0))
+                            }) == BT_LF as c_int
+                            {
+                                ptr = ptr.wrapping_offset(2isize);
                             }
                             *nextTokPtr = ptr;
-                            break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
+                            break 'iife_ret_39 XML_TOK_DATA_NEWLINE_1;
                         }
-                        BT_PERCNT => {
-                            if ptr == start {
-                                let mut tok: c_int = {
-                                    let (tok_value, next_tok_value) = little2_scanPercent(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                };
-                                break 'iife_ret_39 if tok == XML_TOK_PERCENT_1 {
-                                    XML_TOK_INVALID_1
-                                } else {
-                                    tok
-                                };
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_LF => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_39 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_CR => {
-                            if ptr == start {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_39 XML_TOK_TRAILING_CR_1;
-                                }
-                                if (if *ptr.offset(1) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                                }) == BT_LF as c_int
-                                {
-                                    ptr = ptr.offset(2isize);
-                                }
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_39 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
-                        }
-                        _ => {
-                            ptr = ptr.offset(2isize);
-                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2isize);
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_39 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn little2_ignoreSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_40: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut level: c_int = 0;
-                {
-                    let mut n: size_t = end.offset_from(ptr) as size_t;
-                    if n & (2i32 - 1) as size_t != 0 {
-                        n &= !(2i32 - 1) as size_t;
-                        end = ptr.add(n);
-                    }
-                }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(1) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_40 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(2isize);
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_40 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(3isize);
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_40 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_40 XML_TOK_INVALID_1;
-                        }
-                        BT_LT => {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_40 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x21 {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_40 XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5b {
-                                    level += 1;
-                                    ptr = ptr.offset(2isize);
-                                }
-                            }
-                        }
-                        BT_RSQB => {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_40 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x5d {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_40 XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3e {
-                                    ptr = ptr.offset(2);
-                                    if level == 0 {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_40 XML_TOK_IGNORE_SECT_1;
-                                    }
-                                    level -= 1;
-                                }
-                            }
-                        }
-                        _ => {
-                            ptr = ptr.offset(2isize);
-                        }
-                    }
-                }
-                break 'iife_ret_40 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn little2_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe {
-            let mut badPtrVal: *const c_char = null::<c_char>();
-            let badPtr = &mut badPtrVal;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_40: {
             let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            ptr = ptr.offset(2);
-            end = end.offset(-(2));
-            while end.offset_from(ptr) as c_long >= 2 as c_long {
-                let mut current_block_8: u64;
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
+            let mut end = ptr.wrapping_add(input.len());
+            let mut level: c_int = 0;
+            {
+                let mut n: size_t = c_char_ptr_diff(end, ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    end = ptr.wrapping_add(n);
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
                 } {
-                    25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16
-                    | 33 | 30 | 19 | 23 => {
-                        current_block_8 = 5143058163439228106;
-                    }
-                    BT_S => {
-                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x9 {
-                            *badPtr = ptr;
-                            return (0i32, badPtrVal);
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_40 XML_TOK_PARTIAL_CHAR_1;
                         }
-                        current_block_8 = 5143058163439228106;
+                        ptr = ptr.wrapping_offset(2isize);
                     }
-                    BT_NAME | BT_NMSTRT => {
-                        if (if *ptr.offset(1) as c_int == 0 {
-                            *ptr.offset(0) as c_int
-                        } else {
-                            -(1)
-                        }) & !(0x7f)
-                            == 0
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_40 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_40 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_40 XML_TOK_INVALID_1;
+                    }
+                    BT_LT => {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_40 XML_TOK_PARTIAL_1;
+                        }
+                        if read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x21
                         {
-                            current_block_8 = 5143058163439228106;
-                        } else {
-                            current_block_8 = 5251475129761746025;
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_40 XML_TOK_PARTIAL_1;
+                            }
+                            if read_ptr_at(ptr, 1) as c_int == 0
+                                && read_ptr_at(ptr, 0) as c_int == 0x5b
+                            {
+                                level += 1;
+                                ptr = ptr.wrapping_offset(2isize);
+                            }
+                        }
+                    }
+                    BT_RSQB => {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_40 XML_TOK_PARTIAL_1;
+                        }
+                        if read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x5d
+                        {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_40 XML_TOK_PARTIAL_1;
+                            }
+                            if read_ptr_at(ptr, 1) as c_int == 0
+                                && read_ptr_at(ptr, 0) as c_int == 0x3e
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                if level == 0 {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_40 XML_TOK_IGNORE_SECT_1;
+                                }
+                                level -= 1;
+                            }
                         }
                     }
                     _ => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                }
+            }
+            break 'iife_ret_40 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn little2_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        let mut badPtrVal: *const c_char = null::<c_char>();
+        let badPtr = &mut badPtrVal;
+        let mut ptr = input.as_ptr();
+        let mut end = ptr.wrapping_add(input.len());
+        ptr = ptr.wrapping_offset(2);
+        end = end.wrapping_offset(-(2));
+        while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+            let mut current_block_8: u64;
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
+                | 30 | 19 | 23 => {
+                    current_block_8 = 5143058163439228106;
+                }
+                BT_S => {
+                    if read_ptr_at(ptr, 1) as c_int == 0 && read_ptr_at(ptr, 0) as c_int == 0x9 {
+                        *badPtr = ptr;
+                        return (0i32, badPtrVal);
+                    }
+                    current_block_8 = 5143058163439228106;
+                }
+                BT_NAME | BT_NMSTRT => {
+                    if (if read_ptr_at(ptr, 1) as c_int == 0 {
+                        read_ptr_at(ptr, 0) as c_int
+                    } else {
+                        -(1)
+                    }) & !(0x7f)
+                        == 0
+                    {
+                        current_block_8 = 5143058163439228106;
+                    } else {
                         current_block_8 = 5251475129761746025;
                     }
                 }
-                if current_block_8 == 5251475129761746025 {
-                    match if *ptr.offset(1) as c_int == 0 {
-                        *ptr.offset(0) as c_int
-                    } else {
-                        -(1)
-                    } {
-                        36 | 64 => {}
-                        _ => {
-                            *badPtr = ptr;
-                            return (0i32, badPtrVal);
-                        }
+                _ => {
+                    current_block_8 = 5251475129761746025;
+                }
+            }
+            if current_block_8 == 5251475129761746025 {
+                match if read_ptr_at(ptr, 1) as c_int == 0 {
+                    read_ptr_at(ptr, 0) as c_int
+                } else {
+                    -(1)
+                } {
+                    36 | 64 => {}
+                    _ => {
+                        *badPtr = ptr;
+                        return (0i32, badPtrVal);
                     }
                 }
-                ptr = ptr.offset(2);
             }
-            (1, badPtrVal)
+            ptr = ptr.wrapping_offset(2);
         }
+        (1, badPtrVal)
     }
 
     pub(crate) fn little2_getAtts(
@@ -6825,146 +6859,145 @@ pub mod xmltok_impl_c {
         mut attsMax: c_int,
         mut atts: *mut ATTRIBUTE,
     ) -> c_int {
-        unsafe {
-            let mut state: C2RustUnnamed_3 = inName_0;
-            let mut nAtts: c_int = 0;
-            let mut open: c_int = 0;
-            ptr = ptr.offset(2);
-            loop {
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_LEAD2 => {
-                        if state == other_0 {
-                            if nAtts < attsMax {
-                                let fresh29 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh29 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName_0;
-                        }
-                        ptr = ptr.offset((2i32 - 2i32) as isize);
-                    }
-                    BT_LEAD3 => {
-                        if state == other_0 {
-                            if nAtts < attsMax {
-                                let fresh30 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh30 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName_0;
-                        }
-                        ptr = ptr.offset((3i32 - 2i32) as isize);
-                    }
-                    BT_LEAD4 => {
-                        if state == other_0 {
-                            if nAtts < attsMax {
-                                let fresh31 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh31 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName_0;
-                        }
-                        ptr = ptr.offset((4i32 - 2i32) as isize);
-                    }
-                    BT_NONASCII | BT_NMSTRT | BT_HEX => {
-                        if state == other_0 {
-                            if nAtts < attsMax {
-                                let fresh32 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh32 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName_0;
-                        }
-                    }
-                    BT_QUOT => {
-                        if state != inValue_0 {
-                            if nAtts < attsMax {
-                                let fresh33 = &mut (*atts.offset(nAtts as isize)).valuePtr;
-                                *fresh33 = ptr.offset(2isize);
-                            }
-                            state = inValue_0;
-                            open = BT_QUOT as c_int;
-                        } else if open == BT_QUOT as c_int {
-                            state = other_0;
-                            if nAtts < attsMax {
-                                let fresh34 = &mut (*atts.offset(nAtts as isize)).valueEnd;
-                                *fresh34 = ptr;
-                            }
-                            nAtts += 1;
-                        }
-                    }
-                    BT_APOS => {
-                        if state != inValue_0 {
-                            if nAtts < attsMax {
-                                let fresh35 = &mut (*atts.offset(nAtts as isize)).valuePtr;
-                                *fresh35 = ptr.offset(2isize);
-                            }
-                            state = inValue_0;
-                            open = BT_APOS as c_int;
-                        } else if open == BT_APOS as c_int {
-                            state = other_0;
-                            if nAtts < attsMax {
-                                let fresh36 = &mut (*atts.offset(nAtts as isize)).valueEnd;
-                                *fresh36 = ptr;
-                            }
-                            nAtts += 1;
-                        }
-                    }
-                    BT_AMP => {
+        let mut state: C2RustUnnamed_3 = inName_0;
+        let mut nAtts: c_int = 0;
+        let mut open: c_int = 0;
+        ptr = ptr.wrapping_offset(2);
+        loop {
+            match if read_ptr_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr(ptr) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 1), read_ptr_at(ptr, 0)) as c_uint
+            } {
+                BT_LEAD2 => {
+                    if state == other_0 {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
                         }
+                        state = inName_0;
                     }
-                    BT_S => {
-                        if state == inName_0 {
-                            state = other_0;
-                        } else if state == inValue_0
-                            && nAtts < attsMax
-                            && (*atts.offset(nAtts as isize)).normalized as c_int != 0
-                            && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                                || (if *ptr.offset(1) as c_int == 0 {
-                                    *ptr.offset(0) as c_int
+                    ptr = ptr.wrapping_offset((2i32 - 2i32) as isize);
+                }
+                BT_LEAD3 => {
+                    if state == other_0 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName_0;
+                    }
+                    ptr = ptr.wrapping_offset((3i32 - 2i32) as isize);
+                }
+                BT_LEAD4 => {
+                    if state == other_0 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName_0;
+                    }
+                    ptr = ptr.wrapping_offset((4i32 - 2i32) as isize);
+                }
+                BT_NONASCII | BT_NMSTRT | BT_HEX => {
+                    if state == other_0 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName_0;
+                    }
+                }
+                BT_QUOT => {
+                    if state != inValue_0 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valuePtr = ptr.wrapping_offset(2isize);
+                        }
+                        state = inValue_0;
+                        open = BT_QUOT as c_int;
+                    } else if open == BT_QUOT as c_int {
+                        state = other_0;
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valueEnd = ptr;
+                        }
+                        nAtts += 1;
+                    }
+                }
+                BT_APOS => {
+                    if state != inValue_0 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valuePtr = ptr.wrapping_offset(2isize);
+                        }
+                        state = inValue_0;
+                        open = BT_APOS as c_int;
+                    } else if open == BT_APOS as c_int {
+                        state = other_0;
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valueEnd = ptr;
+                        }
+                        nAtts += 1;
+                    }
+                }
+                BT_AMP => {
+                    if nAtts < attsMax {
+                        attribute_mut(atts, nAtts).normalized = 0i8;
+                    }
+                }
+                BT_S => {
+                    if state == inName_0 {
+                        state = other_0;
+                    } else if state == inValue_0 && nAtts < attsMax {
+                        let att = attribute_mut(atts, nAtts);
+                        if att.normalized as c_int != 0
+                            && (ptr == att.valuePtr
+                                || (if read_ptr_at(ptr, 1) as c_int == 0 {
+                                    read_ptr_at(ptr, 0) as c_int
                                 } else {
                                     -(1)
                                 }) != ASCII_SPACE
-                                || (if *ptr.offset(2).offset(1) as c_int == 0 {
-                                    *ptr.offset(2).offset(0) as c_int
+                                || (if read_ptr_at(ptr.wrapping_offset(2), 1) as c_int == 0 {
+                                    read_ptr_at(ptr.wrapping_offset(2), 0) as c_int
                                 } else {
                                     -(1)
                                 }) == ASCII_SPACE
-                                || (if *ptr.offset(2).offset(1) as c_int == 0 {
+                                || (if read_ptr_at(ptr.wrapping_offset(2), 1) as c_int == 0 {
                                     as_normal_encoding(enc).type_0
-                                        [*ptr.offset(2) as c_uchar as usize]
+                                        [read_ptr_at(ptr, 2) as c_uchar as usize]
                                         as c_int
                                 } else {
                                     unicode_byte_type(
-                                        *ptr.offset(2).offset(1),
-                                        *ptr.offset(2).offset(0),
+                                        read_ptr_at(ptr.wrapping_offset(2), 1),
+                                        read_ptr_at(ptr.wrapping_offset(2), 0),
                                     )
                                 }) == open)
                         {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
+                            att.normalized = 0i8;
                         }
                     }
-                    BT_CR | BT_LF => {
-                        if state == inName_0 {
-                            state = other_0;
-                        } else if state == inValue_0 && nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
-                        }
-                    }
-                    BT_GT | BT_SOL => {
-                        if state != inValue_0 {
-                            return nAtts;
-                        }
-                    }
-                    _ => {}
                 }
-                ptr = ptr.offset(2);
+                BT_CR | BT_LF => {
+                    if state == inName_0 {
+                        state = other_0;
+                    } else if state == inValue_0 && nAtts < attsMax {
+                        attribute_mut(atts, nAtts).normalized = 0i8;
+                    }
+                }
+                BT_GT | BT_SOL => {
+                    if state != inValue_0 {
+                        return nAtts;
+                    }
+                }
+                _ => {}
             }
+            ptr = ptr.wrapping_offset(2);
         }
     }
 
@@ -7167,7 +7200,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn little2_updatePosition(enc: &ENCODING, input: &[c_char], mut pos: *mut POSITION) {
-        let pos = unsafe { &mut *pos };
+        let pos = mut_ref_from_ptr(pos);
         let mut ptr = input.as_ptr();
         let end = ptr.wrapping_add(input.len());
         while c_char_ptr_diff(end, ptr) >= 2 {
@@ -7217,163 +7250,161 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn big2_scanComment(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_41: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 2 as c_long {
-                    if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x2d) {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_41 XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= 2 as c_long {
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_LEAD2 => {
-                                if (end.offset_from(ptr) as c_long) < 2 {
-                                    break 'iife_ret_41 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(2isize);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_41: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                if !(read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x2d) {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_41 XML_TOK_INVALID_1;
+                }
+                ptr = ptr.wrapping_offset(2);
+                while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                    match if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                    } {
+                        BT_LEAD2 => {
+                            if (c_char_ptr_diff(end, ptr)) < 2 {
+                                break 'iife_ret_41 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            BT_LEAD3 => {
-                                if (end.offset_from(ptr) as c_long) < 3 {
-                                    break 'iife_ret_41 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(3isize);
+                            ptr = ptr.wrapping_offset(2isize);
+                        }
+                        BT_LEAD3 => {
+                            if (c_char_ptr_diff(end, ptr)) < 3 {
+                                break 'iife_ret_41 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            BT_LEAD4 => {
-                                if (end.offset_from(ptr) as c_long) < 4 {
-                                    break 'iife_ret_41 XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(4isize);
+                            ptr = ptr.wrapping_offset(3isize);
+                        }
+                        BT_LEAD4 => {
+                            if (c_char_ptr_diff(end, ptr)) < 4 {
+                                break 'iife_ret_41 XML_TOK_PARTIAL_CHAR_1;
                             }
-                            BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_41 XML_TOK_INVALID_1;
+                            ptr = ptr.wrapping_offset(4isize);
+                        }
+                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_41 XML_TOK_INVALID_1;
+                        }
+                        BT_MINUS => {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_41 XML_TOK_PARTIAL_1;
                             }
-                            BT_MINUS => {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
+                            if read_ptr_at(ptr, 0) as c_int == 0
+                                && read_ptr_at(ptr, 1) as c_int == 0x2d
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                                     break 'iife_ret_41 XML_TOK_PARTIAL_1;
                                 }
-                                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x2d {
-                                    ptr = ptr.offset(2);
-                                    if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                        break 'iife_ret_41 XML_TOK_PARTIAL_1;
-                                    }
-                                    if !(*ptr.offset(0) as c_int == 0
-                                        && *ptr.offset(1) as c_int == 0x3e)
-                                    {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_41 XML_TOK_INVALID_1;
-                                    }
-                                    *nextTokPtr = ptr.offset(2);
-                                    break 'iife_ret_41 XML_TOK_COMMENT_1;
+                                if !(read_ptr_at(ptr, 0) as c_int == 0
+                                    && read_ptr_at(ptr, 1) as c_int == 0x3e)
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_41 XML_TOK_INVALID_1;
                                 }
+                                *nextTokPtr = ptr.wrapping_offset(2);
+                                break 'iife_ret_41 XML_TOK_COMMENT_1;
                             }
-                            _ => {
-                                ptr = ptr.offset(2isize);
-                            }
+                        }
+                        _ => {
+                            ptr = ptr.wrapping_offset(2isize);
                         }
                     }
                 }
-                break 'iife_ret_41 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_41 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_scanDecl(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_42: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_42 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_42: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_42 XML_TOK_PARTIAL_1;
+            }
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_MINUS => {
+                    break 'iife_ret_42 ({
+                        let (tok_value, next_tok_value) = big2_scanComment(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
                 }
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_MINUS => {
-                        break 'iife_ret_42 ({
-                            let (tok_value, next_tok_value) = big2_scanComment(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_LSQB => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_42 XML_TOK_COND_SECT_OPEN_1;
-                    }
-                    BT_NMSTRT | BT_HEX => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_42 XML_TOK_INVALID_1;
-                    }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_42 XML_TOK_COND_SECT_OPEN_1;
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    's_129: {
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_PERCNT => {
-                                if (end.offset_from(ptr) as c_long) < (2i32 * 2) as c_long {
-                                    break 'iife_ret_42 XML_TOK_PARTIAL_1;
-                                }
-                                match if *ptr.offset(2).offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(2).offset(1) as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(
-                                        *ptr.offset(2).offset(0),
-                                        *ptr.offset(2).offset(1),
-                                    ) as c_uint
-                                } {
-                                    BT_S | BT_CR | BT_LF | BT_PERCNT => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_42 XML_TOK_INVALID_1;
-                                    }
-                                    _ => {}
-                                }
+                BT_NMSTRT | BT_HEX => {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_42 XML_TOK_INVALID_1;
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                's_129: {
+                    match if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                    } {
+                        BT_PERCNT => {
+                            if (c_char_ptr_diff(end, ptr)) < (2i32 * 2) as c_long {
+                                break 'iife_ret_42 XML_TOK_PARTIAL_1;
                             }
-                            BT_S | BT_CR | BT_LF => {}
-                            BT_NMSTRT | BT_HEX => {
-                                ptr = ptr.offset(2);
-                                break 's_129;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_42 XML_TOK_INVALID_1;
+                            match if read_ptr_at(ptr.wrapping_offset(2), 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr.wrapping_offset(2), 1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(
+                                    read_ptr_at(ptr.wrapping_offset(2), 0),
+                                    read_ptr_at(ptr.wrapping_offset(2), 1),
+                                ) as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF | BT_PERCNT => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_42 XML_TOK_INVALID_1;
+                                }
+                                _ => {}
                             }
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_42 XML_TOK_DECL_OPEN_1;
+                        BT_S | BT_CR | BT_LF => {}
+                        BT_NMSTRT | BT_HEX => {
+                            ptr = ptr.wrapping_offset(2);
+                            break 's_129;
+                        }
+                        _ => {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_42 XML_TOK_INVALID_1;
+                        }
                     }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_42 XML_TOK_DECL_OPEN_1;
                 }
-                break 'iife_ret_42 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_42 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_checkPiTarget(_enc: &ENCODING, input: &[c_char]) -> CheckPiTargetResult {
@@ -7432,2841 +7463,2842 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn big2_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_44: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut tok: c_int = 0;
-                let mut target: *const c_char = ptr;
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_44 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_44: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut tok: c_int = 0;
+            let mut target: *const c_char = ptr;
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_44 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_44 XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 2802485987355401260;
                 }
-                let mut current_block_32: u64;
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 2802485987355401260;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_44 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_44 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_44 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_44 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 2802485987355401260 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_118: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_44 XML_TOK_INVALID_1;
                         }
-                        current_block_32 = 2802485987355401260;
+                        current_block_118 = 11190361564366887465;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 2802485987355401260;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_118 = 11190361564366887465;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_44 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_44 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_44 XML_TOK_INVALID_1;
                     }
+                    BT_S | BT_CR | BT_LF => {
+                        if {
+                            let (ok_value, tok_value) =
+                                big2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_44 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                                    as c_uint
+                            } {
+                                BT_LEAD2 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                                        break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                                BT_LEAD3 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                                        break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(3isize);
+                                }
+                                BT_LEAD4 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                                        break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(4isize);
+                                }
+                                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_44 XML_TOK_INVALID_1;
+                                }
+                                BT_QUEST => {
+                                    ptr = ptr.wrapping_offset(2);
+                                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                        break 'iife_ret_44 XML_TOK_PARTIAL_1;
+                                    }
+                                    if read_ptr_at(ptr, 0) as c_int == 0
+                                        && read_ptr_at(ptr, 1) as c_int == 0x3e
+                                    {
+                                        *nextTokPtr = ptr.wrapping_offset(2);
+                                        break 'iife_ret_44 tok;
+                                    }
+                                }
+                                _ => {
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                            }
+                        }
+                        break 'iife_ret_44 XML_TOK_PARTIAL_1;
+                    }
+                    BT_QUEST => {
+                        if {
+                            let (ok_value, tok_value) =
+                                big2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
+                            tok = tok_value;
+                            ok_value
+                        } == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_44 XML_TOK_INVALID_1;
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_44 XML_TOK_PARTIAL_1;
+                        }
+                        if read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x3e
+                        {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_44 tok;
+                        }
+                        current_block_118 = 161625824724629686;
+                    }
                     _ => {
+                        current_block_118 = 161625824724629686;
+                    }
+                }
+                match current_block_118 {
+                    161625824724629686 => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_44 XML_TOK_INVALID_1;
                     }
-                }
-                if current_block_32 == 2802485987355401260 {
-                    ptr = ptr.offset(2isize);
-                }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_118: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_44 XML_TOK_INVALID_1;
-                            }
-                            current_block_118 = 11190361564366887465;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_118 = 11190361564366887465;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_44 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_44 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_44 XML_TOK_INVALID_1;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            if {
-                                let (ok_value, tok_value) =
-                                    big2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
-                                tok = tok_value;
-                                ok_value
-                            } == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_44 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            while end.offset_from(ptr) as c_long >= 2 as c_long {
-                                match if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                                } {
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(3isize);
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_44 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(4isize);
-                                    }
-                                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_44 XML_TOK_INVALID_1;
-                                    }
-                                    BT_QUEST => {
-                                        ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                            break 'iife_ret_44 XML_TOK_PARTIAL_1;
-                                        }
-                                        if *ptr.offset(0) as c_int == 0
-                                            && *ptr.offset(1) as c_int == 0x3e
-                                        {
-                                            *nextTokPtr = ptr.offset(2);
-                                            break 'iife_ret_44 tok;
-                                        }
-                                    }
-                                    _ => {
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                }
-                            }
-                            break 'iife_ret_44 XML_TOK_PARTIAL_1;
-                        }
-                        BT_QUEST => {
-                            if {
-                                let (ok_value, tok_value) =
-                                    big2_checkPiTarget(enc, c_char_slice_from_ptr_end(target, ptr));
-                                tok = tok_value;
-                                ok_value
-                            } == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_44 XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_44 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_44 tok;
-                            }
-                            current_block_118 = 161625824724629686;
-                        }
-                        _ => {
-                            current_block_118 = 161625824724629686;
-                        }
+                    11190361564366887465 => {
+                        ptr = ptr.wrapping_offset(2isize);
                     }
-                    match current_block_118 {
-                        161625824724629686 => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_44 XML_TOK_INVALID_1;
-                        }
-                        11190361564366887465 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
-                    }
+                    _ => {}
                 }
-                break 'iife_ret_44 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_44 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_scanCdataSection(_enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_45: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                pub static CDATA_LSQB: [c_char; 6] = [
-                    ASCII_C as c_char,
-                    ASCII_D as c_char,
-                    ASCII_A as c_char,
-                    ASCII_T as c_char,
-                    ASCII_A as c_char,
-                    ASCII_LSQB as c_char,
-                ];
-                let mut i: c_int = 0;
-                if (end.offset_from(ptr) as c_long) < (6i32 * 2) as c_long {
-                    break 'iife_ret_45 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_45: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            pub static CDATA_LSQB: [c_char; 6] = [
+                ASCII_C as c_char,
+                ASCII_D as c_char,
+                ASCII_A as c_char,
+                ASCII_T as c_char,
+                ASCII_A as c_char,
+                ASCII_LSQB as c_char,
+            ];
+            let mut i: c_int = 0;
+            if (c_char_ptr_diff(end, ptr)) < (6i32 * 2) as c_long {
+                break 'iife_ret_45 XML_TOK_PARTIAL_1;
+            }
+            i = 0;
+            while i < 6 {
+                if !(read_ptr_at(ptr, 0) as c_int == 0
+                    && read_ptr_at(ptr, 1) as c_int == CDATA_LSQB[i as usize] as c_int)
+                {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_45 XML_TOK_INVALID_1;
                 }
-                i = 0;
-                while i < 6 {
-                    if !(*ptr.offset(0) as c_int == 0
-                        && *ptr.offset(1) as c_int == CDATA_LSQB[i as usize] as c_int)
-                    {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_45 XML_TOK_INVALID_1;
-                    }
-                    i += 1;
-                    ptr = ptr.offset(2);
-                }
-                *nextTokPtr = ptr;
-                break 'iife_ret_45 XML_TOK_CDATA_SECT_OPEN_1;
-            };
-            (tok, next_tok)
-        }
+                i += 1;
+                ptr = ptr.wrapping_offset(2);
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_45 XML_TOK_CDATA_SECT_OPEN_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_cdataSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_46: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if ptr >= end {
-                    break 'iife_ret_46 XML_TOK_NONE_1;
-                }
-                {
-                    let mut n: size_t = end.offset_from(ptr) as size_t;
-                    if n & (2i32 - 1) as size_t != 0 {
-                        n &= !(2i32 - 1) as size_t;
-                        if n == 0 {
-                            break 'iife_ret_46 XML_TOK_PARTIAL_1;
-                        }
-                        end = ptr.add(n);
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_46: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if ptr >= end {
+                break 'iife_ret_46 XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = c_char_ptr_diff(end, ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        break 'iife_ret_46 XML_TOK_PARTIAL_1;
                     }
+                    end = ptr.wrapping_add(n);
                 }
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_RSQB => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_46 XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_46 XML_TOK_PARTIAL_1;
-                            }
-                            if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
-                                ptr = ptr.offset(-(2isize));
-                            } else {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_46 XML_TOK_CDATA_SECT_CLOSE_1;
-                            }
-                        }
+            }
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_46 XML_TOK_PARTIAL_1;
                     }
-                    BT_CR => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
+                    if read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x5d {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
                             break 'iife_ret_46 XML_TOK_PARTIAL_1;
                         }
-                        if (if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                        }) == BT_LF as c_int
+                        if !(read_ptr_at(ptr, 0) as c_int == 0
+                            && read_ptr_at(ptr, 1) as c_int == 0x3e)
                         {
-                            ptr = ptr.offset(2isize);
+                            ptr = ptr.wrapping_offset(-(2isize));
+                        } else {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_46 XML_TOK_CDATA_SECT_CLOSE_1;
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_46 XML_TOK_DATA_NEWLINE_1;
-                    }
-                    BT_LF => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_46 XML_TOK_DATA_NEWLINE_1;
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_46 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_46 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(3isize);
-                    }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_46 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_46 XML_TOK_INVALID_1;
-                    }
-                    _ => {
-                        ptr = ptr.offset(2isize);
                     }
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                BT_CR => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_46 XML_TOK_PARTIAL_1;
+                    }
+                    if (if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_int
                     } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(2isize);
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(3isize);
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                    }) == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_46 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_46 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_46 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_46 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_46 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_46 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             *nextTokPtr = ptr;
                             break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
                         }
-                        _ => {
-                            ptr = ptr.offset(2isize);
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
                         }
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF | BT_RSQB => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2isize);
                     }
                 }
-                *nextTokPtr = ptr;
-                break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_46 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_scanEndTag(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_47: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_47 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_47: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_47 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_47 XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 12738221189273011712;
                 }
-                let mut current_block_32: u64;
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 12738221189273011712;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_47 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_47 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_47 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_47 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 12738221189273011712 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_73: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_47 XML_TOK_INVALID_1;
                         }
-                        current_block_32 = 12738221189273011712;
+                        current_block_73 = 1281007054303163758;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 12738221189273011712;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_73 = 1281007054303163758;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_47 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_47 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_47 XML_TOK_INVALID_1;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.wrapping_offset(2);
+                        while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                                    as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF => {}
+                                BT_GT => {
+                                    *nextTokPtr = ptr.wrapping_offset(2);
+                                    break 'iife_ret_47 XML_TOK_END_TAG_1;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_47 XML_TOK_INVALID_1;
+                                }
+                            }
+                            ptr = ptr.wrapping_offset(2);
+                        }
+                        break 'iife_ret_47 XML_TOK_PARTIAL_1;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_73 = 981995395831942902;
+                    }
+                    BT_GT => {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_47 XML_TOK_END_TAG_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_47 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_32 == 12738221189273011712 {
-                    ptr = ptr.offset(2isize);
+                if current_block_73 == 1281007054303163758 {
+                    ptr = ptr.wrapping_offset(2isize);
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_73: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_47 XML_TOK_INVALID_1;
-                            }
-                            current_block_73 = 1281007054303163758;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_73 = 1281007054303163758;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_47 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_47 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_47 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_47 XML_TOK_INVALID_1;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            ptr = ptr.offset(2);
-                            while end.offset_from(ptr) as c_long >= 2 as c_long {
-                                match if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                                } {
-                                    BT_S | BT_CR | BT_LF => {}
-                                    BT_GT => {
-                                        *nextTokPtr = ptr.offset(2);
-                                        break 'iife_ret_47 XML_TOK_END_TAG_1;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_47 XML_TOK_INVALID_1;
-                                    }
-                                }
-                                ptr = ptr.offset(2);
-                            }
-                            break 'iife_ret_47 XML_TOK_PARTIAL_1;
-                        }
-                        BT_COLON_0 => {
-                            ptr = ptr.offset(2);
-                            current_block_73 = 981995395831942902;
-                        }
-                        BT_GT => {
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_47 XML_TOK_END_TAG_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_47 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_73 == 1281007054303163758 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_47 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_47 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_scanHexCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_48: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_48: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_DIGIT | BT_HEX => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_48 XML_TOK_INVALID_1;
+                    }
+                }
+                ptr = ptr.wrapping_offset(2);
+                while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                    match if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_uint
                     } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
                     } {
                         BT_DIGIT | BT_HEX => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_48 XML_TOK_CHAR_REF_1;
+                        }
                         _ => {
                             *nextTokPtr = ptr;
                             break 'iife_ret_48 XML_TOK_INVALID_1;
                         }
                     }
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= 2 as c_long {
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_DIGIT | BT_HEX => {}
-                            BT_SEMI => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_48 XML_TOK_CHAR_REF_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_48 XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(2);
-                    }
+                    ptr = ptr.wrapping_offset(2);
                 }
-                break 'iife_ret_48 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_48 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_scanCharRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_49: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if end.offset_from(ptr) as c_long >= 2 as c_long {
-                    if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x78 {
-                        break 'iife_ret_49 ({
-                            let (tok_value, next_tok_value) = big2_scanHexCharRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_49: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                if read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x78 {
+                    break 'iife_ret_49 ({
+                        let (tok_value, next_tok_value) = big2_scanHexCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_DIGIT => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_49 XML_TOK_INVALID_1;
                     }
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                }
+                ptr = ptr.wrapping_offset(2);
+                while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                    match if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_uint
                     } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
                     } {
                         BT_DIGIT => {}
+                        BT_SEMI => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_49 XML_TOK_CHAR_REF_1;
+                        }
                         _ => {
                             *nextTokPtr = ptr;
                             break 'iife_ret_49 XML_TOK_INVALID_1;
                         }
                     }
-                    ptr = ptr.offset(2);
-                    while end.offset_from(ptr) as c_long >= 2 as c_long {
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_DIGIT => {}
-                            BT_SEMI => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_49 XML_TOK_CHAR_REF_1;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_49 XML_TOK_INVALID_1;
-                            }
-                        }
-                        ptr = ptr.offset(2);
-                    }
+                    ptr = ptr.wrapping_offset(2);
                 }
-                break 'iife_ret_49 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_49 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_scanRef(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_50: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_50 XML_TOK_PARTIAL_1;
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_50: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_50 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_33: u64;
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_50 XML_TOK_INVALID_1;
+                    }
+                    current_block_33 = 17794167657114565097;
                 }
-                let mut current_block_33: u64;
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+                BT_NMSTRT | BT_HEX => {
+                    current_block_33 = 17794167657114565097;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_50 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_50 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_50 XML_TOK_INVALID_1;
+                }
+                BT_NUM => {
+                    break 'iife_ret_50 ({
+                        let (tok_value, next_tok_value) = big2_scanCharRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_50 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_33 == 17794167657114565097 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_64: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
                             break 'iife_ret_50 XML_TOK_INVALID_1;
                         }
-                        current_block_33 = 17794167657114565097;
+                        current_block_64 = 17251590314240005670;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_33 = 17794167657114565097;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_64 = 17251590314240005670;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
                             break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_50 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
                             break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_50 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
                             break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
                         break 'iife_ret_50 XML_TOK_INVALID_1;
                     }
-                    BT_NUM => {
-                        break 'iife_ret_50 ({
-                            let (tok_value, next_tok_value) = big2_scanCharRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_50 XML_TOK_ENTITY_REF_1;
                     }
                     _ => {
                         *nextTokPtr = ptr;
                         break 'iife_ret_50 XML_TOK_INVALID_1;
                     }
                 }
-                if current_block_33 == 17794167657114565097 {
-                    ptr = ptr.offset(2isize);
+                if current_block_64 == 17251590314240005670 {
+                    ptr = ptr.wrapping_offset(2isize);
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_64: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_50 XML_TOK_INVALID_1;
-                            }
-                            current_block_64 = 17251590314240005670;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_64 = 17251590314240005670;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_50 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_50 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_50 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_50 XML_TOK_INVALID_1;
-                        }
-                        BT_SEMI => {
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_50 XML_TOK_ENTITY_REF_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_50 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_64 == 17251590314240005670 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_50 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_50 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
     pub(crate) fn big2_scanAtts(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_51: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut hadColon: c_int = 0;
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_186: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_51 XML_TOK_INVALID_1;
-                            }
-                            current_block_186 = 6092917267242331817;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_186 = 6092917267242331817;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_51 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_51 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_51 XML_TOK_INVALID_1;
-                        }
-                        BT_COLON_0 => {
-                            if hadColon != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_51 XML_TOK_INVALID_1;
-                            }
-                            hadColon = 1;
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_51 XML_TOK_PARTIAL_1;
-                            }
-                            let mut current_block_64: u64;
-                            match if *ptr.offset(0) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                    as c_uint
-                            } else {
-                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                            } {
-                                BT_NONASCII => {
-                                    if namingBitmap[(((nmstrtPages
-                                        [*ptr.offset(0) as c_uchar as usize]
-                                        as c_int)
-                                        << 3)
-                                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                        as usize]
-                                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                        == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_51 XML_TOK_INVALID_1;
-                                    }
-                                    current_block_64 = 6604085902723260545;
-                                }
-                                BT_NMSTRT | BT_HEX => {
-                                    current_block_64 = 6604085902723260545;
-                                }
-                                BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
-                                        break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_51 XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
-                                        break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_51 XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
-                                        break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_51 XML_TOK_INVALID_1;
-                                }
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_51 XML_TOK_INVALID_1;
-                                }
-                            }
-                            if current_block_64 == 6604085902723260545 {
-                                ptr = ptr.offset(2isize);
-                            }
-                            current_block_186 = 1634947208139838470;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            loop {
-                                let mut t: c_int = 0;
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_51 XML_TOK_PARTIAL_1;
-                                }
-                                t = if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                                };
-                                if t == BT_EQUALS as c_int {
-                                    break;
-                                }
-                                match t {
-                                    21 | 10 | 9 => {}
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_51 XML_TOK_INVALID_1;
-                                    }
-                                }
-                            }
-                            current_block_186 = 10853015579903106591;
-                        }
-                        BT_EQUALS => {
-                            current_block_186 = 10853015579903106591;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_51 XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_186 {
-                        10853015579903106591 => {
-                            let mut open: c_int = 0;
-                            hadColon = 0;
-                            loop {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_51 XML_TOK_PARTIAL_1;
-                                }
-                                open = if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                                };
-                                if open == BT_QUOT as c_int || open == BT_APOS as c_int {
-                                    break;
-                                }
-                                match open {
-                                    21 | 10 | 9 => {}
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_51 XML_TOK_INVALID_1;
-                                    }
-                                }
-                            }
-                            ptr = ptr.offset(2);
-                            loop {
-                                let mut t_0: c_int = 0;
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_51 XML_TOK_PARTIAL_1;
-                                }
-                                t_0 = if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                                };
-                                if t_0 == open {
-                                    break;
-                                }
-                                match t_0 {
-                                    5 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                    6 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(3isize);
-                                    }
-                                    7 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        ptr = ptr.offset(4isize);
-                                    }
-                                    0 | 1 | 8 => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_51 XML_TOK_INVALID_1;
-                                    }
-                                    3 => {
-                                        let mut tok: c_int = {
-                                            let (tok_value, next_tok_value) = big2_scanRef(
-                                                enc,
-                                                c_char_slice_from_ptr_end(ptr.offset(2), end),
-                                            );
-                                            ptr = next_tok_value;
-                                            tok_value
-                                        };
-                                        if tok <= 0 {
-                                            if tok == XML_TOK_INVALID_1 {
-                                                *nextTokPtr = ptr;
-                                            }
-                                            break 'iife_ret_51 tok;
-                                        }
-                                    }
-                                    2 => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_51 XML_TOK_INVALID_1;
-                                    }
-                                    _ => {
-                                        ptr = ptr.offset(2isize);
-                                    }
-                                }
-                            }
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_51 XML_TOK_PARTIAL_1;
-                            }
-                            match if *ptr.offset(0) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                    as c_uint
-                            } else {
-                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                            } {
-                                BT_S | BT_CR | BT_LF => {
-                                    loop {
-                                        ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                            break 'iife_ret_51 XML_TOK_PARTIAL_1;
-                                        }
-                                        match if *ptr.offset(0) as c_int == 0 {
-                                            as_normal_encoding(enc).type_0
-                                                [*ptr.offset(1) as c_uchar as usize]
-                                                as c_uint
-                                        } else {
-                                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                                                as c_uint
-                                        } {
-                                            BT_NONASCII => {
-                                                if namingBitmap[(((nmstrtPages
-                                                    [*ptr.offset(0) as c_uchar as usize]
-                                                    as c_int)
-                                                    << 3)
-                                                    + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                                    as usize]
-                                                    & (1)
-                                                        << (*ptr.offset(1) as c_uchar as c_int
-                                                            & 0x1f)
-                                                    == 0
-                                                {
-                                                    *nextTokPtr = ptr;
-                                                    break 'iife_ret_51 XML_TOK_INVALID_1;
-                                                }
-                                                current_block_186 = 7794494472231011433;
-                                                break;
-                                            }
-                                            BT_NMSTRT | BT_HEX => {
-                                                current_block_186 = 7794494472231011433;
-                                                break;
-                                            }
-                                            BT_LEAD2 => {
-                                                if (end.offset_from(ptr) as c_long) < 2 {
-                                                    break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_51 XML_TOK_INVALID_1;
-                                            }
-                                            BT_LEAD3 => {
-                                                if (end.offset_from(ptr) as c_long) < 3 {
-                                                    break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_51 XML_TOK_INVALID_1;
-                                            }
-                                            BT_LEAD4 => {
-                                                if (end.offset_from(ptr) as c_long) < 4 {
-                                                    break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_51 XML_TOK_INVALID_1;
-                                            }
-                                            BT_S | BT_CR | BT_LF => {}
-                                            BT_GT => {
-                                                current_block_186 = 1783713129665224809;
-                                                break;
-                                            }
-                                            BT_SOL => {
-                                                current_block_186 = 18153789983347219713;
-                                                break;
-                                            }
-                                            _ => {
-                                                *nextTokPtr = ptr;
-                                                break 'iife_ret_51 XML_TOK_INVALID_1;
-                                            }
-                                        }
-                                    }
-                                    match current_block_186 {
-                                        1783713129665224809 => {}
-                                        18153789983347219713 => {}
-                                        1634947208139838470 => {}
-                                        _ => {
-                                            ptr = ptr.offset(2);
-                                            current_block_186 = 1634947208139838470;
-                                        }
-                                    }
-                                }
-                                BT_SOL => {
-                                    current_block_186 = 18153789983347219713;
-                                }
-                                BT_GT => {
-                                    current_block_186 = 1783713129665224809;
-                                }
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_51 XML_TOK_INVALID_1;
-                                }
-                            }
-                            match current_block_186 {
-                                1634947208139838470 => {}
-                                _ => match current_block_186 {
-                                    18153789983347219713 => {
-                                        ptr = ptr.offset(2);
-                                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                            break 'iife_ret_51 XML_TOK_PARTIAL_1;
-                                        }
-                                        if !(*ptr.offset(0) as c_int == 0
-                                            && *ptr.offset(1) as c_int == 0x3e)
-                                        {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_51 XML_TOK_INVALID_1;
-                                        }
-                                        *nextTokPtr = ptr.offset(2);
-                                        break 'iife_ret_51 XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr.offset(2);
-                                        break 'iife_ret_51 XML_TOK_START_TAG_WITH_ATTS_1;
-                                    }
-                                },
-                            }
-                        }
-                        6092917267242331817 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
-                    }
-                }
-                break 'iife_ret_51 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_52: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut hadColon: c_int = 0;
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_52 XML_TOK_PARTIAL_1;
-                }
-                let mut current_block_45: u64;
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_51: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut hadColon: c_int = 0;
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_186: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
                 } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
                 } {
                     BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
                             as c_int)
                             << 3)
-                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
                             as usize]
-                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                            & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
                             == 0
                         {
                             *nextTokPtr = ptr;
-                            break 'iife_ret_52 XML_TOK_INVALID_1;
+                            break 'iife_ret_51 XML_TOK_INVALID_1;
                         }
-                        current_block_45 = 6477200489819026004;
+                        current_block_186 = 6092917267242331817;
                     }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_45 = 6477200489819026004;
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_186 = 6092917267242331817;
                     }
                     BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
-                        break 'iife_ret_52 XML_TOK_INVALID_1;
+                        break 'iife_ret_51 XML_TOK_INVALID_1;
                     }
                     BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
-                        break 'iife_ret_52 XML_TOK_INVALID_1;
+                        break 'iife_ret_51 XML_TOK_INVALID_1;
                     }
                     BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                         }
                         *nextTokPtr = ptr;
-                        break 'iife_ret_52 XML_TOK_INVALID_1;
+                        break 'iife_ret_51 XML_TOK_INVALID_1;
                     }
-                    BT_EXCL => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_52 XML_TOK_PARTIAL_1;
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_51 XML_TOK_INVALID_1;
                         }
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
+                        hadColon = 1;
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_51 XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_64: u64;
+                        match if read_ptr_at(ptr, 0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
                                 as c_uint
                         } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                            unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
                         } {
-                            BT_MINUS => {
-                                break 'iife_ret_52 ({
-                                    let (tok_value, next_tok_value) = big2_scanComment(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            BT_LSQB => {
-                                break 'iife_ret_52 ({
-                                    let (tok_value, next_tok_value) = big2_scanCdataSection(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_52 XML_TOK_INVALID_1;
-                    }
-                    BT_QUEST => {
-                        break 'iife_ret_52 ({
-                            let (tok_value, next_tok_value) = big2_scanPi(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_SOL => {
-                        break 'iife_ret_52 ({
-                            let (tok_value, next_tok_value) = big2_scanEndTag(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_52 XML_TOK_INVALID_1;
-                    }
-                }
-                if current_block_45 == 6477200489819026004 {
-                    ptr = ptr.offset(2isize);
-                }
-                hadColon = 0;
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_161: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_52 XML_TOK_INVALID_1;
-                            }
-                            current_block_161 = 18151815167355992796;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_161 = 18151815167355992796;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_52 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_52 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_52 XML_TOK_INVALID_1;
-                        }
-                        BT_COLON_0 => {
-                            if hadColon != 0 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_52 XML_TOK_INVALID_1;
-                            }
-                            hadColon = 1;
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_52 XML_TOK_PARTIAL_1;
-                            }
-                            let mut current_block_112: u64;
-                            match if *ptr.offset(0) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                    as c_uint
-                            } else {
-                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                            } {
-                                BT_NONASCII => {
-                                    if namingBitmap[(((nmstrtPages
-                                        [*ptr.offset(0) as c_uchar as usize]
-                                        as c_int)
-                                        << 3)
-                                        + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                        as usize]
-                                        & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                        == 0
-                                    {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_52 XML_TOK_INVALID_1;
-                                    }
-                                    current_block_112 = 16337619596932156899;
-                                }
-                                BT_NMSTRT | BT_HEX => {
-                                    current_block_112 = 16337619596932156899;
-                                }
-                                BT_LEAD2 => {
-                                    if (end.offset_from(ptr) as c_long) < 2 {
-                                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_52 XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD3 => {
-                                    if (end.offset_from(ptr) as c_long) < 3 {
-                                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_52 XML_TOK_INVALID_1;
-                                }
-                                BT_LEAD4 => {
-                                    if (end.offset_from(ptr) as c_long) < 4 {
-                                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                                    }
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_52 XML_TOK_INVALID_1;
-                                }
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    break 'iife_ret_52 XML_TOK_INVALID_1;
-                                }
-                            }
-                            if current_block_112 == 16337619596932156899 {
-                                ptr = ptr.offset(2isize);
-                            }
-                            current_block_161 = 14714495436747744489;
-                        }
-                        BT_S | BT_CR | BT_LF => {
-                            ptr = ptr.offset(2);
-                            loop {
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    current_block_161 = 13215501469961642988;
-                                    break;
-                                }
-                                match if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                                } {
-                                    BT_NONASCII => {
-                                        if namingBitmap[(((nmstrtPages
-                                            [*ptr.offset(0) as c_uchar as usize]
-                                            as c_int)
-                                            << 3)
-                                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                            as usize]
-                                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                            == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            break 'iife_ret_52 XML_TOK_INVALID_1;
-                                        }
-                                        current_block_161 = 11066148936714919733;
-                                    }
-                                    BT_NMSTRT | BT_HEX => {
-                                        current_block_161 = 11066148936714919733;
-                                    }
-                                    BT_LEAD2 => {
-                                        if (end.offset_from(ptr) as c_long) < 2 {
-                                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_52 XML_TOK_INVALID_1;
-                                    }
-                                    BT_LEAD3 => {
-                                        if (end.offset_from(ptr) as c_long) < 3 {
-                                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_52 XML_TOK_INVALID_1;
-                                    }
-                                    BT_LEAD4 => {
-                                        if (end.offset_from(ptr) as c_long) < 4 {
-                                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_52 XML_TOK_INVALID_1;
-                                    }
-                                    BT_GT => {
-                                        current_block_161 = 13089361350718158941;
-                                        break;
-                                    }
-                                    BT_SOL => {
-                                        current_block_161 = 11384015785330443424;
-                                        break;
-                                    }
-                                    BT_S | BT_CR | BT_LF => {
-                                        ptr = ptr.offset(2);
-                                        continue;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        break 'iife_ret_52 XML_TOK_INVALID_1;
-                                    }
-                                }
-                                if current_block_161 == 11066148936714919733 {
-                                    ptr = ptr.offset(2isize);
-                                }
-                                break 'iife_ret_52 ({
-                                    let (tok_value, next_tok_value) =
-                                        big2_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            match current_block_161 {
-                                13089361350718158941 => {}
-                                11384015785330443424 => {}
-                                _ => break 'iife_ret_52 XML_TOK_PARTIAL_1,
-                            }
-                        }
-                        BT_GT => {
-                            current_block_161 = 13089361350718158941;
-                        }
-                        BT_SOL => {
-                            current_block_161 = 11384015785330443424;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_52 XML_TOK_INVALID_1;
-                        }
-                    }
-                    match current_block_161 {
-                        11384015785330443424 => {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_52 XML_TOK_PARTIAL_1;
-                            }
-                            if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_52 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_52 XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
-                        }
-                        13089361350718158941 => {
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_52 XML_TOK_START_TAG_NO_ATTS_1;
-                        }
-                        18151815167355992796 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        _ => {}
-                    }
-                }
-                break 'iife_ret_52 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_53: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if ptr >= end {
-                    break 'iife_ret_53 XML_TOK_NONE_1;
-                }
-                {
-                    let mut n: size_t = end.offset_from(ptr) as size_t;
-                    if n & (2i32 - 1) as size_t != 0 {
-                        n &= !(2i32 - 1) as size_t;
-                        if n == 0 {
-                            break 'iife_ret_53 XML_TOK_PARTIAL_1;
-                        }
-                        end = ptr.add(n);
-                    }
-                }
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_LT => {
-                        break 'iife_ret_53 ({
-                            let (tok_value, next_tok_value) = big2_scanLt(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_AMP => {
-                        break 'iife_ret_53 ({
-                            let (tok_value, next_tok_value) = big2_scanRef(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_CR => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_53 XML_TOK_TRAILING_CR_1;
-                        }
-                        if (if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                        }) == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(2isize);
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_53 XML_TOK_DATA_NEWLINE_1;
-                    }
-                    BT_LF => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_53 XML_TOK_DATA_NEWLINE_1;
-                    }
-                    BT_RSQB => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_53 XML_TOK_TRAILING_RSQB_1;
-                        }
-                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_53 XML_TOK_TRAILING_RSQB_1;
-                            }
-                            if !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e) {
-                                ptr = ptr.offset(-(2isize));
-                            } else {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_53 XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_53 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_53 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(3isize);
-                    }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_53 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_53 XML_TOK_INVALID_1;
-                    }
-                    _ => {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_76: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(2);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(3);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
-                            }
-                            ptr = ptr.offset(4);
-                            current_block_76 = 7158658067966855297;
-                        }
-                        BT_RSQB => {
-                            if end.offset_from(ptr) as c_long >= (2i32 * 2) as c_long {
-                                if !(*ptr.offset(2).offset(0) as c_int == 0
-                                    && *ptr.offset(2).offset(1) as c_int == 0x5d)
+                            BT_NONASCII => {
+                                if namingBitmap[(((nmstrtPages
+                                    [read_ptr_at(ptr, 0) as c_uchar as usize]
+                                    as c_int)
+                                    << 3)
+                                    + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                                    as usize]
+                                    & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                                    == 0
                                 {
-                                    ptr = ptr.offset(2);
-                                    current_block_76 = 7158658067966855297;
-                                } else if end.offset_from(ptr) as c_long >= (3i32 * 2) as c_long {
-                                    if !(*ptr.offset((2i32 * 2) as isize).offset(0) as c_int == 0
-                                        && *ptr.offset((2i32 * 2) as isize).offset(1) as c_int
-                                            == 0x3e)
-                                    {
-                                        ptr = ptr.offset(2isize);
-                                    } else {
-                                        *nextTokPtr = ptr.offset((2i32 * 2) as isize);
-                                        break 'iife_ret_53 XML_TOK_INVALID_1;
-                                    }
-                                    current_block_76 = 7158658067966855297;
-                                } else {
-                                    current_block_76 = 11890188771060868767;
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_51 XML_TOK_INVALID_1;
                                 }
-                            } else {
-                                current_block_76 = 11890188771060868767;
+                                current_block_64 = 6604085902723260545;
                             }
-                        }
-                        BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
-                            current_block_76 = 11890188771060868767;
-                        }
-                        _ => {
-                            ptr = ptr.offset(2);
-                            current_block_76 = 7158658067966855297;
-                        }
-                    }
-                    match current_block_76 {
-                        7158658067966855297 => {}
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
-                        }
-                    }
-                }
-                *nextTokPtr = ptr;
-                break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_54: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_54 XML_TOK_PARTIAL_1;
-                }
-                let mut current_block_34: u64;
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
-                            as c_int)
-                            << 3)
-                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                            as usize]
-                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                            == 0
-                        {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_54 XML_TOK_INVALID_1;
-                        }
-                        current_block_34 = 9652455934050855438;
-                    }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_34 = 9652455934050855438;
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_54 XML_TOK_INVALID_1;
-                    }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_54 XML_TOK_INVALID_1;
-                    }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_54 XML_TOK_INVALID_1;
-                    }
-                    BT_S | BT_LF | BT_CR | BT_PERCNT => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_54 XML_TOK_PERCENT_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_54 XML_TOK_INVALID_1;
-                    }
-                }
-                if current_block_34 == 9652455934050855438 {
-                    ptr = ptr.offset(2isize);
-                }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_65: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_54 XML_TOK_INVALID_1;
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_64 = 6604085902723260545;
                             }
-                            current_block_65 = 3947837075391501242;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_65 = 3947837075391501242;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_54 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_54 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_54 XML_TOK_INVALID_1;
-                        }
-                        BT_SEMI => {
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_54 XML_TOK_PARAM_ENTITY_REF_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_54 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_65 == 3947837075391501242 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_54 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_55: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_55 XML_TOK_PARTIAL_1;
-                }
-                let mut current_block_32: u64;
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
-                            as c_int)
-                            << 3)
-                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                            as usize]
-                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                            == 0
-                        {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_55 XML_TOK_INVALID_1;
-                        }
-                        current_block_32 = 12219479933348349998;
-                    }
-                    BT_NMSTRT | BT_HEX => {
-                        current_block_32 = 12219479933348349998;
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_55 XML_TOK_INVALID_1;
-                    }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_55 XML_TOK_INVALID_1;
-                    }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_55 XML_TOK_INVALID_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_55 XML_TOK_INVALID_1;
-                    }
-                }
-                if current_block_32 == 12219479933348349998 {
-                    ptr = ptr.offset(2isize);
-                }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_63: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_55 XML_TOK_INVALID_1;
-                            }
-                            current_block_63 = 1647491770914889697;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_63 = 1647491770914889697;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_55 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_55 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_55 XML_TOK_INVALID_1;
-                        }
-                        BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_55 XML_TOK_POUND_NAME_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_55 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_63 == 1647491770914889697 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_55 -XML_TOK_POUND_NAME_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_scanLit(mut open: c_int, enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_56: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut t: c_int = if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                    };
-                    match t {
-                        5 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_56 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(2isize);
-                        }
-                        6 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_56 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(3isize);
-                        }
-                        7 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_56 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(4isize);
-                        }
-                        0 | 1 | 8 => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_56 XML_TOK_INVALID_1;
-                        }
-                        12 | 13 => {
-                            ptr = ptr.offset(2);
-                            if t == open {
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_56 -XML_TOK_LITERAL_1;
+                            BT_LEAD2 => {
+                                if (c_char_ptr_diff(end, ptr)) < 2 {
+                                    break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 *nextTokPtr = ptr;
-                                match if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_uint
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                                } {
-                                    BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
-                                        break 'iife_ret_56 XML_TOK_LITERAL_1
-                                    }
-                                    _ => break 'iife_ret_56 XML_TOK_INVALID_1,
+                                break 'iife_ret_51 XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD3 => {
+                                if (c_char_ptr_diff(end, ptr)) < 3 {
+                                    break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                                 }
-                            }
-                        }
-                        _ => {
-                            ptr = ptr.offset(2isize);
-                        }
-                    }
-                }
-                break 'iife_ret_56 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_57: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut tok: c_int = 0;
-                if ptr >= end {
-                    break 'iife_ret_57 XML_TOK_NONE_1;
-                }
-                {
-                    let mut n: size_t = end.offset_from(ptr) as size_t;
-                    if n & (2i32 - 1) as size_t != 0 {
-                        n &= !(2i32 - 1) as size_t;
-                        if n == 0 {
-                            break 'iife_ret_57 XML_TOK_PARTIAL_1;
-                        }
-                        end = ptr.add(n);
-                    }
-                }
-                let mut current_block_124: u64;
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_QUOT => {
-                        break 'iife_ret_57 ({
-                            let (tok_value, next_tok_value) = big2_scanLit(
-                                BT_QUOT as c_int,
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_APOS => {
-                        break 'iife_ret_57 ({
-                            let (tok_value, next_tok_value) = big2_scanLit(
-                                BT_APOS as c_int,
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_LT => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_57 XML_TOK_PARTIAL_1;
-                        }
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_EXCL => {
-                                break 'iife_ret_57 ({
-                                    let (tok_value, next_tok_value) = big2_scanDecl(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            BT_QUEST => {
-                                break 'iife_ret_57 ({
-                                    let (tok_value, next_tok_value) = big2_scanPi(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
-                                *nextTokPtr = ptr.offset(-(2));
-                                break 'iife_ret_57 XML_TOK_INSTANCE_START;
-                            }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_57 XML_TOK_INVALID_1;
-                    }
-                    BT_CR => {
-                        if ptr.offset(2) == end {
-                            *nextTokPtr = end;
-                            break 'iife_ret_57 -XML_TOK_PROLOG_S_1;
-                        }
-                        current_block_124 = 16869865525854146339;
-                    }
-                    BT_S | BT_LF => {
-                        current_block_124 = 16869865525854146339;
-                    }
-                    BT_PERCNT => {
-                        break 'iife_ret_57 ({
-                            let (tok_value, next_tok_value) = big2_scanPercent(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_COMMA => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_57 XML_TOK_COMMA_1;
-                    }
-                    BT_LSQB => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_57 XML_TOK_OPEN_BRACKET_1;
-                    }
-                    BT_RSQB => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_57 -XML_TOK_CLOSE_BRACKET_1;
-                        }
-                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
-                            if (end.offset_from(ptr) as c_long) < (2i32 * 2) as c_long {
-                                break 'iife_ret_57 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(2).offset(0) as c_int == 0
-                                && *ptr.offset(2).offset(1) as c_int == 0x3e
-                            {
-                                *nextTokPtr = ptr.offset((2i32 * 2) as isize);
-                                break 'iife_ret_57 XML_TOK_COND_SECT_CLOSE_1;
-                            }
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_57 XML_TOK_CLOSE_BRACKET_1;
-                    }
-                    BT_LPAR => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_57 XML_TOK_OPEN_PAREN_1;
-                    }
-                    BT_RPAR => {
-                        ptr = ptr.offset(2);
-                        if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                            break 'iife_ret_57 -XML_TOK_CLOSE_PAREN_1;
-                        }
-                        match if *ptr.offset(0) as c_int == 0 {
-                            as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                as c_uint
-                        } else {
-                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                        } {
-                            BT_AST => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_57 XML_TOK_CLOSE_PAREN_ASTERISK_1;
-                            }
-                            BT_QUEST => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_57 XML_TOK_CLOSE_PAREN_QUESTION_1;
-                            }
-                            BT_PLUS => {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_57 XML_TOK_CLOSE_PAREN_PLUS_1;
-                            }
-                            BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
                                 *nextTokPtr = ptr;
-                                break 'iife_ret_57 XML_TOK_CLOSE_PAREN_1;
+                                break 'iife_ret_51 XML_TOK_INVALID_1;
                             }
-                            _ => {}
+                            BT_LEAD4 => {
+                                if (c_char_ptr_diff(end, ptr)) < 4 {
+                                    break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_51 XML_TOK_INVALID_1;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_51 XML_TOK_INVALID_1;
+                            }
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_57 XML_TOK_INVALID_1;
-                    }
-                    BT_VERBAR => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_57 XML_TOK_OR_1;
-                    }
-                    BT_GT => {
-                        *nextTokPtr = ptr.offset(2);
-                        break 'iife_ret_57 XML_TOK_DECL_CLOSE_1;
-                    }
-                    BT_NUM => {
-                        break 'iife_ret_57 ({
-                            let (tok_value, next_tok_value) = big2_scanPoundName(
-                                enc,
-                                c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                            );
-                            *nextTokPtr = next_tok_value;
-                            tok_value
-                        });
-                    }
-                    BT_LEAD2 => {
-                        if (end.offset_from(ptr) as c_long) < 2 {
-                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                        if current_block_64 == 6604085902723260545 {
+                            ptr = ptr.wrapping_offset(2isize);
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                        current_block_186 = 1634947208139838470;
                     }
-                    BT_LEAD3 => {
-                        if (end.offset_from(ptr) as c_long) < 3 {
-                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_57 XML_TOK_INVALID_1;
-                    }
-                    BT_LEAD4 => {
-                        if (end.offset_from(ptr) as c_long) < 4 {
-                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_57 XML_TOK_INVALID_1;
-                    }
-                    BT_NMSTRT | BT_HEX => {
-                        tok = XML_TOK_NAME;
-                        ptr = ptr.offset(2);
-                        current_block_124 = 2956972668325154207;
-                    }
-                    BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
-                        tok = XML_TOK_NMTOKEN_1;
-                        ptr = ptr.offset(2);
-                        current_block_124 = 2956972668325154207;
-                    }
-                    BT_NONASCII => {
-                        if namingBitmap[(((nmstrtPages[*ptr.offset(0) as c_uchar as usize]
-                            as c_int)
-                            << 3)
-                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                            as usize]
-                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                            != 0
-                        {
-                            ptr = ptr.offset(2);
-                            tok = XML_TOK_NAME;
-                            current_block_124 = 2956972668325154207;
-                        } else if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                            as c_int)
-                            << 3)
-                            + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                            as usize]
-                            & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                            != 0
-                        {
-                            ptr = ptr.offset(2);
-                            tok = XML_TOK_NMTOKEN_1;
-                            current_block_124 = 2956972668325154207;
-                        } else {
-                            current_block_124 = 6428058487030868344;
-                        }
-                    }
-                    _ => {
-                        current_block_124 = 6428058487030868344;
-                    }
-                }
-                match current_block_124 {
-                    2956972668325154207 => {}
-                    16869865525854146339 => {
+                    BT_S | BT_CR | BT_LF => {
                         loop {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
+                            let mut t: c_int = 0;
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_51 XML_TOK_PARTIAL_1;
+                            }
+                            t = if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                            };
+                            if t == BT_EQUALS as c_int {
                                 break;
                             }
-                            let mut current_block_32: u64;
-                            match if *ptr.offset(0) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                    as c_uint
-                            } else {
-                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                            } {
-                                BT_S | BT_LF => {
-                                    current_block_32 = 17500079516916021833;
-                                }
-                                BT_CR => {
-                                    if ptr.offset(2) != end {
-                                        current_block_32 = 17500079516916021833;
-                                    } else {
-                                        current_block_32 = 11299462660638600073;
-                                    }
-                                }
-                                _ => {
-                                    current_block_32 = 11299462660638600073;
-                                }
-                            }
-                            match current_block_32 {
-                                17500079516916021833 => {}
+                            match t {
+                                21 | 10 | 9 => {}
                                 _ => {
                                     *nextTokPtr = ptr;
-                                    break 'iife_ret_57 XML_TOK_PROLOG_S_1;
+                                    break 'iife_ret_51 XML_TOK_INVALID_1;
                                 }
                             }
                         }
-                        *nextTokPtr = ptr;
-                        break 'iife_ret_57 XML_TOK_PROLOG_S_1;
+                        current_block_186 = 10853015579903106591;
+                    }
+                    BT_EQUALS => {
+                        current_block_186 = 10853015579903106591;
                     }
                     _ => {
                         *nextTokPtr = ptr;
-                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                        break 'iife_ret_51 XML_TOK_INVALID_1;
                     }
                 }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    let mut current_block_210: u64;
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_NONASCII => {
-                            if namingBitmap[(((namePages[*ptr.offset(0) as c_uchar as usize]
-                                as c_int)
-                                << 3)
-                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
-                                as usize]
-                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_57 XML_TOK_INVALID_1;
+                match current_block_186 {
+                    10853015579903106591 => {
+                        let mut open: c_int = 0;
+                        hadColon = 0;
+                        loop {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_51 XML_TOK_PARTIAL_1;
                             }
-                            current_block_210 = 9794574411605359176;
-                        }
-                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                            current_block_210 = 9794574411605359176;
-                        }
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                            open = if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                            };
+                            if open == BT_QUOT as c_int || open == BT_APOS as c_int {
+                                break;
                             }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_57 XML_TOK_INVALID_1;
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                            match open {
+                                21 | 10 | 9 => {}
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_51 XML_TOK_INVALID_1;
+                                }
                             }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_57 XML_TOK_INVALID_1;
                         }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                        ptr = ptr.wrapping_offset(2);
+                        loop {
+                            let mut t_0: c_int = 0;
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_51 XML_TOK_PARTIAL_1;
                             }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_57 XML_TOK_INVALID_1;
-                        }
-                        BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S
-                        | BT_CR | BT_LF => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_57 tok;
-                        }
-                        BT_COLON_0 => {
-                            ptr = ptr.offset(2);
-                            match tok {
-                                XML_TOK_NAME => {
-                                    if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                        break 'iife_ret_57 XML_TOK_PARTIAL_1;
+                            t_0 = if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                            };
+                            if t_0 == open {
+                                break;
+                            }
+                            match t_0 {
+                                5 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                                        break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    tok = XML_TOK_PREFIXED_NAME;
-                                    let mut current_block_187: u64;
-                                    match if *ptr.offset(0) as c_int == 0 {
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                                6 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                                        break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(3isize);
+                                }
+                                7 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                                        break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    ptr = ptr.wrapping_offset(4isize);
+                                }
+                                0 | 1 | 8 => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_51 XML_TOK_INVALID_1;
+                                }
+                                3 => {
+                                    let mut tok: c_int = {
+                                        let (tok_value, next_tok_value) = big2_scanRef(
+                                            enc,
+                                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2), end),
+                                        );
+                                        ptr = next_tok_value;
+                                        tok_value
+                                    };
+                                    if tok <= 0 {
+                                        if tok == XML_TOK_INVALID_1 {
+                                            *nextTokPtr = ptr;
+                                        }
+                                        break 'iife_ret_51 tok;
+                                    }
+                                }
+                                2 => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_51 XML_TOK_INVALID_1;
+                                }
+                                _ => {
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                            }
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_51 XML_TOK_PARTIAL_1;
+                        }
+                        match if read_ptr_at(ptr, 0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                                as c_uint
+                        } else {
+                            unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                        } {
+                            BT_S | BT_CR | BT_LF => {
+                                loop {
+                                    ptr = ptr.wrapping_offset(2);
+                                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                        break 'iife_ret_51 XML_TOK_PARTIAL_1;
+                                    }
+                                    match if read_ptr_at(ptr, 0) as c_int == 0 {
                                         as_normal_encoding(enc).type_0
-                                            [*ptr.offset(1) as c_uchar as usize]
+                                            [read_ptr_at(ptr, 1) as c_uchar as usize]
                                             as c_uint
                                     } else {
-                                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
+                                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                                            as c_uint
                                     } {
                                         BT_NONASCII => {
-                                            if namingBitmap[(((namePages
-                                                [*ptr.offset(0) as c_uchar as usize]
+                                            if namingBitmap[(((nmstrtPages
+                                                [read_ptr_at(ptr, 0) as c_uchar as usize]
                                                 as c_int)
                                                 << 3)
-                                                + (*ptr.offset(1) as c_uchar as c_int >> 5))
+                                                + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
                                                 as usize]
-                                                & (1) << (*ptr.offset(1) as c_uchar as c_int & 0x1f)
+                                                & (1)
+                                                    << (read_ptr_at(ptr, 1) as c_uchar as c_int
+                                                        & 0x1f)
                                                 == 0
                                             {
                                                 *nextTokPtr = ptr;
-                                                break 'iife_ret_57 XML_TOK_INVALID_1;
+                                                break 'iife_ret_51 XML_TOK_INVALID_1;
                                             }
-                                            current_block_187 = 17275381528970576968;
+                                            current_block_186 = 7794494472231011433;
+                                            break;
                                         }
-                                        BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
-                                            current_block_187 = 17275381528970576968;
+                                        BT_NMSTRT | BT_HEX => {
+                                            current_block_186 = 7794494472231011433;
+                                            break;
                                         }
                                         BT_LEAD2 => {
-                                            if (end.offset_from(ptr) as c_long) < 2 {
-                                                break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                                            if (c_char_ptr_diff(end, ptr)) < 2 {
+                                                break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                                             }
                                             *nextTokPtr = ptr;
-                                            break 'iife_ret_57 XML_TOK_INVALID_1;
+                                            break 'iife_ret_51 XML_TOK_INVALID_1;
                                         }
                                         BT_LEAD3 => {
-                                            if (end.offset_from(ptr) as c_long) < 3 {
-                                                break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                                            if (c_char_ptr_diff(end, ptr)) < 3 {
+                                                break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                                             }
                                             *nextTokPtr = ptr;
-                                            break 'iife_ret_57 XML_TOK_INVALID_1;
+                                            break 'iife_ret_51 XML_TOK_INVALID_1;
                                         }
                                         BT_LEAD4 => {
-                                            if (end.offset_from(ptr) as c_long) < 4 {
-                                                break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                                            if (c_char_ptr_diff(end, ptr)) < 4 {
+                                                break 'iife_ret_51 XML_TOK_PARTIAL_CHAR_1;
                                             }
                                             *nextTokPtr = ptr;
-                                            break 'iife_ret_57 XML_TOK_INVALID_1;
+                                            break 'iife_ret_51 XML_TOK_INVALID_1;
+                                        }
+                                        BT_S | BT_CR | BT_LF => {}
+                                        BT_GT => {
+                                            current_block_186 = 1783713129665224809;
+                                            break;
+                                        }
+                                        BT_SOL => {
+                                            current_block_186 = 18153789983347219713;
+                                            break;
                                         }
                                         _ => {
-                                            tok = XML_TOK_NMTOKEN_1;
-                                            current_block_187 = 9812798724717783973;
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_51 XML_TOK_INVALID_1;
                                         }
                                     }
-                                    if current_block_187 == 17275381528970576968 {
-                                        ptr = ptr.offset(2isize);
+                                }
+                                match current_block_186 {
+                                    1783713129665224809 => {}
+                                    18153789983347219713 => {}
+                                    1634947208139838470 => {}
+                                    _ => {
+                                        ptr = ptr.wrapping_offset(2);
+                                        current_block_186 = 1634947208139838470;
                                     }
                                 }
-                                XML_TOK_PREFIXED_NAME => {
-                                    tok = XML_TOK_NMTOKEN_1;
-                                }
-                                _ => {}
                             }
-                            current_block_210 = 14244298717249035578;
-                        }
-                        BT_PLUS => {
-                            if tok == XML_TOK_NMTOKEN_1 {
+                            BT_SOL => {
+                                current_block_186 = 18153789983347219713;
+                            }
+                            BT_GT => {
+                                current_block_186 = 1783713129665224809;
+                            }
+                            _ => {
                                 *nextTokPtr = ptr;
-                                break 'iife_ret_57 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_57 XML_TOK_NAME_PLUS_1;
-                        }
-                        BT_AST => {
-                            if tok == XML_TOK_NMTOKEN_1 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_57 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_57 XML_TOK_NAME_ASTERISK_1;
-                        }
-                        BT_QUEST => {
-                            if tok == XML_TOK_NMTOKEN_1 {
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_57 XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2);
-                            break 'iife_ret_57 XML_TOK_NAME_QUESTION_1;
-                        }
-                        _ => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_57 XML_TOK_INVALID_1;
-                        }
-                    }
-                    if current_block_210 == 9794574411605359176 {
-                        ptr = ptr.offset(2isize);
-                    }
-                }
-                break 'iife_ret_57 -tok;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_attributeValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_58: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut start: *const c_char = null::<c_char>();
-                if ptr >= end {
-                    break 'iife_ret_58 XML_TOK_NONE_1;
-                } else if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_58 XML_TOK_PARTIAL_1;
-                }
-                start = ptr;
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        BT_LEAD3 => {
-                            ptr = ptr.offset(3isize);
-                        }
-                        BT_LEAD4 => {
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_AMP => {
-                            if ptr == start {
-                                break 'iife_ret_58 ({
-                                    let (tok_value, next_tok_value) = big2_scanRef(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_LT => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_58 XML_TOK_INVALID_1;
-                        }
-                        BT_LF => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_58 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_CR => {
-                            if ptr == start {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_58 XML_TOK_TRAILING_CR_1;
-                                }
-                                if (if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                                }) == BT_LF as c_int
-                                {
-                                    ptr = ptr.offset(2isize);
-                                }
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_58 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_S => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_58 XML_TOK_ATTRIBUTE_VALUE_S_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
-                        }
-                        _ => {
-                            ptr = ptr.offset(2isize);
-                        }
-                    }
-                }
-                *nextTokPtr = ptr;
-                break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_59: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut start: *const c_char = null::<c_char>();
-                if ptr >= end {
-                    break 'iife_ret_59 XML_TOK_NONE_1;
-                } else if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                    break 'iife_ret_59 XML_TOK_PARTIAL_1;
-                }
-                start = ptr;
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            ptr = ptr.offset(2isize);
-                        }
-                        BT_LEAD3 => {
-                            ptr = ptr.offset(3isize);
-                        }
-                        BT_LEAD4 => {
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_AMP => {
-                            if ptr == start {
-                                break 'iife_ret_59 ({
-                                    let (tok_value, next_tok_value) = big2_scanRef(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2isize), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_PERCNT => {
-                            if ptr == start {
-                                let mut tok: c_int = {
-                                    let (tok_value, next_tok_value) = big2_scanPercent(
-                                        enc,
-                                        c_char_slice_from_ptr_end(ptr.offset(2), end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                };
-                                break 'iife_ret_59 if tok == XML_TOK_PERCENT_1 {
-                                    XML_TOK_INVALID_1
-                                } else {
-                                    tok
-                                };
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_LF => {
-                            if ptr == start {
-                                *nextTokPtr = ptr.offset(2);
-                                break 'iife_ret_59 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
-                        }
-                        BT_CR => {
-                            if ptr == start {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_59 XML_TOK_TRAILING_CR_1;
-                                }
-                                if (if *ptr.offset(0) as c_int == 0 {
-                                    as_normal_encoding(enc).type_0
-                                        [*ptr.offset(1) as c_uchar as usize]
-                                        as c_int
-                                } else {
-                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                                }) == BT_LF as c_int
-                                {
-                                    ptr = ptr.offset(2isize);
-                                }
-                                *nextTokPtr = ptr;
-                                break 'iife_ret_59 XML_TOK_DATA_NEWLINE_1;
-                            }
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
-                        }
-                        _ => {
-                            ptr = ptr.offset(2isize);
-                        }
-                    }
-                }
-                *nextTokPtr = ptr;
-                break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
-            };
-            (tok, next_tok)
-        }
-    }
-
-    pub(crate) fn big2_ignoreSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
-        unsafe {
-            let mut next_tok: *const c_char = input.as_ptr();
-            let nextTokPtr = &mut next_tok;
-            let tok: c_int = 'iife_ret_60: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut level: c_int = 0;
-                {
-                    let mut n: size_t = end.offset_from(ptr) as size_t;
-                    if n & (2i32 - 1) as size_t != 0 {
-                        n &= !(2i32 - 1) as size_t;
-                        end = ptr.add(n);
-                    }
-                }
-                while end.offset_from(ptr) as c_long >= 2 as c_long {
-                    match if *ptr.offset(0) as c_int == 0 {
-                        as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                    } else {
-                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                    } {
-                        BT_LEAD2 => {
-                            if (end.offset_from(ptr) as c_long) < 2 {
-                                break 'iife_ret_60 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(2isize);
-                        }
-                        BT_LEAD3 => {
-                            if (end.offset_from(ptr) as c_long) < 3 {
-                                break 'iife_ret_60 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(3isize);
-                        }
-                        BT_LEAD4 => {
-                            if (end.offset_from(ptr) as c_long) < 4 {
-                                break 'iife_ret_60 XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            ptr = ptr.offset(4isize);
-                        }
-                        BT_NONXML | BT_MALFORM | BT_TRAIL => {
-                            *nextTokPtr = ptr;
-                            break 'iife_ret_60 XML_TOK_INVALID_1;
-                        }
-                        BT_LT => {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_60 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x21 {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_60 XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5b {
-                                    level += 1;
-                                    ptr = ptr.offset(2isize);
-                                }
+                                break 'iife_ret_51 XML_TOK_INVALID_1;
                             }
                         }
-                        BT_RSQB => {
-                            ptr = ptr.offset(2);
-                            if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                break 'iife_ret_60 XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x5d {
-                                ptr = ptr.offset(2);
-                                if (end.offset_from(ptr) as c_long) < 2 as c_long {
-                                    break 'iife_ret_60 XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3e {
-                                    ptr = ptr.offset(2);
-                                    if level == 0 {
+                        match current_block_186 {
+                            1634947208139838470 => {}
+                            _ => match current_block_186 {
+                                18153789983347219713 => {
+                                    ptr = ptr.wrapping_offset(2);
+                                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                        break 'iife_ret_51 XML_TOK_PARTIAL_1;
+                                    }
+                                    if !(read_ptr_at(ptr, 0) as c_int == 0
+                                        && read_ptr_at(ptr, 1) as c_int == 0x3e)
+                                    {
                                         *nextTokPtr = ptr;
-                                        break 'iife_ret_60 XML_TOK_IGNORE_SECT_1;
+                                        break 'iife_ret_51 XML_TOK_INVALID_1;
                                     }
-                                    level -= 1;
+                                    *nextTokPtr = ptr.wrapping_offset(2);
+                                    break 'iife_ret_51 XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
                                 }
-                            }
-                        }
-                        _ => {
-                            ptr = ptr.offset(2isize);
+                                _ => {
+                                    *nextTokPtr = ptr.wrapping_offset(2);
+                                    break 'iife_ret_51 XML_TOK_START_TAG_WITH_ATTS_1;
+                                }
+                            },
                         }
                     }
+                    6092917267242331817 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    _ => {}
                 }
-                break 'iife_ret_60 XML_TOK_PARTIAL_1;
-            };
-            (tok, next_tok)
-        }
+            }
+            break 'iife_ret_51 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
     }
 
-    pub(crate) fn big2_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
-        unsafe {
-            let mut badPtrVal: *const c_char = null::<c_char>();
-            let badPtr = &mut badPtrVal;
+    pub(crate) fn big2_scanLt(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_52: {
             let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            ptr = ptr.offset(2);
-            end = end.offset(-(2));
-            while end.offset_from(ptr) as c_long >= 2 as c_long {
-                let mut current_block_8: u64;
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16
-                    | 33 | 30 | 19 | 23 => {
-                        current_block_8 = 5143058163439228106;
+            let mut end = ptr.wrapping_add(input.len());
+            let mut hadColon: c_int = 0;
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_52 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_45: u64;
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_52 XML_TOK_INVALID_1;
                     }
-                    BT_S => {
-                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x9 {
-                            *badPtr = ptr;
-                            return (0i32, badPtrVal);
+                    current_block_45 = 6477200489819026004;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_45 = 6477200489819026004;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                }
+                BT_EXCL => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_52 XML_TOK_PARTIAL_1;
+                    }
+                    match if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                    } {
+                        BT_MINUS => {
+                            break 'iife_ret_52 ({
+                                let (tok_value, next_tok_value) = big2_scanComment(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
                         }
-                        current_block_8 = 5143058163439228106;
+                        BT_LSQB => {
+                            break 'iife_ret_52 ({
+                                let (tok_value, next_tok_value) = big2_scanCdataSection(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        _ => {}
                     }
-                    BT_NAME | BT_NMSTRT => {
-                        if (if *ptr.offset(0) as c_int == 0 {
-                            *ptr.offset(1) as c_int
-                        } else {
-                            -(1)
-                        }) & !(0x7f)
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                }
+                BT_QUEST => {
+                    break 'iife_ret_52 ({
+                        let (tok_value, next_tok_value) = big2_scanPi(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_SOL => {
+                    break 'iife_ret_52 ({
+                        let (tok_value, next_tok_value) = big2_scanEndTag(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_45 == 6477200489819026004 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            hadColon = 0;
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_161: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                            as c_int)
+                            << 3)
+                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
                             == 0
                         {
-                            current_block_8 = 5143058163439228106;
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_52 XML_TOK_INVALID_1;
+                        }
+                        current_block_161 = 18151815167355992796;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_161 = 18151815167355992796;
+                    }
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_52 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_52 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_52 XML_TOK_INVALID_1;
+                    }
+                    BT_COLON_0 => {
+                        if hadColon != 0 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_52 XML_TOK_INVALID_1;
+                        }
+                        hadColon = 1;
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_52 XML_TOK_PARTIAL_1;
+                        }
+                        let mut current_block_112: u64;
+                        match if read_ptr_at(ptr, 0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                                as c_uint
                         } else {
-                            current_block_8 = 9906551679175889830;
+                            unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                        } {
+                            BT_NONASCII => {
+                                if namingBitmap[(((nmstrtPages
+                                    [read_ptr_at(ptr, 0) as c_uchar as usize]
+                                    as c_int)
+                                    << 3)
+                                    + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                                    as usize]
+                                    & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                                    == 0
+                                {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                                }
+                                current_block_112 = 16337619596932156899;
+                            }
+                            BT_NMSTRT | BT_HEX => {
+                                current_block_112 = 16337619596932156899;
+                            }
+                            BT_LEAD2 => {
+                                if (c_char_ptr_diff(end, ptr)) < 2 {
+                                    break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_52 XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD3 => {
+                                if (c_char_ptr_diff(end, ptr)) < 3 {
+                                    break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_52 XML_TOK_INVALID_1;
+                            }
+                            BT_LEAD4 => {
+                                if (c_char_ptr_diff(end, ptr)) < 4 {
+                                    break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                                }
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_52 XML_TOK_INVALID_1;
+                            }
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_52 XML_TOK_INVALID_1;
+                            }
+                        }
+                        if current_block_112 == 16337619596932156899 {
+                            ptr = ptr.wrapping_offset(2isize);
+                        }
+                        current_block_161 = 14714495436747744489;
+                    }
+                    BT_S | BT_CR | BT_LF => {
+                        ptr = ptr.wrapping_offset(2);
+                        loop {
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                current_block_161 = 13215501469961642988;
+                                break;
+                            }
+                            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                                    as c_uint
+                            } {
+                                BT_NONASCII => {
+                                    if namingBitmap[(((nmstrtPages
+                                        [read_ptr_at(ptr, 0) as c_uchar as usize]
+                                        as c_int)
+                                        << 3)
+                                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                                        as usize]
+                                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                                        == 0
+                                    {
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_52 XML_TOK_INVALID_1;
+                                    }
+                                    current_block_161 = 11066148936714919733;
+                                }
+                                BT_NMSTRT | BT_HEX => {
+                                    current_block_161 = 11066148936714919733;
+                                }
+                                BT_LEAD2 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                                }
+                                BT_LEAD3 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                                }
+                                BT_LEAD4 => {
+                                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                                        break 'iife_ret_52 XML_TOK_PARTIAL_CHAR_1;
+                                    }
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                                }
+                                BT_GT => {
+                                    current_block_161 = 13089361350718158941;
+                                    break;
+                                }
+                                BT_SOL => {
+                                    current_block_161 = 11384015785330443424;
+                                    break;
+                                }
+                                BT_S | BT_CR | BT_LF => {
+                                    ptr = ptr.wrapping_offset(2);
+                                    continue;
+                                }
+                                _ => {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_52 XML_TOK_INVALID_1;
+                                }
+                            }
+                            if current_block_161 == 11066148936714919733 {
+                                ptr = ptr.wrapping_offset(2isize);
+                            }
+                            break 'iife_ret_52 ({
+                                let (tok_value, next_tok_value) =
+                                    big2_scanAtts(enc, c_char_slice_from_ptr_end(ptr, end));
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        match current_block_161 {
+                            13089361350718158941 => {}
+                            11384015785330443424 => {}
+                            _ => break 'iife_ret_52 XML_TOK_PARTIAL_1,
+                        }
+                    }
+                    BT_GT => {
+                        current_block_161 = 13089361350718158941;
+                    }
+                    BT_SOL => {
+                        current_block_161 = 11384015785330443424;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_52 XML_TOK_INVALID_1;
+                    }
+                }
+                match current_block_161 {
+                    11384015785330443424 => {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_52 XML_TOK_PARTIAL_1;
+                        }
+                        if !(read_ptr_at(ptr, 0) as c_int == 0
+                            && read_ptr_at(ptr, 1) as c_int == 0x3e)
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_52 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_52 XML_TOK_EMPTY_ELEMENT_NO_ATTS_1;
+                    }
+                    13089361350718158941 => {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_52 XML_TOK_START_TAG_NO_ATTS_1;
+                    }
+                    18151815167355992796 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    _ => {}
+                }
+            }
+            break 'iife_ret_52 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_contentTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_53: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if ptr >= end {
+                break 'iife_ret_53 XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = c_char_ptr_diff(end, ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        break 'iife_ret_53 XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.wrapping_add(n);
+                }
+            }
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_LT => {
+                    break 'iife_ret_53 ({
+                        let (tok_value, next_tok_value) = big2_scanLt(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_AMP => {
+                    break 'iife_ret_53 ({
+                        let (tok_value, next_tok_value) = big2_scanRef(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_CR => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_53 XML_TOK_TRAILING_CR_1;
+                    }
+                    if (if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_int
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                    }) == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_53 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_LF => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_53 XML_TOK_DATA_NEWLINE_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_53 XML_TOK_TRAILING_RSQB_1;
+                    }
+                    if read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x5d {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_53 XML_TOK_TRAILING_RSQB_1;
+                        }
+                        if !(read_ptr_at(ptr, 0) as c_int == 0
+                            && read_ptr_at(ptr, 1) as c_int == 0x3e)
+                        {
+                            ptr = ptr.wrapping_offset(-(2isize));
+                        } else {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_53 XML_TOK_INVALID_1;
+                        }
+                    }
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_53 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_53 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(3isize);
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_53 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    ptr = ptr.wrapping_offset(4isize);
+                }
+                BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_53 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_76: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(3);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
+                        }
+                        ptr = ptr.wrapping_offset(4);
+                        current_block_76 = 7158658067966855297;
+                    }
+                    BT_RSQB => {
+                        if c_char_ptr_diff(end, ptr) >= (2i32 * 2) as c_long {
+                            if !(read_ptr_at(ptr.wrapping_offset(2), 0) as c_int == 0
+                                && read_ptr_at(ptr.wrapping_offset(2), 1) as c_int == 0x5d)
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                current_block_76 = 7158658067966855297;
+                            } else if c_char_ptr_diff(end, ptr) >= (3i32 * 2) as c_long {
+                                if !(read_ptr_at(ptr.wrapping_offset((2i32 * 2) as isize), 0)
+                                    as c_int
+                                    == 0
+                                    && read_ptr_at(ptr.wrapping_offset((2i32 * 2) as isize), 1)
+                                        as c_int
+                                        == 0x3e)
+                                {
+                                    ptr = ptr.wrapping_offset(2isize);
+                                } else {
+                                    *nextTokPtr = ptr.wrapping_offset((2i32 * 2) as isize);
+                                    break 'iife_ret_53 XML_TOK_INVALID_1;
+                                }
+                                current_block_76 = 7158658067966855297;
+                            } else {
+                                current_block_76 = 11890188771060868767;
+                            }
+                        } else {
+                            current_block_76 = 11890188771060868767;
+                        }
+                    }
+                    BT_AMP | BT_LT | BT_NONXML | BT_MALFORM | BT_TRAIL | BT_CR | BT_LF => {
+                        current_block_76 = 11890188771060868767;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2);
+                        current_block_76 = 7158658067966855297;
+                    }
+                }
+                match current_block_76 {
+                    7158658067966855297 => {}
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_53 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_scanPercent(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_54: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_54 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_34: u64;
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_54 XML_TOK_INVALID_1;
+                    }
+                    current_block_34 = 9652455934050855438;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_34 = 9652455934050855438;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_54 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_54 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_54 XML_TOK_INVALID_1;
+                }
+                BT_S | BT_LF | BT_CR | BT_PERCNT => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_54 XML_TOK_PERCENT_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_54 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_34 == 9652455934050855438 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_65: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                            as c_int)
+                            << 3)
+                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_54 XML_TOK_INVALID_1;
+                        }
+                        current_block_65 = 3947837075391501242;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_65 = 3947837075391501242;
+                    }
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_54 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_54 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_54 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_54 XML_TOK_INVALID_1;
+                    }
+                    BT_SEMI => {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_54 XML_TOK_PARAM_ENTITY_REF_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_54 XML_TOK_INVALID_1;
+                    }
+                }
+                if current_block_65 == 3947837075391501242 {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+            }
+            break 'iife_ret_54 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_scanPoundName(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_55: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_55 XML_TOK_PARTIAL_1;
+            }
+            let mut current_block_32: u64;
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                        == 0
+                    {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_55 XML_TOK_INVALID_1;
+                    }
+                    current_block_32 = 12219479933348349998;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    current_block_32 = 12219479933348349998;
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_55 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_55 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_55 XML_TOK_INVALID_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_55 XML_TOK_INVALID_1;
+                }
+            }
+            if current_block_32 == 12219479933348349998 {
+                ptr = ptr.wrapping_offset(2isize);
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_63: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                            as c_int)
+                            << 3)
+                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_55 XML_TOK_INVALID_1;
+                        }
+                        current_block_63 = 1647491770914889697;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_63 = 1647491770914889697;
+                    }
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_55 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_55 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_55 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_55 XML_TOK_INVALID_1;
+                    }
+                    BT_CR | BT_LF | BT_S | BT_RPAR | BT_GT | BT_PERCNT | BT_VERBAR => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_55 XML_TOK_POUND_NAME_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_55 XML_TOK_INVALID_1;
+                    }
+                }
+                if current_block_63 == 1647491770914889697 {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+            }
+            break 'iife_ret_55 -XML_TOK_POUND_NAME_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_scanLit(mut open: c_int, enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_56: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut t: c_int = if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_int
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                };
+                match t {
+                    5 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_56 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    6 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_56 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    7 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_56 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    0 | 1 | 8 => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_56 XML_TOK_INVALID_1;
+                    }
+                    12 | 13 => {
+                        ptr = ptr.wrapping_offset(2);
+                        if t == open {
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_56 -XML_TOK_LITERAL_1;
+                            }
+                            *nextTokPtr = ptr;
+                            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_uint
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                                    as c_uint
+                            } {
+                                BT_S | BT_CR | BT_LF | BT_GT | BT_PERCNT | BT_LSQB => {
+                                    break 'iife_ret_56 XML_TOK_LITERAL_1
+                                }
+                                _ => break 'iife_ret_56 XML_TOK_INVALID_1,
+                            }
                         }
                     }
                     _ => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                }
+            }
+            break 'iife_ret_56 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_prologTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_57: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut tok: c_int = 0;
+            if ptr >= end {
+                break 'iife_ret_57 XML_TOK_NONE_1;
+            }
+            {
+                let mut n: size_t = c_char_ptr_diff(end, ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    if n == 0 {
+                        break 'iife_ret_57 XML_TOK_PARTIAL_1;
+                    }
+                    end = ptr.wrapping_add(n);
+                }
+            }
+            let mut current_block_124: u64;
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_QUOT => {
+                    break 'iife_ret_57 ({
+                        let (tok_value, next_tok_value) = big2_scanLit(
+                            BT_QUOT as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_APOS => {
+                    break 'iife_ret_57 ({
+                        let (tok_value, next_tok_value) = big2_scanLit(
+                            BT_APOS as c_int,
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_LT => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_57 XML_TOK_PARTIAL_1;
+                    }
+                    match if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                    } {
+                        BT_EXCL => {
+                            break 'iife_ret_57 ({
+                                let (tok_value, next_tok_value) = big2_scanDecl(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        BT_QUEST => {
+                            break 'iife_ret_57 ({
+                                let (tok_value, next_tok_value) = big2_scanPi(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        BT_NMSTRT | BT_HEX | BT_NONASCII | BT_LEAD2 | BT_LEAD3 | BT_LEAD4 => {
+                            *nextTokPtr = ptr.wrapping_offset(-(2));
+                            break 'iife_ret_57 XML_TOK_INSTANCE_START;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_57 XML_TOK_INVALID_1;
+                }
+                BT_CR => {
+                    if ptr.wrapping_offset(2) == end {
+                        *nextTokPtr = end;
+                        break 'iife_ret_57 -XML_TOK_PROLOG_S_1;
+                    }
+                    current_block_124 = 16869865525854146339;
+                }
+                BT_S | BT_LF => {
+                    current_block_124 = 16869865525854146339;
+                }
+                BT_PERCNT => {
+                    break 'iife_ret_57 ({
+                        let (tok_value, next_tok_value) = big2_scanPercent(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_COMMA => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_57 XML_TOK_COMMA_1;
+                }
+                BT_LSQB => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_57 XML_TOK_OPEN_BRACKET_1;
+                }
+                BT_RSQB => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_57 -XML_TOK_CLOSE_BRACKET_1;
+                    }
+                    if read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x5d {
+                        if (c_char_ptr_diff(end, ptr)) < (2i32 * 2) as c_long {
+                            break 'iife_ret_57 XML_TOK_PARTIAL_1;
+                        }
+                        if read_ptr_at(ptr.wrapping_offset(2), 0) as c_int == 0
+                            && read_ptr_at(ptr.wrapping_offset(2), 1) as c_int == 0x3e
+                        {
+                            *nextTokPtr = ptr.wrapping_offset((2i32 * 2) as isize);
+                            break 'iife_ret_57 XML_TOK_COND_SECT_CLOSE_1;
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_57 XML_TOK_CLOSE_BRACKET_1;
+                }
+                BT_LPAR => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_57 XML_TOK_OPEN_PAREN_1;
+                }
+                BT_RPAR => {
+                    ptr = ptr.wrapping_offset(2);
+                    if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                        break 'iife_ret_57 -XML_TOK_CLOSE_PAREN_1;
+                    }
+                    match if read_ptr_at(ptr, 0) as c_int == 0 {
+                        as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                            as c_uint
+                    } else {
+                        unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                    } {
+                        BT_AST => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_57 XML_TOK_CLOSE_PAREN_ASTERISK_1;
+                        }
+                        BT_QUEST => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_57 XML_TOK_CLOSE_PAREN_QUESTION_1;
+                        }
+                        BT_PLUS => {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_57 XML_TOK_CLOSE_PAREN_PLUS_1;
+                        }
+                        BT_CR | BT_LF | BT_S | BT_GT | BT_COMMA | BT_VERBAR | BT_RPAR => {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_57 XML_TOK_CLOSE_PAREN_1;
+                        }
+                        _ => {}
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_57 XML_TOK_INVALID_1;
+                }
+                BT_VERBAR => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_57 XML_TOK_OR_1;
+                }
+                BT_GT => {
+                    *nextTokPtr = ptr.wrapping_offset(2);
+                    break 'iife_ret_57 XML_TOK_DECL_CLOSE_1;
+                }
+                BT_NUM => {
+                    break 'iife_ret_57 ({
+                        let (tok_value, next_tok_value) = big2_scanPoundName(
+                            enc,
+                            c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                        );
+                        *nextTokPtr = next_tok_value;
+                        tok_value
+                    });
+                }
+                BT_LEAD2 => {
+                    if (c_char_ptr_diff(end, ptr)) < 2 {
+                        break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_57 XML_TOK_INVALID_1;
+                }
+                BT_LEAD3 => {
+                    if (c_char_ptr_diff(end, ptr)) < 3 {
+                        break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_57 XML_TOK_INVALID_1;
+                }
+                BT_LEAD4 => {
+                    if (c_char_ptr_diff(end, ptr)) < 4 {
+                        break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_57 XML_TOK_INVALID_1;
+                }
+                BT_NMSTRT | BT_HEX => {
+                    tok = XML_TOK_NAME;
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_DIGIT | BT_NAME | BT_MINUS | BT_COLON_0 => {
+                    tok = XML_TOK_NMTOKEN_1;
+                    ptr = ptr.wrapping_offset(2);
+                    current_block_124 = 2956972668325154207;
+                }
+                BT_NONASCII => {
+                    if namingBitmap[(((nmstrtPages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                        != 0
+                    {
+                        ptr = ptr.wrapping_offset(2);
+                        tok = XML_TOK_NAME;
+                        current_block_124 = 2956972668325154207;
+                    } else if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                        as c_int)
+                        << 3)
+                        + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                        as usize]
+                        & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                        != 0
+                    {
+                        ptr = ptr.wrapping_offset(2);
+                        tok = XML_TOK_NMTOKEN_1;
+                        current_block_124 = 2956972668325154207;
+                    } else {
+                        current_block_124 = 6428058487030868344;
+                    }
+                }
+                _ => {
+                    current_block_124 = 6428058487030868344;
+                }
+            }
+            match current_block_124 {
+                2956972668325154207 => {}
+                16869865525854146339 => {
+                    loop {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break;
+                        }
+                        let mut current_block_32: u64;
+                        match if read_ptr_at(ptr, 0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                                as c_uint
+                        } else {
+                            unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                        } {
+                            BT_S | BT_LF => {
+                                current_block_32 = 17500079516916021833;
+                            }
+                            BT_CR => {
+                                if ptr.wrapping_offset(2) != end {
+                                    current_block_32 = 17500079516916021833;
+                                } else {
+                                    current_block_32 = 11299462660638600073;
+                                }
+                            }
+                            _ => {
+                                current_block_32 = 11299462660638600073;
+                            }
+                        }
+                        match current_block_32 {
+                            17500079516916021833 => {}
+                            _ => {
+                                *nextTokPtr = ptr;
+                                break 'iife_ret_57 XML_TOK_PROLOG_S_1;
+                            }
+                        }
+                    }
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_57 XML_TOK_PROLOG_S_1;
+                }
+                _ => {
+                    *nextTokPtr = ptr;
+                    break 'iife_ret_57 XML_TOK_INVALID_1;
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                let mut current_block_210: u64;
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_NONASCII => {
+                        if namingBitmap[(((namePages[read_ptr_at(ptr, 0) as c_uchar as usize]
+                            as c_int)
+                            << 3)
+                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                            as usize]
+                            & (1) << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                            == 0
+                        {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_57 XML_TOK_INVALID_1;
+                        }
+                        current_block_210 = 9794574411605359176;
+                    }
+                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                        current_block_210 = 9794574411605359176;
+                    }
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                    }
+                    BT_GT | BT_RPAR | BT_COMMA | BT_VERBAR | BT_LSQB | BT_PERCNT | BT_S | BT_CR
+                    | BT_LF => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_57 tok;
+                    }
+                    BT_COLON_0 => {
+                        ptr = ptr.wrapping_offset(2);
+                        match tok {
+                            XML_TOK_NAME => {
+                                if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                    break 'iife_ret_57 XML_TOK_PARTIAL_1;
+                                }
+                                tok = XML_TOK_PREFIXED_NAME;
+                                let mut current_block_187: u64;
+                                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                                    as_normal_encoding(enc).type_0
+                                        [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                        as c_uint
+                                } else {
+                                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                                        as c_uint
+                                } {
+                                    BT_NONASCII => {
+                                        if namingBitmap[(((namePages
+                                            [read_ptr_at(ptr, 0) as c_uchar as usize]
+                                            as c_int)
+                                            << 3)
+                                            + (read_ptr_at(ptr, 1) as c_uchar as c_int >> 5))
+                                            as usize]
+                                            & (1)
+                                                << (read_ptr_at(ptr, 1) as c_uchar as c_int & 0x1f)
+                                            == 0
+                                        {
+                                            *nextTokPtr = ptr;
+                                            break 'iife_ret_57 XML_TOK_INVALID_1;
+                                        }
+                                        current_block_187 = 17275381528970576968;
+                                    }
+                                    BT_NMSTRT | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                                        current_block_187 = 17275381528970576968;
+                                    }
+                                    BT_LEAD2 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                                    }
+                                    BT_LEAD3 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                                    }
+                                    BT_LEAD4 => {
+                                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                                            break 'iife_ret_57 XML_TOK_PARTIAL_CHAR_1;
+                                        }
+                                        *nextTokPtr = ptr;
+                                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                                    }
+                                    _ => {
+                                        tok = XML_TOK_NMTOKEN_1;
+                                        current_block_187 = 9812798724717783973;
+                                    }
+                                }
+                                if current_block_187 == 17275381528970576968 {
+                                    ptr = ptr.wrapping_offset(2isize);
+                                }
+                            }
+                            XML_TOK_PREFIXED_NAME => {
+                                tok = XML_TOK_NMTOKEN_1;
+                            }
+                            _ => {}
+                        }
+                        current_block_210 = 14244298717249035578;
+                    }
+                    BT_PLUS => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_57 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_57 XML_TOK_NAME_PLUS_1;
+                    }
+                    BT_AST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_57 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_57 XML_TOK_NAME_ASTERISK_1;
+                    }
+                    BT_QUEST => {
+                        if tok == XML_TOK_NMTOKEN_1 {
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_57 XML_TOK_INVALID_1;
+                        }
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        break 'iife_ret_57 XML_TOK_NAME_QUESTION_1;
+                    }
+                    _ => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_57 XML_TOK_INVALID_1;
+                    }
+                }
+                if current_block_210 == 9794574411605359176 {
+                    ptr = ptr.wrapping_offset(2isize);
+                }
+            }
+            break 'iife_ret_57 -tok;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_attributeValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_58: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                break 'iife_ret_58 XML_TOK_NONE_1;
+            } else if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_58 XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            break 'iife_ret_58 ({
+                                let (tok_value, next_tok_value) = big2_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LT => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_58 XML_TOK_INVALID_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_58 XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_58 XML_TOK_TRAILING_CR_1;
+                            }
+                            if (if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                            }) == BT_LF as c_int
+                            {
+                                ptr = ptr.wrapping_offset(2isize);
+                            }
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_58 XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_S => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_58 XML_TOK_ATTRIBUTE_VALUE_S_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_58 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_entityValueTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_59: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut start: *const c_char = null::<c_char>();
+            if ptr >= end {
+                break 'iife_ret_59 XML_TOK_NONE_1;
+            } else if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                break 'iife_ret_59 XML_TOK_PARTIAL_1;
+            }
+            start = ptr;
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_AMP => {
+                        if ptr == start {
+                            break 'iife_ret_59 ({
+                                let (tok_value, next_tok_value) = big2_scanRef(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2isize), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            });
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_PERCNT => {
+                        if ptr == start {
+                            let mut tok: c_int = {
+                                let (tok_value, next_tok_value) = big2_scanPercent(
+                                    enc,
+                                    c_char_slice_from_ptr_end(ptr.wrapping_offset(2), end),
+                                );
+                                *nextTokPtr = next_tok_value;
+                                tok_value
+                            };
+                            break 'iife_ret_59 if tok == XML_TOK_PERCENT_1 {
+                                XML_TOK_INVALID_1
+                            } else {
+                                tok
+                            };
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_LF => {
+                        if ptr == start {
+                            *nextTokPtr = ptr.wrapping_offset(2);
+                            break 'iife_ret_59 XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
+                    }
+                    BT_CR => {
+                        if ptr == start {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_59 XML_TOK_TRAILING_CR_1;
+                            }
+                            if (if read_ptr_at(ptr, 0) as c_int == 0 {
+                                as_normal_encoding(enc).type_0
+                                    [read_ptr_at(ptr, 1) as c_uchar as usize]
+                                    as c_int
+                            } else {
+                                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1))
+                            }) == BT_LF as c_int
+                            {
+                                ptr = ptr.wrapping_offset(2isize);
+                            }
+                            *nextTokPtr = ptr;
+                            break 'iife_ret_59 XML_TOK_DATA_NEWLINE_1;
+                        }
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                }
+            }
+            *nextTokPtr = ptr;
+            break 'iife_ret_59 XML_TOK_DATA_CHARS_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_ignoreSectionTok(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
+        let mut next_tok: *const c_char = input.as_ptr();
+        let nextTokPtr = &mut next_tok;
+        let tok: c_int = 'iife_ret_60: {
+            let mut ptr = input.as_ptr();
+            let mut end = ptr.wrapping_add(input.len());
+            let mut level: c_int = 0;
+            {
+                let mut n: size_t = c_char_ptr_diff(end, ptr) as size_t;
+                if n & (2i32 - 1) as size_t != 0 {
+                    n &= !(2i32 - 1) as size_t;
+                    end = ptr.wrapping_add(n);
+                }
+            }
+            while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize]
+                        as c_uint
+                } else {
+                    unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+                } {
+                    BT_LEAD2 => {
+                        if (c_char_ptr_diff(end, ptr)) < 2 {
+                            break 'iife_ret_60 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                    BT_LEAD3 => {
+                        if (c_char_ptr_diff(end, ptr)) < 3 {
+                            break 'iife_ret_60 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.wrapping_offset(3isize);
+                    }
+                    BT_LEAD4 => {
+                        if (c_char_ptr_diff(end, ptr)) < 4 {
+                            break 'iife_ret_60 XML_TOK_PARTIAL_CHAR_1;
+                        }
+                        ptr = ptr.wrapping_offset(4isize);
+                    }
+                    BT_NONXML | BT_MALFORM | BT_TRAIL => {
+                        *nextTokPtr = ptr;
+                        break 'iife_ret_60 XML_TOK_INVALID_1;
+                    }
+                    BT_LT => {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_60 XML_TOK_PARTIAL_1;
+                        }
+                        if read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x21
+                        {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_60 XML_TOK_PARTIAL_1;
+                            }
+                            if read_ptr_at(ptr, 0) as c_int == 0
+                                && read_ptr_at(ptr, 1) as c_int == 0x5b
+                            {
+                                level += 1;
+                                ptr = ptr.wrapping_offset(2isize);
+                            }
+                        }
+                    }
+                    BT_RSQB => {
+                        ptr = ptr.wrapping_offset(2);
+                        if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                            break 'iife_ret_60 XML_TOK_PARTIAL_1;
+                        }
+                        if read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x5d
+                        {
+                            ptr = ptr.wrapping_offset(2);
+                            if (c_char_ptr_diff(end, ptr)) < 2 as c_long {
+                                break 'iife_ret_60 XML_TOK_PARTIAL_1;
+                            }
+                            if read_ptr_at(ptr, 0) as c_int == 0
+                                && read_ptr_at(ptr, 1) as c_int == 0x3e
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                if level == 0 {
+                                    *nextTokPtr = ptr;
+                                    break 'iife_ret_60 XML_TOK_IGNORE_SECT_1;
+                                }
+                                level -= 1;
+                            }
+                        }
+                    }
+                    _ => {
+                        ptr = ptr.wrapping_offset(2isize);
+                    }
+                }
+            }
+            break 'iife_ret_60 XML_TOK_PARTIAL_1;
+        };
+        (tok, next_tok)
+    }
+
+    pub(crate) fn big2_isPublicId(enc: &ENCODING, input: &[c_char]) -> IsPublicIdResult {
+        let mut badPtrVal: *const c_char = null::<c_char>();
+        let badPtr = &mut badPtrVal;
+        let mut ptr = input.as_ptr();
+        let mut end = ptr.wrapping_add(input.len());
+        ptr = ptr.wrapping_offset(2);
+        end = end.wrapping_offset(-(2));
+        while c_char_ptr_diff(end, ptr) >= 2 as c_long {
+            let mut current_block_8: u64;
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
+                | 30 | 19 | 23 => {
+                    current_block_8 = 5143058163439228106;
+                }
+                BT_S => {
+                    if read_ptr_at(ptr, 0) as c_int == 0 && read_ptr_at(ptr, 1) as c_int == 0x9 {
+                        *badPtr = ptr;
+                        return (0i32, badPtrVal);
+                    }
+                    current_block_8 = 5143058163439228106;
+                }
+                BT_NAME | BT_NMSTRT => {
+                    if (if read_ptr_at(ptr, 0) as c_int == 0 {
+                        read_ptr_at(ptr, 1) as c_int
+                    } else {
+                        -(1)
+                    }) & !(0x7f)
+                        == 0
+                    {
+                        current_block_8 = 5143058163439228106;
+                    } else {
                         current_block_8 = 9906551679175889830;
                     }
                 }
-                if current_block_8 == 9906551679175889830 {
-                    match if *ptr.offset(0) as c_int == 0 {
-                        *ptr.offset(1) as c_int
-                    } else {
-                        -(1)
-                    } {
-                        36 | 64 => {}
-                        _ => {
-                            *badPtr = ptr;
-                            return (0i32, badPtrVal);
-                        }
+                _ => {
+                    current_block_8 = 9906551679175889830;
+                }
+            }
+            if current_block_8 == 9906551679175889830 {
+                match if read_ptr_at(ptr, 0) as c_int == 0 {
+                    read_ptr_at(ptr, 1) as c_int
+                } else {
+                    -(1)
+                } {
+                    36 | 64 => {}
+                    _ => {
+                        *badPtr = ptr;
+                        return (0i32, badPtrVal);
                     }
                 }
-                ptr = ptr.offset(2);
             }
-            (1, badPtrVal)
+            ptr = ptr.wrapping_offset(2);
         }
+        (1, badPtrVal)
     }
 
     pub(crate) fn big2_getAtts(
@@ -10275,146 +10307,145 @@ pub mod xmltok_impl_c {
         mut attsMax: c_int,
         mut atts: *mut ATTRIBUTE,
     ) -> c_int {
-        unsafe {
-            let mut state: C2RustUnnamed_3 = inName_1;
-            let mut nAtts: c_int = 0;
-            let mut open: c_int = 0;
-            ptr = ptr.offset(2);
-            loop {
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_LEAD2 => {
-                        if state == other_1 {
-                            if nAtts < attsMax {
-                                let fresh48 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh48 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName_1;
-                        }
-                        ptr = ptr.offset((2i32 - 2i32) as isize);
-                    }
-                    BT_LEAD3 => {
-                        if state == other_1 {
-                            if nAtts < attsMax {
-                                let fresh49 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh49 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName_1;
-                        }
-                        ptr = ptr.offset((3i32 - 2i32) as isize);
-                    }
-                    BT_LEAD4 => {
-                        if state == other_1 {
-                            if nAtts < attsMax {
-                                let fresh50 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh50 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName_1;
-                        }
-                        ptr = ptr.offset((4i32 - 2i32) as isize);
-                    }
-                    BT_NONASCII | BT_NMSTRT | BT_HEX => {
-                        if state == other_1 {
-                            if nAtts < attsMax {
-                                let fresh51 = &mut (*atts.offset(nAtts as isize)).name;
-                                *fresh51 = ptr;
-                                (*atts.offset(nAtts as isize)).normalized = 1i8;
-                            }
-                            state = inName_1;
-                        }
-                    }
-                    BT_QUOT => {
-                        if state != inValue_1 {
-                            if nAtts < attsMax {
-                                let fresh52 = &mut (*atts.offset(nAtts as isize)).valuePtr;
-                                *fresh52 = ptr.offset(2isize);
-                            }
-                            state = inValue_1;
-                            open = BT_QUOT as c_int;
-                        } else if open == BT_QUOT as c_int {
-                            state = other_1;
-                            if nAtts < attsMax {
-                                let fresh53 = &mut (*atts.offset(nAtts as isize)).valueEnd;
-                                *fresh53 = ptr;
-                            }
-                            nAtts += 1;
-                        }
-                    }
-                    BT_APOS => {
-                        if state != inValue_1 {
-                            if nAtts < attsMax {
-                                let fresh54 = &mut (*atts.offset(nAtts as isize)).valuePtr;
-                                *fresh54 = ptr.offset(2isize);
-                            }
-                            state = inValue_1;
-                            open = BT_APOS as c_int;
-                        } else if open == BT_APOS as c_int {
-                            state = other_1;
-                            if nAtts < attsMax {
-                                let fresh55 = &mut (*atts.offset(nAtts as isize)).valueEnd;
-                                *fresh55 = ptr;
-                            }
-                            nAtts += 1;
-                        }
-                    }
-                    BT_AMP => {
+        let mut state: C2RustUnnamed_3 = inName_1;
+        let mut nAtts: c_int = 0;
+        let mut open: c_int = 0;
+        ptr = ptr.wrapping_offset(2);
+        loop {
+            match if read_ptr_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_ptr_at(ptr, 1) as c_uchar as usize] as c_uint
+            } else {
+                unicode_byte_type(read_ptr_at(ptr, 0), read_ptr_at(ptr, 1)) as c_uint
+            } {
+                BT_LEAD2 => {
+                    if state == other_1 {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
                         }
+                        state = inName_1;
                     }
-                    BT_S => {
-                        if state == inName_1 {
-                            state = other_1;
-                        } else if state == inValue_1
-                            && nAtts < attsMax
-                            && (*atts.offset(nAtts as isize)).normalized as c_int != 0
-                            && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                                || (if *ptr.offset(0) as c_int == 0 {
-                                    *ptr.offset(1) as c_int
+                    ptr = ptr.wrapping_offset((2i32 - 2i32) as isize);
+                }
+                BT_LEAD3 => {
+                    if state == other_1 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName_1;
+                    }
+                    ptr = ptr.wrapping_offset((3i32 - 2i32) as isize);
+                }
+                BT_LEAD4 => {
+                    if state == other_1 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName_1;
+                    }
+                    ptr = ptr.wrapping_offset((4i32 - 2i32) as isize);
+                }
+                BT_NONASCII | BT_NMSTRT | BT_HEX => {
+                    if state == other_1 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.name = ptr;
+                            att.normalized = 1i8;
+                        }
+                        state = inName_1;
+                    }
+                }
+                BT_QUOT => {
+                    if state != inValue_1 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valuePtr = ptr.wrapping_offset(2isize);
+                        }
+                        state = inValue_1;
+                        open = BT_QUOT as c_int;
+                    } else if open == BT_QUOT as c_int {
+                        state = other_1;
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valueEnd = ptr;
+                        }
+                        nAtts += 1;
+                    }
+                }
+                BT_APOS => {
+                    if state != inValue_1 {
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valuePtr = ptr.wrapping_offset(2isize);
+                        }
+                        state = inValue_1;
+                        open = BT_APOS as c_int;
+                    } else if open == BT_APOS as c_int {
+                        state = other_1;
+                        if nAtts < attsMax {
+                            let att = attribute_mut(atts, nAtts);
+                            att.valueEnd = ptr;
+                        }
+                        nAtts += 1;
+                    }
+                }
+                BT_AMP => {
+                    if nAtts < attsMax {
+                        attribute_mut(atts, nAtts).normalized = 0i8;
+                    }
+                }
+                BT_S => {
+                    if state == inName_1 {
+                        state = other_1;
+                    } else if state == inValue_1 && nAtts < attsMax {
+                        let att = attribute_mut(atts, nAtts);
+                        if att.normalized as c_int != 0
+                            && (ptr == att.valuePtr
+                                || (if read_ptr_at(ptr, 0) as c_int == 0 {
+                                    read_ptr_at(ptr, 1) as c_int
                                 } else {
                                     -(1)
                                 }) != ASCII_SPACE
-                                || (if *ptr.offset(2).offset(0) as c_int == 0 {
-                                    *ptr.offset(2).offset(1) as c_int
+                                || (if read_ptr_at(ptr.wrapping_offset(2), 0) as c_int == 0 {
+                                    read_ptr_at(ptr.wrapping_offset(2), 1) as c_int
                                 } else {
                                     -(1)
                                 }) == ASCII_SPACE
-                                || (if *ptr.offset(2).offset(0) as c_int == 0 {
+                                || (if read_ptr_at(ptr.wrapping_offset(2), 0) as c_int == 0 {
                                     as_normal_encoding(enc).type_0
-                                        [*ptr.offset(2).offset(1) as c_uchar as usize]
+                                        [read_ptr_at(ptr.wrapping_offset(2), 1) as c_uchar as usize]
                                         as c_int
                                 } else {
                                     unicode_byte_type(
-                                        *ptr.offset(2).offset(0),
-                                        *ptr.offset(2).offset(1),
+                                        read_ptr_at(ptr.wrapping_offset(2), 0),
+                                        read_ptr_at(ptr.wrapping_offset(2), 1),
                                     )
                                 }) == open)
                         {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
+                            att.normalized = 0i8;
                         }
                     }
-                    BT_CR | BT_LF => {
-                        if state == inName_1 {
-                            state = other_1;
-                        } else if state == inValue_1 && nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).normalized = 0i8;
-                        }
-                    }
-                    BT_GT | BT_SOL => {
-                        if state != inValue_1 {
-                            return nAtts;
-                        }
-                    }
-                    _ => {}
                 }
-                ptr = ptr.offset(2);
+                BT_CR | BT_LF => {
+                    if state == inName_1 {
+                        state = other_1;
+                    } else if state == inValue_1 && nAtts < attsMax {
+                        attribute_mut(atts, nAtts).normalized = 0i8;
+                    }
+                }
+                BT_GT | BT_SOL => {
+                    if state != inValue_1 {
+                        return nAtts;
+                    }
+                }
+                _ => {}
             }
+            ptr = ptr.wrapping_offset(2);
         }
     }
 
@@ -10617,7 +10648,7 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn big2_updatePosition(enc: &ENCODING, input: &[c_char], mut pos: *mut POSITION) {
-        let pos = unsafe { &mut *pos };
+        let pos = mut_ref_from_ptr(pos);
         let mut ptr = input.as_ptr();
         let end = ptr.wrapping_add(input.len());
         while c_char_ptr_diff(end, ptr) >= 2 {
@@ -10718,7 +10749,7 @@ pub mod xmltok_ns_c {
         if i == UNKNOWN_ENC {
             return (0, null::<ENCODING>());
         }
-        let init = unsafe { &mut *p };
+        let init = mut_ref_from_ptr(p);
         init.initEnc = utf8_encoding.enc;
         init.initEnc.functions = &INIT_ENCODING_FUNCTIONS;
         init.initEnc.isUtf16 = i as c_char;
@@ -10739,9 +10770,7 @@ pub mod xmltok_ns_c {
         if ptr != end {
             return null::<ENCODING>();
         }
-        unsafe {
-            *p = 0;
-        }
+        write_ptr(p, 0);
         if streqci(buf.as_ptr(), &raw const KW_UTF_16 as *const c_char) != 0
             && enc.minBytesPerChar == 2
         {
@@ -10808,7 +10837,7 @@ pub mod xmltok_ns_c {
         if i == UNKNOWN_ENC {
             return (0, null::<ENCODING>());
         }
-        let init = unsafe { &mut *p };
+        let init = mut_ref_from_ptr(p);
         init.initEnc = utf8_encoding_ns.enc;
         init.initEnc.functions = &INIT_ENCODING_FUNCTIONS;
         init.initEnc.isUtf16 = i as c_char;
@@ -10829,9 +10858,7 @@ pub mod xmltok_ns_c {
         if ptr != end {
             return null::<ENCODING>();
         }
-        unsafe {
-            *p = 0;
-        }
+        write_ptr(p, 0);
         if streqci(buf.as_ptr(), &raw const KW_UTF_16 as *const c_char) != 0
             && enc.minBytesPerChar == 2
         {
@@ -11009,7 +11036,6 @@ pub use nametab_h::namePages;
 pub use nametab_h::namingBitmap;
 pub use nametab_h::nmstrtPages;
 
-use crate::stdlib::memcpy;
 pub use crate::xmltok_impl_c::inName;
 pub use crate::xmltok_impl_c::inName_0;
 pub use crate::xmltok_impl_c::inName_1;
@@ -11487,7 +11513,7 @@ fn internal_trim_to_complete_utf8_characters_test_shim(
     from: *const c_char,
     fromLimRef: *mut *const c_char,
 ) {
-    let from_lim_ref = unsafe { &mut *fromLimRef };
+    let from_lim_ref = mut_ref_from_ptr(fromLimRef);
     *from_lim_ref = _INTERNAL_trim_to_complete_utf8_characters(from, *from_lim_ref);
 }
 
@@ -11504,8 +11530,8 @@ fn utf8_toUtf8(
     let toP = &mut to_cursor;
     let mut input_incomplete: bool = false_0 != 0;
     let mut output_exhausted: bool = false_0 != 0;
-    let bytesAvailable: ptrdiff_t = unsafe { fromLim.offset_from(*fromP) };
-    let bytesStorable: ptrdiff_t = unsafe { toLim.offset_from(*toP) };
+    let bytesAvailable: ptrdiff_t = c_char_ptr_diff(fromLim, *fromP) as ptrdiff_t;
+    let bytesStorable: ptrdiff_t = c_char_ptr_diff(toLim, *toP as *const c_char) as ptrdiff_t;
     if bytesAvailable > bytesStorable {
         fromLim = (*fromP).wrapping_offset(bytesStorable);
         output_exhausted = true_0 != 0;
@@ -11515,13 +11541,9 @@ fn utf8_toUtf8(
     if fromLim < fromLimBefore {
         input_incomplete = true_0 != 0;
     }
-    let bytesToCopy: ptrdiff_t = unsafe { fromLim.offset_from(*fromP) };
-    unsafe {
-        memcpy(
-            *toP as *mut c_void,
-            *fromP as *const c_void,
-            bytesToCopy as size_t,
-        );
+    let bytesToCopy: ptrdiff_t = c_char_ptr_diff(fromLim, *fromP) as ptrdiff_t;
+    if bytesToCopy > 0 {
+        copy_nonoverlapping_c_char(*toP, *fromP, bytesToCopy as usize);
     }
     *fromP = (*fromP).wrapping_offset(bytesToCopy);
     *toP = (*toP).wrapping_offset(bytesToCopy);
@@ -11542,89 +11564,78 @@ fn utf8_toUtf16(
     toP: *mut c_ushort,
     mut toLim: *const c_ushort,
 ) -> Utf16ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_ushort = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        let mut current_block: u64;
-        let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
-        let mut to: *mut c_ushort = *toP;
-        let mut from: *const c_char = *fromP;
-        loop {
-            if !(from < fromLim && to < toLim as *mut c_ushort) {
-                current_block = 18317007320854588510;
-                break;
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
+    let mut to: *mut c_ushort = *toP;
+    let mut from: *const c_char = *fromP;
+    while from < fromLim && to < toLim as *mut c_ushort {
+        match as_normal_encoding(enc).type_0[read_c_char(from) as c_uchar as usize] as c_uint {
+            BT_LEAD2 => {
+                if c_char_ptr_diff(fromLim, from) < 2 {
+                    res = XML_CONVERT_INPUT_INCOMPLETE;
+                    break;
+                }
+                write_ptr(
+                    to,
+                    (((read_c_char_at(from, 0) as c_int & 0x1f) << 6)
+                        | (read_c_char_at(from, 1) as c_int & 0x3f))
+                        as c_ushort,
+                );
+                to = to.wrapping_offset(1);
+                from = from.wrapping_offset(2);
             }
-            match as_normal_encoding(enc).type_0[*from as c_uchar as usize] as c_uint {
-                BT_LEAD2 => {
-                    if (fromLim.offset_from(from) as c_long) < 2 {
-                        res = XML_CONVERT_INPUT_INCOMPLETE;
-                        current_block = 7621590230452126720;
-                        break;
-                    } else {
-                        let fresh0 = to;
-                        to = to.offset(1);
-                        *fresh0 = ((*from.offset(0) as c_int & 0x1f) << 6
-                            | *from.offset(1) as c_int & 0x3f)
-                            as c_ushort;
-                        from = from.offset(2isize);
-                    }
+            BT_LEAD3 => {
+                if c_char_ptr_diff(fromLim, from) < 3 {
+                    res = XML_CONVERT_INPUT_INCOMPLETE;
+                    break;
                 }
-                BT_LEAD3 => {
-                    if (fromLim.offset_from(from) as c_long) < 3 {
-                        res = XML_CONVERT_INPUT_INCOMPLETE;
-                        current_block = 7621590230452126720;
-                        break;
-                    } else {
-                        let fresh1 = to;
-                        to = to.offset(1);
-                        *fresh1 = ((*from.offset(0) as c_int & 0xf) << 12
-                            | (*from.offset(1) as c_int & 0x3f) << 6
-                            | *from.offset(2) as c_int & 0x3f)
-                            as c_ushort;
-                        from = from.offset(3isize);
-                    }
+                write_ptr(
+                    to,
+                    (((read_c_char_at(from, 0) as c_int & 0xf) << 12)
+                        | ((read_c_char_at(from, 1) as c_int & 0x3f) << 6)
+                        | (read_c_char_at(from, 2) as c_int & 0x3f))
+                        as c_ushort,
+                );
+                to = to.wrapping_offset(1);
+                from = from.wrapping_offset(3);
+            }
+            BT_LEAD4 => {
+                let mut n: core::ffi::c_ulong;
+                if c_ushort_ptr_diff(toLim, to as *const c_ushort) < 2 {
+                    res = XML_CONVERT_OUTPUT_EXHAUSTED;
+                    break;
                 }
-                BT_LEAD4 => {
-                    let mut n: core::ffi::c_ulong = 0;
-                    if (toLim.offset_from(to) as c_long) < 2 {
-                        res = XML_CONVERT_OUTPUT_EXHAUSTED;
-                        current_block = 7621590230452126720;
-                        break;
-                    } else if (fromLim.offset_from(from) as c_long) < 4 {
-                        res = XML_CONVERT_INPUT_INCOMPLETE;
-                        current_block = 7621590230452126720;
-                        break;
-                    } else {
-                        n = ((*from.offset(0) as c_int & 0x7) << 18
-                            | (*from.offset(1) as c_int & 0x3f) << 12
-                            | (*from.offset(2) as c_int & 0x3f) << 6
-                            | *from.offset(3) as c_int & 0x3f)
-                            as core::ffi::c_ulong;
-                        n = n.wrapping_sub(0x10000u64);
-                        *to.offset(0) = (n >> 10 | 0xd800) as c_ushort;
-                        *to.offset(1) = (n & 0x3ff | 0xdc00) as c_ushort;
-                        to = to.offset(2);
-                        from = from.offset(4isize);
-                    }
+                if c_char_ptr_diff(fromLim, from) < 4 {
+                    res = XML_CONVERT_INPUT_INCOMPLETE;
+                    break;
                 }
-                _ => {
-                    let fresh2 = from;
-                    from = from.offset(1);
-                    let fresh3 = to;
-                    to = to.offset(1);
-                    *fresh3 = *fresh2 as c_ushort;
-                }
+                n = (((read_c_char_at(from, 0) as c_int & 0x7) << 18)
+                    | ((read_c_char_at(from, 1) as c_int & 0x3f) << 12)
+                    | ((read_c_char_at(from, 2) as c_int & 0x3f) << 6)
+                    | (read_c_char_at(from, 3) as c_int & 0x3f))
+                    as core::ffi::c_ulong;
+                n = n.wrapping_sub(0x10000u64);
+                write_ptr_at(to, 0, (n >> 10 | 0xd800) as c_ushort);
+                write_ptr_at(to, 1, (n & 0x3ff | 0xdc00) as c_ushort);
+                to = to.wrapping_offset(2);
+                from = from.wrapping_offset(4);
+            }
+            _ => {
+                write_ptr(to, read_c_char(from) as c_ushort);
+                from = from.wrapping_offset(1);
+                to = to.wrapping_offset(1);
             }
         }
-        if current_block == 18317007320854588510 && from < fromLim {
-            res = XML_CONVERT_OUTPUT_EXHAUSTED;
-        }
-        *fromP = from;
-        *toP = to;
-        (res, from_cursor, to_cursor)
     }
+    if res == XML_CONVERT_COMPLETED && from < fromLim {
+        res = XML_CONVERT_OUTPUT_EXHAUSTED;
+    }
+    *fromP = from;
+    *toP = to;
+    (res, from_cursor, to_cursor)
 }
 
 struct Utf8EncodingFunctions;
@@ -13166,38 +13177,33 @@ fn latin1_toUtf8(
     toP: *mut c_char,
     mut toLim: *const c_char,
 ) -> Utf8ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_char = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        loop {
-            let mut c: c_uchar = 0;
-            if *fromP == fromLim {
-                return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    loop {
+        let c: c_uchar;
+        if *fromP == fromLim {
+            return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
+        }
+        c = read_c_char(*fromP) as c_uchar;
+        if c as c_int & 0x80 != 0 {
+            if c_char_ptr_diff(toLim, *toP as *const c_char) < 2 {
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
             }
-            c = **fromP as c_uchar;
-            if c as c_int & 0x80 != 0 {
-                if (toLim.offset_from(*toP) as c_long) < 2 {
-                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
-                }
-                let fresh6 = *toP;
-                *toP = (*toP).offset(1);
-                *fresh6 = (c as c_int >> 6 | UTF8_cval2 as c_int) as c_char;
-                let fresh7 = *toP;
-                *toP = (*toP).offset(1);
-                *fresh7 = (c as c_int & 0x3f | 0x80) as c_char;
-                *fromP = (*fromP).offset(1);
-            } else {
-                if std::ptr::eq(*toP, toLim) {
-                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
-                }
-                let fresh8 = *fromP;
-                *fromP = (*fromP).offset(1);
-                let fresh9 = *toP;
-                *toP = (*toP).offset(1);
-                *fresh9 = *fresh8;
+            write_ptr(*toP, (c as c_int >> 6 | UTF8_cval2 as c_int) as c_char);
+            *toP = (*toP).wrapping_offset(1);
+            write_ptr(*toP, (c as c_int & 0x3f | 0x80) as c_char);
+            *toP = (*toP).wrapping_offset(1);
+            *fromP = (*fromP).wrapping_offset(1);
+        } else {
+            if std::ptr::eq(*toP, toLim) {
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
             }
+            let src = *fromP;
+            *fromP = (*fromP).wrapping_offset(1);
+            write_ptr(*toP, read_c_char(src));
+            *toP = (*toP).wrapping_offset(1);
         }
     }
 }
@@ -13209,23 +13215,44 @@ fn latin1_toUtf16(
     toP: *mut c_ushort,
     mut toLim: *const c_ushort,
 ) -> Utf16ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_ushort = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        while *fromP < fromLim && *toP < toLim as *mut c_ushort {
-            let fresh4 = *fromP;
-            *fromP = (*fromP).offset(1);
-            let fresh5 = *toP;
-            *toP = (*toP).offset(1);
-            *fresh5 = *fresh4 as c_uchar as c_ushort;
-        }
-        if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
-            (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
-        } else {
-            (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
-        }
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    while *fromP < fromLim && *toP < toLim as *mut c_ushort {
+        let src = *fromP;
+        *fromP = (*fromP).wrapping_offset(1);
+        write_ptr(*toP, read_c_char(src) as c_uchar as c_ushort);
+        *toP = (*toP).wrapping_offset(1);
+    }
+    if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
+        (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
+    } else {
+        (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
+    }
+}
+
+fn ascii_toUtf8(
+    _enc: &ENCODING,
+    fromP: *const c_char,
+    mut fromLim: *const c_char,
+    toP: *mut c_char,
+    mut toLim: *const c_char,
+) -> Utf8ConvertResult {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    while *fromP < fromLim && *toP < toLim as *mut c_char {
+        let src = *fromP;
+        *fromP = (*fromP).wrapping_offset(1);
+        write_ptr(*toP, read_c_char(src));
+        *toP = (*toP).wrapping_offset(1);
+    }
+    if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
+        (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
+    } else {
+        (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
     }
 }
 
@@ -13784,33 +13811,6 @@ static latin1_encoding: normal_encoding = normal_encoding {
     ],
     check_functions: &MISSING_NORMAL_ENCODING_CHECK_FUNCTIONS,
 };
-
-fn ascii_toUtf8(
-    _enc: &ENCODING,
-    fromP: *const c_char,
-    mut fromLim: *const c_char,
-    toP: *mut c_char,
-    mut toLim: *const c_char,
-) -> Utf8ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_char = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        while *fromP < fromLim && *toP < toLim as *mut c_char {
-            let fresh56 = *fromP;
-            *fromP = (*fromP).offset(1);
-            let fresh57 = *toP;
-            *toP = (*toP).offset(1);
-            *fresh57 = *fresh56;
-        }
-        if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
-            (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
-        } else {
-            (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
-        }
-    }
-}
 
 static ascii_encoding_ns: normal_encoding = normal_encoding {
     enc: encoding {
@@ -14388,103 +14388,99 @@ fn little2_toUtf8(
     toP: *mut c_char,
     mut toLim: *const c_char,
 ) -> Utf8ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_char = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        let mut from: *const c_char = *fromP;
-        fromLim = from.offset(((fromLim.offset_from(from) as c_long >> 1) << 1) as isize);
-        while from < fromLim {
-            let mut plane: c_int = 0;
-            let mut lo2: c_uchar = 0;
-            let mut lo: c_uchar = *from.offset(0) as c_uchar;
-            let mut hi: c_uchar = *from.offset(1) as c_uchar;
-            let mut current_block_34: u64;
-            match hi as c_int {
-                0 => {
-                    if (lo as c_int) < 0x80 {
-                        if std::ptr::eq(*toP, toLim) {
-                            *fromP = from;
-                            return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
-                        }
-                        let fresh19 = *toP;
-                        *toP = (*toP).offset(1);
-                        *fresh19 = lo as c_char;
-                        current_block_34 = 14136749492126903395;
-                    } else {
-                        current_block_34 = 9261908759940751603;
-                    }
-                }
-                1..=7 => {
-                    current_block_34 = 9261908759940751603;
-                }
-                216..=219 => {
-                    if (toLim.offset_from(*toP) as c_long) < 4 {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    let mut from: *const c_char = *fromP;
+    let aligned_bytes = (c_char_ptr_diff(fromLim, from) >> 1) << 1;
+    fromLim = from.wrapping_offset(aligned_bytes as isize);
+    while from < fromLim {
+        let lo: c_uchar = read_c_char_at(from, 0) as c_uchar;
+        let hi: c_uchar = read_c_char_at(from, 1) as c_uchar;
+        let mut encode_two_byte = false_0 != 0;
+        match hi as c_int {
+            0 => {
+                if (lo as c_int) < 0x80 {
+                    if c_char_ptr_diff(toLim, *toP as *const c_char) < 1 {
                         *fromP = from;
                         return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                     }
-                    if (fromLim.offset_from(from) as c_long) < 4 {
-                        *fromP = from;
-                        return (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor);
-                    }
-                    plane = ((hi as c_int & 0x3) << 2 | lo as c_int >> 6 & 0x3) + 1;
-                    let fresh25 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh25 = (plane >> 2 | UTF8_cval4 as c_int) as c_char;
-                    let fresh26 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh26 = (lo as c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80) as c_char;
-                    from = from.offset(2);
-                    lo2 = *from.offset(0) as c_uchar;
-                    let fresh27 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh27 = ((lo as c_int & 0x3) << 4
-                        | (*from.offset(1) as c_uchar as c_int & 0x3) << 2
-                        | lo2 as c_int >> 6
-                        | 0x80) as c_char;
-                    let fresh28 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh28 = (lo2 as c_int & 0x3f | 0x80) as c_char;
-                    current_block_34 = 14136749492126903395;
-                }
-                _ => {
-                    if (toLim.offset_from(*toP) as c_long) < 3 {
-                        *fromP = from;
-                        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
-                    }
-                    let fresh22 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh22 = (hi as c_int >> 4 | UTF8_cval3 as c_int) as c_char;
-                    let fresh23 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh23 = ((hi as c_int & 0xf) << 2 | lo as c_int >> 6 | 0x80) as c_char;
-                    let fresh24 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh24 = (lo as c_int & 0x3f | 0x80) as c_char;
-                    current_block_34 = 14136749492126903395;
+                    write_ptr(*toP, lo as c_char);
+                    *toP = (*toP).wrapping_offset(1);
+                } else {
+                    encode_two_byte = true_0 != 0;
                 }
             }
-            if current_block_34 == 9261908759940751603 {
-                if (toLim.offset_from(*toP) as c_long) < 2 {
+            1..=7 => {
+                encode_two_byte = true_0 != 0;
+            }
+            216..=219 => {
+                if c_char_ptr_diff(toLim, *toP as *const c_char) < 4 {
                     *fromP = from;
                     return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                 }
-                let fresh20 = *toP;
-                *toP = (*toP).offset(1);
-                *fresh20 = (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char;
-                let fresh21 = *toP;
-                *toP = (*toP).offset(1);
-                *fresh21 = (lo as c_int & 0x3fi32 | 0x80i32) as c_char;
+                if c_char_ptr_diff(fromLim, from) < 4 {
+                    *fromP = from;
+                    return (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor);
+                }
+                let plane: c_int = ((hi as c_int & 0x3) << 2 | lo as c_int >> 6 & 0x3) + 1;
+                write_ptr_at(*toP, 0, (plane >> 2 | UTF8_cval4 as c_int) as c_char);
+                write_ptr_at(
+                    *toP,
+                    1,
+                    (lo as c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80) as c_char,
+                );
+                let from2 = from.wrapping_offset(2);
+                let lo2: c_uchar = read_c_char_at(from2, 0) as c_uchar;
+                let hi2: c_uchar = read_c_char_at(from2, 1) as c_uchar;
+                write_ptr_at(
+                    *toP,
+                    2,
+                    ((lo as c_int & 0x3) << 4
+                        | (hi2 as c_int & 0x3) << 2
+                        | lo2 as c_int >> 6
+                        | 0x80) as c_char,
+                );
+                write_ptr_at(*toP, 3, (lo2 as c_int & 0x3f | 0x80) as c_char);
+                *toP = (*toP).wrapping_offset(4);
+                from = from2;
             }
-            from = from.offset(2);
+            _ => {
+                if c_char_ptr_diff(toLim, *toP as *const c_char) < 3 {
+                    *fromP = from;
+                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
+                }
+                write_ptr_at(*toP, 0, (hi as c_int >> 4 | UTF8_cval3 as c_int) as c_char);
+                write_ptr_at(
+                    *toP,
+                    1,
+                    ((hi as c_int & 0xf) << 2 | lo as c_int >> 6 | 0x80) as c_char,
+                );
+                write_ptr_at(*toP, 2, (lo as c_int & 0x3f | 0x80) as c_char);
+                *toP = (*toP).wrapping_offset(3);
+            }
         }
-        *fromP = from;
-        if from < fromLim {
-            (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor)
-        } else {
-            (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
+        if encode_two_byte {
+            if c_char_ptr_diff(toLim, *toP as *const c_char) < 2 {
+                *fromP = from;
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
+            }
+            write_ptr_at(
+                *toP,
+                0,
+                (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char,
+            );
+            write_ptr_at(*toP, 1, (lo as c_int & 0x3fi32 | 0x80i32) as c_char);
+            *toP = (*toP).wrapping_offset(2);
         }
+        from = from.wrapping_offset(2);
+    }
+    *fromP = from;
+    if from < fromLim {
+        (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor)
+    } else {
+        (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
     }
 }
 
@@ -14495,31 +14491,30 @@ fn little2_toUtf16(
     toP: *mut c_ushort,
     mut toLim: *const c_ushort,
 ) -> Utf16ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_ushort = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
-        fromLim = (*fromP).offset(((fromLim.offset_from(*fromP) as c_long >> 1) << 1) as isize);
-        if fromLim.offset_from(*fromP) as c_long > (toLim.offset_from(*toP) as c_long) << 1
-            && *fromLim.offset(-(2)).offset(1) as c_uchar as c_int & 0xf8 == 0xd8
-        {
-            fromLim = fromLim.offset(-(2));
-            res = XML_CONVERT_INPUT_INCOMPLETE;
-        }
-        while *fromP < fromLim && *toP < toLim as *mut c_ushort {
-            let fresh18 = *toP;
-            *toP = (*toP).offset(1);
-            *fresh18 = ((*(*fromP).offset(1) as c_uchar as c_int) << 8
-                | *(*fromP).offset(0) as c_uchar as c_int) as c_ushort;
-            *fromP = (*fromP).offset(2);
-        }
-        if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
-            (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
-        } else {
-            (res, from_cursor, to_cursor)
-        }
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
+    let aligned_bytes = (c_char_ptr_diff(fromLim, *fromP) >> 1) << 1;
+    fromLim = (*fromP).wrapping_offset(aligned_bytes as isize);
+    if c_char_ptr_diff(fromLim, *fromP) > (c_ushort_ptr_diff(toLim, *toP as *const c_ushort) << 1)
+        && (read_c_char_at(fromLim, -1) as c_uchar as c_int & 0xf8) == 0xd8
+    {
+        fromLim = fromLim.wrapping_offset(-2);
+        res = XML_CONVERT_INPUT_INCOMPLETE;
+    }
+    while *fromP < fromLim && *toP < toLim as *mut c_ushort {
+        let value = ((read_c_char_at(*fromP, 1) as c_uchar as c_int) << 8
+            | read_c_char_at(*fromP, 0) as c_uchar as c_int) as c_ushort;
+        write_ptr(*toP, value);
+        *toP = (*toP).wrapping_offset(1);
+        *fromP = (*fromP).wrapping_offset(2);
+    }
+    if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
+        (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
+    } else {
+        (res, from_cursor, to_cursor)
     }
 }
 
@@ -14530,103 +14525,99 @@ fn big2_toUtf8(
     toP: *mut c_char,
     mut toLim: *const c_char,
 ) -> Utf8ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_char = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        let mut from: *const c_char = *fromP;
-        fromLim = from.offset(((fromLim.offset_from(from) as c_long >> 1) << 1) as isize);
-        while from < fromLim {
-            let mut plane: c_int = 0;
-            let mut lo2: c_uchar = 0;
-            let mut lo: c_uchar = *from.offset(1) as c_uchar;
-            let mut hi: c_uchar = *from.offset(0) as c_uchar;
-            let mut current_block_34: u64;
-            match hi as c_int {
-                0 => {
-                    if (lo as c_int) < 0x80 {
-                        if std::ptr::eq(*toP, toLim) {
-                            *fromP = from;
-                            return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
-                        }
-                        let fresh38 = *toP;
-                        *toP = (*toP).offset(1);
-                        *fresh38 = lo as c_char;
-                        current_block_34 = 14136749492126903395;
-                    } else {
-                        current_block_34 = 4084411463441859965;
-                    }
-                }
-                1..=7 => {
-                    current_block_34 = 4084411463441859965;
-                }
-                216..=219 => {
-                    if (toLim.offset_from(*toP) as c_long) < 4 {
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    let mut from: *const c_char = *fromP;
+    let aligned_bytes = (c_char_ptr_diff(fromLim, from) >> 1) << 1;
+    fromLim = from.wrapping_offset(aligned_bytes as isize);
+    while from < fromLim {
+        let lo: c_uchar = read_c_char_at(from, 1) as c_uchar;
+        let hi: c_uchar = read_c_char_at(from, 0) as c_uchar;
+        let mut encode_two_byte = false_0 != 0;
+        match hi as c_int {
+            0 => {
+                if (lo as c_int) < 0x80 {
+                    if c_char_ptr_diff(toLim, *toP as *const c_char) < 1 {
                         *fromP = from;
                         return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                     }
-                    if (fromLim.offset_from(from) as c_long) < 4 {
-                        *fromP = from;
-                        return (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor);
-                    }
-                    plane = ((hi as c_int & 0x3) << 2 | lo as c_int >> 6 & 0x3) + 1;
-                    let fresh44 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh44 = (plane >> 2 | UTF8_cval4 as c_int) as c_char;
-                    let fresh45 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh45 = (lo as c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80) as c_char;
-                    from = from.offset(2);
-                    lo2 = *from.offset(1) as c_uchar;
-                    let fresh46 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh46 = ((lo as c_int & 0x3) << 4
-                        | (*from.offset(0) as c_uchar as c_int & 0x3) << 2
-                        | lo2 as c_int >> 6
-                        | 0x80) as c_char;
-                    let fresh47 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh47 = (lo2 as c_int & 0x3f | 0x80) as c_char;
-                    current_block_34 = 14136749492126903395;
-                }
-                _ => {
-                    if (toLim.offset_from(*toP) as c_long) < 3 {
-                        *fromP = from;
-                        return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
-                    }
-                    let fresh41 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh41 = (hi as c_int >> 4 | UTF8_cval3 as c_int) as c_char;
-                    let fresh42 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh42 = ((hi as c_int & 0xf) << 2 | lo as c_int >> 6 | 0x80) as c_char;
-                    let fresh43 = *toP;
-                    *toP = (*toP).offset(1);
-                    *fresh43 = (lo as c_int & 0x3f | 0x80) as c_char;
-                    current_block_34 = 14136749492126903395;
+                    write_ptr(*toP, lo as c_char);
+                    *toP = (*toP).wrapping_offset(1);
+                } else {
+                    encode_two_byte = true_0 != 0;
                 }
             }
-            if current_block_34 == 4084411463441859965 {
-                if (toLim.offset_from(*toP) as c_long) < 2 {
+            1..=7 => {
+                encode_two_byte = true_0 != 0;
+            }
+            216..=219 => {
+                if c_char_ptr_diff(toLim, *toP as *const c_char) < 4 {
                     *fromP = from;
                     return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
                 }
-                let fresh39 = *toP;
-                *toP = (*toP).offset(1);
-                *fresh39 = (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char;
-                let fresh40 = *toP;
-                *toP = (*toP).offset(1);
-                *fresh40 = (lo as c_int & 0x3fi32 | 0x80i32) as c_char;
+                if c_char_ptr_diff(fromLim, from) < 4 {
+                    *fromP = from;
+                    return (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor);
+                }
+                let plane: c_int = ((hi as c_int & 0x3) << 2 | lo as c_int >> 6 & 0x3) + 1;
+                write_ptr_at(*toP, 0, (plane >> 2 | UTF8_cval4 as c_int) as c_char);
+                write_ptr_at(
+                    *toP,
+                    1,
+                    (lo as c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80) as c_char,
+                );
+                let from2 = from.wrapping_offset(2);
+                let lo2: c_uchar = read_c_char_at(from2, 1) as c_uchar;
+                let hi2: c_uchar = read_c_char_at(from2, 0) as c_uchar;
+                write_ptr_at(
+                    *toP,
+                    2,
+                    ((lo as c_int & 0x3) << 4
+                        | (hi2 as c_int & 0x3) << 2
+                        | lo2 as c_int >> 6
+                        | 0x80) as c_char,
+                );
+                write_ptr_at(*toP, 3, (lo2 as c_int & 0x3f | 0x80) as c_char);
+                *toP = (*toP).wrapping_offset(4);
+                from = from2;
             }
-            from = from.offset(2);
+            _ => {
+                if c_char_ptr_diff(toLim, *toP as *const c_char) < 3 {
+                    *fromP = from;
+                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
+                }
+                write_ptr_at(*toP, 0, (hi as c_int >> 4 | UTF8_cval3 as c_int) as c_char);
+                write_ptr_at(
+                    *toP,
+                    1,
+                    ((hi as c_int & 0xf) << 2 | lo as c_int >> 6 | 0x80) as c_char,
+                );
+                write_ptr_at(*toP, 2, (lo as c_int & 0x3f | 0x80) as c_char);
+                *toP = (*toP).wrapping_offset(3);
+            }
         }
-        *fromP = from;
-        if from < fromLim {
-            (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor)
-        } else {
-            (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
+        if encode_two_byte {
+            if c_char_ptr_diff(toLim, *toP as *const c_char) < 2 {
+                *fromP = from;
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
+            }
+            write_ptr_at(
+                *toP,
+                0,
+                (lo as c_int >> 6 | (hi as c_int) << 2 | UTF8_cval2 as c_int) as c_char,
+            );
+            write_ptr_at(*toP, 1, (lo as c_int & 0x3fi32 | 0x80i32) as c_char);
+            *toP = (*toP).wrapping_offset(2);
         }
+        from = from.wrapping_offset(2);
+    }
+    *fromP = from;
+    if from < fromLim {
+        (XML_CONVERT_INPUT_INCOMPLETE, from_cursor, to_cursor)
+    } else {
+        (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
     }
 }
 
@@ -14637,31 +14628,30 @@ fn big2_toUtf16(
     toP: *mut c_ushort,
     mut toLim: *const c_ushort,
 ) -> Utf16ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_ushort = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
-        fromLim = (*fromP).offset(((fromLim.offset_from(*fromP) as c_long >> 1) << 1) as isize);
-        if fromLim.offset_from(*fromP) as c_long > (toLim.offset_from(*toP) as c_long) << 1
-            && *fromLim.offset(-(2)).offset(0) as c_uchar as c_int & 0xf8 == 0xd8
-        {
-            fromLim = fromLim.offset(-(2));
-            res = XML_CONVERT_INPUT_INCOMPLETE;
-        }
-        while *fromP < fromLim && *toP < toLim as *mut c_ushort {
-            let fresh37 = *toP;
-            *toP = (*toP).offset(1);
-            *fresh37 = ((*(*fromP).offset(0) as c_uchar as c_int) << 8
-                | *(*fromP).offset(1) as c_uchar as c_int) as c_ushort;
-            *fromP = (*fromP).offset(2);
-        }
-        if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
-            (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
-        } else {
-            (res, from_cursor, to_cursor)
-        }
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
+    let aligned_bytes = (c_char_ptr_diff(fromLim, *fromP) >> 1) << 1;
+    fromLim = (*fromP).wrapping_offset(aligned_bytes as isize);
+    if c_char_ptr_diff(fromLim, *fromP) > (c_ushort_ptr_diff(toLim, *toP as *const c_ushort) << 1)
+        && (read_c_char_at(fromLim, -2) as c_uchar as c_int & 0xf8) == 0xd8
+    {
+        fromLim = fromLim.wrapping_offset(-2);
+        res = XML_CONVERT_INPUT_INCOMPLETE;
+    }
+    while *fromP < fromLim && *toP < toLim as *mut c_ushort {
+        let value = ((read_c_char_at(*fromP, 0) as c_uchar as c_int) << 8
+            | read_c_char_at(*fromP, 1) as c_uchar as c_int) as c_ushort;
+        write_ptr(*toP, value);
+        *toP = (*toP).wrapping_offset(1);
+        *fromP = (*fromP).wrapping_offset(2);
+    }
+    if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
+        (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
+    } else {
+        (res, from_cursor, to_cursor)
     }
 }
 
@@ -16748,47 +16738,45 @@ fn checkCharRefNumber(mut result: c_int) -> c_int {
     result
 }
 pub(crate) fn XmlUtf8Encode(mut c: c_int, mut buf: *mut c_char) -> c_int {
-    let out = unsafe { core::slice::from_raw_parts_mut(buf, 4) };
     if c < 0 {
         return 0i32;
     }
     if c < min2 as c_int {
-        out[0] = (c | UTF8_cval1 as c_int) as c_char;
+        write_ptr_at(buf, 0, (c | UTF8_cval1 as c_int) as c_char);
         return 1i32;
     }
     if c < min3 as c_int {
-        out[0] = (c >> 6 | UTF8_cval2 as c_int) as c_char;
-        out[1] = (c & 0x3fi32 | 0x80) as c_char;
+        write_ptr_at(buf, 0, (c >> 6 | UTF8_cval2 as c_int) as c_char);
+        write_ptr_at(buf, 1, (c & 0x3fi32 | 0x80) as c_char);
         return 2i32;
     }
     if c < min4 as c_int {
-        out[0] = (c >> 12 | UTF8_cval3 as c_int) as c_char;
-        out[1] = (c >> 6 & 0x3fi32 | 0x80) as c_char;
-        out[2] = (c & 0x3fi32 | 0x80) as c_char;
+        write_ptr_at(buf, 0, (c >> 12 | UTF8_cval3 as c_int) as c_char);
+        write_ptr_at(buf, 1, (c >> 6 & 0x3fi32 | 0x80) as c_char);
+        write_ptr_at(buf, 2, (c & 0x3fi32 | 0x80) as c_char);
         return 3i32;
     }
     if c < 0x110000 {
-        out[0] = (c >> 18 | UTF8_cval4 as c_int) as c_char;
-        out[1] = (c >> 12 & 0x3fi32 | 0x80) as c_char;
-        out[2] = (c >> 6 & 0x3fi32 | 0x80) as c_char;
-        out[3] = (c & 0x3fi32 | 0x80) as c_char;
+        write_ptr_at(buf, 0, (c >> 18 | UTF8_cval4 as c_int) as c_char);
+        write_ptr_at(buf, 1, (c >> 12 & 0x3fi32 | 0x80) as c_char);
+        write_ptr_at(buf, 2, (c >> 6 & 0x3fi32 | 0x80) as c_char);
+        write_ptr_at(buf, 3, (c & 0x3fi32 | 0x80) as c_char);
         return 4i32;
     }
     0
 }
 pub(crate) fn XmlUtf16Encode(mut charNum: c_int, mut buf: *mut c_ushort) -> c_int {
-    let out = unsafe { core::slice::from_raw_parts_mut(buf, 2) };
     if charNum < 0 {
         return 0i32;
     }
     if charNum < 0x10000 {
-        out[0] = charNum as c_ushort;
+        write_ptr_at(buf, 0, charNum as c_ushort);
         return 1i32;
     }
     if charNum < 0x110000 {
         charNum -= 0x10000;
-        out[0] = ((charNum >> 10) + 0xd800i32) as c_ushort;
-        out[1] = ((charNum & 0x3ffi32) + 0xdc00) as c_ushort;
+        write_ptr_at(buf, 0, ((charNum >> 10) + 0xd800i32) as c_ushort);
+        write_ptr_at(buf, 1, ((charNum & 0x3ffi32) + 0xdc00) as c_ushort);
         return 2i32;
     }
     0
@@ -16830,45 +16818,48 @@ fn unknown_toUtf8(
     toP: *mut c_char,
     mut toLim: *const c_char,
 ) -> Utf8ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_char = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        let uenc: &unknown_encoding = as_unknown_encoding(enc);
-        let mut buf: [c_char; 4] = [0; 4];
-        loop {
-            let mut utf8: *const c_char = null::<c_char>();
-            let mut n: c_int = 0;
-            if *fromP == fromLim {
-                return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
-            }
-            utf8 = &raw const *(&raw const uenc.utf8 as *const [c_char; 4])
-                .offset(**fromP as c_uchar as isize) as *const c_char;
-            let fresh61 = utf8;
-            utf8 = utf8.offset(1);
-            n = *fresh61 as c_int;
-            if n == 0 {
-                let mut c: c_int =
-                    uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP);
-                n = XmlUtf8Encode(c, &raw mut buf as *mut c_char);
-                if n as c_long > toLim.offset_from(*toP) as c_long {
-                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
-                }
-                utf8 = &raw mut buf as *mut c_char;
-                *fromP = (*fromP).offset(
-                    (as_normal_encoding(enc).type_0[**fromP as c_uchar as usize] as c_int
-                        - (BT_LEAD2 as c_int - 2i32)) as isize,
-                );
-            } else {
-                if n as c_long > toLim.offset_from(*toP) as c_long {
-                    return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
-                }
-                *fromP = (*fromP).offset(1);
-            }
-            memcpy(*toP as *mut c_void, utf8 as *const c_void, n as size_t);
-            *toP = (*toP).offset(n as isize);
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_char = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
+    let mut buf: [c_char; 4] = [0; 4];
+    loop {
+        if *fromP == fromLim {
+            return (XML_CONVERT_COMPLETED, from_cursor, to_cursor);
         }
+        let source_byte = read_c_char(*fromP) as c_uchar as usize;
+        let entry = &uenc.utf8[source_byte];
+        let mut n: c_int = entry[0] as c_int;
+        let mut use_buf = false_0 != 0;
+        if n == 0 {
+            let c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP);
+            n = XmlUtf8Encode(c, buf.as_mut_ptr());
+            if n as c_long > c_char_ptr_diff(toLim, *toP as *const c_char) {
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
+            }
+            use_buf = true_0 != 0;
+            *fromP = (*fromP).wrapping_offset(
+                (as_normal_encoding(enc).type_0[source_byte] as c_int - (BT_LEAD2 as c_int - 2i32))
+                    as isize,
+            );
+        } else {
+            if n as c_long > c_char_ptr_diff(toLim, *toP as *const c_char) {
+                return (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor);
+            }
+            *fromP = (*fromP).wrapping_offset(1);
+        }
+        let mut i: c_int = 0;
+        while i < n {
+            let value = if use_buf {
+                buf[i as usize]
+            } else {
+                entry[(i + 1) as usize]
+            };
+            write_ptr_at(*toP, i as isize, value);
+            i += 1;
+        }
+        *toP = (*toP).wrapping_offset(n as isize);
     }
 }
 
@@ -16879,33 +16870,30 @@ fn unknown_toUtf16(
     toP: *mut c_ushort,
     mut toLim: *const c_ushort,
 ) -> Utf16ConvertResult {
-    unsafe {
-        let mut from_cursor: *const c_char = fromP;
-        let mut to_cursor: *mut c_ushort = toP;
-        let fromP = &mut from_cursor;
-        let toP = &mut to_cursor;
-        let uenc: &unknown_encoding = as_unknown_encoding(enc);
-        while *fromP < fromLim && *toP < toLim as *mut c_ushort {
-            let mut c: c_ushort = uenc.utf16[**fromP as c_uchar as usize];
-            if c as c_int == 0 {
-                c = uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP)
-                    as c_ushort;
-                *fromP = (*fromP).offset(
-                    (as_normal_encoding(enc).type_0[**fromP as c_uchar as usize] as c_int
-                        - (BT_LEAD2 as c_int - 2i32)) as isize,
-                );
-            } else {
-                *fromP = (*fromP).offset(1);
-            }
-            let fresh60 = *toP;
-            *toP = (*toP).offset(1);
-            *fresh60 = c;
-        }
-        if std::ptr::eq(*toP, toLim) && *fromP < fromLim {
-            (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
+    let mut from_cursor: *const c_char = fromP;
+    let mut to_cursor: *mut c_ushort = toP;
+    let fromP = &mut from_cursor;
+    let toP = &mut to_cursor;
+    let uenc: &unknown_encoding = as_unknown_encoding(enc);
+    while *fromP < fromLim && *toP < toLim as *mut c_ushort {
+        let source_byte = read_c_char(*fromP) as c_uchar as usize;
+        let mut c: c_ushort = uenc.utf16[source_byte];
+        if c as c_int == 0 {
+            c = uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP) as c_ushort;
+            *fromP = (*fromP).wrapping_offset(
+                (as_normal_encoding(enc).type_0[source_byte] as c_int - (BT_LEAD2 as c_int - 2i32))
+                    as isize,
+            );
         } else {
-            (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
+            *fromP = (*fromP).wrapping_offset(1);
         }
+        write_ptr(*toP, c);
+        *toP = (*toP).wrapping_offset(1);
+    }
+    if std::ptr::eq(*toP as *const c_ushort, toLim) && *fromP < fromLim {
+        (XML_CONVERT_OUTPUT_EXHAUSTED, from_cursor, to_cursor)
+    } else {
+        (XML_CONVERT_COMPLETED, from_cursor, to_cursor)
     }
 }
 pub(crate) fn XmlInitUnknownEncoding(
@@ -16914,95 +16902,84 @@ pub(crate) fn XmlInitUnknownEncoding(
     mut convert: CONVERTER,
     mut userData: *mut c_void,
 ) -> *mut ENCODING {
-    unsafe {
-        let mut i: c_int = 0;
-        let mut e: *mut unknown_encoding = mem as *mut unknown_encoding;
-        memcpy(
-            mem,
-            &raw const latin1_encoding as *const c_void,
-            size_of::<normal_encoding>(),
-        );
-        i = 0;
-        while i < 128 {
-            if latin1_encoding.type_0[i as usize] as c_int != BT_OTHER as c_int
-                && latin1_encoding.type_0[i as usize] as c_int != BT_NONXML as c_int
-                && *table.offset(i as isize) != i
+    let e: &mut unknown_encoding = mut_ref_from_ptr(mem as *mut unknown_encoding);
+    e.normal = latin1_encoding;
+    let mut i: c_int = 0;
+    while i < 128 {
+        if latin1_encoding.type_0[i as usize] as c_int != BT_OTHER as c_int
+            && latin1_encoding.type_0[i as usize] as c_int != BT_NONXML as c_int
+            && read_ptr_at(table, i as isize) != i
+        {
+            return null_mut::<ENCODING>();
+        }
+        i += 1;
+    }
+    i = 0;
+    while i < 256 {
+        let c: c_int = read_ptr_at(table, i as isize);
+        if c == -(1) {
+            e.normal.type_0[i as usize] = BT_MALFORM as c_uchar;
+            e.utf16[i as usize] = 0xffff;
+            e.utf8[i as usize][0] = 1;
+            e.utf8[i as usize][1usize] = 0i8;
+        } else if c < 0 {
+            if c < -(4) {
+                return null_mut::<ENCODING>();
+            }
+            if convert.is_none() {
+                return null_mut::<ENCODING>();
+            }
+            e.normal.type_0[i as usize] = (BT_LEAD2 as c_int - (c + 2)) as c_uchar;
+            e.utf8[i as usize][0] = 0;
+            e.utf16[i as usize] = 0u16;
+        } else if c < 0x80 {
+            if latin1_encoding.type_0[c as usize] as c_int != BT_OTHER as c_int
+                && latin1_encoding.type_0[c as usize] as c_int != BT_NONXML as c_int
+                && c != i
             {
                 return null_mut::<ENCODING>();
             }
-            i += 1;
-        }
-        i = 0;
-        while i < 256 {
-            let mut c: c_int = *table.offset(i as isize);
-            if c == -(1) {
-                (*e).normal.type_0[i as usize] = BT_MALFORM as c_uchar;
-                (*e).utf16[i as usize] = 0xffff;
-                (*e).utf8[i as usize][0] = 1;
-                (*e).utf8[i as usize][1usize] = 0i8;
-            } else if c < 0 {
-                if c < -(4) {
-                    return null_mut::<ENCODING>();
-                }
-                if convert.is_none() {
-                    return null_mut::<ENCODING>();
-                }
-                (*e).normal.type_0[i as usize] = (BT_LEAD2 as c_int - (c + 2)) as c_uchar;
-                (*e).utf8[i as usize][0] = 0;
-                (*e).utf16[i as usize] = 0u16;
-            } else if c < 0x80 {
-                if latin1_encoding.type_0[c as usize] as c_int != BT_OTHER as c_int
-                    && latin1_encoding.type_0[c as usize] as c_int != BT_NONXML as c_int
-                    && c != i
-                {
-                    return null_mut::<ENCODING>();
-                }
-                (*e).normal.type_0[i as usize] = latin1_encoding.type_0[c as usize];
-                (*e).utf8[i as usize][0] = 1;
-                (*e).utf8[i as usize][1] = c as c_char;
-                (*e).utf16[i as usize] = (if c == 0i32 { 0xffffi32 } else { c }) as c_ushort;
-            } else if checkCharRefNumber(c) < 0 {
-                (*e).normal.type_0[i as usize] = BT_NONXML as c_uchar;
-                (*e).utf16[i as usize] = 0xffff;
-                (*e).utf8[i as usize][0] = 1;
-                (*e).utf8[i as usize][1usize] = 0i8;
-            } else {
-                if c > 0xffff {
-                    return null_mut::<ENCODING>();
-                }
-                if namingBitmap[(((nmstrtPages[(c >> 8) as usize] as c_int) << 3)
-                    + ((c & 0xff) >> 5)) as usize]
-                    & (1) << (c & 0xff & 0x1f)
-                    != 0
-                {
-                    (*e).normal.type_0[i as usize] = BT_NMSTRT as c_uchar;
-                } else if namingBitmap
-                    [(((namePages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
-                    & (1) << (c & 0xff & 0x1f)
-                    != 0
-                {
-                    (*e).normal.type_0[i as usize] = BT_NAME as c_uchar;
-                } else {
-                    (*e).normal.type_0[i as usize] = BT_OTHER as c_uchar;
-                }
-                (*e).utf8[i as usize][0] = XmlUtf8Encode(
-                    c,
-                    (&raw mut *(&raw mut (*e).utf8 as *mut [c_char; 4]).offset(i as isize)
-                        as *mut c_char)
-                        .offset(1),
-                ) as c_char;
-                (*e).utf16[i as usize] = c as c_ushort;
+            e.normal.type_0[i as usize] = latin1_encoding.type_0[c as usize];
+            e.utf8[i as usize][0] = 1;
+            e.utf8[i as usize][1] = c as c_char;
+            e.utf16[i as usize] = (if c == 0i32 { 0xffffi32 } else { c }) as c_ushort;
+        } else if checkCharRefNumber(c) < 0 {
+            e.normal.type_0[i as usize] = BT_NONXML as c_uchar;
+            e.utf16[i as usize] = 0xffff;
+            e.utf8[i as usize][0] = 1;
+            e.utf8[i as usize][1usize] = 0i8;
+        } else {
+            if c > 0xffff {
+                return null_mut::<ENCODING>();
             }
-            i += 1;
+            if namingBitmap
+                [(((nmstrtPages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
+                & (1) << (c & 0xff & 0x1f)
+                != 0
+            {
+                e.normal.type_0[i as usize] = BT_NMSTRT as c_uchar;
+            } else if namingBitmap
+                [(((namePages[(c >> 8) as usize] as c_int) << 3) + ((c & 0xff) >> 5)) as usize]
+                & (1) << (c & 0xff & 0x1f)
+                != 0
+            {
+                e.normal.type_0[i as usize] = BT_NAME as c_uchar;
+            } else {
+                e.normal.type_0[i as usize] = BT_OTHER as c_uchar;
+            }
+            e.utf8[i as usize][0] =
+                XmlUtf8Encode(c, e.utf8[i as usize].as_mut_ptr().wrapping_offset(1)) as c_char;
+            e.utf16[i as usize] = c as c_ushort;
         }
-        (*e).userData = userData;
-        (*e).convert = convert;
-        if convert.is_some() {
-            (*e).normal.check_functions = &UNKNOWN_NORMAL_ENCODING_CHECK_FUNCTIONS;
-        }
-        (*e).normal.enc.functions = &UNKNOWN_ENCODING_FUNCTIONS;
-        &raw mut (*e).normal.enc
+        i += 1;
     }
+    e.userData = userData;
+    e.convert = convert;
+    if convert.is_some() {
+        e.normal.check_functions = &UNKNOWN_NORMAL_ENCODING_CHECK_FUNCTIONS;
+    }
+    e.normal.enc.functions = &UNKNOWN_ENCODING_FUNCTIONS;
+    &raw mut e.normal.enc
 }
 
 static KW_ISO_8859_1: [c_char; 11] = [
@@ -17103,156 +17080,104 @@ fn initScan(
     mut state: c_int,
     input: &[c_char],
 ) -> ScannerResult {
-    unsafe {
-        let mut next_tok: *const c_char = input.as_ptr();
-        let nextTokPtr = &mut next_tok;
-        let tok: c_int = 'iife_ret_61: {
-            let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            let mut encPtr: *mut *const ENCODING = null_mut::<*const ENCODING>();
-            if ptr >= end {
-                break 'iife_ret_61 XML_TOK_NONE_1;
+    let mut next_tok: *const c_char = input.as_ptr();
+    let nextTokPtr = &mut next_tok;
+    let scan_current = |next_tok_ptr: &mut *const c_char,
+                        enc_ptr_ptr: *mut *const ENCODING,
+                        state: c_int,
+                        ptr: *const c_char,
+                        end: *const c_char|
+     -> c_int {
+        let enc_ptr = read_ptr(enc_ptr_ptr);
+        let enc_ref = ref_from_ptr(enc_ptr);
+        let (tok_value, next_tok_value) =
+            enc_ref.scanners[state as usize](enc_ref, c_char_slice_from_ptr_end(ptr, end));
+        *next_tok_ptr = next_tok_value;
+        tok_value
+    };
+    let tok: c_int = 'iife_ret_61: {
+        let ptr = input.as_ptr();
+        let end = ptr.wrapping_add(input.len());
+        if ptr >= end {
+            break 'iife_ret_61 XML_TOK_NONE_1;
+        }
+        let encPtr = enc.encPtr;
+        let init_enc = enc.initEnc.isUtf16 as c_int;
+        if ptr.wrapping_offset(1) == end {
+            if let 3..=5 = init_enc {
+                break 'iife_ret_61 XML_TOK_PARTIAL_1;
             }
-            encPtr = enc.encPtr;
-            if ptr.offset(1) == end {
-                if let 3..=5 = enc.initEnc.isUtf16 as c_int {
+            match read_c_char(ptr) as c_uchar as c_int {
+                254 | 255 | 239 => {
+                    if !(init_enc == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
+                        break 'iife_ret_61 XML_TOK_PARTIAL_1;
+                    }
+                }
+                0 | 60 => {
                     break 'iife_ret_61 XML_TOK_PARTIAL_1;
                 }
-                let mut current_block_5: u64;
-                match *ptr as c_uchar as c_int {
-                    254 | 255 | 239 => {
-                        if enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC
-                            && state == XML_CONTENT_STATE
-                        {
-                            current_block_5 = 13183875560443969876;
-                        } else {
-                            current_block_5 = 6556540211831925522;
+                _ => {}
+            }
+        } else {
+            let byte_pair = ((read_c_char_at(ptr, 0) as c_uchar as c_int) << 8)
+                | read_c_char_at(ptr, 1) as c_uchar as c_int;
+            match byte_pair {
+                65279 => {
+                    if !(init_enc == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        write_ptr(encPtr, read_ptr_at(encodingTable, UTF_16BE_ENC as isize));
+                        break 'iife_ret_61 XML_TOK_BOM_1;
+                    }
+                }
+                15360 => {
+                    if !((init_enc == UTF_16BE_ENC || init_enc == UTF_16_ENC)
+                        && state == XML_CONTENT_STATE)
+                    {
+                        write_ptr(encPtr, read_ptr_at(encodingTable, UTF_16LE_ENC as isize));
+                        break 'iife_ret_61 scan_current(nextTokPtr, encPtr, state, ptr, end);
+                    }
+                }
+                65534 => {
+                    if !(init_enc == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
+                        *nextTokPtr = ptr.wrapping_offset(2);
+                        write_ptr(encPtr, read_ptr_at(encodingTable, UTF_16LE_ENC as isize));
+                        break 'iife_ret_61 XML_TOK_BOM_1;
+                    }
+                }
+                61371 => {
+                    let in_content_with_fixed_enc = state == XML_CONTENT_STATE
+                        && [ISO_8859_1_ENC, UTF_16BE_ENC, UTF_16LE_ENC, UTF_16_ENC]
+                            .contains(&init_enc);
+                    if !in_content_with_fixed_enc {
+                        if ptr.wrapping_offset(2) == end {
+                            break 'iife_ret_61 XML_TOK_PARTIAL_1;
                         }
-                    }
-                    0 | 60 => {
-                        current_block_5 = 6556540211831925522;
-                    }
-                    _ => {
-                        current_block_5 = 13183875560443969876;
-                    }
-                }
-                match current_block_5 {
-                    13183875560443969876 => {}
-                    _ => break 'iife_ret_61 XML_TOK_PARTIAL_1,
-                }
-            } else {
-                let mut current_block_26: u64;
-                match (*ptr.offset(0) as c_uchar as c_int) << 8 | *ptr.offset(1) as c_uchar as c_int
-                {
-                    65279 => {
-                        if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC
-                            && state == XML_CONTENT_STATE)
-                        {
-                            *nextTokPtr = ptr.offset(2);
-                            *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
+                        if read_c_char_at(ptr, 2) as c_uchar as c_int == 0xbf {
+                            *nextTokPtr = ptr.wrapping_offset(3);
+                            write_ptr(encPtr, read_ptr_at(encodingTable, UTF_8_ENC as isize));
                             break 'iife_ret_61 XML_TOK_BOM_1;
                         }
                     }
-                    15360 => {
-                        if !((enc.initEnc.isUtf16 as c_int == UTF_16BE_ENC
-                            || enc.initEnc.isUtf16 as c_int == UTF_16_ENC)
-                            && state == XML_CONTENT_STATE)
-                        {
-                            *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                            break 'iife_ret_61 ({
-                                let (tok_value, next_tok_value) = (**encPtr).scanners
-                                    [state as usize](
-                                    &**encPtr,
-                                    c_char_slice_from_ptr_end(ptr, end),
-                                );
-                                *nextTokPtr = next_tok_value;
-                                tok_value
-                            });
+                }
+                _ => {
+                    if read_c_char_at(ptr, 0) as c_int == '\0' as i32 {
+                        if !(state == XML_CONTENT_STATE && init_enc == UTF_16LE_ENC) {
+                            write_ptr(encPtr, read_ptr_at(encodingTable, UTF_16BE_ENC as isize));
+                            break 'iife_ret_61 scan_current(nextTokPtr, encPtr, state, ptr, end);
                         }
-                    }
-                    65534 => {
-                        if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC
-                            && state == XML_CONTENT_STATE)
-                        {
-                            *nextTokPtr = ptr.offset(2);
-                            *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                            break 'iife_ret_61 XML_TOK_BOM_1;
-                        }
-                    }
-                    61371 => {
-                        if state == XML_CONTENT_STATE {
-                            let mut e: c_int = enc.initEnc.isUtf16 as c_int;
-                            if e == ISO_8859_1_ENC
-                                || e == UTF_16BE_ENC
-                                || e == UTF_16LE_ENC
-                                || e == UTF_16_ENC
-                            {
-                                current_block_26 = 2604890879466389055;
-                            } else {
-                                current_block_26 = 11307063007268554308;
-                            }
-                        } else {
-                            current_block_26 = 11307063007268554308;
-                        }
-                        match current_block_26 {
-                            2604890879466389055 => {}
-                            _ => {
-                                if ptr.offset(2) == end {
-                                    break 'iife_ret_61 XML_TOK_PARTIAL_1;
-                                }
-                                if *ptr.offset(2) as c_uchar as c_int == 0xbf {
-                                    *nextTokPtr = ptr.offset(3);
-                                    *encPtr = *encodingTable.offset(UTF_8_ENC as isize);
-                                    break 'iife_ret_61 XML_TOK_BOM_1;
-                                }
-                            }
-                        }
-                    }
-                    _ => {
-                        if *ptr.offset(0) as c_int == '\0' as i32 {
-                            if !(state == XML_CONTENT_STATE
-                                && enc.initEnc.isUtf16 as c_int == UTF_16LE_ENC)
-                            {
-                                *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
-                                break 'iife_ret_61 ({
-                                    let (tok_value, next_tok_value) = (**encPtr).scanners
-                                        [state as usize](
-                                        &**encPtr,
-                                        c_char_slice_from_ptr_end(ptr, end),
-                                    );
-                                    *nextTokPtr = next_tok_value;
-                                    tok_value
-                                });
-                            }
-                        } else if *ptr.offset(1) as c_int == '\0' as i32
-                            && (state != XML_CONTENT_STATE)
-                        {
-                            *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
-                            break 'iife_ret_61 ({
-                                let (tok_value, next_tok_value) = (**encPtr).scanners
-                                    [state as usize](
-                                    &**encPtr,
-                                    c_char_slice_from_ptr_end(ptr, end),
-                                );
-                                *nextTokPtr = next_tok_value;
-                                tok_value
-                            });
-                        }
+                    } else if read_c_char_at(ptr, 1) as c_int == '\0' as i32
+                        && state != XML_CONTENT_STATE
+                    {
+                        write_ptr(encPtr, read_ptr_at(encodingTable, UTF_16LE_ENC as isize));
+                        break 'iife_ret_61 scan_current(nextTokPtr, encPtr, state, ptr, end);
                     }
                 }
             }
-            *encPtr = *encodingTable.offset(enc.initEnc.isUtf16 as c_int as isize);
-            break 'iife_ret_61 ({
-                let (tok_value, next_tok_value) = (**encPtr).scanners[state as usize](
-                    &**encPtr,
-                    c_char_slice_from_ptr_end(ptr, end),
-                );
-                *nextTokPtr = next_tok_value;
-                tok_value
-            });
-        };
-        (tok, next_tok)
-    }
+        }
+        write_ptr(encPtr, read_ptr_at(encodingTable, init_enc as isize));
+        break 'iife_ret_61 scan_current(nextTokPtr, encPtr, state, ptr, end);
+    };
+    (tok, next_tok)
 }
 pub(crate) fn XmlInitUnknownEncodingNS(
     mut mem: *mut c_void,
@@ -17262,7 +17187,7 @@ pub(crate) fn XmlInitUnknownEncodingNS(
 ) -> *mut ENCODING {
     let enc: *mut ENCODING = XmlInitUnknownEncoding(mem, table, convert, userData);
     if !enc.is_null() {
-        let normal = unsafe { &mut *(enc as *mut normal_encoding) };
+        let normal = as_normal_encoding_mut(enc);
         normal.type_0[ASCII_COLON as usize] = BT_COLON_0 as c_uchar;
     }
     enc
