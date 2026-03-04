@@ -412,6 +412,16 @@ fn read_c_uchar_at(ptr: *const c_char, offset: isize) -> c_uchar {
     unsafe { *((ptr as *const c_uchar).offset(offset)) }
 }
 
+#[inline]
+fn read_c_char_at(ptr: *const c_char, offset: isize) -> c_char {
+    read_c_char(ptr.wrapping_offset(offset))
+}
+
+#[inline]
+fn c_char_ptr_diff(end: *const c_char, start: *const c_char) -> c_long {
+    (end as usize).wrapping_sub(start as usize) as c_long
+}
+
 pub mod xmltok_impl_c {
     use super::*;
     use crate::src::lib::xmltok::XML_TOK_COMMENT_1;
@@ -577,48 +587,46 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn normal_checkPiTarget(_enc: &ENCODING, input: &[c_char]) -> CheckPiTargetResult {
-        unsafe {
-            let mut tok: c_int = 0;
-            let tokPtr = &mut tok;
-            let result: c_int = 'iife_ret_3: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut upper: c_int = 0;
-                *tokPtr = XML_TOK_PI_1;
-                if end.offset_from(ptr) as c_long != 3 as c_long {
-                    break 'iife_ret_3 1i32;
+        let mut tok: c_int = 0;
+        let tokPtr = &mut tok;
+        let result: c_int = 'iife_ret_3: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            let mut upper: c_int = 0;
+            *tokPtr = XML_TOK_PI_1;
+            if c_char_ptr_diff(end, ptr) != 3 {
+                break 'iife_ret_3 1i32;
+            }
+            match read_c_char(ptr) as c_int {
+                ASCII_x_1 => {}
+                ASCII_X_1 => {
+                    upper = 1i32;
                 }
-                match *ptr as c_int {
-                    ASCII_x_1 => {}
-                    ASCII_X_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_3 1,
+                _ => break 'iife_ret_3 1,
+            }
+            ptr = ptr.wrapping_offset(1);
+            match read_c_char(ptr) as c_int {
+                ASCII_m_1 => {}
+                ASCII_M_1 => {
+                    upper = 1i32;
                 }
-                ptr = ptr.offset(1);
-                match *ptr as c_int {
-                    ASCII_m_1 => {}
-                    ASCII_M_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_3 1,
+                _ => break 'iife_ret_3 1,
+            }
+            ptr = ptr.wrapping_offset(1);
+            match read_c_char(ptr) as c_int {
+                ASCII_l_1 => {}
+                ASCII_L_1 => {
+                    upper = 1i32;
                 }
-                ptr = ptr.offset(1);
-                match *ptr as c_int {
-                    ASCII_l_1 => {}
-                    ASCII_L_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_3 1,
-                }
-                if upper != 0 {
-                    break 'iife_ret_3 0i32;
-                }
-                *tokPtr = XML_TOK_XML_DECL_1;
-                break 'iife_ret_3 1;
-            };
-            (result, tok)
-        }
+                _ => break 'iife_ret_3 1,
+            }
+            if upper != 0 {
+                break 'iife_ret_3 0i32;
+            }
+            *tokPtr = XML_TOK_XML_DECL_1;
+            break 'iife_ret_3 1;
+        };
+        (result, tok)
     }
 
     pub(crate) fn normal_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
@@ -3581,105 +3589,101 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn normal_charRefNumber(_enc: &ENCODING, mut ptr: *const c_char) -> c_int {
-        unsafe {
-            let mut result: c_int = 0;
-            ptr = ptr.offset(2i32 as isize);
-            if *ptr as c_int == 0x78 {
-                ptr = ptr.offset(1);
-                while *ptr as c_int != 0x3b {
-                    let mut c: c_int = *ptr as c_int;
-                    match c {
-                        ASCII_0 | ASCII_1_1 | ASCII_2_1 | ASCII_3_1 | ASCII_4 | ASCII_5
-                        | ASCII_6 | ASCII_7 | ASCII_8_1 | ASCII_9_1 => {
-                            result <<= 4;
-                            result |= c - ASCII_0;
-                        }
-                        ASCII_A | ASCII_B_1 | ASCII_C | ASCII_D | ASCII_E_1 | ASCII_F_1 => {
-                            result <<= 4;
-                            result += 10i32 + (c - ASCII_A);
-                        }
-                        ASCII_a_1 | ASCII_b | ASCII_c_1 | ASCII_d | ASCII_e_1 | ASCII_f => {
-                            result <<= 4;
-                            result += 10i32 + (c - ASCII_a_1);
-                        }
-                        _ => {}
+        let mut result: c_int = 0;
+        ptr = ptr.wrapping_offset(2);
+        if read_c_char(ptr) as c_int == 0x78 {
+            ptr = ptr.wrapping_offset(1);
+            while read_c_char(ptr) as c_int != 0x3b {
+                let c: c_int = read_c_char(ptr) as c_int;
+                match c {
+                    ASCII_0 | ASCII_1_1 | ASCII_2_1 | ASCII_3_1 | ASCII_4 | ASCII_5 | ASCII_6
+                    | ASCII_7 | ASCII_8_1 | ASCII_9_1 => {
+                        result <<= 4;
+                        result |= c - ASCII_0;
                     }
-                    if result >= 0x110000 {
-                        return -(1i32);
+                    ASCII_A | ASCII_B_1 | ASCII_C | ASCII_D | ASCII_E_1 | ASCII_F_1 => {
+                        result <<= 4;
+                        result += 10i32 + (c - ASCII_A);
                     }
-                    ptr = ptr.offset(1);
+                    ASCII_a_1 | ASCII_b | ASCII_c_1 | ASCII_d | ASCII_e_1 | ASCII_f => {
+                        result <<= 4;
+                        result += 10i32 + (c - ASCII_a_1);
+                    }
+                    _ => {}
                 }
-            } else {
-                while *ptr as c_int != 0x3b {
-                    let mut c_0: c_int = *ptr as c_int;
-                    result *= 10;
-                    result += c_0 - ASCII_0;
-                    if result >= 0x110000 {
-                        return -(1i32);
-                    }
-                    ptr = ptr.offset(1);
+                if result >= 0x110000 {
+                    return -(1i32);
                 }
+                ptr = ptr.wrapping_offset(1);
             }
-            checkCharRefNumber(result)
+        } else {
+            while read_c_char(ptr) as c_int != 0x3b {
+                let c_0: c_int = read_c_char(ptr) as c_int;
+                result *= 10;
+                result += c_0 - ASCII_0;
+                if result >= 0x110000 {
+                    return -(1i32);
+                }
+                ptr = ptr.wrapping_offset(1);
+            }
         }
+        checkCharRefNumber(result)
     }
 
     pub(crate) fn normal_predefinedEntityName(_enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe {
-            let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            match end.offset_from(ptr) as c_long {
-                2 => {
-                    if *ptr.offset(1) as c_int == 0x74 {
-                        match *ptr as c_int {
-                            ASCII_l_1 => return ASCII_LT,
-                            ASCII_g_1 => return ASCII_GT,
-                            _ => {}
-                        }
+        let mut ptr = input.as_ptr();
+        let end = ptr.wrapping_add(input.len());
+        match c_char_ptr_diff(end, ptr) {
+            2 => {
+                if read_c_char_at(ptr, 1) as c_int == 0x74 {
+                    match read_c_char(ptr) as c_int {
+                        ASCII_l_1 => return ASCII_LT,
+                        ASCII_g_1 => return ASCII_GT,
+                        _ => {}
                     }
                 }
-                3 => {
-                    if *ptr as c_int == 0x61 {
-                        ptr = ptr.offset(1);
-                        if *ptr as c_int == 0x6d {
-                            ptr = ptr.offset(1);
-                            if *ptr as c_int == 0x70 {
-                                return ASCII_AMP;
-                            }
-                        }
-                    }
-                }
-                4 => match *ptr as c_int {
-                    ASCII_q => {
-                        ptr = ptr.offset(1);
-                        if *ptr as c_int == 0x75 {
-                            ptr = ptr.offset(1);
-                            if *ptr as c_int == 0x6f {
-                                ptr = ptr.offset(1);
-                                if *ptr as c_int == 0x74 {
-                                    return ASCII_QUOT;
-                                }
-                            }
-                        }
-                    }
-                    ASCII_a_1 => {
-                        ptr = ptr.offset(1);
-                        if *ptr as c_int == 0x70 {
-                            ptr = ptr.offset(1);
-                            if *ptr as c_int == 0x6f {
-                                ptr = ptr.offset(1);
-                                if *ptr as c_int == 0x73 {
-                                    return ASCII_APOS;
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                },
-                _ => {}
             }
-            0
+            3 => {
+                if read_c_char(ptr) as c_int == 0x61 {
+                    ptr = ptr.wrapping_offset(1);
+                    if read_c_char(ptr) as c_int == 0x6d {
+                        ptr = ptr.wrapping_offset(1);
+                        if read_c_char(ptr) as c_int == 0x70 {
+                            return ASCII_AMP;
+                        }
+                    }
+                }
+            }
+            4 => match read_c_char(ptr) as c_int {
+                ASCII_q => {
+                    ptr = ptr.wrapping_offset(1);
+                    if read_c_char(ptr) as c_int == 0x75 {
+                        ptr = ptr.wrapping_offset(1);
+                        if read_c_char(ptr) as c_int == 0x6f {
+                            ptr = ptr.wrapping_offset(1);
+                            if read_c_char(ptr) as c_int == 0x74 {
+                                return ASCII_QUOT;
+                            }
+                        }
+                    }
+                }
+                ASCII_a_1 => {
+                    ptr = ptr.wrapping_offset(1);
+                    if read_c_char(ptr) as c_int == 0x70 {
+                        ptr = ptr.wrapping_offset(1);
+                        if read_c_char(ptr) as c_int == 0x6f {
+                            ptr = ptr.wrapping_offset(1);
+                            if read_c_char(ptr) as c_int == 0x73 {
+                                return ASCII_APOS;
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
         }
+        0
     }
 
     pub(crate) fn normal_nameMatchesAscii(
@@ -3687,100 +3691,92 @@ pub mod xmltok_impl_c {
         input: &[c_char],
         mut ptr2: *const c_char,
     ) -> c_int {
-        unsafe {
-            let mut ptr1 = input.as_ptr();
-            let mut end1 = ptr1.add(input.len());
-            while *ptr2 != 0 {
-                if (end1.offset_from(ptr1) as c_long) < 1 {
-                    return 0i32;
-                }
-                if *ptr1 as c_int != *ptr2 as c_int {
-                    return 0i32;
-                }
-                ptr1 = ptr1.offset(1);
-                ptr2 = ptr2.offset(1);
+        let mut ptr1 = input.as_ptr();
+        let end1 = ptr1.wrapping_add(input.len());
+        while read_c_char(ptr2) != 0 {
+            if c_char_ptr_diff(end1, ptr1) < 1 {
+                return 0i32;
             }
-            (ptr1 == end1) as c_int
+            if read_c_char(ptr1) as c_int != read_c_char(ptr2) as c_int {
+                return 0i32;
+            }
+            ptr1 = ptr1.wrapping_offset(1);
+            ptr2 = ptr2.wrapping_offset(1);
         }
+        (ptr1 == end1) as c_int
     }
 
     pub(crate) fn normal_nameLength(enc: &ENCODING, mut ptr: *const c_char) -> c_int {
-        unsafe {
-            let mut start: *const c_char = ptr;
-            loop {
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_LEAD2 => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_LEAD3 => {
-                        ptr = ptr.offset(3isize);
-                    }
-                    BT_LEAD4 => {
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONASCII | BT_NMSTRT | BT_COLON_0 | BT_HEX | BT_DIGIT | BT_NAME
-                    | BT_MINUS => {
-                        ptr = ptr.offset(1isize);
-                    }
-                    _ => {
-                        return ptr.offset_from(start) as c_int;
-                    }
+        let start: *const c_char = ptr;
+        loop {
+            match as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 0) as usize] as c_uint {
+                BT_LEAD2 => {
+                    ptr = ptr.wrapping_offset(2);
+                }
+                BT_LEAD3 => {
+                    ptr = ptr.wrapping_offset(3);
+                }
+                BT_LEAD4 => {
+                    ptr = ptr.wrapping_offset(4);
+                }
+                BT_NONASCII | BT_NMSTRT | BT_COLON_0 | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                    ptr = ptr.wrapping_offset(1);
+                }
+                _ => {
+                    return c_char_ptr_diff(ptr, start) as c_int;
                 }
             }
         }
     }
 
     pub(crate) fn normal_skipS(enc: &ENCODING, mut ptr: *const c_char) -> *const c_char {
-        unsafe {
-            loop {
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_LF | BT_CR | BT_S => {
-                        ptr = ptr.offset(1isize);
-                    }
-                    _ => return ptr,
+        loop {
+            match as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 0) as usize] as c_uint {
+                BT_LF | BT_CR | BT_S => {
+                    ptr = ptr.wrapping_offset(1);
                 }
+                _ => return ptr,
             }
         }
     }
 
     pub(crate) fn normal_updatePosition(enc: &ENCODING, input: &[c_char], mut pos: *mut POSITION) {
-        unsafe {
-            let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            while end.offset_from(ptr) as c_long >= 1 as c_long {
-                match as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint {
-                    BT_LEAD2 => {
-                        ptr = ptr.offset(2);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+        let pos = unsafe { &mut *pos };
+        let mut ptr = input.as_ptr();
+        let end = ptr.wrapping_add(input.len());
+        while c_char_ptr_diff(end, ptr) >= 1 {
+            match as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 0) as usize] as c_uint {
+                BT_LEAD2 => {
+                    ptr = ptr.wrapping_offset(2);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LEAD3 => {
+                    ptr = ptr.wrapping_offset(3);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LEAD4 => {
+                    ptr = ptr.wrapping_offset(4);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LF => {
+                    pos.columnNumber = 0u64;
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
+                    ptr = ptr.wrapping_offset(1);
+                }
+                BT_CR => {
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
+                    ptr = ptr.wrapping_offset(1);
+                    if c_char_ptr_diff(end, ptr) >= 1
+                        && as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 0) as usize] as c_int
+                            == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(1);
                     }
-                    BT_LEAD3 => {
-                        ptr = ptr.offset(3);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
-                    BT_LEAD4 => {
-                        ptr = ptr.offset(4);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
-                    BT_LF => {
-                        (*pos).columnNumber = 0u64;
-                        (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                        ptr = ptr.offset(1isize);
-                    }
-                    BT_CR => {
-                        (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                        ptr = ptr.offset(1);
-                        if end.offset_from(ptr) as c_long >= 1 as c_long
-                            && as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                                == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(1isize);
-                        }
-                        (*pos).columnNumber = 0u64;
-                    }
-                    _ => {
-                        ptr = ptr.offset(1);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
+                    pos.columnNumber = 0u64;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(1);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
                 }
             }
         }
@@ -3945,60 +3941,58 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn little2_checkPiTarget(_enc: &ENCODING, input: &[c_char]) -> CheckPiTargetResult {
-        unsafe {
-            let mut tok: c_int = 0;
-            let tokPtr = &mut tok;
-            let result: c_int = 'iife_ret_23: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut upper: c_int = 0;
-                *tokPtr = XML_TOK_PI_1;
-                if end.offset_from(ptr) as c_long != (2i32 * 3) as c_long {
-                    break 'iife_ret_23 1i32;
+        let mut tok: c_int = 0;
+        let tokPtr = &mut tok;
+        let result: c_int = 'iife_ret_23: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            let mut upper: c_int = 0;
+            *tokPtr = XML_TOK_PI_1;
+            if c_char_ptr_diff(end, ptr) != 2 * 3 {
+                break 'iife_ret_23 1i32;
+            }
+            match if read_c_char_at(ptr, 1) as c_int == 0 {
+                read_c_char_at(ptr, 0) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_x_1 => {}
+                ASCII_X_1 => {
+                    upper = 1i32;
                 }
-                match if *ptr.offset(1) as c_int == 0 {
-                    *ptr.offset(0) as c_int
-                } else {
-                    -(1)
-                } {
-                    ASCII_x_1 => {}
-                    ASCII_X_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_23 1,
+                _ => break 'iife_ret_23 1,
+            }
+            ptr = ptr.wrapping_offset(2);
+            match if read_c_char_at(ptr, 1) as c_int == 0 {
+                read_c_char_at(ptr, 0) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_m_1 => {}
+                ASCII_M_1 => {
+                    upper = 1i32;
                 }
-                ptr = ptr.offset(2);
-                match if *ptr.offset(1) as c_int == 0 {
-                    *ptr.offset(0) as c_int
-                } else {
-                    -(1)
-                } {
-                    ASCII_m_1 => {}
-                    ASCII_M_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_23 1,
+                _ => break 'iife_ret_23 1,
+            }
+            ptr = ptr.wrapping_offset(2);
+            match if read_c_char_at(ptr, 1) as c_int == 0 {
+                read_c_char_at(ptr, 0) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_l_1 => {}
+                ASCII_L_1 => {
+                    upper = 1i32;
                 }
-                ptr = ptr.offset(2);
-                match if *ptr.offset(1) as c_int == 0 {
-                    *ptr.offset(0) as c_int
-                } else {
-                    -(1)
-                } {
-                    ASCII_l_1 => {}
-                    ASCII_L_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_23 1,
-                }
-                if upper != 0 {
-                    break 'iife_ret_23 0i32;
-                }
-                *tokPtr = XML_TOK_XML_DECL_1;
-                break 'iife_ret_23 1;
-            };
-            (result, tok)
-        }
+                _ => break 'iife_ret_23 1,
+            }
+            if upper != 0 {
+                break 'iife_ret_23 0i32;
+            }
+            *tokPtr = XML_TOK_XML_DECL_1;
+            break 'iife_ret_23 1;
+        };
+        (result, tok)
     }
 
     pub(crate) fn little2_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
@@ -6975,129 +6969,137 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn little2_charRefNumber(_enc: &ENCODING, mut ptr: *const c_char) -> c_int {
-        unsafe {
-            let mut result: c_int = 0;
-            ptr = ptr.offset((2i32 * 2) as isize);
-            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x78 {
-                ptr = ptr.offset(2);
-                while !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3b) {
-                    let mut c: c_int = if *ptr.offset(1) as c_int == 0 {
-                        *ptr.offset(0) as c_int
-                    } else {
-                        -(1)
-                    };
-                    match c {
-                        ASCII_0 | ASCII_1_1 | ASCII_2_1 | ASCII_3_1 | ASCII_4 | ASCII_5
-                        | ASCII_6 | ASCII_7 | ASCII_8_1 | ASCII_9_1 => {
-                            result <<= 4;
-                            result |= c - ASCII_0;
-                        }
-                        ASCII_A | ASCII_B_1 | ASCII_C | ASCII_D | ASCII_E_1 | ASCII_F_1 => {
-                            result <<= 4;
-                            result += 10i32 + (c - ASCII_A);
-                        }
-                        ASCII_a_1 | ASCII_b | ASCII_c_1 | ASCII_d | ASCII_e_1 | ASCII_f => {
-                            result <<= 4;
-                            result += 10i32 + (c - ASCII_a_1);
-                        }
-                        _ => {}
+        let mut result: c_int = 0;
+        ptr = ptr.wrapping_offset(4);
+        if read_c_char_at(ptr, 1) as c_int == 0 && read_c_char_at(ptr, 0) as c_int == 0x78 {
+            ptr = ptr.wrapping_offset(2);
+            while !(read_c_char_at(ptr, 1) as c_int == 0 && read_c_char_at(ptr, 0) as c_int == 0x3b)
+            {
+                let c: c_int = if read_c_char_at(ptr, 1) as c_int == 0 {
+                    read_c_char_at(ptr, 0) as c_int
+                } else {
+                    -(1)
+                };
+                match c {
+                    ASCII_0 | ASCII_1_1 | ASCII_2_1 | ASCII_3_1 | ASCII_4 | ASCII_5 | ASCII_6
+                    | ASCII_7 | ASCII_8_1 | ASCII_9_1 => {
+                        result <<= 4;
+                        result |= c - ASCII_0;
                     }
-                    if result >= 0x110000 {
-                        return -(1i32);
+                    ASCII_A | ASCII_B_1 | ASCII_C | ASCII_D | ASCII_E_1 | ASCII_F_1 => {
+                        result <<= 4;
+                        result += 10i32 + (c - ASCII_A);
                     }
-                    ptr = ptr.offset(2);
+                    ASCII_a_1 | ASCII_b | ASCII_c_1 | ASCII_d | ASCII_e_1 | ASCII_f => {
+                        result <<= 4;
+                        result += 10i32 + (c - ASCII_a_1);
+                    }
+                    _ => {}
                 }
-            } else {
-                while !(*ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x3b) {
-                    let mut c_0: c_int = if *ptr.offset(1) as c_int == 0 {
-                        *ptr.offset(0) as c_int
-                    } else {
-                        -(1)
-                    };
-                    result *= 10;
-                    result += c_0 - ASCII_0;
-                    if result >= 0x110000 {
-                        return -(1i32);
-                    }
-                    ptr = ptr.offset(2);
+                if result >= 0x110000 {
+                    return -(1i32);
                 }
+                ptr = ptr.wrapping_offset(2);
             }
-            checkCharRefNumber(result)
+        } else {
+            while !(read_c_char_at(ptr, 1) as c_int == 0 && read_c_char_at(ptr, 0) as c_int == 0x3b)
+            {
+                let c_0: c_int = if read_c_char_at(ptr, 1) as c_int == 0 {
+                    read_c_char_at(ptr, 0) as c_int
+                } else {
+                    -(1)
+                };
+                result *= 10;
+                result += c_0 - ASCII_0;
+                if result >= 0x110000 {
+                    return -(1i32);
+                }
+                ptr = ptr.wrapping_offset(2);
+            }
         }
+        checkCharRefNumber(result)
     }
 
     pub(crate) fn little2_predefinedEntityName(_enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe {
-            let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            match end.offset_from(ptr) as c_long / 2 {
-                2 => {
-                    if *ptr.offset(2).offset(1) as c_int == 0
-                        && *ptr.offset(2).offset(0) as c_int == 0x74
-                    {
-                        match if *ptr.offset(1) as c_int == 0 {
-                            *ptr.offset(0) as c_int
-                        } else {
-                            -(1)
-                        } {
-                            ASCII_l_1 => return ASCII_LT,
-                            ASCII_g_1 => return ASCII_GT,
-                            _ => {}
-                        }
-                    }
-                }
-                3 => {
-                    if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x61 {
-                        ptr = ptr.offset(2);
-                        if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x6d {
-                            ptr = ptr.offset(2);
-                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x70 {
-                                return ASCII_AMP;
-                            }
-                        }
-                    }
-                }
-                4 => {
-                    match if *ptr.offset(1) as c_int == 0 {
-                        *ptr.offset(0) as c_int
+        let mut ptr = input.as_ptr();
+        let end = ptr.wrapping_add(input.len());
+        match c_char_ptr_diff(end, ptr) / 2 {
+            2 => {
+                if read_c_char_at(ptr, 3) as c_int == 0 && read_c_char_at(ptr, 2) as c_int == 0x74 {
+                    match if read_c_char_at(ptr, 1) as c_int == 0 {
+                        read_c_char_at(ptr, 0) as c_int
                     } else {
                         -(1)
                     } {
-                        ASCII_q => {
-                            ptr = ptr.offset(2);
-                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x75 {
-                                ptr = ptr.offset(2);
-                                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x6f {
-                                    ptr = ptr.offset(2);
-                                    if *ptr.offset(1) as c_int == 0
-                                        && *ptr.offset(0) as c_int == 0x74
-                                    {
-                                        return ASCII_QUOT;
-                                    }
-                                }
-                            }
-                        }
-                        ASCII_a_1 => {
-                            ptr = ptr.offset(2);
-                            if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x70 {
-                                ptr = ptr.offset(2);
-                                if *ptr.offset(1) as c_int == 0 && *ptr.offset(0) as c_int == 0x6f {
-                                    ptr = ptr.offset(2);
-                                    if *ptr.offset(1) as c_int == 0
-                                        && *ptr.offset(0) as c_int == 0x73
-                                    {
-                                        return ASCII_APOS;
-                                    }
-                                }
-                            }
-                        }
+                        ASCII_l_1 => return ASCII_LT,
+                        ASCII_g_1 => return ASCII_GT,
                         _ => {}
                     }
                 }
-                _ => {}
             }
-            0
+            3 => {
+                if read_c_char_at(ptr, 1) as c_int == 0 && read_c_char_at(ptr, 0) as c_int == 0x61 {
+                    ptr = ptr.wrapping_offset(2);
+                    if read_c_char_at(ptr, 1) as c_int == 0
+                        && read_c_char_at(ptr, 0) as c_int == 0x6d
+                    {
+                        ptr = ptr.wrapping_offset(2);
+                        if read_c_char_at(ptr, 1) as c_int == 0
+                            && read_c_char_at(ptr, 0) as c_int == 0x70
+                        {
+                            return ASCII_AMP;
+                        }
+                    }
+                }
+            }
+            4 => {
+                match if read_c_char_at(ptr, 1) as c_int == 0 {
+                    read_c_char_at(ptr, 0) as c_int
+                } else {
+                    -(1)
+                } {
+                    ASCII_q => {
+                        ptr = ptr.wrapping_offset(2);
+                        if read_c_char_at(ptr, 1) as c_int == 0
+                            && read_c_char_at(ptr, 0) as c_int == 0x75
+                        {
+                            ptr = ptr.wrapping_offset(2);
+                            if read_c_char_at(ptr, 1) as c_int == 0
+                                && read_c_char_at(ptr, 0) as c_int == 0x6f
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                if read_c_char_at(ptr, 1) as c_int == 0
+                                    && read_c_char_at(ptr, 0) as c_int == 0x74
+                                {
+                                    return ASCII_QUOT;
+                                }
+                            }
+                        }
+                    }
+                    ASCII_a_1 => {
+                        ptr = ptr.wrapping_offset(2);
+                        if read_c_char_at(ptr, 1) as c_int == 0
+                            && read_c_char_at(ptr, 0) as c_int == 0x70
+                        {
+                            ptr = ptr.wrapping_offset(2);
+                            if read_c_char_at(ptr, 1) as c_int == 0
+                                && read_c_char_at(ptr, 0) as c_int == 0x6f
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                if read_c_char_at(ptr, 1) as c_int == 0
+                                    && read_c_char_at(ptr, 0) as c_int == 0x73
+                                {
+                                    return ASCII_APOS;
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
         }
+        0
     }
 
     pub(crate) fn little2_nameMatchesAscii(
@@ -7105,115 +7107,110 @@ pub mod xmltok_impl_c {
         input: &[c_char],
         mut ptr2: *const c_char,
     ) -> c_int {
-        unsafe {
-            let mut ptr1 = input.as_ptr();
-            let mut end1 = ptr1.add(input.len());
-            while *ptr2 != 0 {
-                if (end1.offset_from(ptr1) as c_long) < 2 {
-                    return 0i32;
-                }
-                if !(*ptr1.offset(1) as c_int == 0 && *ptr1.offset(0) as c_int == *ptr2 as c_int) {
-                    return 0i32;
-                }
-                ptr1 = ptr1.offset(2);
-                ptr2 = ptr2.offset(1);
+        let mut ptr1 = input.as_ptr();
+        let end1 = ptr1.wrapping_add(input.len());
+        while read_c_char(ptr2) != 0 {
+            if c_char_ptr_diff(end1, ptr1) < 2 {
+                return 0i32;
             }
-            (ptr1 == end1) as c_int
+            if !(read_c_char_at(ptr1, 1) as c_int == 0
+                && read_c_char_at(ptr1, 0) as c_int == read_c_char(ptr2) as c_int)
+            {
+                return 0i32;
+            }
+            ptr1 = ptr1.wrapping_offset(2);
+            ptr2 = ptr2.wrapping_offset(1);
         }
+        (ptr1 == end1) as c_int
     }
 
     pub(crate) fn little2_nameLength(enc: &ENCODING, mut ptr: *const c_char) -> c_int {
-        unsafe {
-            let mut start: *const c_char = ptr;
-            loop {
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_LEAD2 => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_LEAD3 => {
-                        ptr = ptr.offset(3isize);
-                    }
-                    BT_LEAD4 => {
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONASCII | BT_NMSTRT | BT_COLON_0 | BT_HEX | BT_DIGIT | BT_NAME
-                    | BT_MINUS => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    _ => {
-                        return ptr.offset_from(start) as c_int;
-                    }
+        let start: *const c_char = ptr;
+        loop {
+            match if read_c_char_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 0) as usize] as c_uint
+            } else {
+                unicode_byte_type(read_c_char_at(ptr, 1), read_c_char_at(ptr, 0)) as c_uint
+            } {
+                BT_LEAD2 => {
+                    ptr = ptr.wrapping_offset(2);
+                }
+                BT_LEAD3 => {
+                    ptr = ptr.wrapping_offset(3);
+                }
+                BT_LEAD4 => {
+                    ptr = ptr.wrapping_offset(4);
+                }
+                BT_NONASCII | BT_NMSTRT | BT_COLON_0 | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                    ptr = ptr.wrapping_offset(2);
+                }
+                _ => {
+                    return c_char_ptr_diff(ptr, start) as c_int;
                 }
             }
         }
     }
 
     pub(crate) fn little2_skipS(enc: &ENCODING, mut ptr: *const c_char) -> *const c_char {
-        unsafe {
-            loop {
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_LF | BT_CR | BT_S => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    _ => return ptr,
+        loop {
+            match if read_c_char_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 0) as usize] as c_uint
+            } else {
+                unicode_byte_type(read_c_char_at(ptr, 1), read_c_char_at(ptr, 0)) as c_uint
+            } {
+                BT_LF | BT_CR | BT_S => {
+                    ptr = ptr.wrapping_offset(2);
                 }
+                _ => return ptr,
             }
         }
     }
 
     pub(crate) fn little2_updatePosition(enc: &ENCODING, input: &[c_char], mut pos: *mut POSITION) {
-        unsafe {
-            let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            while end.offset_from(ptr) as c_long >= 2 as c_long {
-                match if *ptr.offset(1) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0)) as c_uint
-                } {
-                    BT_LEAD2 => {
-                        ptr = ptr.offset(2);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+        let pos = unsafe { &mut *pos };
+        let mut ptr = input.as_ptr();
+        let end = ptr.wrapping_add(input.len());
+        while c_char_ptr_diff(end, ptr) >= 2 {
+            match if read_c_char_at(ptr, 1) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 0) as usize] as c_uint
+            } else {
+                unicode_byte_type(read_c_char_at(ptr, 1), read_c_char_at(ptr, 0)) as c_uint
+            } {
+                BT_LEAD2 => {
+                    ptr = ptr.wrapping_offset(2);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LEAD3 => {
+                    ptr = ptr.wrapping_offset(3);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LEAD4 => {
+                    ptr = ptr.wrapping_offset(4);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LF => {
+                    pos.columnNumber = 0u64;
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
+                    ptr = ptr.wrapping_offset(2);
+                }
+                BT_CR => {
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
+                    ptr = ptr.wrapping_offset(2);
+                    if c_char_ptr_diff(end, ptr) >= 2
+                        && (if read_c_char_at(ptr, 1) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 0) as usize]
+                                as c_int
+                        } else {
+                            unicode_byte_type(read_c_char_at(ptr, 1), read_c_char_at(ptr, 0))
+                        }) == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(2);
                     }
-                    BT_LEAD3 => {
-                        ptr = ptr.offset(3);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
-                    BT_LEAD4 => {
-                        ptr = ptr.offset(4);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
-                    BT_LF => {
-                        (*pos).columnNumber = 0u64;
-                        (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_CR => {
-                        (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                        ptr = ptr.offset(2);
-                        if end.offset_from(ptr) as c_long >= 2 as c_long
-                            && (if *ptr.offset(1) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr as c_uchar as usize] as c_int
-                            } else {
-                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
-                            }) == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(2isize);
-                        }
-                        (*pos).columnNumber = 0u64;
-                    }
-                    _ => {
-                        ptr = ptr.offset(2);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
+                    pos.columnNumber = 0u64;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(2);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
                 }
             }
         }
@@ -7380,60 +7377,58 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn big2_checkPiTarget(_enc: &ENCODING, input: &[c_char]) -> CheckPiTargetResult {
-        unsafe {
-            let mut tok: c_int = 0;
-            let tokPtr = &mut tok;
-            let result: c_int = 'iife_ret_43: {
-                let mut ptr = input.as_ptr();
-                let mut end = ptr.add(input.len());
-                let mut upper: c_int = 0;
-                *tokPtr = XML_TOK_PI_1;
-                if end.offset_from(ptr) as c_long != (2i32 * 3) as c_long {
-                    break 'iife_ret_43 1i32;
+        let mut tok: c_int = 0;
+        let tokPtr = &mut tok;
+        let result: c_int = 'iife_ret_43: {
+            let mut ptr = input.as_ptr();
+            let end = ptr.wrapping_add(input.len());
+            let mut upper: c_int = 0;
+            *tokPtr = XML_TOK_PI_1;
+            if c_char_ptr_diff(end, ptr) != 2 * 3 {
+                break 'iife_ret_43 1i32;
+            }
+            match if read_c_char_at(ptr, 0) as c_int == 0 {
+                read_c_char_at(ptr, 1) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_x_1 => {}
+                ASCII_X_1 => {
+                    upper = 1i32;
                 }
-                match if *ptr.offset(0) as c_int == 0 {
-                    *ptr.offset(1) as c_int
-                } else {
-                    -(1)
-                } {
-                    ASCII_x_1 => {}
-                    ASCII_X_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_43 1,
+                _ => break 'iife_ret_43 1,
+            }
+            ptr = ptr.wrapping_offset(2);
+            match if read_c_char_at(ptr, 0) as c_int == 0 {
+                read_c_char_at(ptr, 1) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_m_1 => {}
+                ASCII_M_1 => {
+                    upper = 1i32;
                 }
-                ptr = ptr.offset(2);
-                match if *ptr.offset(0) as c_int == 0 {
-                    *ptr.offset(1) as c_int
-                } else {
-                    -(1)
-                } {
-                    ASCII_m_1 => {}
-                    ASCII_M_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_43 1,
+                _ => break 'iife_ret_43 1,
+            }
+            ptr = ptr.wrapping_offset(2);
+            match if read_c_char_at(ptr, 0) as c_int == 0 {
+                read_c_char_at(ptr, 1) as c_int
+            } else {
+                -(1)
+            } {
+                ASCII_l_1 => {}
+                ASCII_L_1 => {
+                    upper = 1i32;
                 }
-                ptr = ptr.offset(2);
-                match if *ptr.offset(0) as c_int == 0 {
-                    *ptr.offset(1) as c_int
-                } else {
-                    -(1)
-                } {
-                    ASCII_l_1 => {}
-                    ASCII_L_1 => {
-                        upper = 1i32;
-                    }
-                    _ => break 'iife_ret_43 1,
-                }
-                if upper != 0 {
-                    break 'iife_ret_43 0i32;
-                }
-                *tokPtr = XML_TOK_XML_DECL_1;
-                break 'iife_ret_43 1;
-            };
-            (result, tok)
-        }
+                _ => break 'iife_ret_43 1,
+            }
+            if upper != 0 {
+                break 'iife_ret_43 0i32;
+            }
+            *tokPtr = XML_TOK_XML_DECL_1;
+            break 'iife_ret_43 1;
+        };
+        (result, tok)
     }
 
     pub(crate) fn big2_scanPi(enc: &ENCODING, input: &[c_char]) -> ScannerResult {
@@ -10424,129 +10419,137 @@ pub mod xmltok_impl_c {
     }
 
     pub(crate) fn big2_charRefNumber(_enc: &ENCODING, mut ptr: *const c_char) -> c_int {
-        unsafe {
-            let mut result: c_int = 0;
-            ptr = ptr.offset((2i32 * 2) as isize);
-            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x78 {
-                ptr = ptr.offset(2);
-                while !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3b) {
-                    let mut c: c_int = if *ptr.offset(0) as c_int == 0 {
-                        *ptr.offset(1) as c_int
-                    } else {
-                        -(1)
-                    };
-                    match c {
-                        ASCII_0 | ASCII_1_1 | ASCII_2_1 | ASCII_3_1 | ASCII_4 | ASCII_5
-                        | ASCII_6 | ASCII_7 | ASCII_8_1 | ASCII_9_1 => {
-                            result <<= 4;
-                            result |= c - ASCII_0;
-                        }
-                        ASCII_A | ASCII_B_1 | ASCII_C | ASCII_D | ASCII_E_1 | ASCII_F_1 => {
-                            result <<= 4;
-                            result += 10i32 + (c - ASCII_A);
-                        }
-                        ASCII_a_1 | ASCII_b | ASCII_c_1 | ASCII_d | ASCII_e_1 | ASCII_f => {
-                            result <<= 4;
-                            result += 10i32 + (c - ASCII_a_1);
-                        }
-                        _ => {}
+        let mut result: c_int = 0;
+        ptr = ptr.wrapping_offset(4);
+        if read_c_char_at(ptr, 0) as c_int == 0 && read_c_char_at(ptr, 1) as c_int == 0x78 {
+            ptr = ptr.wrapping_offset(2);
+            while !(read_c_char_at(ptr, 0) as c_int == 0 && read_c_char_at(ptr, 1) as c_int == 0x3b)
+            {
+                let c: c_int = if read_c_char_at(ptr, 0) as c_int == 0 {
+                    read_c_char_at(ptr, 1) as c_int
+                } else {
+                    -(1)
+                };
+                match c {
+                    ASCII_0 | ASCII_1_1 | ASCII_2_1 | ASCII_3_1 | ASCII_4 | ASCII_5 | ASCII_6
+                    | ASCII_7 | ASCII_8_1 | ASCII_9_1 => {
+                        result <<= 4;
+                        result |= c - ASCII_0;
                     }
-                    if result >= 0x110000 {
-                        return -(1i32);
+                    ASCII_A | ASCII_B_1 | ASCII_C | ASCII_D | ASCII_E_1 | ASCII_F_1 => {
+                        result <<= 4;
+                        result += 10i32 + (c - ASCII_A);
                     }
-                    ptr = ptr.offset(2);
+                    ASCII_a_1 | ASCII_b | ASCII_c_1 | ASCII_d | ASCII_e_1 | ASCII_f => {
+                        result <<= 4;
+                        result += 10i32 + (c - ASCII_a_1);
+                    }
+                    _ => {}
                 }
-            } else {
-                while !(*ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x3b) {
-                    let mut c_0: c_int = if *ptr.offset(0) as c_int == 0 {
-                        *ptr.offset(1) as c_int
-                    } else {
-                        -(1)
-                    };
-                    result *= 10;
-                    result += c_0 - ASCII_0;
-                    if result >= 0x110000 {
-                        return -(1i32);
-                    }
-                    ptr = ptr.offset(2);
+                if result >= 0x110000 {
+                    return -(1i32);
                 }
+                ptr = ptr.wrapping_offset(2);
             }
-            checkCharRefNumber(result)
+        } else {
+            while !(read_c_char_at(ptr, 0) as c_int == 0 && read_c_char_at(ptr, 1) as c_int == 0x3b)
+            {
+                let c_0: c_int = if read_c_char_at(ptr, 0) as c_int == 0 {
+                    read_c_char_at(ptr, 1) as c_int
+                } else {
+                    -(1)
+                };
+                result *= 10;
+                result += c_0 - ASCII_0;
+                if result >= 0x110000 {
+                    return -(1i32);
+                }
+                ptr = ptr.wrapping_offset(2);
+            }
         }
+        checkCharRefNumber(result)
     }
 
     pub(crate) fn big2_predefinedEntityName(_enc: &ENCODING, input: &[c_char]) -> c_int {
-        unsafe {
-            let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            match end.offset_from(ptr) as c_long / 2 {
-                2 => {
-                    if *ptr.offset(2).offset(0) as c_int == 0
-                        && *ptr.offset(2).offset(1) as c_int == 0x74
-                    {
-                        match if *ptr.offset(0) as c_int == 0 {
-                            *ptr.offset(1) as c_int
-                        } else {
-                            -(1)
-                        } {
-                            ASCII_l_1 => return ASCII_LT,
-                            ASCII_g_1 => return ASCII_GT,
-                            _ => {}
-                        }
-                    }
-                }
-                3 => {
-                    if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x61 {
-                        ptr = ptr.offset(2);
-                        if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x6d {
-                            ptr = ptr.offset(2);
-                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x70 {
-                                return ASCII_AMP;
-                            }
-                        }
-                    }
-                }
-                4 => {
-                    match if *ptr.offset(0) as c_int == 0 {
-                        *ptr.offset(1) as c_int
+        let mut ptr = input.as_ptr();
+        let end = ptr.wrapping_add(input.len());
+        match c_char_ptr_diff(end, ptr) / 2 {
+            2 => {
+                if read_c_char_at(ptr, 2) as c_int == 0 && read_c_char_at(ptr, 3) as c_int == 0x74 {
+                    match if read_c_char_at(ptr, 0) as c_int == 0 {
+                        read_c_char_at(ptr, 1) as c_int
                     } else {
                         -(1)
                     } {
-                        ASCII_q => {
-                            ptr = ptr.offset(2);
-                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x75 {
-                                ptr = ptr.offset(2);
-                                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x6f {
-                                    ptr = ptr.offset(2);
-                                    if *ptr.offset(0) as c_int == 0
-                                        && *ptr.offset(1) as c_int == 0x74
-                                    {
-                                        return ASCII_QUOT;
-                                    }
-                                }
-                            }
-                        }
-                        ASCII_a_1 => {
-                            ptr = ptr.offset(2);
-                            if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x70 {
-                                ptr = ptr.offset(2);
-                                if *ptr.offset(0) as c_int == 0 && *ptr.offset(1) as c_int == 0x6f {
-                                    ptr = ptr.offset(2);
-                                    if *ptr.offset(0) as c_int == 0
-                                        && *ptr.offset(1) as c_int == 0x73
-                                    {
-                                        return ASCII_APOS;
-                                    }
-                                }
-                            }
-                        }
+                        ASCII_l_1 => return ASCII_LT,
+                        ASCII_g_1 => return ASCII_GT,
                         _ => {}
                     }
                 }
-                _ => {}
             }
-            0
+            3 => {
+                if read_c_char_at(ptr, 0) as c_int == 0 && read_c_char_at(ptr, 1) as c_int == 0x61 {
+                    ptr = ptr.wrapping_offset(2);
+                    if read_c_char_at(ptr, 0) as c_int == 0
+                        && read_c_char_at(ptr, 1) as c_int == 0x6d
+                    {
+                        ptr = ptr.wrapping_offset(2);
+                        if read_c_char_at(ptr, 0) as c_int == 0
+                            && read_c_char_at(ptr, 1) as c_int == 0x70
+                        {
+                            return ASCII_AMP;
+                        }
+                    }
+                }
+            }
+            4 => {
+                match if read_c_char_at(ptr, 0) as c_int == 0 {
+                    read_c_char_at(ptr, 1) as c_int
+                } else {
+                    -(1)
+                } {
+                    ASCII_q => {
+                        ptr = ptr.wrapping_offset(2);
+                        if read_c_char_at(ptr, 0) as c_int == 0
+                            && read_c_char_at(ptr, 1) as c_int == 0x75
+                        {
+                            ptr = ptr.wrapping_offset(2);
+                            if read_c_char_at(ptr, 0) as c_int == 0
+                                && read_c_char_at(ptr, 1) as c_int == 0x6f
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                if read_c_char_at(ptr, 0) as c_int == 0
+                                    && read_c_char_at(ptr, 1) as c_int == 0x74
+                                {
+                                    return ASCII_QUOT;
+                                }
+                            }
+                        }
+                    }
+                    ASCII_a_1 => {
+                        ptr = ptr.wrapping_offset(2);
+                        if read_c_char_at(ptr, 0) as c_int == 0
+                            && read_c_char_at(ptr, 1) as c_int == 0x70
+                        {
+                            ptr = ptr.wrapping_offset(2);
+                            if read_c_char_at(ptr, 0) as c_int == 0
+                                && read_c_char_at(ptr, 1) as c_int == 0x6f
+                            {
+                                ptr = ptr.wrapping_offset(2);
+                                if read_c_char_at(ptr, 0) as c_int == 0
+                                    && read_c_char_at(ptr, 1) as c_int == 0x73
+                                {
+                                    return ASCII_APOS;
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
         }
+        0
     }
 
     pub(crate) fn big2_nameMatchesAscii(
@@ -10554,116 +10557,110 @@ pub mod xmltok_impl_c {
         input: &[c_char],
         mut ptr2: *const c_char,
     ) -> c_int {
-        unsafe {
-            let mut ptr1 = input.as_ptr();
-            let mut end1 = ptr1.add(input.len());
-            while *ptr2 != 0 {
-                if (end1.offset_from(ptr1) as c_long) < 2 {
-                    return 0i32;
-                }
-                if !(*ptr1.offset(0) as c_int == 0 && *ptr1.offset(1) as c_int == *ptr2 as c_int) {
-                    return 0i32;
-                }
-                ptr1 = ptr1.offset(2);
-                ptr2 = ptr2.offset(1);
+        let mut ptr1 = input.as_ptr();
+        let end1 = ptr1.wrapping_add(input.len());
+        while read_c_char(ptr2) != 0 {
+            if c_char_ptr_diff(end1, ptr1) < 2 {
+                return 0i32;
             }
-            (ptr1 == end1) as c_int
+            if !(read_c_char_at(ptr1, 0) as c_int == 0
+                && read_c_char_at(ptr1, 1) as c_int == read_c_char(ptr2) as c_int)
+            {
+                return 0i32;
+            }
+            ptr1 = ptr1.wrapping_offset(2);
+            ptr2 = ptr2.wrapping_offset(1);
         }
+        (ptr1 == end1) as c_int
     }
 
     pub(crate) fn big2_nameLength(enc: &ENCODING, mut ptr: *const c_char) -> c_int {
-        unsafe {
-            let mut start: *const c_char = ptr;
-            loop {
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_LEAD2 => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_LEAD3 => {
-                        ptr = ptr.offset(3isize);
-                    }
-                    BT_LEAD4 => {
-                        ptr = ptr.offset(4isize);
-                    }
-                    BT_NONASCII | BT_NMSTRT | BT_COLON_0 | BT_HEX | BT_DIGIT | BT_NAME
-                    | BT_MINUS => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    _ => {
-                        return ptr.offset_from(start) as c_int;
-                    }
+        let start: *const c_char = ptr;
+        loop {
+            match if read_c_char_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 1) as usize] as c_uint
+            } else {
+                unicode_byte_type(read_c_char_at(ptr, 0), read_c_char_at(ptr, 1)) as c_uint
+            } {
+                BT_LEAD2 => {
+                    ptr = ptr.wrapping_offset(2);
+                }
+                BT_LEAD3 => {
+                    ptr = ptr.wrapping_offset(3);
+                }
+                BT_LEAD4 => {
+                    ptr = ptr.wrapping_offset(4);
+                }
+                BT_NONASCII | BT_NMSTRT | BT_COLON_0 | BT_HEX | BT_DIGIT | BT_NAME | BT_MINUS => {
+                    ptr = ptr.wrapping_offset(2);
+                }
+                _ => {
+                    return c_char_ptr_diff(ptr, start) as c_int;
                 }
             }
         }
     }
 
     pub(crate) fn big2_skipS(enc: &ENCODING, mut ptr: *const c_char) -> *const c_char {
-        unsafe {
-            loop {
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_LF | BT_CR | BT_S => {
-                        ptr = ptr.offset(2isize);
-                    }
-                    _ => return ptr,
+        loop {
+            match if read_c_char_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 1) as usize] as c_uint
+            } else {
+                unicode_byte_type(read_c_char_at(ptr, 0), read_c_char_at(ptr, 1)) as c_uint
+            } {
+                BT_LF | BT_CR | BT_S => {
+                    ptr = ptr.wrapping_offset(2);
                 }
+                _ => return ptr,
             }
         }
     }
 
     pub(crate) fn big2_updatePosition(enc: &ENCODING, input: &[c_char], mut pos: *mut POSITION) {
-        unsafe {
-            let mut ptr = input.as_ptr();
-            let mut end = ptr.add(input.len());
-            while end.offset_from(ptr) as c_long >= 2 as c_long {
-                match if *ptr.offset(0) as c_int == 0 {
-                    as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_uint
-                } else {
-                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1)) as c_uint
-                } {
-                    BT_LEAD2 => {
-                        ptr = ptr.offset(2);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+        let pos = unsafe { &mut *pos };
+        let mut ptr = input.as_ptr();
+        let end = ptr.wrapping_add(input.len());
+        while c_char_ptr_diff(end, ptr) >= 2 {
+            match if read_c_char_at(ptr, 0) as c_int == 0 {
+                as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 1) as usize] as c_uint
+            } else {
+                unicode_byte_type(read_c_char_at(ptr, 0), read_c_char_at(ptr, 1)) as c_uint
+            } {
+                BT_LEAD2 => {
+                    ptr = ptr.wrapping_offset(2);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LEAD3 => {
+                    ptr = ptr.wrapping_offset(3);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LEAD4 => {
+                    ptr = ptr.wrapping_offset(4);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                BT_LF => {
+                    pos.columnNumber = 0u64;
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
+                    ptr = ptr.wrapping_offset(2);
+                }
+                BT_CR => {
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
+                    ptr = ptr.wrapping_offset(2);
+                    if c_char_ptr_diff(end, ptr) >= 2
+                        && (if read_c_char_at(ptr, 0) as c_int == 0 {
+                            as_normal_encoding(enc).type_0[read_c_uchar_at(ptr, 1) as usize]
+                                as c_int
+                        } else {
+                            unicode_byte_type(read_c_char_at(ptr, 0), read_c_char_at(ptr, 1))
+                        }) == BT_LF as c_int
+                    {
+                        ptr = ptr.wrapping_offset(2);
                     }
-                    BT_LEAD3 => {
-                        ptr = ptr.offset(3);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
-                    BT_LEAD4 => {
-                        ptr = ptr.offset(4);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
-                    BT_LF => {
-                        (*pos).columnNumber = 0u64;
-                        (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                        ptr = ptr.offset(2isize);
-                    }
-                    BT_CR => {
-                        (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                        ptr = ptr.offset(2);
-                        if end.offset_from(ptr) as c_long >= 2 as c_long
-                            && (if *ptr.offset(0) as c_int == 0 {
-                                as_normal_encoding(enc).type_0[*ptr.offset(1) as c_uchar as usize]
-                                    as c_int
-                            } else {
-                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
-                            }) == BT_LF as c_int
-                        {
-                            ptr = ptr.offset(2isize);
-                        }
-                        (*pos).columnNumber = 0u64;
-                    }
-                    _ => {
-                        ptr = ptr.offset(2);
-                        (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                    }
+                    pos.columnNumber = 0u64;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(2);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
                 }
             }
         }
