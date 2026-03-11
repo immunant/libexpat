@@ -1382,9 +1382,9 @@ unsafe extern "C" fn unknownEncoding(
     mut info: *mut XML_Encoding,
 ) -> ::core::ffi::c_int {
     let mut cp: ::core::ffi::c_int = 0;
-    static mut prefixL: [XML_Char; 9] =
+    static prefixL: [XML_Char; 9] =
         unsafe { ::core::mem::transmute::<[u8; 9], [XML_Char; 9]>(*b"windows-\0") };
-    static mut prefixU: [XML_Char; 9] =
+    static prefixU: [XML_Char; 9] =
         unsafe { ::core::mem::transmute::<[u8; 9], [XML_Char; 9]>(*b"WINDOWS-\0") };
     let mut i: ::core::ffi::c_int = 0;
     i = 0;
@@ -1400,7 +1400,7 @@ unsafe extern "C" fn unknownEncoding(
     }
     cp = 0;
     while *name.offset(i as isize) != 0 {
-        static mut digits: [XML_Char; 11] =
+        static digits: [XML_Char; 11] =
             unsafe { ::core::mem::transmute::<[u8; 11], [XML_Char; 11]>(*b"0123456789\0") };
         let mut s: *const XML_Char = crate::stdlib::strchr(
             &raw const digits as *const ::core::ffi::c_char,

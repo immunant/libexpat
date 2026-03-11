@@ -796,6 +796,8 @@ pub mod expat_h {
         pub value: ::core::ffi::c_long,
     }
 
+    unsafe impl Sync for XML_Feature {}
+
     pub const XML_MAJOR_VERSION: ::core::ffi::c_int = 2;
 
     pub const XML_MINOR_VERSION: ::core::ffi::c_int = 7;

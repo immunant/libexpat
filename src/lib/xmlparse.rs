@@ -1326,7 +1326,7 @@ pub unsafe extern "C" fn XML_ParserCreateNS(
     );
 }
 
-static mut implicitContext: [XML_Char; 41] = [
+static implicitContext: [XML_Char; 41] = [
     ASCII_x as XML_Char,
     ASCII_m as XML_Char,
     ASCII_l as XML_Char,
@@ -3376,7 +3376,7 @@ pub unsafe extern "C" fn XML_ExpatVersionInfo() -> XML_Expat_Version {
 #[no_mangle]
 
 pub unsafe extern "C" fn XML_GetFeatureList() -> *const XML_Feature {
-    static mut features: [XML_Feature; 11] = [
+    static features: [XML_Feature; 11] = [
         XML_Feature {
             feature: XML_FEATURE_SIZEOF_XML_CHAR,
             name: b"sizeof(XML_Char)\0" as *const u8 as *const XML_LChar,
@@ -5002,7 +5002,7 @@ unsafe extern "C" fn addBinding(
     mut uri: *const XML_Char,
     mut bindingsPtr: *mut *mut BINDING,
 ) -> XML_Error {
-    static mut xmlNamespace: [XML_Char; 37] = [
+    static xmlNamespace: [XML_Char; 37] = [
         ASCII_h as XML_Char,
         ASCII_t as XML_Char,
         ASCII_t as XML_Char,
@@ -5041,7 +5041,7 @@ unsafe extern "C" fn addBinding(
         ASCII_e as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut xmlnsNamespace: [XML_Char; 30] = [
+    static xmlnsNamespace: [XML_Char; 30] = [
         ASCII_h as XML_Char,
         ASCII_t as XML_Char,
         ASCII_t as XML_Char,
@@ -6026,8 +6026,8 @@ unsafe extern "C" fn doProlog(
     mut account: XML_Account,
 ) -> XML_Error {
     let mut current_block: u64;
-    static mut externalSubsetName: [XML_Char; 2] = [ASCII_HASH as XML_Char, '\0' as XML_Char];
-    static mut atypeCDATA: [XML_Char; 6] = [
+    static externalSubsetName: [XML_Char; 2] = [ASCII_HASH as XML_Char, '\0' as XML_Char];
+    static atypeCDATA: [XML_Char; 6] = [
         ASCII_C as XML_Char,
         ASCII_D as XML_Char,
         ASCII_A as XML_Char,
@@ -6035,9 +6035,8 @@ unsafe extern "C" fn doProlog(
         ASCII_A as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut atypeID: [XML_Char; 3] =
-        [ASCII_I as XML_Char, ASCII_D as XML_Char, '\0' as XML_Char];
-    static mut atypeIDREF: [XML_Char; 6] = [
+    static atypeID: [XML_Char; 3] = [ASCII_I as XML_Char, ASCII_D as XML_Char, '\0' as XML_Char];
+    static atypeIDREF: [XML_Char; 6] = [
         ASCII_I as XML_Char,
         ASCII_D as XML_Char,
         ASCII_R as XML_Char,
@@ -6045,7 +6044,7 @@ unsafe extern "C" fn doProlog(
         ASCII_F as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut atypeIDREFS: [XML_Char; 7] = [
+    static atypeIDREFS: [XML_Char; 7] = [
         ASCII_I as XML_Char,
         ASCII_D as XML_Char,
         ASCII_R as XML_Char,
@@ -6054,7 +6053,7 @@ unsafe extern "C" fn doProlog(
         ASCII_S as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut atypeENTITY: [XML_Char; 7] = [
+    static atypeENTITY: [XML_Char; 7] = [
         ASCII_E as XML_Char,
         ASCII_N as XML_Char,
         ASCII_T as XML_Char,
@@ -6063,7 +6062,7 @@ unsafe extern "C" fn doProlog(
         ASCII_Y as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut atypeENTITIES: [XML_Char; 9] = [
+    static atypeENTITIES: [XML_Char; 9] = [
         ASCII_E as XML_Char,
         ASCII_N as XML_Char,
         ASCII_T as XML_Char,
@@ -6074,7 +6073,7 @@ unsafe extern "C" fn doProlog(
         ASCII_S as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut atypeNMTOKEN: [XML_Char; 8] = [
+    static atypeNMTOKEN: [XML_Char; 8] = [
         ASCII_N as XML_Char,
         ASCII_M as XML_Char,
         ASCII_T as XML_Char,
@@ -6084,7 +6083,7 @@ unsafe extern "C" fn doProlog(
         ASCII_N as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut atypeNMTOKENS: [XML_Char; 9] = [
+    static atypeNMTOKENS: [XML_Char; 9] = [
         ASCII_N as XML_Char,
         ASCII_M as XML_Char,
         ASCII_T as XML_Char,
@@ -6095,7 +6094,7 @@ unsafe extern "C" fn doProlog(
         ASCII_S as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut notationPrefix: [XML_Char; 10] = [
+    static notationPrefix: [XML_Char; 10] = [
         ASCII_N as XML_Char,
         ASCII_O as XML_Char,
         ASCII_T as XML_Char,
@@ -6107,8 +6106,8 @@ unsafe extern "C" fn doProlog(
         ASCII_LPAREN as XML_Char,
         '\0' as XML_Char,
     ];
-    static mut enumValueSep: [XML_Char; 2] = [ASCII_PIPE as XML_Char, '\0' as XML_Char];
-    static mut enumValueStart: [XML_Char; 2] = [ASCII_LPAREN as XML_Char, '\0' as XML_Char];
+    static enumValueSep: [XML_Char; 2] = [ASCII_PIPE as XML_Char, '\0' as XML_Char];
+    static enumValueStart: [XML_Char; 2] = [ASCII_LPAREN as XML_Char, '\0' as XML_Char];
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut eventPP: *mut *const c_char = null_mut::<*const c_char>();
     let mut eventEndPP: *mut *const c_char = null_mut::<*const c_char>();

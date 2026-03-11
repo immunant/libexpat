@@ -818,7 +818,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
+        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
             crate::ascii_h::ASCII_C as ::core::ffi::c_char,
             crate::ascii_h::ASCII_D as ::core::ffi::c_char,
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
@@ -4773,7 +4773,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
+        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
             crate::ascii_h::ASCII_C as ::core::ffi::c_char,
             crate::ascii_h::ASCII_D as ::core::ffi::c_char,
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
@@ -8503,7 +8503,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
+        pub static CDATA_LSQB: [::core::ffi::c_char; 6] = [
             crate::ascii_h::ASCII_C as ::core::ffi::c_char,
             crate::ascii_h::ASCII_D as ::core::ffi::c_char,
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
@@ -12180,7 +12180,7 @@ pub mod xmltok_ns_c {
 
 pub mod nametab_h {
 
-    pub static mut namingBitmap: [::core::ffi::c_uint; 320] = [
+    pub static namingBitmap: [::core::ffi::c_uint; 320] = [
         0, 0, 0, 0, 0, 0, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
         0xffffffff, 0xffffffff, 0xffffffff, 0, 0x4000000, 0x87fffffe, 0x7fffffe, 0, 0, 0xff7fffff,
         0xff7fffff, 0xffffffff, 0x7ff3ffff, 0xfffffdfe, 0x7fffffff, 0xffffffff, 0xffffffff,
@@ -12217,7 +12217,7 @@ pub mod nametab_h {
         0xffffffff, 0x77ffffff,
     ];
 
-    pub static mut nmstrtPages: [::core::ffi::c_uchar; 256] = [
+    pub static nmstrtPages: [::core::ffi::c_uchar; 256] = [
         0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0, 0, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x13, 0, 0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0x15, 0x16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -12232,7 +12232,7 @@ pub mod nametab_h {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
 
-    pub static mut namePages: [::core::ffi::c_uchar; 256] = [
+    pub static namePages: [::core::ffi::c_uchar; 256] = [
         0x19, 0x3, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0, 0, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25,
         0x10, 0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x13, 0x26, 0x14, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0x27, 0x16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -12796,7 +12796,7 @@ unsafe extern "C" fn utf8_toUtf16(
     return res;
 }
 
-static mut utf8_encoding_ns: normal_encoding = {
+static utf8_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -13272,7 +13272,7 @@ static mut utf8_encoding_ns: normal_encoding = {
     }
 };
 
-static mut utf8_encoding: normal_encoding = {
+static utf8_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -13748,7 +13748,7 @@ static mut utf8_encoding: normal_encoding = {
     }
 };
 
-static mut internal_utf8_encoding_ns: normal_encoding = {
+static internal_utf8_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -14224,7 +14224,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = {
     }
 };
 
-static mut internal_utf8_encoding: normal_encoding = {
+static internal_utf8_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -14759,7 +14759,7 @@ unsafe extern "C" fn latin1_toUtf16(
     };
 }
 
-static mut latin1_encoding_ns: normal_encoding = {
+static latin1_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -15181,7 +15181,7 @@ static mut latin1_encoding_ns: normal_encoding = {
     }
 };
 
-static mut latin1_encoding: normal_encoding = {
+static latin1_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -15624,7 +15624,7 @@ unsafe extern "C" fn ascii_toUtf8(
     };
 }
 
-static mut ascii_encoding_ns: normal_encoding = {
+static ascii_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -16046,7 +16046,7 @@ static mut ascii_encoding_ns: normal_encoding = {
     }
 };
 
-static mut ascii_encoding: normal_encoding = {
+static ascii_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -16778,7 +16778,7 @@ unsafe extern "C" fn big2_toUtf16(
     };
 }
 
-static mut little2_encoding_ns: normal_encoding = {
+static little2_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -17200,7 +17200,7 @@ static mut little2_encoding_ns: normal_encoding = {
     }
 };
 
-static mut little2_encoding: normal_encoding = {
+static little2_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -17622,7 +17622,7 @@ static mut little2_encoding: normal_encoding = {
     }
 };
 
-static mut internal_little2_encoding_ns: normal_encoding = {
+static internal_little2_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -18044,7 +18044,7 @@ static mut internal_little2_encoding_ns: normal_encoding = {
     }
 };
 
-static mut internal_little2_encoding: normal_encoding = {
+static internal_little2_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -18466,7 +18466,7 @@ static mut internal_little2_encoding: normal_encoding = {
     }
 };
 
-static mut big2_encoding_ns: normal_encoding = {
+static big2_encoding_ns: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -18888,7 +18888,7 @@ static mut big2_encoding_ns: normal_encoding = {
     }
 };
 
-static mut big2_encoding: normal_encoding = {
+static big2_encoding: normal_encoding = {
     normal_encoding {
         enc: crate::src::lib::xmltok::encoding {
             scanners: [
@@ -19470,7 +19470,7 @@ unsafe extern "C" fn parsePseudoAttribute(
     return 1;
 }
 
-static mut KW_version: [::core::ffi::c_char; 8] = [
+static KW_version: [::core::ffi::c_char; 8] = [
     ASCII_v as ::core::ffi::c_char,
     ASCII_e_1 as ::core::ffi::c_char,
     ASCII_r as ::core::ffi::c_char,
@@ -19481,7 +19481,7 @@ static mut KW_version: [::core::ffi::c_char; 8] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_encoding: [::core::ffi::c_char; 9] = [
+static KW_encoding: [::core::ffi::c_char; 9] = [
     ASCII_e_1 as ::core::ffi::c_char,
     ASCII_n as ::core::ffi::c_char,
     ASCII_c_1 as ::core::ffi::c_char,
@@ -19493,7 +19493,7 @@ static mut KW_encoding: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_standalone: [::core::ffi::c_char; 11] = [
+static KW_standalone: [::core::ffi::c_char; 11] = [
     ASCII_s as ::core::ffi::c_char,
     ASCII_t as ::core::ffi::c_char,
     ASCII_a_1 as ::core::ffi::c_char,
@@ -19507,14 +19507,14 @@ static mut KW_standalone: [::core::ffi::c_char; 11] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_yes: [::core::ffi::c_char; 4] = [
+static KW_yes: [::core::ffi::c_char; 4] = [
     ASCII_y as ::core::ffi::c_char,
     ASCII_e_1 as ::core::ffi::c_char,
     ASCII_s as ::core::ffi::c_char,
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_no: [::core::ffi::c_char; 3] = [
+static KW_no: [::core::ffi::c_char; 3] = [
     ASCII_n as ::core::ffi::c_char,
     ASCII_o as ::core::ffi::c_char,
     '\0' as ::core::ffi::c_char,
@@ -20058,7 +20058,7 @@ pub(crate) unsafe extern "C" fn XmlInitUnknownEncoding(
     return &raw mut (*e).normal.enc;
 }
 
-static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
+static KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     ASCII_I as ::core::ffi::c_char,
     ASCII_S as ::core::ffi::c_char,
     ASCII_O as ::core::ffi::c_char,
@@ -20072,7 +20072,7 @@ static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
+static KW_US_ASCII: [::core::ffi::c_char; 9] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_S as ::core::ffi::c_char,
     ASCII_MINUS as ::core::ffi::c_char,
@@ -20084,7 +20084,7 @@ static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
+static KW_UTF_8: [::core::ffi::c_char; 6] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
     ASCII_F_1 as ::core::ffi::c_char,
@@ -20093,7 +20093,7 @@ static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
+static KW_UTF_16: [::core::ffi::c_char; 7] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
     ASCII_F_1 as ::core::ffi::c_char,
@@ -20103,7 +20103,7 @@ static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
+static KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
     ASCII_F_1 as ::core::ffi::c_char,
@@ -20115,7 +20115,7 @@ static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
+static KW_UTF_16LE: [::core::ffi::c_char; 9] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
     ASCII_F_1 as ::core::ffi::c_char,
@@ -20128,16 +20128,14 @@ static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
 ];
 
 unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    static mut encodingNames: [*const ::core::ffi::c_char; 6] = {
-        [
-            &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
-            &raw const KW_US_ASCII as *const ::core::ffi::c_char,
-            &raw const KW_UTF_8 as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16BE as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16LE as *const ::core::ffi::c_char,
-        ]
-    };
+    let encodingNames: [*const ::core::ffi::c_char; 6] = [
+        &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
+        &raw const KW_US_ASCII as *const ::core::ffi::c_char,
+        &raw const KW_UTF_8 as *const ::core::ffi::c_char,
+        &raw const KW_UTF_16 as *const ::core::ffi::c_char,
+        &raw const KW_UTF_16BE as *const ::core::ffi::c_char,
+        &raw const KW_UTF_16LE as *const ::core::ffi::c_char,
+    ];
     let mut i: ::core::ffi::c_int = 0;
     if name.is_null() {
         return NO_ENC;
