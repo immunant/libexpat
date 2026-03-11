@@ -1,6 +1,6 @@
 use ::core::ffi::{c_char, c_int, c_long, c_uchar, c_uint, c_ushort, c_void};
 use ::core::mem::{size_of, transmute};
-use ::core::ptr::{null, null_mut};
+use ::core::ptr::{from_ref, null, null_mut};
 
 use crate::stdlib::memcpy;
 
@@ -316,6 +316,26 @@ pub struct INIT_ENCODING {
 
 pub type CONVERTER = Option<unsafe extern "C" fn(*mut c_void, *const c_char) -> c_int>;
 
+#[inline]
+unsafe fn init_encoding_ref<'a>(enc: *const ENCODING) -> &'a INIT_ENCODING {
+    &*enc.cast::<INIT_ENCODING>()
+}
+
+#[inline]
+unsafe fn normal_encoding_ref<'a>(enc: *const ENCODING) -> &'a normal_encoding {
+    &*enc.cast::<normal_encoding>()
+}
+
+#[inline]
+unsafe fn normal_encoding_mut<'a>(enc: *mut ENCODING) -> &'a mut normal_encoding {
+    &mut *enc.cast::<normal_encoding>()
+}
+
+#[inline]
+unsafe fn unknown_encoding_ref<'a>(enc: *const ENCODING) -> &'a unknown_encoding {
+    &*enc.cast::<unknown_encoding>()
+}
+
 pub mod xmltok_impl_c {
     use super::nametab_h::{namePages, namingBitmap, nmstrtPages};
     use super::*;
@@ -333,12 +353,12 @@ pub mod xmltok_impl_c {
             }
             ptr = ptr.offset(1);
             while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     5 => {
                         if (end.offset_from(ptr) as c_long) < 2 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if (*(enc as *const normal_encoding))
+                        if normal_encoding_ref(enc)
                             .isInvalid2
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -352,7 +372,7 @@ pub mod xmltok_impl_c {
                         if (end.offset_from(ptr) as c_long) < 3 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if (*(enc as *const normal_encoding))
+                        if normal_encoding_ref(enc)
                             .isInvalid3
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -366,7 +386,7 @@ pub mod xmltok_impl_c {
                         if (end.offset_from(ptr) as c_long) < 4 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if (*(enc as *const normal_encoding))
+                        if normal_encoding_ref(enc)
                             .isInvalid4
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -416,7 +436,7 @@ pub mod xmltok_impl_c {
         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
             return XML_TOK_PARTIAL_1;
         }
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             27 => {
                 return normal_scanComment(enc, ptr.offset(1isize), end, nextTokPtr);
             }
@@ -434,13 +454,12 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             's_129: {
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     30 => {
                         if !(end.offset_from(ptr) as c_long >= (2i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        match (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize]
+                        match normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                             as c_int
                         {
                             21 | 9 | 10 | 30 => {
@@ -520,7 +539,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_32: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -535,11 +554,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -554,11 +573,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -573,11 +592,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -601,7 +620,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_118: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -616,11 +635,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -635,11 +654,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -654,11 +673,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -676,14 +695,12 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(1);
                     while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
-                        {
+                        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                             5 => {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid2
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -698,7 +715,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid3
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -713,7 +730,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid4
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -828,7 +845,7 @@ pub mod xmltok_impl_c {
                 end = ptr.offset(n as isize);
             }
         }
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             4 => {
                 ptr = ptr.offset(1);
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
@@ -852,7 +869,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return XML_TOK_PARTIAL_1;
                 }
-                if (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                if normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                     == BT_LF as c_int
                 {
                     ptr = ptr.offset(1isize);
@@ -868,7 +885,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -882,7 +899,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -896,7 +913,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -915,10 +932,10 @@ pub mod xmltok_impl_c {
             }
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     if (end.offset_from(ptr) as c_long) < 2
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isInvalid2
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -930,7 +947,7 @@ pub mod xmltok_impl_c {
                 }
                 6 => {
                     if (end.offset_from(ptr) as c_long) < 3
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isInvalid3
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -942,7 +959,7 @@ pub mod xmltok_impl_c {
                 }
                 7 => {
                     if (end.offset_from(ptr) as c_long) < 4
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isInvalid4
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -975,7 +992,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_32: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -990,11 +1007,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1009,11 +1026,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1028,11 +1045,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1056,7 +1073,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_73: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -1071,11 +1088,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1090,11 +1107,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1109,11 +1126,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1127,9 +1144,7 @@ pub mod xmltok_impl_c {
                 21 | 9 | 10 => {
                     ptr = ptr.offset(1);
                     while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
-                        {
+                        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                             21 | 9 | 10 => {}
                             11 => {
                                 *nextTokPtr = ptr.offset(1);
@@ -1174,7 +1189,7 @@ pub mod xmltok_impl_c {
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 25 | 24 => {}
                 _ => {
                     *nextTokPtr = ptr;
@@ -1183,7 +1198,7 @@ pub mod xmltok_impl_c {
             }
             ptr = ptr.offset(1);
             while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     25 | 24 => {}
                     18 => {
                         *nextTokPtr = ptr.offset(1);
@@ -1210,7 +1225,7 @@ pub mod xmltok_impl_c {
             if *ptr as c_int == 0x78 {
                 return normal_scanHexCharRef(enc, ptr.offset(1isize), end, nextTokPtr);
             }
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 25 => {}
                 _ => {
                     *nextTokPtr = ptr;
@@ -1219,7 +1234,7 @@ pub mod xmltok_impl_c {
             }
             ptr = ptr.offset(1);
             while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     25 => {}
                     18 => {
                         *nextTokPtr = ptr.offset(1);
@@ -1246,7 +1261,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_33: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -1261,11 +1276,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1280,11 +1295,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1299,11 +1314,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1330,7 +1345,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_64: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -1345,11 +1360,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1364,11 +1379,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1383,11 +1398,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1426,7 +1441,7 @@ pub mod xmltok_impl_c {
         let mut hadColon: c_int = 0;
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_186: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -1441,11 +1456,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1460,11 +1475,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1479,11 +1494,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -1505,9 +1520,7 @@ pub mod xmltok_impl_c {
                         return XML_TOK_PARTIAL_1;
                     }
                     let mut current_block_64: u64;
-                    match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                        as c_int
-                    {
+                    match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                         29 => {
                             if 0 == 0 {
                                 *nextTokPtr = ptr;
@@ -1522,12 +1535,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if normal_encoding_ref(enc)
                                 .isInvalid2
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || normal_encoding_ref(enc)
                                     .isNmstrt2
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1543,12 +1556,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if normal_encoding_ref(enc)
                                 .isInvalid3
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || normal_encoding_ref(enc)
                                     .isNmstrt3
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1564,12 +1577,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if normal_encoding_ref(enc)
                                 .isInvalid4
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || normal_encoding_ref(enc)
                                     .isNmstrt4
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1601,8 +1614,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        t = (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int;
+                        t = normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int;
                         if t == BT_EQUALS as c_int {
                             break;
                         }
@@ -1633,8 +1645,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        open = (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int;
+                        open = normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int;
                         if open == BT_QUOT as c_int || open == BT_APOS as c_int {
                             break;
                         }
@@ -1652,8 +1663,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_PARTIAL_1;
                         }
-                        t_0 = (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int;
+                        t_0 = normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int;
                         if t_0 == open {
                             break;
                         }
@@ -1662,7 +1672,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid2
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1677,7 +1687,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid3
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1692,7 +1702,7 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid4
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -1730,17 +1740,14 @@ pub mod xmltok_impl_c {
                     if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                         return XML_TOK_PARTIAL_1;
                     }
-                    match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                        as c_int
-                    {
+                    match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                         21 | 9 | 10 => {
                             loop {
                                 ptr = ptr.offset(1);
                                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                                     return XML_TOK_PARTIAL_1;
                                 }
-                                match (*(enc as *const normal_encoding)).type_0
-                                    [*ptr as c_uchar as usize]
+                                match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize]
                                     as c_int
                                 {
                                     29 => {
@@ -1759,12 +1766,12 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 2 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if (*(enc as *const normal_encoding))
+                                        if normal_encoding_ref(enc)
                                             .isInvalid2
                                             .expect("non-null function pointer")(
                                             enc, ptr
                                         ) != 0
-                                            || (*(enc as *const normal_encoding))
+                                            || normal_encoding_ref(enc)
                                                 .isNmstrt2
                                                 .expect("non-null function pointer")(
                                                 enc, ptr
@@ -1781,12 +1788,12 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 3 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if (*(enc as *const normal_encoding))
+                                        if normal_encoding_ref(enc)
                                             .isInvalid3
                                             .expect("non-null function pointer")(
                                             enc, ptr
                                         ) != 0
-                                            || (*(enc as *const normal_encoding))
+                                            || normal_encoding_ref(enc)
                                                 .isNmstrt3
                                                 .expect("non-null function pointer")(
                                                 enc, ptr
@@ -1803,12 +1810,12 @@ pub mod xmltok_impl_c {
                                         if (end.offset_from(ptr) as c_long) < 4 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
-                                        if (*(enc as *const normal_encoding))
+                                        if normal_encoding_ref(enc)
                                             .isInvalid4
                                             .expect("non-null function pointer")(
                                             enc, ptr
                                         ) != 0
-                                            || (*(enc as *const normal_encoding))
+                                            || normal_encoding_ref(enc)
                                                 .isNmstrt4
                                                 .expect("non-null function pointer")(
                                                 enc, ptr
@@ -1899,7 +1906,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_45: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -1914,11 +1921,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1933,11 +1940,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1952,11 +1959,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -1972,7 +1979,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return XML_TOK_PARTIAL_1;
                 }
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     27 => {
                         return normal_scanComment(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
@@ -2004,7 +2011,7 @@ pub mod xmltok_impl_c {
         hadColon = 0;
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_161: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -2019,11 +2026,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2038,11 +2045,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2057,11 +2064,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2083,9 +2090,7 @@ pub mod xmltok_impl_c {
                         return XML_TOK_PARTIAL_1;
                     }
                     let mut current_block_112: u64;
-                    match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                        as c_int
-                    {
+                    match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                         29 => {
                             if 0 == 0 {
                                 *nextTokPtr = ptr;
@@ -2100,12 +2105,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if normal_encoding_ref(enc)
                                 .isInvalid2
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || normal_encoding_ref(enc)
                                     .isNmstrt2
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -2121,12 +2126,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if normal_encoding_ref(enc)
                                 .isInvalid3
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || normal_encoding_ref(enc)
                                     .isNmstrt3
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -2142,12 +2147,12 @@ pub mod xmltok_impl_c {
                             if (end.offset_from(ptr) as c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
-                            if (*(enc as *const normal_encoding))
+                            if normal_encoding_ref(enc)
                                 .isInvalid4
                                 .expect("non-null function pointer")(
                                 enc, ptr
                             ) != 0
-                                || (*(enc as *const normal_encoding))
+                                || normal_encoding_ref(enc)
                                     .isNmstrt4
                                     .expect("non-null function pointer")(
                                     enc, ptr
@@ -2179,9 +2184,7 @@ pub mod xmltok_impl_c {
                             current_block_161 = 13215501469961642988;
                             break;
                         }
-                        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
-                        {
+                        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                             29 => {
                                 if 0 == 0 {
                                     *nextTokPtr = ptr;
@@ -2196,12 +2199,12 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid2
                                     .expect("non-null function pointer")(
                                     enc, ptr
                                 ) != 0
-                                    || (*(enc as *const normal_encoding))
+                                    || normal_encoding_ref(enc)
                                         .isNmstrt2
                                         .expect("non-null function pointer")(
                                         enc, ptr
@@ -2217,12 +2220,12 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid3
                                     .expect("non-null function pointer")(
                                     enc, ptr
                                 ) != 0
-                                    || (*(enc as *const normal_encoding))
+                                    || normal_encoding_ref(enc)
                                         .isNmstrt3
                                         .expect("non-null function pointer")(
                                         enc, ptr
@@ -2238,12 +2241,12 @@ pub mod xmltok_impl_c {
                                 if (end.offset_from(ptr) as c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
-                                if (*(enc as *const normal_encoding))
+                                if normal_encoding_ref(enc)
                                     .isInvalid4
                                     .expect("non-null function pointer")(
                                     enc, ptr
                                 ) != 0
-                                    || (*(enc as *const normal_encoding))
+                                    || normal_encoding_ref(enc)
                                         .isNmstrt4
                                         .expect("non-null function pointer")(
                                         enc, ptr
@@ -2342,7 +2345,7 @@ pub mod xmltok_impl_c {
                 end = ptr.offset(n as isize);
             }
         }
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             2 => {
                 return normal_scanLt(enc, ptr.offset(1isize), end, nextTokPtr);
             }
@@ -2354,7 +2357,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return XML_TOK_TRAILING_CR_1;
                 }
-                if (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                if normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                     == BT_LF as c_int
                 {
                     ptr = ptr.offset(1isize);
@@ -2388,7 +2391,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -2402,7 +2405,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -2416,7 +2419,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -2436,10 +2439,10 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_76: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     if (end.offset_from(ptr) as c_long) < 2
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isInvalid2
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -2452,7 +2455,7 @@ pub mod xmltok_impl_c {
                 }
                 6 => {
                     if (end.offset_from(ptr) as c_long) < 3
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isInvalid3
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -2465,7 +2468,7 @@ pub mod xmltok_impl_c {
                 }
                 7 => {
                     if (end.offset_from(ptr) as c_long) < 4
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isInvalid4
                             .expect("non-null function pointer")(enc, ptr)
                             != 0
@@ -2526,7 +2529,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_34: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -2541,11 +2544,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2560,11 +2563,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2579,11 +2582,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2611,7 +2614,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_65: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -2626,11 +2629,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2645,11 +2648,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2664,11 +2667,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2708,7 +2711,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         let mut current_block_32: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             29 => {
                 if 0 == 0 {
                     *nextTokPtr = ptr;
@@ -2723,11 +2726,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt2
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2742,11 +2745,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt3
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2761,11 +2764,11 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
-                    || (*(enc as *const normal_encoding))
+                    || normal_encoding_ref(enc)
                         .isNmstrt4
                         .expect("non-null function pointer")(enc, ptr)
                         == 0
@@ -2789,7 +2792,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_63: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -2804,11 +2807,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2823,11 +2826,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2842,11 +2845,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -2884,14 +2887,13 @@ pub mod xmltok_impl_c {
         mut nextTokPtr: *mut *const c_char,
     ) -> c_int {
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            let mut t: c_int =
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int;
+            let mut t: c_int = normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int;
             match t {
                 5 => {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -2905,7 +2907,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -2919,7 +2921,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -2940,9 +2942,7 @@ pub mod xmltok_impl_c {
                             return -XML_TOK_LITERAL_1;
                         }
                         *nextTokPtr = ptr;
-                        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
-                        {
+                        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                             21 | 9 | 10 | 11 | 30 | 20 => return XML_TOK_LITERAL_1,
                             _ => return XML_TOK_INVALID_1,
                         }
@@ -2977,7 +2977,7 @@ pub mod xmltok_impl_c {
             }
         }
         let mut current_block_124: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
             12 => {
                 return normal_scanLit(BT_QUOT as c_int, enc, ptr.offset(1isize), end, nextTokPtr);
             }
@@ -2989,7 +2989,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return XML_TOK_PARTIAL_1;
                 }
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     16 => {
                         return normal_scanDecl(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
@@ -3052,7 +3052,7 @@ pub mod xmltok_impl_c {
                 if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                     return -XML_TOK_CLOSE_PAREN_1;
                 }
-                match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+                match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                     33 => {
                         *nextTokPtr = ptr.offset(1);
                         return XML_TOK_CLOSE_PAREN_ASTERISK_1;
@@ -3089,7 +3089,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 2 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3097,14 +3097,14 @@ pub mod xmltok_impl_c {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isNmstrt2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
                 {
                     ptr = ptr.offset(2);
                     tok = XML_TOK_NAME;
-                } else if (*(enc as *const normal_encoding))
+                } else if normal_encoding_ref(enc)
                     .isName2
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3121,7 +3121,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 3 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3129,14 +3129,14 @@ pub mod xmltok_impl_c {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isNmstrt3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
                 {
                     ptr = ptr.offset(3);
                     tok = XML_TOK_NAME;
-                } else if (*(enc as *const normal_encoding))
+                } else if normal_encoding_ref(enc)
                     .isName3
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3153,7 +3153,7 @@ pub mod xmltok_impl_c {
                 if (end.offset_from(ptr) as c_long) < 4 {
                     return XML_TOK_PARTIAL_CHAR_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isInvalid4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3161,14 +3161,14 @@ pub mod xmltok_impl_c {
                     *nextTokPtr = ptr;
                     return XML_TOK_INVALID_1;
                 }
-                if (*(enc as *const normal_encoding))
+                if normal_encoding_ref(enc)
                     .isNmstrt4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
                 {
                     ptr = ptr.offset(4);
                     tok = XML_TOK_NAME;
-                } else if (*(enc as *const normal_encoding))
+                } else if normal_encoding_ref(enc)
                     .isName4
                     .expect("non-null function pointer")(enc, ptr)
                     != 0
@@ -3205,9 +3205,7 @@ pub mod xmltok_impl_c {
                         break;
                     }
                     let mut current_block_32: u64;
-                    match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                        as c_int
-                    {
+                    match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                         21 | 10 => {
                             current_block_32 = 17500079516916021833;
                         }
@@ -3236,7 +3234,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_210: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 29 => {
                     if 0 == 0 {
                         *nextTokPtr = ptr;
@@ -3251,11 +3249,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName2
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -3270,11 +3268,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName3
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -3289,11 +3287,11 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
-                        || (*(enc as *const normal_encoding))
+                        || normal_encoding_ref(enc)
                             .isName4
                             .expect("non-null function pointer")(enc, ptr)
                             == 0
@@ -3317,9 +3315,7 @@ pub mod xmltok_impl_c {
                             }
                             tok = XML_TOK_PREFIXED_NAME;
                             let mut current_block_187: u64;
-                            match (*(enc as *const normal_encoding)).type_0
-                                [*ptr as c_uchar as usize]
-                                as c_int
+                            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                             {
                                 29 => {
                                     if 0 == 0 {
@@ -3335,12 +3331,12 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 2 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if (*(enc as *const normal_encoding))
+                                    if normal_encoding_ref(enc)
                                         .isInvalid2
                                         .expect("non-null function pointer")(
                                         enc, ptr
                                     ) != 0
-                                        || (*(enc as *const normal_encoding))
+                                        || normal_encoding_ref(enc)
                                             .isName2
                                             .expect("non-null function pointer")(
                                             enc, ptr
@@ -3356,12 +3352,12 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 3 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if (*(enc as *const normal_encoding))
+                                    if normal_encoding_ref(enc)
                                         .isInvalid3
                                         .expect("non-null function pointer")(
                                         enc, ptr
                                     ) != 0
-                                        || (*(enc as *const normal_encoding))
+                                        || normal_encoding_ref(enc)
                                             .isName3
                                             .expect("non-null function pointer")(
                                             enc, ptr
@@ -3377,12 +3373,12 @@ pub mod xmltok_impl_c {
                                     if (end.offset_from(ptr) as c_long) < 4 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
-                                    if (*(enc as *const normal_encoding))
+                                    if normal_encoding_ref(enc)
                                         .isInvalid4
                                         .expect("non-null function pointer")(
                                         enc, ptr
                                     ) != 0
-                                        || (*(enc as *const normal_encoding))
+                                        || normal_encoding_ref(enc)
                                             .isName4
                                             .expect("non-null function pointer")(
                                             enc, ptr
@@ -3466,7 +3462,7 @@ pub mod xmltok_impl_c {
         }
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     ptr = ptr.offset(2isize);
                 }
@@ -3501,8 +3497,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_TRAILING_CR_1;
                         }
-                        if (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
+                        if normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                             == BT_LF as c_int
                         {
                             ptr = ptr.offset(1isize);
@@ -3544,7 +3539,7 @@ pub mod xmltok_impl_c {
         }
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     ptr = ptr.offset(2isize);
                 }
@@ -3588,8 +3583,7 @@ pub mod xmltok_impl_c {
                         if !(end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long) {
                             return XML_TOK_TRAILING_CR_1;
                         }
-                        if (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
+                        if normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                             == BT_LF as c_int
                         {
                             ptr = ptr.offset(1isize);
@@ -3624,12 +3618,12 @@ pub mod xmltok_impl_c {
             }
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     if (end.offset_from(ptr) as c_long) < 2 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid2
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -3643,7 +3637,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 3 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid3
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -3657,7 +3651,7 @@ pub mod xmltok_impl_c {
                     if (end.offset_from(ptr) as c_long) < 4 {
                         return XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
+                    if normal_encoding_ref(enc)
                         .isInvalid4
                         .expect("non-null function pointer")(enc, ptr)
                         != 0
@@ -3725,7 +3719,7 @@ pub mod xmltok_impl_c {
         end = end.offset(-(1));
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
             let mut current_block_8: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
                 | 30 | 19 | 23 => {
                     current_block_8 = 5143058163439228106;
@@ -3774,7 +3768,7 @@ pub mod xmltok_impl_c {
         let mut open: c_int = 0;
         ptr = ptr.offset(1);
         loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     if state == other {
                         if nAtts < attsMax {
@@ -3866,8 +3860,7 @@ pub mod xmltok_impl_c {
                         && (ptr == (*atts.offset(nAtts as isize)).valuePtr
                             || *ptr as c_int != ASCII_SPACE
                             || *ptr.offset(1) as c_int == ASCII_SPACE
-                            || (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            || normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                                 == open)
                     {
@@ -4020,7 +4013,7 @@ pub mod xmltok_impl_c {
     ) -> c_int {
         let mut start: *const c_char = ptr;
         loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     ptr = ptr.offset(2isize);
                 }
@@ -4045,7 +4038,7 @@ pub mod xmltok_impl_c {
         mut ptr: *const c_char,
     ) -> *const c_char {
         loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 10 | 9 | 21 => {
                     ptr = ptr.offset(1isize);
                 }
@@ -4061,7 +4054,7 @@ pub mod xmltok_impl_c {
         mut pos: *mut POSITION,
     ) {
         while end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int {
+            match normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int {
                 5 => {
                     ptr = ptr.offset(2);
                     (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
@@ -4083,8 +4076,7 @@ pub mod xmltok_impl_c {
                     (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
                     ptr = ptr.offset(1);
                     if end.offset_from(ptr) as c_long >= (1i32 * 1) as c_long
-                        && (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                            as c_int
+                        && normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                             == BT_LF as c_int
                     {
                         ptr = ptr.offset(1isize);
@@ -4113,7 +4105,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -4176,7 +4168,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -4198,7 +4190,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             's_129: {
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -4207,8 +4199,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         match if *ptr.offset(2).offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(2) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(2) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(2).offset(1), *ptr.offset(2).offset(0))
@@ -4303,7 +4294,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -4369,7 +4360,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_118: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4430,8 +4421,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                         match if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
@@ -4560,7 +4550,7 @@ pub mod xmltok_impl_c {
             }
         }
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -4588,7 +4578,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 if (if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 }) == BT_LF as c_int
@@ -4630,7 +4620,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4679,7 +4669,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -4745,7 +4735,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_73: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4802,8 +4792,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                         match if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
@@ -4852,7 +4841,7 @@ pub mod xmltok_impl_c {
     ) -> c_int {
         if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4865,7 +4854,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -4896,7 +4885,7 @@ pub mod xmltok_impl_c {
                 return little2_scanHexCharRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -4909,7 +4898,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -4940,7 +4929,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_33: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -5009,7 +4998,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_64: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -5091,7 +5080,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_186: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -5156,7 +5145,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_64: u64;
                     match if *ptr.offset(1) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                        normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
@@ -5231,8 +5220,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         t = if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
@@ -5267,8 +5255,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         open = if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
@@ -5290,8 +5277,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         t_0 = if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
@@ -5345,7 +5331,7 @@ pub mod xmltok_impl_c {
                         return XML_TOK_PARTIAL_1;
                     }
                     match if *ptr.offset(1) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                        normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
@@ -5356,8 +5342,7 @@ pub mod xmltok_impl_c {
                                     return XML_TOK_PARTIAL_1;
                                 }
                                 match if *ptr.offset(1) as c_int == 0 {
-                                    (*(enc as *const normal_encoding)).type_0
-                                        [*ptr as c_uchar as usize]
+                                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize]
                                         as c_int
                                 } else {
                                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
@@ -5499,7 +5484,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_45: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -5557,7 +5542,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -5593,7 +5578,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_161: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -5658,7 +5643,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_112: u64;
                     match if *ptr.offset(1) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                        normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
@@ -5733,8 +5718,7 @@ pub mod xmltok_impl_c {
                             break;
                         }
                         match if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
@@ -5876,7 +5860,7 @@ pub mod xmltok_impl_c {
             }
         }
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -5892,7 +5876,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_TRAILING_CR_1;
                 }
                 if (if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 }) == BT_LF as c_int
@@ -5953,7 +5937,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_76: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6036,7 +6020,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_34: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -6106,7 +6090,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_65: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6189,7 +6173,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -6255,7 +6239,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_63: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6336,7 +6320,7 @@ pub mod xmltok_impl_c {
     ) -> c_int {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut t: c_int = if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             };
@@ -6371,8 +6355,7 @@ pub mod xmltok_impl_c {
                         }
                         *nextTokPtr = ptr;
                         match if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
@@ -6411,7 +6394,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_124: u64;
         match if *ptr.offset(1) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
@@ -6427,7 +6410,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -6496,7 +6479,7 @@ pub mod xmltok_impl_c {
                     return -XML_TOK_CLOSE_PAREN_1;
                 }
                 match if *ptr.offset(1) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                    normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
@@ -6601,7 +6584,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_32: u64;
                     match if *ptr.offset(1) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                        normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
@@ -6638,7 +6621,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_210: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6705,8 +6688,7 @@ pub mod xmltok_impl_c {
                             tok = XML_TOK_PREFIXED_NAME;
                             let mut current_block_187: u64;
                             match if *ptr.offset(1) as c_int == 0 {
-                                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                    as c_int
+                                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                             } else {
                                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                             } {
@@ -6833,7 +6815,7 @@ pub mod xmltok_impl_c {
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6872,8 +6854,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_TRAILING_CR_1;
                         }
                         if (if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as c_int
@@ -6918,7 +6899,7 @@ pub mod xmltok_impl_c {
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -6966,8 +6947,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_TRAILING_CR_1;
                         }
                         if (if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as c_int
@@ -7005,7 +6985,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7086,7 +7066,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_8: u64;
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7151,7 +7131,7 @@ pub mod xmltok_impl_c {
         ptr = ptr.offset(2);
         loop {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7255,8 +7235,7 @@ pub mod xmltok_impl_c {
                                 -(1)
                             }) == ASCII_SPACE
                             || (if *ptr.offset(2).offset(1) as c_int == 0 {
-                                (*(enc as *const normal_encoding)).type_0
-                                    [*ptr.offset(2) as c_uchar as usize]
+                                normal_encoding_ref(enc).type_0[*ptr.offset(2) as c_uchar as usize]
                                     as c_int
                             } else {
                                 unicode_byte_type(
@@ -7435,7 +7414,7 @@ pub mod xmltok_impl_c {
         let mut start: *const c_char = ptr;
         loop {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7464,7 +7443,7 @@ pub mod xmltok_impl_c {
     ) -> *const c_char {
         loop {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7484,7 +7463,7 @@ pub mod xmltok_impl_c {
     ) {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(1) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize] as c_int
+                normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
@@ -7510,8 +7489,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long
                         && (if *ptr.offset(1) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0[*ptr as c_uchar as usize]
-                                as c_int
+                            normal_encoding_ref(enc).type_0[*ptr as c_uchar as usize] as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as c_int
@@ -7542,8 +7520,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -7606,7 +7583,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -7628,8 +7605,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             's_129: {
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -7638,7 +7614,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         match if *ptr.offset(2).offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
+                            normal_encoding_ref(enc).type_0
                                 [*ptr.offset(2).offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
@@ -7734,7 +7710,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -7800,8 +7776,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_118: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -7862,8 +7837,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                         match if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -7993,7 +7967,7 @@ pub mod xmltok_impl_c {
             }
         }
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -8021,8 +7995,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 if (if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 }) == BT_LF as c_int
@@ -8064,8 +8037,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8114,7 +8086,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -8180,8 +8152,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_73: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8238,8 +8209,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                         match if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -8289,8 +8259,7 @@ pub mod xmltok_impl_c {
     ) -> c_int {
         if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8303,8 +8272,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -8335,8 +8303,7 @@ pub mod xmltok_impl_c {
                 return big2_scanHexCharRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8349,8 +8316,7 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(2);
             while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -8381,7 +8347,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_33: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -8450,8 +8416,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_64: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8533,8 +8498,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_186: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -8599,8 +8563,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_64: u64;
                     match if *ptr.offset(0) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize] as c_int
+                        normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
@@ -8675,8 +8638,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         t = if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -8712,8 +8674,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         open = if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -8736,8 +8697,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_PARTIAL_1;
                         }
                         t_0 = if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -8792,8 +8752,7 @@ pub mod xmltok_impl_c {
                         return XML_TOK_PARTIAL_1;
                     }
                     match if *ptr.offset(0) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize] as c_int
+                        normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
@@ -8804,7 +8763,7 @@ pub mod xmltok_impl_c {
                                     return XML_TOK_PARTIAL_1;
                                 }
                                 match if *ptr.offset(0) as c_int == 0 {
-                                    (*(enc as *const normal_encoding)).type_0
+                                    normal_encoding_ref(enc).type_0
                                         [*ptr.offset(1) as c_uchar as usize]
                                         as c_int
                                 } else {
@@ -8947,7 +8906,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_45: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9005,8 +8964,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -9042,8 +9000,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_161: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -9108,8 +9065,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_112: u64;
                     match if *ptr.offset(0) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize] as c_int
+                        normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
@@ -9184,8 +9140,7 @@ pub mod xmltok_impl_c {
                             break;
                         }
                         match if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -9328,7 +9283,7 @@ pub mod xmltok_impl_c {
             }
         }
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9344,8 +9299,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_TRAILING_CR_1;
                 }
                 if (if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 }) == BT_LF as c_int
@@ -9406,8 +9360,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_76: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -9490,7 +9443,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_34: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9560,8 +9513,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_65: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -9644,7 +9596,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_32: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9710,8 +9662,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_63: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -9792,8 +9743,7 @@ pub mod xmltok_impl_c {
     ) -> c_int {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut t: c_int = if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             };
@@ -9828,8 +9778,7 @@ pub mod xmltok_impl_c {
                         }
                         *nextTokPtr = ptr;
                         match if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -9869,7 +9818,7 @@ pub mod xmltok_impl_c {
         }
         let mut current_block_124: u64;
         match if *ptr.offset(0) as c_int == 0 {
-            (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
+            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
         } else {
             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
@@ -9885,8 +9834,7 @@ pub mod xmltok_impl_c {
                     return XML_TOK_PARTIAL_1;
                 }
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -9955,8 +9903,7 @@ pub mod xmltok_impl_c {
                     return -XML_TOK_CLOSE_PAREN_1;
                 }
                 match if *ptr.offset(0) as c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                        as c_int
+                    normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                 } else {
                     unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
@@ -10061,8 +10008,7 @@ pub mod xmltok_impl_c {
                     }
                     let mut current_block_32: u64;
                     match if *ptr.offset(0) as c_int == 0 {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr.offset(1) as c_uchar as usize] as c_int
+                        normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
                     } else {
                         unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
@@ -10099,8 +10045,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_210: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10167,8 +10112,7 @@ pub mod xmltok_impl_c {
                             tok = XML_TOK_PREFIXED_NAME;
                             let mut current_block_187: u64;
                             match if *ptr.offset(0) as c_int == 0 {
-                                (*(enc as *const normal_encoding)).type_0
-                                    [*ptr.offset(1) as c_uchar as usize]
+                                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                     as c_int
                             } else {
                                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -10296,8 +10240,7 @@ pub mod xmltok_impl_c {
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10336,8 +10279,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_TRAILING_CR_1;
                         }
                         if (if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -10383,8 +10325,7 @@ pub mod xmltok_impl_c {
         start = ptr;
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10431,8 +10372,7 @@ pub mod xmltok_impl_c {
                             return XML_TOK_TRAILING_CR_1;
                         }
                         if (if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -10471,8 +10411,7 @@ pub mod xmltok_impl_c {
         }
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10553,8 +10492,7 @@ pub mod xmltok_impl_c {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             let mut current_block_8: u64;
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10619,8 +10557,7 @@ pub mod xmltok_impl_c {
         ptr = ptr.offset(2);
         loop {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10724,7 +10661,7 @@ pub mod xmltok_impl_c {
                                 -(1)
                             }) == ASCII_SPACE
                             || (if *ptr.offset(2).offset(0) as c_int == 0 {
-                                (*(enc as *const normal_encoding)).type_0
+                                normal_encoding_ref(enc).type_0
                                     [*ptr.offset(2).offset(1) as c_uchar as usize]
                                     as c_int
                             } else {
@@ -10904,8 +10841,7 @@ pub mod xmltok_impl_c {
         let mut start: *const c_char = ptr;
         loop {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10934,8 +10870,7 @@ pub mod xmltok_impl_c {
     ) -> *const c_char {
         loop {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10955,8 +10890,7 @@ pub mod xmltok_impl_c {
     ) {
         while end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long {
             match if *ptr.offset(0) as c_int == 0 {
-                (*(enc as *const normal_encoding)).type_0[*ptr.offset(1) as c_uchar as usize]
-                    as c_int
+                normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize] as c_int
             } else {
                 unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
@@ -10982,8 +10916,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     if end.offset_from(ptr) as c_long >= (1i32 * 2) as c_long
                         && (if *ptr.offset(0) as c_int == 0 {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr.offset(1) as c_uchar as usize]
+                            normal_encoding_ref(enc).type_0[*ptr.offset(1) as c_uchar as usize]
                                 as c_int
                         } else {
                             unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
@@ -11006,23 +10939,21 @@ pub mod xmltok_ns_c {
     use super::*;
 
     pub(crate) unsafe extern "C" fn XmlGetUtf8InternalEncoding() -> *const ENCODING {
-        return &raw const internal_utf8_encoding.enc;
+        return &internal_utf8_encoding.enc;
     }
     pub(crate) unsafe extern "C" fn XmlGetUtf16InternalEncoding() -> *const ENCODING {
-        return &raw const internal_little2_encoding.enc;
+        return &internal_little2_encoding.enc;
     }
 
-    pub static encodings: [&ENCODING; 7] = unsafe {
-        [
-            &*(&raw const latin1_encoding.enc),
-            &*(&raw const ascii_encoding.enc),
-            &*(&raw const utf8_encoding.enc),
-            &*(&raw const big2_encoding.enc),
-            &*(&raw const big2_encoding.enc),
-            &*(&raw const little2_encoding.enc),
-            &*(&raw const utf8_encoding.enc),
-        ]
-    };
+    pub static encodings: [&ENCODING; 7] = [
+        &latin1_encoding.enc,
+        &ascii_encoding.enc,
+        &utf8_encoding.enc,
+        &big2_encoding.enc,
+        &big2_encoding.enc,
+        &little2_encoding.enc,
+        &utf8_encoding.enc,
+    ];
 
     pub(crate) unsafe extern "C" fn initScanProlog(
         mut enc: *const ENCODING,
@@ -11032,7 +10963,7 @@ pub mod xmltok_ns_c {
     ) -> c_int {
         return initScan(
             &encodings,
-            enc as *const INIT_ENCODING,
+            init_encoding_ref(enc),
             XML_PROLOG_STATE,
             ptr,
             end,
@@ -11048,7 +10979,7 @@ pub mod xmltok_ns_c {
     ) -> c_int {
         return initScan(
             &encodings,
-            enc as *const INIT_ENCODING,
+            init_encoding_ref(enc),
             XML_CONTENT_STATE,
             ptr,
             end,
@@ -11121,15 +11052,10 @@ pub mod xmltok_ns_c {
             return null::<ENCODING>();
         }
         *p = 0;
-        if streqci(
-            &raw mut buf as *mut c_char,
-            &raw const KW_UTF_16 as *const c_char,
-        ) != 0
-            && (*enc).minBytesPerChar == 2
-        {
+        if streqci(buf.as_mut_ptr(), KW_UTF_16.as_ptr()) != 0 && (*enc).minBytesPerChar == 2 {
             return enc;
         }
-        i = getEncodingIndex(&raw mut buf as *mut c_char);
+        i = getEncodingIndex(buf.as_mut_ptr());
         if i == UNKNOWN_ENC {
             return null::<ENCODING>();
         }
@@ -11169,23 +11095,21 @@ pub mod xmltok_ns_c {
         );
     }
     pub(crate) unsafe extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const ENCODING {
-        return &raw const internal_utf8_encoding_ns.enc;
+        return &internal_utf8_encoding_ns.enc;
     }
     pub(crate) unsafe extern "C" fn XmlGetUtf16InternalEncodingNS() -> *const ENCODING {
-        return &raw const internal_little2_encoding_ns.enc;
+        return &internal_little2_encoding_ns.enc;
     }
 
-    pub static encodingsNS: [&ENCODING; 7] = unsafe {
-        [
-            &*(&raw const latin1_encoding_ns.enc),
-            &*(&raw const ascii_encoding_ns.enc),
-            &*(&raw const utf8_encoding_ns.enc),
-            &*(&raw const big2_encoding_ns.enc),
-            &*(&raw const big2_encoding_ns.enc),
-            &*(&raw const little2_encoding_ns.enc),
-            &*(&raw const utf8_encoding_ns.enc),
-        ]
-    };
+    pub static encodingsNS: [&ENCODING; 7] = [
+        &latin1_encoding_ns.enc,
+        &ascii_encoding_ns.enc,
+        &utf8_encoding_ns.enc,
+        &big2_encoding_ns.enc,
+        &big2_encoding_ns.enc,
+        &little2_encoding_ns.enc,
+        &utf8_encoding_ns.enc,
+    ];
 
     pub(crate) unsafe extern "C" fn initScanPrologNS(
         mut enc: *const ENCODING,
@@ -11195,7 +11119,7 @@ pub mod xmltok_ns_c {
     ) -> c_int {
         return initScan(
             &encodingsNS,
-            enc as *const INIT_ENCODING,
+            init_encoding_ref(enc),
             XML_PROLOG_STATE,
             ptr,
             end,
@@ -11211,7 +11135,7 @@ pub mod xmltok_ns_c {
     ) -> c_int {
         return initScan(
             &encodingsNS,
-            enc as *const INIT_ENCODING,
+            init_encoding_ref(enc),
             XML_CONTENT_STATE,
             ptr,
             end,
@@ -11284,15 +11208,10 @@ pub mod xmltok_ns_c {
             return null::<ENCODING>();
         }
         *p = 0;
-        if streqci(
-            &raw mut buf as *mut c_char,
-            &raw const KW_UTF_16 as *const c_char,
-        ) != 0
-            && (*enc).minBytesPerChar == 2
-        {
+        if streqci(buf.as_mut_ptr(), KW_UTF_16.as_ptr()) != 0 && (*enc).minBytesPerChar == 2 {
             return enc;
         }
-        i = getEncodingIndex(&raw mut buf as *mut c_char);
+        i = getEncodingIndex(buf.as_mut_ptr());
         if i == UNKNOWN_ENC {
             return null::<ENCODING>();
         }
@@ -11759,7 +11678,7 @@ unsafe extern "C" fn utf8_toUtf16(
             current_block = 18317007320854588510;
             break;
         }
-        match (*(enc as *const normal_encoding)).type_0[*from as c_uchar as usize] as c_int {
+        match normal_encoding_ref(enc).type_0[*from as c_uchar as usize] as c_int {
             5 => {
                 if (fromLim.offset_from(from) as c_long) < 2 {
                     res = XML_CONVERT_INPUT_INCOMPLETE;
@@ -17958,7 +17877,7 @@ unsafe extern "C" fn initUpdatePosition(
     mut end: *const c_char,
     mut pos: *mut POSITION,
 ) {
-    normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
+    normal_updatePosition(&utf8_encoding.enc, ptr, end, pos);
 }
 
 unsafe extern "C" fn toAscii(
@@ -18169,7 +18088,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_version as *const c_char,
+        KW_version.as_ptr(),
     ) == 0
     {
         if isGeneralTextEntity == 0 {
@@ -18208,7 +18127,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_encoding as *const c_char,
+        KW_encoding.as_ptr(),
     ) != 0
     {
         let mut c: c_int = toAscii(enc, val, end);
@@ -18247,7 +18166,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_standalone as *const c_char,
+        KW_standalone.as_ptr(),
     ) == 0
         || isGeneralTextEntity != 0
     {
@@ -18258,7 +18177,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         val,
         ptr.offset(-((*enc).minBytesPerChar as isize)),
-        &raw const KW_yes as *const c_char,
+        KW_yes.as_ptr(),
     ) != 0
     {
         if !standalone.is_null() {
@@ -18268,7 +18187,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         val,
         ptr.offset(-((*enc).minBytesPerChar as isize)),
-        &raw const KW_no as *const c_char,
+        KW_no.as_ptr(),
     ) != 0
     {
         if !standalone.is_null() {
@@ -18359,8 +18278,8 @@ pub(crate) unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> c_int {
 }
 
 unsafe extern "C" fn unknown_isName(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let uenc = unknown_encoding_ref(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
     if c & !(0xffff) != 0 {
         return 0i32;
     }
@@ -18370,8 +18289,8 @@ unsafe extern "C" fn unknown_isName(mut enc: *const ENCODING, mut p: *const c_ch
 }
 
 unsafe extern "C" fn unknown_isNmstrt(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let uenc = unknown_encoding_ref(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
     if c & !(0xffff) != 0 {
         return 0i32;
     }
@@ -18381,8 +18300,8 @@ unsafe extern "C" fn unknown_isNmstrt(mut enc: *const ENCODING, mut p: *const c_
 }
 
 unsafe extern "C" fn unknown_isInvalid(mut enc: *const ENCODING, mut p: *const c_char) -> c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: c_int = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let uenc = unknown_encoding_ref(enc);
+    let mut c: c_int = uenc.convert.expect("non-null function pointer")(uenc.userData, p);
     return (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as c_int;
 }
 
@@ -18393,7 +18312,7 @@ unsafe extern "C" fn unknown_toUtf8(
     mut toP: *mut *mut c_char,
     mut toLim: *const c_char,
 ) -> XML_Convert_Result {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
+    let uenc = unknown_encoding_ref(enc);
     let mut buf: [c_char; 4] = [0; 4];
     loop {
         let mut utf8: *const c_char = null::<c_char>();
@@ -18401,21 +18320,19 @@ unsafe extern "C" fn unknown_toUtf8(
         if *fromP == fromLim {
             return XML_CONVERT_COMPLETED;
         }
-        utf8 = &raw const *(&raw const (*uenc).utf8 as *const [c_char; 4])
-            .offset(**fromP as c_uchar as isize) as *const c_char;
-        let fresh61 = utf8;
-        utf8 = utf8.offset(1);
-        n = *fresh61 as c_int;
+        let entry = &uenc.utf8[**fromP as c_uchar as usize];
+        utf8 = entry.as_ptr().offset(1);
+        n = entry[0] as c_int;
         if n == 0 {
             let mut c: c_int =
-                (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP);
+                uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP);
             n = XmlUtf8Encode(c, &raw mut buf as *mut c_char);
             if n as c_long > toLim.offset_from(*toP) as c_long {
                 return XML_CONVERT_OUTPUT_EXHAUSTED;
             }
             utf8 = &raw mut buf as *mut c_char;
             *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as c_uchar as usize] as c_int
+                (normal_encoding_ref(enc).type_0[**fromP as c_uchar as usize] as c_int
                     - (BT_LEAD2 as c_int - 2i32)) as isize,
             );
         } else {
@@ -18436,14 +18353,13 @@ unsafe extern "C" fn unknown_toUtf16(
     mut toP: *mut *mut c_ushort,
     mut toLim: *const c_ushort,
 ) -> XML_Convert_Result {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
+    let uenc = unknown_encoding_ref(enc);
     while *fromP < fromLim && *toP < toLim as *mut c_ushort {
-        let mut c: c_ushort = (*uenc).utf16[**fromP as c_uchar as usize];
+        let mut c: c_ushort = uenc.utf16[**fromP as c_uchar as usize];
         if c as c_int == 0 {
-            c = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP)
-                as c_ushort;
+            c = uenc.convert.expect("non-null function pointer")(uenc.userData, *fromP) as c_ushort;
             *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as c_uchar as usize] as c_int
+                (normal_encoding_ref(enc).type_0[**fromP as c_uchar as usize] as c_int
                     - (BT_LEAD2 as c_int - 2i32)) as isize,
             );
         } else {
@@ -18469,7 +18385,7 @@ pub(crate) unsafe extern "C" fn XmlInitUnknownEncoding(
     let mut e: *mut unknown_encoding = mem as *mut unknown_encoding;
     memcpy(
         mem,
-        &raw const latin1_encoding as *const c_void,
+        from_ref(&latin1_encoding).cast::<c_void>(),
         size_of::<normal_encoding>(),
     );
     i = 0;
@@ -18664,12 +18580,12 @@ static KW_UTF_16LE: [c_char; 9] = [
 
 unsafe extern "C" fn getEncodingIndex(mut name: *const c_char) -> c_int {
     let encodingNames: [*const c_char; 6] = [
-        &raw const KW_ISO_8859_1 as *const c_char,
-        &raw const KW_US_ASCII as *const c_char,
-        &raw const KW_UTF_8 as *const c_char,
-        &raw const KW_UTF_16 as *const c_char,
-        &raw const KW_UTF_16BE as *const c_char,
-        &raw const KW_UTF_16LE as *const c_char,
+        KW_ISO_8859_1.as_ptr(),
+        KW_US_ASCII.as_ptr(),
+        KW_UTF_8.as_ptr(),
+        KW_UTF_16.as_ptr(),
+        KW_UTF_16BE.as_ptr(),
+        KW_UTF_16LE.as_ptr(),
     ];
     let mut i: c_int = 0;
     if name.is_null() {
@@ -18687,7 +18603,7 @@ unsafe extern "C" fn getEncodingIndex(mut name: *const c_char) -> c_int {
 
 unsafe extern "C" fn initScan(
     encodingTable: &[&ENCODING; 7],
-    mut enc: *const INIT_ENCODING,
+    enc: &INIT_ENCODING,
     mut state: c_int,
     mut ptr: *const c_char,
     mut end: *const c_char,
@@ -18697,16 +18613,16 @@ unsafe extern "C" fn initScan(
     if ptr >= end {
         return XML_TOK_NONE_1;
     }
-    encPtr = (*enc).encPtr;
+    encPtr = enc.encPtr;
     if ptr.offset(1) == end {
-        match (*enc).initEnc.isUtf16 as c_int {
+        match enc.initEnc.isUtf16 as c_int {
             3 | 5 | 4 => return XML_TOK_PARTIAL_1,
             _ => {}
         }
         let mut current_block_5: u64;
         match *ptr as c_uchar as c_int {
             254 | 255 | 239 => {
-                if (*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE {
+                if enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE {
                     current_block_5 = 13183875560443969876;
                 } else {
                     current_block_5 = 6556540211831925522;
@@ -18727,17 +18643,15 @@ unsafe extern "C" fn initScan(
         let mut current_block_26: u64;
         match (*ptr.offset(0) as c_uchar as c_int) << 8 | *ptr.offset(1) as c_uchar as c_int {
             65279 => {
-                if !((*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC
-                    && state == XML_CONTENT_STATE)
-                {
+                if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
                     *nextTokPtr = ptr.offset(2);
                     *encPtr = encodingTable[UTF_16BE_ENC as usize];
                     return XML_TOK_BOM_1;
                 }
             }
             15360 => {
-                if !(((*enc).initEnc.isUtf16 as c_int == UTF_16BE_ENC
-                    || (*enc).initEnc.isUtf16 as c_int == UTF_16_ENC)
+                if !((enc.initEnc.isUtf16 as c_int == UTF_16BE_ENC
+                    || enc.initEnc.isUtf16 as c_int == UTF_16_ENC)
                     && state == XML_CONTENT_STATE)
                 {
                     *encPtr = encodingTable[UTF_16LE_ENC as usize];
@@ -18747,9 +18661,7 @@ unsafe extern "C" fn initScan(
                 }
             }
             65534 => {
-                if !((*enc).initEnc.isUtf16 as c_int == ISO_8859_1_ENC
-                    && state == XML_CONTENT_STATE)
-                {
+                if !(enc.initEnc.isUtf16 as c_int == ISO_8859_1_ENC && state == XML_CONTENT_STATE) {
                     *nextTokPtr = ptr.offset(2);
                     *encPtr = encodingTable[UTF_16LE_ENC as usize];
                     return XML_TOK_BOM_1;
@@ -18757,7 +18669,7 @@ unsafe extern "C" fn initScan(
             }
             61371 => {
                 if state == XML_CONTENT_STATE {
-                    let mut e: c_int = (*enc).initEnc.isUtf16 as c_int;
+                    let mut e: c_int = enc.initEnc.isUtf16 as c_int;
                     if e == ISO_8859_1_ENC
                         || e == UTF_16BE_ENC
                         || e == UTF_16LE_ENC
@@ -18786,8 +18698,7 @@ unsafe extern "C" fn initScan(
             }
             _ => {
                 if *ptr.offset(0) as c_int == '\0' as i32 {
-                    if !(state == XML_CONTENT_STATE
-                        && (*enc).initEnc.isUtf16 as c_int == UTF_16LE_ENC)
+                    if !(state == XML_CONTENT_STATE && enc.initEnc.isUtf16 as c_int == UTF_16LE_ENC)
                     {
                         *encPtr = encodingTable[UTF_16BE_ENC as usize];
                         return (**encPtr).scanners[state as usize]
@@ -18807,7 +18718,7 @@ unsafe extern "C" fn initScan(
             }
         }
     }
-    *encPtr = encodingTable[(*enc).initEnc.isUtf16 as usize];
+    *encPtr = encodingTable[enc.initEnc.isUtf16 as usize];
     return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
         *encPtr, ptr, end, nextTokPtr,
     );
@@ -18820,7 +18731,7 @@ pub(crate) unsafe extern "C" fn XmlInitUnknownEncodingNS(
 ) -> *mut ENCODING {
     let mut enc: *mut ENCODING = XmlInitUnknownEncoding(mem, table, convert, userData);
     if !enc.is_null() {
-        (*(enc as *mut normal_encoding)).type_0[ASCII_COLON as usize] = BT_COLON_0 as c_uchar;
+        normal_encoding_mut(enc).type_0[ASCII_COLON as usize] = BT_COLON_0 as c_uchar;
     }
     return enc;
 }
