@@ -1,6 +1,6 @@
 use ::core::ffi::{c_char, c_float, c_int, c_long, c_uchar, c_uint, c_ulong, c_ulonglong, c_void};
 use ::core::mem::size_of;
-use ::core::ptr::{null, null_mut};
+use ::core::ptr::{null, null_mut, write};
 
 use crate::stdlib::{__errno_location, memcpy, memset};
 
@@ -1723,7 +1723,7 @@ unsafe extern "C" fn parserCreate(
         }
     }
     (*parser).m_freeBindingList = null_mut::<BINDING>();
-    ::core::ptr::write(&raw mut (*parser).m_freeTagList, None);
+    write(&raw mut (*parser).m_freeTagList, None);
     (*parser).m_freeInternalEntities = null_mut::<OPEN_INTERNAL_ENTITY>();
     (*parser).m_freeAttributeEntities = null_mut::<OPEN_INTERNAL_ENTITY>();
     (*parser).m_freeValueEntities = null_mut::<OPEN_INTERNAL_ENTITY>();
@@ -1832,7 +1832,7 @@ unsafe extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const
     (*parser).m_openValueEntities = null_mut::<OPEN_INTERNAL_ENTITY>();
     (*parser).m_defaultExpandInternalEntities = XML_TRUE;
     (*parser).m_tagLevel = 0;
-    ::core::ptr::write(&raw mut (*parser).m_tagStack, None);
+    write(&raw mut (*parser).m_tagStack, None);
     (*parser).m_inheritedBindings = null_mut::<BINDING>();
     (*parser).m_nSpecifiedAtts = 0;
     (*parser).m_unknownEncodingMem = NULL;
@@ -9577,7 +9577,7 @@ unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
 }
 
 unsafe extern "C" fn hashTableInit(mut p: *mut HASH_TABLE, mut parser: XML_Parser) {
-    ::core::ptr::write(
+    write(
         p,
         HASH_TABLE {
             entries: std::collections::HashMap::new(),
