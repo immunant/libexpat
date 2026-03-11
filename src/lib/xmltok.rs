@@ -11829,15 +11829,15 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding.enc;
     }
 
-    pub static mut encodings: [*const crate::src::lib::xmltok::ENCODING; 7] = unsafe {
+    pub static encodings: [&crate::src::lib::xmltok::ENCODING; 7] = unsafe {
         [
-            &raw const latin1_encoding.enc,
-            &raw const ascii_encoding.enc,
-            &raw const utf8_encoding.enc,
-            &raw const big2_encoding.enc,
-            &raw const big2_encoding.enc,
-            &raw const little2_encoding.enc,
-            &raw const utf8_encoding.enc,
+            &*(&raw const latin1_encoding.enc),
+            &*(&raw const ascii_encoding.enc),
+            &*(&raw const utf8_encoding.enc),
+            &*(&raw const big2_encoding.enc),
+            &*(&raw const big2_encoding.enc),
+            &*(&raw const little2_encoding.enc),
+            &*(&raw const utf8_encoding.enc),
         ]
     };
 
@@ -11848,7 +11848,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodings as *const *const crate::src::lib::xmltok::ENCODING,
+            &encodings,
             enc as *const crate::src::lib::xmltok::INIT_ENCODING,
             crate::src::lib::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -11864,7 +11864,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodings as *const *const crate::src::lib::xmltok::ENCODING,
+            &encodings,
             enc as *const crate::src::lib::xmltok::INIT_ENCODING,
             crate::src::lib::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -11995,15 +11995,15 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding_ns.enc;
     }
 
-    pub static mut encodingsNS: [*const crate::src::lib::xmltok::ENCODING; 7] = unsafe {
+    pub static encodingsNS: [&crate::src::lib::xmltok::ENCODING; 7] = unsafe {
         [
-            &raw const latin1_encoding_ns.enc,
-            &raw const ascii_encoding_ns.enc,
-            &raw const utf8_encoding_ns.enc,
-            &raw const big2_encoding_ns.enc,
-            &raw const big2_encoding_ns.enc,
-            &raw const little2_encoding_ns.enc,
-            &raw const utf8_encoding_ns.enc,
+            &*(&raw const latin1_encoding_ns.enc),
+            &*(&raw const ascii_encoding_ns.enc),
+            &*(&raw const utf8_encoding_ns.enc),
+            &*(&raw const big2_encoding_ns.enc),
+            &*(&raw const big2_encoding_ns.enc),
+            &*(&raw const little2_encoding_ns.enc),
+            &*(&raw const utf8_encoding_ns.enc),
         ]
     };
 
@@ -12014,7 +12014,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::lib::xmltok::ENCODING,
+            &encodingsNS,
             enc as *const crate::src::lib::xmltok::INIT_ENCODING,
             crate::src::lib::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -12030,7 +12030,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::lib::xmltok::ENCODING,
+            &encodingsNS,
             enc as *const crate::src::lib::xmltok::INIT_ENCODING,
             crate::src::lib::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -20157,7 +20157,7 @@ unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> :
 }
 
 unsafe extern "C" fn initScan(
-    mut encodingTable: *const *const crate::src::lib::xmltok::ENCODING,
+    encodingTable: &[&crate::src::lib::xmltok::ENCODING; 7],
     mut enc: *const crate::src::lib::xmltok::INIT_ENCODING,
     mut state: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
@@ -20207,7 +20207,7 @@ unsafe extern "C" fn initScan(
                     && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
                 {
                     *nextTokPtr = ptr.offset(2);
-                    *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
+                    *encPtr = encodingTable[UTF_16BE_ENC as usize];
                     return crate::src::lib::xmltok::XML_TOK_BOM_1;
                 }
             }
@@ -20216,7 +20216,7 @@ unsafe extern "C" fn initScan(
                     || (*enc).initEnc.isUtf16 as ::core::ffi::c_int == UTF_16_ENC)
                     && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
                 {
-                    *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
+                    *encPtr = encodingTable[UTF_16LE_ENC as usize];
                     return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
                         *encPtr, ptr, end, nextTokPtr,
                     );
@@ -20227,7 +20227,7 @@ unsafe extern "C" fn initScan(
                     && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
                 {
                     *nextTokPtr = ptr.offset(2);
-                    *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
+                    *encPtr = encodingTable[UTF_16LE_ENC as usize];
                     return crate::src::lib::xmltok::XML_TOK_BOM_1;
                 }
             }
@@ -20254,7 +20254,7 @@ unsafe extern "C" fn initScan(
                         }
                         if *ptr.offset(2) as ::core::ffi::c_uchar as ::core::ffi::c_int == 0xbf {
                             *nextTokPtr = ptr.offset(3);
-                            *encPtr = *encodingTable.offset(UTF_8_ENC as isize);
+                            *encPtr = encodingTable[UTF_8_ENC as usize];
                             return crate::src::lib::xmltok::XML_TOK_BOM_1;
                         }
                     }
@@ -20265,7 +20265,7 @@ unsafe extern "C" fn initScan(
                     if !(state == crate::src::lib::xmltok::XML_CONTENT_STATE
                         && (*enc).initEnc.isUtf16 as ::core::ffi::c_int == UTF_16LE_ENC)
                     {
-                        *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
+                        *encPtr = encodingTable[UTF_16BE_ENC as usize];
                         return (**encPtr).scanners[state as usize]
                             .expect("non-null function pointer")(
                             *encPtr, ptr, end, nextTokPtr
@@ -20273,7 +20273,7 @@ unsafe extern "C" fn initScan(
                     }
                 } else if *ptr.offset(1) as ::core::ffi::c_int == '\0' as i32 {
                     if !(state == crate::src::lib::xmltok::XML_CONTENT_STATE) {
-                        *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
+                        *encPtr = encodingTable[UTF_16LE_ENC as usize];
                         return (**encPtr).scanners[state as usize]
                             .expect("non-null function pointer")(
                             *encPtr, ptr, end, nextTokPtr
@@ -20283,7 +20283,7 @@ unsafe extern "C" fn initScan(
             }
         }
     }
-    *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as ::core::ffi::c_int as isize);
+    *encPtr = encodingTable[(*enc).initEnc.isUtf16 as usize];
     return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
         *encPtr, ptr, end, nextTokPtr,
     );
