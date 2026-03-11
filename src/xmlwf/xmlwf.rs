@@ -360,7 +360,7 @@ pub use crate::stdlib::_IOFBF;
 pub use crate::xmlfile_h::g_read_size_bytes;
 pub use ::expat::__stddef_null_h::NULL;
 pub use ::expat::internal::__INT_MAX__;
-pub use ::expat::src::xmlwf::xmlfile::XML_ProcessFile;
+use ::expat::src::xmlwf::xmlfile::XML_ProcessFile;
 pub use ::expat::src::xmlwf::xmlfile::XML_EXTERNAL_ENTITIES;
 pub use ::expat::src::xmlwf::xmlfile::XML_MAP_FILE;
 pub use ::expat::stdlib::exit;
@@ -1393,10 +1393,7 @@ unsafe extern "C" fn unknownEncodingConvert(
     mut data: *mut ::core::ffi::c_void,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return ::expat::src::xmlwf::codepage::codepageConvert(
-        *(data as *mut ::core::ffi::c_int),
-        p,
-    );
+    return ::expat::src::xmlwf::codepage::codepageConvert(*(data as *mut ::core::ffi::c_int), p);
 }
 
 unsafe extern "C" fn unknownEncoding(

@@ -326,9 +326,7 @@ unsafe extern "C" fn externalEntityRefStream(
     XML_ParserFree(entParser);
     return ret;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XML_ProcessFile(
+pub unsafe fn XML_ProcessFile(
     mut parser: XML_Parser,
     mut filename: *const XML_Char,
     mut flags: ::core::ffi::c_uint,

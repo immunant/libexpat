@@ -329,7 +329,7 @@ pub type CONVERTER = Option<
 
 pub mod xmltok_impl_c {
 
-    pub unsafe extern "C" fn normal_scanComment(
+    pub(crate) unsafe extern "C" fn normal_scanComment(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -423,7 +423,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanDecl(
+    pub(crate) unsafe extern "C" fn normal_scanDecl(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -490,7 +490,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_checkPiTarget(
+    pub(crate) unsafe extern "C" fn normal_checkPiTarget(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -531,7 +531,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub unsafe extern "C" fn normal_scanPi(
+    pub(crate) unsafe extern "C" fn normal_scanPi(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -812,7 +812,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanCdataSection(
+    pub(crate) unsafe extern "C" fn normal_scanCdataSection(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -843,7 +843,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
-    pub unsafe extern "C" fn normal_cdataSectionTok(
+    pub(crate) unsafe extern "C" fn normal_cdataSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1011,7 +1011,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn normal_scanEndTag(
+    pub(crate) unsafe extern "C" fn normal_scanEndTag(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1220,7 +1220,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanHexCharRef(
+    pub(crate) unsafe extern "C" fn normal_scanHexCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1258,7 +1258,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanCharRef(
+    pub(crate) unsafe extern "C" fn normal_scanCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1299,7 +1299,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanRef(
+    pub(crate) unsafe extern "C" fn normal_scanRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1484,7 +1484,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanAtts(
+    pub(crate) unsafe extern "C" fn normal_scanAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -1978,7 +1978,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanLt(
+    pub(crate) unsafe extern "C" fn normal_scanLt(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -2430,7 +2430,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_contentTok(
+    pub(crate) unsafe extern "C" fn normal_contentTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -2639,7 +2639,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn normal_scanPercent(
+    pub(crate) unsafe extern "C" fn normal_scanPercent(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -2825,7 +2825,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanPoundName(
+    pub(crate) unsafe extern "C" fn normal_scanPoundName(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3007,7 +3007,7 @@ pub mod xmltok_impl_c {
         return -crate::src::lib::xmltok::XML_TOK_POUND_NAME_1;
     }
 
-    pub unsafe extern "C" fn normal_scanLit(
+    pub(crate) unsafe extern "C" fn normal_scanLit(
         mut open: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -3093,7 +3093,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_prologTok(
+    pub(crate) unsafe extern "C" fn normal_prologTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3625,7 +3625,7 @@ pub mod xmltok_impl_c {
         return -tok;
     }
 
-    pub unsafe extern "C" fn normal_attributeValueTok(
+    pub(crate) unsafe extern "C" fn normal_attributeValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3710,7 +3710,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn normal_entityValueTok(
+    pub(crate) unsafe extern "C" fn normal_entityValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3796,7 +3796,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn normal_ignoreSectionTok(
+    pub(crate) unsafe extern "C" fn normal_ignoreSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3913,7 +3913,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_isPublicId(
+    pub(crate) unsafe extern "C" fn normal_isPublicId(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -3963,7 +3963,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub unsafe extern "C" fn normal_getAtts(
+    pub(crate) unsafe extern "C" fn normal_getAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut attsMax: ::core::ffi::c_int,
@@ -4094,7 +4094,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_charRefNumber(
+    pub(crate) unsafe extern "C" fn normal_charRefNumber(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -4157,7 +4157,7 @@ pub mod xmltok_impl_c {
         return checkCharRefNumber(result);
     }
 
-    pub unsafe extern "C" fn normal_predefinedEntityName(
+    pub(crate) unsafe extern "C" fn normal_predefinedEntityName(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4215,7 +4215,7 @@ pub mod xmltok_impl_c {
         return 0;
     }
 
-    pub unsafe extern "C" fn normal_nameMatchesAscii(
+    pub(crate) unsafe extern "C" fn normal_nameMatchesAscii(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
@@ -4234,7 +4234,7 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn normal_nameLength(
+    pub(crate) unsafe extern "C" fn normal_nameLength(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -4262,7 +4262,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_skipS(
+    pub(crate) unsafe extern "C" fn normal_skipS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
@@ -4278,7 +4278,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_updatePosition(
+    pub(crate) unsafe extern "C" fn normal_updatePosition(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4327,7 +4327,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_scanComment(
+    pub(crate) unsafe extern "C" fn little2_scanComment(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4405,7 +4405,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanDecl(
+    pub(crate) unsafe extern "C" fn little2_scanDecl(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4480,7 +4480,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_checkPiTarget(
+    pub(crate) unsafe extern "C" fn little2_checkPiTarget(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4533,7 +4533,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub unsafe extern "C" fn little2_scanPi(
+    pub(crate) unsafe extern "C" fn little2_scanPi(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4767,7 +4767,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanCdataSection(
+    pub(crate) unsafe extern "C" fn little2_scanCdataSection(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4801,7 +4801,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
-    pub unsafe extern "C" fn little2_cdataSectionTok(
+    pub(crate) unsafe extern "C" fn little2_cdataSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4943,7 +4943,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn little2_scanEndTag(
+    pub(crate) unsafe extern "C" fn little2_scanEndTag(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5128,7 +5128,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanHexCharRef(
+    pub(crate) unsafe extern "C" fn little2_scanHexCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5171,7 +5171,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanCharRef(
+    pub(crate) unsafe extern "C" fn little2_scanCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5219,7 +5219,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanRef(
+    pub(crate) unsafe extern "C" fn little2_scanRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5377,7 +5377,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanAtts(
+    pub(crate) unsafe extern "C" fn little2_scanAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -5818,7 +5818,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanLt(
+    pub(crate) unsafe extern "C" fn little2_scanLt(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -6217,7 +6217,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_contentTok(
+    pub(crate) unsafe extern "C" fn little2_contentTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -6406,7 +6406,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn little2_scanPercent(
+    pub(crate) unsafe extern "C" fn little2_scanPercent(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -6565,7 +6565,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanPoundName(
+    pub(crate) unsafe extern "C" fn little2_scanPoundName(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -6720,7 +6720,7 @@ pub mod xmltok_impl_c {
         return -crate::src::lib::xmltok::XML_TOK_POUND_NAME_1;
     }
 
-    pub unsafe extern "C" fn little2_scanLit(
+    pub(crate) unsafe extern "C" fn little2_scanLit(
         mut open: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -6788,7 +6788,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_prologTok(
+    pub(crate) unsafe extern "C" fn little2_prologTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7262,7 +7262,7 @@ pub mod xmltok_impl_c {
         return -tok;
     }
 
-    pub unsafe extern "C" fn little2_attributeValueTok(
+    pub(crate) unsafe extern "C" fn little2_attributeValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7353,7 +7353,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn little2_entityValueTok(
+    pub(crate) unsafe extern "C" fn little2_entityValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7445,7 +7445,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn little2_ignoreSectionTok(
+    pub(crate) unsafe extern "C" fn little2_ignoreSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7549,7 +7549,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_isPublicId(
+    pub(crate) unsafe extern "C" fn little2_isPublicId(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7616,7 +7616,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub unsafe extern "C" fn little2_getAtts(
+    pub(crate) unsafe extern "C" fn little2_getAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut attsMax: ::core::ffi::c_int,
@@ -7764,7 +7764,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_charRefNumber(
+    pub(crate) unsafe extern "C" fn little2_charRefNumber(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -7840,7 +7840,7 @@ pub mod xmltok_impl_c {
         return checkCharRefNumber(result);
     }
 
-    pub unsafe extern "C" fn little2_predefinedEntityName(
+    pub(crate) unsafe extern "C" fn little2_predefinedEntityName(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -7928,7 +7928,7 @@ pub mod xmltok_impl_c {
         return 0;
     }
 
-    pub unsafe extern "C" fn little2_nameMatchesAscii(
+    pub(crate) unsafe extern "C" fn little2_nameMatchesAscii(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
@@ -7949,7 +7949,7 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn little2_nameLength(
+    pub(crate) unsafe extern "C" fn little2_nameLength(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -7980,7 +7980,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_skipS(
+    pub(crate) unsafe extern "C" fn little2_skipS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
@@ -7999,7 +7999,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_updatePosition(
+    pub(crate) unsafe extern "C" fn little2_updatePosition(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8054,7 +8054,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_scanComment(
+    pub(crate) unsafe extern "C" fn big2_scanComment(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8133,7 +8133,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanDecl(
+    pub(crate) unsafe extern "C" fn big2_scanDecl(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8209,7 +8209,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_checkPiTarget(
+    pub(crate) unsafe extern "C" fn big2_checkPiTarget(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8262,7 +8262,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub unsafe extern "C" fn big2_scanPi(
+    pub(crate) unsafe extern "C" fn big2_scanPi(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8497,7 +8497,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanCdataSection(
+    pub(crate) unsafe extern "C" fn big2_scanCdataSection(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8531,7 +8531,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
-    pub unsafe extern "C" fn big2_cdataSectionTok(
+    pub(crate) unsafe extern "C" fn big2_cdataSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8675,7 +8675,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn big2_scanEndTag(
+    pub(crate) unsafe extern "C" fn big2_scanEndTag(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8861,7 +8861,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanHexCharRef(
+    pub(crate) unsafe extern "C" fn big2_scanHexCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8906,7 +8906,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanCharRef(
+    pub(crate) unsafe extern "C" fn big2_scanCharRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -8956,7 +8956,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanRef(
+    pub(crate) unsafe extern "C" fn big2_scanRef(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -9115,7 +9115,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanAtts(
+    pub(crate) unsafe extern "C" fn big2_scanAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -9557,7 +9557,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanLt(
+    pub(crate) unsafe extern "C" fn big2_scanLt(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -9958,7 +9958,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_contentTok(
+    pub(crate) unsafe extern "C" fn big2_contentTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -10149,7 +10149,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn big2_scanPercent(
+    pub(crate) unsafe extern "C" fn big2_scanPercent(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -10309,7 +10309,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanPoundName(
+    pub(crate) unsafe extern "C" fn big2_scanPoundName(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -10465,7 +10465,7 @@ pub mod xmltok_impl_c {
         return -crate::src::lib::xmltok::XML_TOK_POUND_NAME_1;
     }
 
-    pub unsafe extern "C" fn big2_scanLit(
+    pub(crate) unsafe extern "C" fn big2_scanLit(
         mut open: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -10534,7 +10534,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_prologTok(
+    pub(crate) unsafe extern "C" fn big2_prologTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11011,7 +11011,7 @@ pub mod xmltok_impl_c {
         return -tok;
     }
 
-    pub unsafe extern "C" fn big2_attributeValueTok(
+    pub(crate) unsafe extern "C" fn big2_attributeValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11103,7 +11103,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn big2_entityValueTok(
+    pub(crate) unsafe extern "C" fn big2_entityValueTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11196,7 +11196,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn big2_ignoreSectionTok(
+    pub(crate) unsafe extern "C" fn big2_ignoreSectionTok(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11301,7 +11301,7 @@ pub mod xmltok_impl_c {
         return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_isPublicId(
+    pub(crate) unsafe extern "C" fn big2_isPublicId(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11369,7 +11369,7 @@ pub mod xmltok_impl_c {
         return 1;
     }
 
-    pub unsafe extern "C" fn big2_getAtts(
+    pub(crate) unsafe extern "C" fn big2_getAtts(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut attsMax: ::core::ffi::c_int,
@@ -11518,7 +11518,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_charRefNumber(
+    pub(crate) unsafe extern "C" fn big2_charRefNumber(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -11594,7 +11594,7 @@ pub mod xmltok_impl_c {
         return checkCharRefNumber(result);
     }
 
-    pub unsafe extern "C" fn big2_predefinedEntityName(
+    pub(crate) unsafe extern "C" fn big2_predefinedEntityName(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11682,7 +11682,7 @@ pub mod xmltok_impl_c {
         return 0;
     }
 
-    pub unsafe extern "C" fn big2_nameMatchesAscii(
+    pub(crate) unsafe extern "C" fn big2_nameMatchesAscii(
         mut _enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
@@ -11703,7 +11703,7 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn big2_nameLength(
+    pub(crate) unsafe extern "C" fn big2_nameLength(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
@@ -11735,7 +11735,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_skipS(
+    pub(crate) unsafe extern "C" fn big2_skipS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
@@ -11755,7 +11755,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_updatePosition(
+    pub(crate) unsafe extern "C" fn big2_updatePosition(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11820,15 +11820,11 @@ pub mod xmltok_impl_c {
 }
 
 pub mod xmltok_ns_c {
-    #[no_mangle]
-
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncoding() -> *const crate::src::lib::xmltok::ENCODING
-    {
+    pub(crate) unsafe extern "C" fn XmlGetUtf8InternalEncoding(
+    ) -> *const crate::src::lib::xmltok::ENCODING {
         return &raw const internal_utf8_encoding.enc;
     }
-    #[no_mangle]
-
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncoding(
+    pub(crate) unsafe extern "C" fn XmlGetUtf16InternalEncoding(
     ) -> *const crate::src::lib::xmltok::ENCODING {
         return &raw const internal_little2_encoding.enc;
     }
@@ -11836,7 +11832,7 @@ pub mod xmltok_ns_c {
     pub static mut encodings: [*const crate::src::lib::xmltok::ENCODING; 7] =
         [::core::ptr::null::<crate::src::lib::xmltok::ENCODING>(); 7];
 
-    pub unsafe extern "C" fn initScanProlog(
+    pub(crate) unsafe extern "C" fn initScanProlog(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11852,7 +11848,7 @@ pub mod xmltok_ns_c {
         );
     }
 
-    pub unsafe extern "C" fn initScanContent(
+    pub(crate) unsafe extern "C" fn initScanContent(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11867,9 +11863,7 @@ pub mod xmltok_ns_c {
             nextTokPtr,
         );
     }
-    #[no_mangle]
-
-    pub unsafe extern "C" fn XmlInitEncoding(
+    pub(crate) unsafe extern "C" fn XmlInitEncoding(
         mut p: *mut crate::src::lib::xmltok::INIT_ENCODING,
         mut encPtr: *mut *const crate::src::lib::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
@@ -11911,7 +11905,7 @@ pub mod xmltok_ns_c {
         return 1;
     }
 
-    pub unsafe extern "C" fn findEncoding(
+    pub(crate) unsafe extern "C" fn findEncoding(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -11949,9 +11943,7 @@ pub mod xmltok_ns_c {
         }
         return encodings[i as usize];
     }
-    #[no_mangle]
-
-    pub unsafe extern "C" fn XmlParseXmlDecl(
+    pub(crate) unsafe extern "C" fn XmlParseXmlDecl(
         mut isGeneralTextEntity: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -11985,15 +11977,11 @@ pub mod xmltok_ns_c {
             standalone,
         );
     }
-    #[no_mangle]
-
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncodingNS(
+    pub(crate) unsafe extern "C" fn XmlGetUtf8InternalEncodingNS(
     ) -> *const crate::src::lib::xmltok::ENCODING {
         return &raw const internal_utf8_encoding_ns.enc;
     }
-    #[no_mangle]
-
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncodingNS(
+    pub(crate) unsafe extern "C" fn XmlGetUtf16InternalEncodingNS(
     ) -> *const crate::src::lib::xmltok::ENCODING {
         return &raw const internal_little2_encoding_ns.enc;
     }
@@ -12001,7 +11989,7 @@ pub mod xmltok_ns_c {
     pub static mut encodingsNS: [*const crate::src::lib::xmltok::ENCODING; 7] =
         [::core::ptr::null::<crate::src::lib::xmltok::ENCODING>(); 7];
 
-    pub unsafe extern "C" fn initScanPrologNS(
+    pub(crate) unsafe extern "C" fn initScanPrologNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -12017,7 +12005,7 @@ pub mod xmltok_ns_c {
         );
     }
 
-    pub unsafe extern "C" fn initScanContentNS(
+    pub(crate) unsafe extern "C" fn initScanContentNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -12032,9 +12020,7 @@ pub mod xmltok_ns_c {
             nextTokPtr,
         );
     }
-    #[no_mangle]
-
-    pub unsafe extern "C" fn XmlInitEncodingNS(
+    pub(crate) unsafe extern "C" fn XmlInitEncodingNS(
         mut p: *mut crate::src::lib::xmltok::INIT_ENCODING,
         mut encPtr: *mut *const crate::src::lib::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
@@ -12076,7 +12062,7 @@ pub mod xmltok_ns_c {
         return 1;
     }
 
-    pub unsafe extern "C" fn findEncodingNS(
+    pub(crate) unsafe extern "C" fn findEncodingNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -12114,9 +12100,7 @@ pub mod xmltok_ns_c {
         }
         return encodingsNS[i as usize];
     }
-    #[no_mangle]
-
-    pub unsafe extern "C" fn XmlParseXmlDeclNS(
+    pub(crate) unsafe extern "C" fn XmlParseXmlDeclNS(
         mut isGeneralTextEntity: ::core::ffi::c_int,
         mut enc: *const crate::src::lib::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -12304,106 +12288,42 @@ pub use crate::src::lib::xmltok::nametab_h::nmstrtPages;
 pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
 
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_attributeValueTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_cdataSectionTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_charRefNumber;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_checkPiTarget;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_contentTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_entityValueTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_getAtts;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_isPublicId;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_nameLength;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_nameMatchesAscii;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_predefinedEntityName;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_prologTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanAtts;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanCdataSection;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanCharRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanComment;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanDecl;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanEndTag;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanHexCharRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanLit;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanLt;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanPercent;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanPi;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanPoundName;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_scanRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_skipS;
-pub use crate::src::lib::xmltok::xmltok_impl_c::big2_updatePosition;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_attributeValueTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_cdataSectionTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_charRefNumber;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_checkPiTarget;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_contentTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_entityValueTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_getAtts;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_isPublicId;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_nameLength;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_nameMatchesAscii;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_predefinedEntityName;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_prologTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanAtts;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanCdataSection;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanCharRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanComment;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanDecl;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanEndTag;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanHexCharRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanLit;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanLt;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanPercent;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanPi;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanPoundName;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_scanRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_skipS;
-pub use crate::src::lib::xmltok::xmltok_impl_c::little2_updatePosition;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_attributeValueTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_cdataSectionTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_charRefNumber;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_checkPiTarget;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_contentTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_entityValueTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_getAtts;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_isPublicId;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_nameLength;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_nameMatchesAscii;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_predefinedEntityName;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_prologTok;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanAtts;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanCdataSection;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanCharRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanComment;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanDecl;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanEndTag;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanHexCharRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanLit;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanLt;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanPercent;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanPi;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanPoundName;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_scanRef;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_skipS;
-pub use crate::src::lib::xmltok::xmltok_impl_c::normal_updatePosition;
-pub use crate::src::lib::xmltok::xmltok_ns_c::encodings;
-pub use crate::src::lib::xmltok::xmltok_ns_c::encodingsNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::findEncoding;
-pub use crate::src::lib::xmltok::xmltok_ns_c::findEncodingNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::initScanContent;
-pub use crate::src::lib::xmltok::xmltok_ns_c::initScanContentNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::initScanProlog;
-pub use crate::src::lib::xmltok::xmltok_ns_c::initScanPrologNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlGetUtf16InternalEncoding;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlGetUtf16InternalEncodingNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncodingNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlInitEncoding;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlInitEncodingNS;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlParseXmlDecl;
-pub use crate::src::lib::xmltok::xmltok_ns_c::XmlParseXmlDeclNS;
+#[allow(unused_imports)]
+pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::{
+    big2_attributeValueTok, big2_cdataSectionTok, big2_charRefNumber, big2_checkPiTarget,
+    big2_contentTok, big2_entityValueTok, big2_getAtts, big2_ignoreSectionTok, big2_isPublicId,
+    big2_nameLength, big2_nameMatchesAscii, big2_predefinedEntityName, big2_prologTok,
+    big2_scanAtts, big2_scanCdataSection, big2_scanCharRef, big2_scanComment, big2_scanDecl,
+    big2_scanEndTag, big2_scanHexCharRef, big2_scanLit, big2_scanLt, big2_scanPercent, big2_scanPi,
+    big2_scanPoundName, big2_scanRef, big2_skipS, big2_updatePosition,
+};
+#[allow(unused_imports)]
+pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::{
+    little2_attributeValueTok, little2_cdataSectionTok, little2_charRefNumber,
+    little2_checkPiTarget, little2_contentTok, little2_entityValueTok, little2_getAtts,
+    little2_ignoreSectionTok, little2_isPublicId, little2_nameLength, little2_nameMatchesAscii,
+    little2_predefinedEntityName, little2_prologTok, little2_scanAtts, little2_scanCdataSection,
+    little2_scanCharRef, little2_scanComment, little2_scanDecl, little2_scanEndTag,
+    little2_scanHexCharRef, little2_scanLit, little2_scanLt, little2_scanPercent, little2_scanPi,
+    little2_scanPoundName, little2_scanRef, little2_skipS, little2_updatePosition,
+};
+#[allow(unused_imports)]
+pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::{
+    normal_attributeValueTok, normal_cdataSectionTok, normal_charRefNumber, normal_checkPiTarget,
+    normal_contentTok, normal_entityValueTok, normal_getAtts, normal_ignoreSectionTok,
+    normal_isPublicId, normal_nameLength, normal_nameMatchesAscii, normal_predefinedEntityName,
+    normal_prologTok, normal_scanAtts, normal_scanCdataSection, normal_scanCharRef,
+    normal_scanComment, normal_scanDecl, normal_scanEndTag, normal_scanHexCharRef, normal_scanLit,
+    normal_scanLt, normal_scanPercent, normal_scanPi, normal_scanPoundName, normal_scanRef,
+    normal_skipS, normal_updatePosition,
+};
+#[allow(unused_imports)]
+pub(crate) use crate::src::lib::xmltok::xmltok_ns_c::{
+    encodings, encodingsNS, findEncoding, findEncodingNS, initScanContent, initScanContentNS,
+    initScanProlog, initScanPrologNS, XmlGetUtf16InternalEncoding, XmlGetUtf16InternalEncodingNS,
+    XmlGetUtf8InternalEncoding, XmlGetUtf8InternalEncodingNS, XmlInitEncoding, XmlInitEncodingNS,
+    XmlParseXmlDecl, XmlParseXmlDeclNS,
+};
 pub use crate::xmltok_impl_c::inName;
 pub use crate::xmltok_impl_c::inName_0;
 pub use crate::xmltok_impl_c::inName_1;
@@ -19772,9 +19692,7 @@ unsafe extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::cor
     }
     return result;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XmlUtf8Encode(
+pub(crate) unsafe extern "C" fn XmlUtf8Encode(
     mut c: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
@@ -19805,9 +19723,7 @@ pub unsafe extern "C" fn XmlUtf8Encode(
     }
     return 0;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XmlUtf16Encode(
+pub(crate) unsafe extern "C" fn XmlUtf16Encode(
     mut charNum: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_ushort,
 ) -> ::core::ffi::c_int {
@@ -19826,9 +19742,7 @@ pub unsafe extern "C" fn XmlUtf16Encode(
     }
     return 0;
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
+pub(crate) unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
     return ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int;
 }
 
@@ -19952,9 +19866,7 @@ unsafe extern "C" fn unknown_toUtf16(
         return crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
     };
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XmlInitUnknownEncoding(
+pub(crate) unsafe extern "C" fn XmlInitUnknownEncoding(
     mut mem: *mut ::core::ffi::c_void,
     mut table: *const ::core::ffi::c_int,
     mut convert: crate::src::lib::xmltok::CONVERTER,
@@ -20366,9 +20278,7 @@ unsafe extern "C" fn initScan(
         *encPtr, ptr, end, nextTokPtr,
     );
 }
-#[no_mangle]
-
-pub unsafe extern "C" fn XmlInitUnknownEncodingNS(
+pub(crate) unsafe extern "C" fn XmlInitUnknownEncodingNS(
     mut mem: *mut ::core::ffi::c_void,
     mut table: *const ::core::ffi::c_int,
     mut convert: crate::src::lib::xmltok::CONVERTER,
