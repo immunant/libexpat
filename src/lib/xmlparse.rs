@@ -506,10 +506,7 @@ pub use crate::limits_h::INT_MAX;
 pub use crate::limits_h::UINT_MAX;
 pub use crate::siphash_h::siphash;
 pub use crate::siphash_h::sipkey;
-#[allow(unused_imports)]
-pub(crate) use crate::src::lib::xmlparse::siphash_h::{
-    sip24_final, sip24_init, sip24_update, sip24_valid, sip_round, sip_tokey, siphash24,
-};
+pub(crate) use crate::src::lib::xmlparse::siphash_h::{sip24_final, sip24_init, sip24_update};
 pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
 pub use crate::stdlib::getrandom;

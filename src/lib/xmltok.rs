@@ -12288,42 +12288,25 @@ pub use crate::src::lib::xmltok::nametab_h::nmstrtPages;
 pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
 
-#[allow(unused_imports)]
 pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::{
-    big2_attributeValueTok, big2_cdataSectionTok, big2_charRefNumber, big2_checkPiTarget,
-    big2_contentTok, big2_entityValueTok, big2_getAtts, big2_ignoreSectionTok, big2_isPublicId,
-    big2_nameLength, big2_nameMatchesAscii, big2_predefinedEntityName, big2_prologTok,
-    big2_scanAtts, big2_scanCdataSection, big2_scanCharRef, big2_scanComment, big2_scanDecl,
-    big2_scanEndTag, big2_scanHexCharRef, big2_scanLit, big2_scanLt, big2_scanPercent, big2_scanPi,
-    big2_scanPoundName, big2_scanRef, big2_skipS, big2_updatePosition,
+    big2_attributeValueTok, big2_cdataSectionTok, big2_charRefNumber, big2_contentTok,
+    big2_entityValueTok, big2_getAtts, big2_ignoreSectionTok, big2_isPublicId, big2_nameLength,
+    big2_nameMatchesAscii, big2_predefinedEntityName, big2_prologTok, big2_skipS,
+    big2_updatePosition,
 };
-#[allow(unused_imports)]
 pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::{
-    little2_attributeValueTok, little2_cdataSectionTok, little2_charRefNumber,
-    little2_checkPiTarget, little2_contentTok, little2_entityValueTok, little2_getAtts,
-    little2_ignoreSectionTok, little2_isPublicId, little2_nameLength, little2_nameMatchesAscii,
-    little2_predefinedEntityName, little2_prologTok, little2_scanAtts, little2_scanCdataSection,
-    little2_scanCharRef, little2_scanComment, little2_scanDecl, little2_scanEndTag,
-    little2_scanHexCharRef, little2_scanLit, little2_scanLt, little2_scanPercent, little2_scanPi,
-    little2_scanPoundName, little2_scanRef, little2_skipS, little2_updatePosition,
+    little2_attributeValueTok, little2_cdataSectionTok, little2_charRefNumber, little2_contentTok,
+    little2_entityValueTok, little2_getAtts, little2_ignoreSectionTok, little2_isPublicId,
+    little2_nameLength, little2_nameMatchesAscii, little2_predefinedEntityName, little2_prologTok,
+    little2_skipS, little2_updatePosition,
 };
-#[allow(unused_imports)]
 pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::{
-    normal_attributeValueTok, normal_cdataSectionTok, normal_charRefNumber, normal_checkPiTarget,
-    normal_contentTok, normal_entityValueTok, normal_getAtts, normal_ignoreSectionTok,
-    normal_isPublicId, normal_nameLength, normal_nameMatchesAscii, normal_predefinedEntityName,
-    normal_prologTok, normal_scanAtts, normal_scanCdataSection, normal_scanCharRef,
-    normal_scanComment, normal_scanDecl, normal_scanEndTag, normal_scanHexCharRef, normal_scanLit,
-    normal_scanLt, normal_scanPercent, normal_scanPi, normal_scanPoundName, normal_scanRef,
+    normal_attributeValueTok, normal_cdataSectionTok, normal_charRefNumber, normal_contentTok,
+    normal_entityValueTok, normal_getAtts, normal_ignoreSectionTok, normal_isPublicId,
+    normal_nameLength, normal_nameMatchesAscii, normal_predefinedEntityName, normal_prologTok,
     normal_skipS, normal_updatePosition,
 };
-#[allow(unused_imports)]
-pub(crate) use crate::src::lib::xmltok::xmltok_ns_c::{
-    encodings, encodingsNS, findEncoding, findEncodingNS, initScanContent, initScanContentNS,
-    initScanProlog, initScanPrologNS, XmlGetUtf16InternalEncoding, XmlGetUtf16InternalEncodingNS,
-    XmlGetUtf8InternalEncoding, XmlGetUtf8InternalEncodingNS, XmlInitEncoding, XmlInitEncodingNS,
-    XmlParseXmlDecl, XmlParseXmlDeclNS,
-};
+pub(crate) use crate::src::lib::xmltok::xmltok_ns_c::{encodings, encodingsNS};
 pub use crate::xmltok_impl_c::inName;
 pub use crate::xmltok_impl_c::inName_0;
 pub use crate::xmltok_impl_c::inName_1;
