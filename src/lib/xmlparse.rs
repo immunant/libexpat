@@ -702,7 +702,7 @@ pub struct XML_ParserStruct {
     pub m_unknownEncodingHandlerData: *mut c_void,
     pub m_unknownEncodingRelease: Option<unsafe extern "C" fn(*mut c_void) -> ()>,
     pub m_prologState: PROLOG_STATE,
-    pub m_processor: Option<Processor>,
+    pub m_processor: Processor,
     pub m_errorCode: XML_Error,
     pub m_eventPtr: *const c_char,
     pub m_eventEndPtr: *const c_char,
@@ -1537,8 +1537,7 @@ unsafe extern "C" fn callProcessor(
     let mut ret: XML_Error = XML_ERROR_NONE;
     *endPtr = start;
     loop {
-        ret =
-            (*parser).m_processor.expect("non-null function pointer")(parser, *endPtr, end, endPtr);
+        ret = ((*parser).m_processor)(parser, *endPtr, end, endPtr);
         if (*parser).m_parsingStatus.parsing != XML_PARSING {
             (*parser).m_reenter = XML_FALSE;
         }
@@ -1762,15 +1761,13 @@ unsafe extern "C" fn parserCreate(
 }
 
 unsafe extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const XML_Char) {
-    (*parser).m_processor = Some(
-        prologInitProcessor
-            as unsafe extern "C" fn(
-                XML_Parser,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> XML_Error,
-    );
+    (*parser).m_processor = prologInitProcessor
+        as unsafe extern "C" fn(
+            XML_Parser,
+            *const c_char,
+            *const c_char,
+            *mut *const c_char,
+        ) -> XML_Error;
     XmlPrologStateInit(&raw mut (*parser).m_prologState);
     if !encodingName.is_null() {
         (*parser).m_protocolEncodingName = copyString(encodingName, parser);
@@ -2119,27 +2116,23 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             XML_ParserFree(parser);
             return null_mut::<XML_ParserStruct>();
         }
-        (*parser).m_processor = Some(
-            externalEntityInitProcessor
-                as unsafe extern "C" fn(
-                    XML_Parser,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> XML_Error,
-        );
+        (*parser).m_processor = externalEntityInitProcessor
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const c_char,
+                *const c_char,
+                *mut *const c_char,
+            ) -> XML_Error;
     } else {
         (*parser).m_isParamEntity = XML_TRUE;
         XmlPrologStateInitExternalEntity(&raw mut (*parser).m_prologState);
-        (*parser).m_processor = Some(
-            externalParEntInitProcessor
-                as unsafe extern "C" fn(
-                    XML_Parser,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> XML_Error,
-        );
+        (*parser).m_processor = externalParEntInitProcessor
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const c_char,
+                *const c_char,
+                *mut *const c_char,
+            ) -> XML_Error;
     }
     return parser;
 }
@@ -2771,15 +2764,13 @@ pub unsafe extern "C" fn XML_ParseBuffer(
     );
     if (*parser).m_errorCode != XML_ERROR_NONE {
         (*parser).m_eventEndPtr = (*parser).m_eventPtr;
-        (*parser).m_processor = Some(
-            errorProcessor
-                as unsafe extern "C" fn(
-                    XML_Parser,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> XML_Error,
-        );
+        (*parser).m_processor = errorProcessor
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const c_char,
+                *const c_char,
+                *mut *const c_char,
+            ) -> XML_Error;
         return XML_STATUS_ERROR;
     } else {
         match (*parser).m_parsingStatus.parsing {
@@ -3027,15 +3018,13 @@ pub unsafe extern "C" fn XML_ResumeParser(mut parser: XML_Parser) -> XML_Status 
     );
     if (*parser).m_errorCode != XML_ERROR_NONE {
         (*parser).m_eventEndPtr = (*parser).m_eventPtr;
-        (*parser).m_processor = Some(
-            errorProcessor
-                as unsafe extern "C" fn(
-                    XML_Parser,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> XML_Error,
-        );
+        (*parser).m_processor = errorProcessor
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const c_char,
+                *const c_char,
+                *mut *const c_char,
+            ) -> XML_Error;
         return XML_STATUS_ERROR;
     } else {
         match (*parser).m_parsingStatus.parsing {
@@ -3570,15 +3559,13 @@ unsafe extern "C" fn externalEntityInitProcessor(
     if result != XML_ERROR_NONE {
         return result;
     }
-    (*parser).m_processor = Some(
-        externalEntityInitProcessor2
-            as unsafe extern "C" fn(
-                XML_Parser,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> XML_Error,
-    );
+    (*parser).m_processor = externalEntityInitProcessor2
+        as unsafe extern "C" fn(
+            XML_Parser,
+            *const c_char,
+            *const c_char,
+            *mut *const c_char,
+        ) -> XML_Error;
     return externalEntityInitProcessor2(parser, start, end, endPtr);
 }
 
@@ -3625,15 +3612,13 @@ unsafe extern "C" fn externalEntityInitProcessor2(
         }
         _ => {}
     }
-    (*parser).m_processor = Some(
-        externalEntityInitProcessor3
-            as unsafe extern "C" fn(
-                XML_Parser,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> XML_Error,
-    );
+    (*parser).m_processor = externalEntityInitProcessor3
+        as unsafe extern "C" fn(
+            XML_Parser,
+            *const c_char,
+            *const c_char,
+            *mut *const c_char,
+        ) -> XML_Error;
     return externalEntityInitProcessor3(parser, start, end, endPtr);
 }
 
@@ -3691,15 +3676,13 @@ unsafe extern "C" fn externalEntityInitProcessor3(
         }
         _ => {}
     }
-    (*parser).m_processor = Some(
-        externalEntityContentProcessor
-            as unsafe extern "C" fn(
-                XML_Parser,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> XML_Error,
-    );
+    (*parser).m_processor = externalEntityContentProcessor
+        as unsafe extern "C" fn(
+            XML_Parser,
+            *const c_char,
+            *const c_char,
+            *mut *const c_char,
+        ) -> XML_Error;
     (*parser).m_tagLevel = 1;
     return externalEntityContentProcessor(parser, start, end, endPtr);
 }
@@ -4113,16 +4096,13 @@ unsafe extern "C" fn doContent(
                         || (*parser).m_parsingStatus.parsing == XML_PARSING
                             && (*parser).m_reenter as c_int != 0
                     {
-                        (*parser).m_processor = Some(
-                            epilogProcessor
-                                as unsafe extern "C" fn(
-                                    XML_Parser,
-                                    *const c_char,
-                                    *const c_char,
-                                    *mut *const c_char,
-                                )
-                                    -> XML_Error,
-                        );
+                        (*parser).m_processor = epilogProcessor
+                            as unsafe extern "C" fn(
+                                XML_Parser,
+                                *const c_char,
+                                *const c_char,
+                                *mut *const c_char,
+                            ) -> XML_Error;
                     } else {
                         return epilogProcessor(parser, next, end, nextPtr);
                     }
@@ -4212,16 +4192,14 @@ unsafe extern "C" fn doContent(
                             || (*parser).m_parsingStatus.parsing == XML_PARSING
                                 && (*parser).m_reenter as c_int != 0
                         {
-                            (*parser).m_processor = Some(
-                                epilogProcessor
-                                    as unsafe extern "C" fn(
-                                        XML_Parser,
-                                        *const c_char,
-                                        *const c_char,
-                                        *mut *const c_char,
-                                    )
-                                        -> XML_Error,
-                            );
+                            (*parser).m_processor = epilogProcessor
+                                as unsafe extern "C" fn(
+                                    XML_Parser,
+                                    *const c_char,
+                                    *const c_char,
+                                    *mut *const c_char,
+                                )
+                                    -> XML_Error;
                         } else {
                             return epilogProcessor(parser, next, end, nextPtr);
                         }
@@ -4285,15 +4263,13 @@ unsafe extern "C" fn doContent(
                 if result_2 != XML_ERROR_NONE {
                     return result_2;
                 } else if next.is_null() {
-                    (*parser).m_processor = Some(
-                        cdataSectionProcessor
-                            as unsafe extern "C" fn(
-                                XML_Parser,
-                                *const c_char,
-                                *const c_char,
-                                *mut *const c_char,
-                            ) -> XML_Error,
-                    );
+                    (*parser).m_processor = cdataSectionProcessor
+                        as unsafe extern "C" fn(
+                            XML_Parser,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> XML_Error;
                     return result_2;
                 }
             }
@@ -5216,26 +5192,22 @@ unsafe extern "C" fn cdataSectionProcessor(
     }
     if !start.is_null() {
         if !(*parser).m_parentParser.is_null() {
-            (*parser).m_processor = Some(
-                externalEntityContentProcessor
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const c_char,
-                        *const c_char,
-                        *mut *const c_char,
-                    ) -> XML_Error,
-            );
+            (*parser).m_processor = externalEntityContentProcessor
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const c_char,
+                    *const c_char,
+                    *mut *const c_char,
+                ) -> XML_Error;
             return externalEntityContentProcessor(parser, start, end, endPtr);
         } else {
-            (*parser).m_processor = Some(
-                contentProcessor
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const c_char,
-                        *const c_char,
-                        *mut *const c_char,
-                    ) -> XML_Error,
-            );
+            (*parser).m_processor = contentProcessor
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const c_char,
+                    *const c_char,
+                    *mut *const c_char,
+                ) -> XML_Error;
             return contentProcessor(parser, start, end, endPtr);
         }
     }
@@ -5416,15 +5388,13 @@ unsafe extern "C" fn ignoreSectionProcessor(
         return result;
     }
     if !start.is_null() {
-        (*parser).m_processor = Some(
-            prologProcessor
-                as unsafe extern "C" fn(
-                    XML_Parser,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> XML_Error,
-        );
+        (*parser).m_processor = prologProcessor
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const c_char,
+                *const c_char,
+                *mut *const c_char,
+            ) -> XML_Error;
         return prologProcessor(parser, start, end, endPtr);
     }
     return result;
@@ -5772,15 +5742,13 @@ unsafe extern "C" fn prologInitProcessor(
     if result != XML_ERROR_NONE {
         return result;
     }
-    (*parser).m_processor = Some(
-        prologProcessor
-            as unsafe extern "C" fn(
-                XML_Parser,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> XML_Error,
-    );
+    (*parser).m_processor = prologProcessor
+        as unsafe extern "C" fn(
+            XML_Parser,
+            *const c_char,
+            *const c_char,
+            *mut *const c_char,
+        ) -> XML_Error;
     return prologProcessor(parser, s, end, nextPtr);
 }
 
@@ -5796,26 +5764,22 @@ unsafe extern "C" fn externalParEntInitProcessor(
     }
     (*(*parser).m_dtd).paramEntityRead = XML_TRUE;
     if (*parser).m_prologState.inEntityValue != 0 {
-        (*parser).m_processor = Some(
-            entityValueInitProcessor
-                as unsafe extern "C" fn(
-                    XML_Parser,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> XML_Error,
-        );
+        (*parser).m_processor = entityValueInitProcessor
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const c_char,
+                *const c_char,
+                *mut *const c_char,
+            ) -> XML_Error;
         return entityValueInitProcessor(parser, s, end, nextPtr);
     } else {
-        (*parser).m_processor = Some(
-            externalParEntProcessor
-                as unsafe extern "C" fn(
-                    XML_Parser,
-                    *const c_char,
-                    *const c_char,
-                    *mut *const c_char,
-                ) -> XML_Error,
-        );
+        (*parser).m_processor = externalParEntProcessor
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const c_char,
+                *const c_char,
+                *mut *const c_char,
+            ) -> XML_Error;
         return externalParEntProcessor(parser, s, end, nextPtr);
     };
 }
@@ -5867,15 +5831,13 @@ unsafe extern "C" fn entityValueInitProcessor(
                 return XML_ERROR_ABORTED;
             }
             *nextPtr = next;
-            (*parser).m_processor = Some(
-                entityValueProcessor
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const c_char,
-                        *const c_char,
-                        *mut *const c_char,
-                    ) -> XML_Error,
-            );
+            (*parser).m_processor = entityValueProcessor
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const c_char,
+                    *const c_char,
+                    *mut *const c_char,
+                ) -> XML_Error;
             return entityValueProcessor(parser, next, end, nextPtr);
         } else if tok == XML_TOK_BOM {
             if accountingDiffTolerated(parser, tok, s, next, 5077, XML_ACCOUNT_DIRECT) == 0 {
@@ -5931,15 +5893,13 @@ unsafe extern "C" fn externalParEntProcessor(
             &raw mut next,
         );
     }
-    (*parser).m_processor = Some(
-        prologProcessor
-            as unsafe extern "C" fn(
-                XML_Parser,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> XML_Error,
-    );
+    (*parser).m_processor = prologProcessor
+        as unsafe extern "C" fn(
+            XML_Parser,
+            *const c_char,
+            *const c_char,
+            *mut *const c_char,
+        ) -> XML_Error;
     return doProlog(
         parser,
         (*parser).m_encoding,
@@ -6408,15 +6368,13 @@ unsafe extern "C" fn doProlog(
                         }
                     }
                 }
-                (*parser).m_processor = Some(
-                    contentProcessor
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const c_char,
-                            *const c_char,
-                            *mut *const c_char,
-                        ) -> XML_Error,
-                );
+                (*parser).m_processor = contentProcessor
+                    as unsafe extern "C" fn(
+                        XML_Parser,
+                        *const c_char,
+                        *const c_char,
+                        *mut *const c_char,
+                    ) -> XML_Error;
                 return contentProcessor(parser, s, end, nextPtr);
             }
             34 => {
@@ -6969,15 +6927,13 @@ unsafe extern "C" fn doProlog(
                 if result_3 != XML_ERROR_NONE {
                     return result_3;
                 } else if next.is_null() {
-                    (*parser).m_processor = Some(
-                        ignoreSectionProcessor
-                            as unsafe extern "C" fn(
-                                XML_Parser,
-                                *const c_char,
-                                *const c_char,
-                                *mut *const c_char,
-                            ) -> XML_Error,
-                    );
+                    (*parser).m_processor = ignoreSectionProcessor
+                        as unsafe extern "C" fn(
+                            XML_Parser,
+                            *const c_char,
+                            *const c_char,
+                            *mut *const c_char,
+                        ) -> XML_Error;
                     return result_3;
                 }
                 current_block = 8258632986558375165;
@@ -7524,15 +7480,13 @@ unsafe extern "C" fn epilogProcessor(
     mut end: *const c_char,
     mut nextPtr: *mut *const c_char,
 ) -> XML_Error {
-    (*parser).m_processor = Some(
-        epilogProcessor
-            as unsafe extern "C" fn(
-                XML_Parser,
-                *const c_char,
-                *const c_char,
-                *mut *const c_char,
-            ) -> XML_Error,
-    );
+    (*parser).m_processor = epilogProcessor
+        as unsafe extern "C" fn(
+            XML_Parser,
+            *const c_char,
+            *const c_char,
+            *mut *const c_char,
+        ) -> XML_Error;
     (*parser).m_eventPtr = s;
     loop {
         let mut next: *const c_char = null::<c_char>();
@@ -7630,15 +7584,13 @@ unsafe extern "C" fn processEntity(
         null_mut::<*mut OPEN_INTERNAL_ENTITY>();
     match type_0 {
         0 => {
-            (*parser).m_processor = Some(
-                internalEntityProcessor
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const c_char,
-                        *const c_char,
-                        *mut *const c_char,
-                    ) -> XML_Error,
-            );
+            (*parser).m_processor = internalEntityProcessor
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const c_char,
+                    *const c_char,
+                    *mut *const c_char,
+                ) -> XML_Error;
             openEntityList = &raw mut (*parser).m_openInternalEntities;
             freeEntityList = &raw mut (*parser).m_freeInternalEntities;
         }
@@ -7763,25 +7715,21 @@ unsafe extern "C" fn internalEntityProcessor(
     (*parser).m_freeInternalEntities = openEntity;
     if (*parser).m_openInternalEntities.is_null() {
         (*parser).m_processor = if (*entity).is_param as c_int != 0 {
-            Some(
-                prologProcessor
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const c_char,
-                        *const c_char,
-                        *mut *const c_char,
-                    ) -> XML_Error,
-            )
+            prologProcessor
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const c_char,
+                    *const c_char,
+                    *mut *const c_char,
+                ) -> XML_Error
         } else {
-            Some(
-                contentProcessor
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const c_char,
-                        *const c_char,
-                        *mut *const c_char,
-                    ) -> XML_Error,
-            )
+            contentProcessor
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const c_char,
+                    *const c_char,
+                    *mut *const c_char,
+                ) -> XML_Error
         };
     }
     triggerReenter(parser);
