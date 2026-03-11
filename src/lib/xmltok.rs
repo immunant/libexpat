@@ -11829,8 +11829,17 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding.enc;
     }
 
-    pub static mut encodings: [*const crate::src::lib::xmltok::ENCODING; 7] =
-        [::core::ptr::null::<crate::src::lib::xmltok::ENCODING>(); 7];
+    pub static mut encodings: [*const crate::src::lib::xmltok::ENCODING; 7] = unsafe {
+        [
+            &raw const latin1_encoding.enc,
+            &raw const ascii_encoding.enc,
+            &raw const utf8_encoding.enc,
+            &raw const big2_encoding.enc,
+            &raw const big2_encoding.enc,
+            &raw const little2_encoding.enc,
+            &raw const utf8_encoding.enc,
+        ]
+    };
 
     pub(crate) unsafe extern "C" fn initScanProlog(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
@@ -11986,8 +11995,17 @@ pub mod xmltok_ns_c {
         return &raw const internal_little2_encoding_ns.enc;
     }
 
-    pub static mut encodingsNS: [*const crate::src::lib::xmltok::ENCODING; 7] =
-        [::core::ptr::null::<crate::src::lib::xmltok::ENCODING>(); 7];
+    pub static mut encodingsNS: [*const crate::src::lib::xmltok::ENCODING; 7] = unsafe {
+        [
+            &raw const latin1_encoding_ns.enc,
+            &raw const ascii_encoding_ns.enc,
+            &raw const utf8_encoding_ns.enc,
+            &raw const big2_encoding_ns.enc,
+            &raw const big2_encoding_ns.enc,
+            &raw const little2_encoding_ns.enc,
+            &raw const utf8_encoding_ns.enc,
+        ]
+    };
 
     pub(crate) unsafe extern "C" fn initScanPrologNS(
         mut enc: *const crate::src::lib::xmltok::ENCODING,
@@ -12135,6 +12153,10 @@ pub mod xmltok_ns_c {
         );
     }
 
+    use crate::src::lib::xmltok::ascii_encoding;
+    use crate::src::lib::xmltok::ascii_encoding_ns;
+    use crate::src::lib::xmltok::big2_encoding;
+    use crate::src::lib::xmltok::big2_encoding_ns;
     use crate::src::lib::xmltok::doParseXmlDecl;
     use crate::src::lib::xmltok::getEncodingIndex;
     use crate::src::lib::xmltok::initScan;
@@ -12143,7 +12165,13 @@ pub mod xmltok_ns_c {
     use crate::src::lib::xmltok::internal_little2_encoding_ns;
     use crate::src::lib::xmltok::internal_utf8_encoding;
     use crate::src::lib::xmltok::internal_utf8_encoding_ns;
+    use crate::src::lib::xmltok::latin1_encoding;
+    use crate::src::lib::xmltok::latin1_encoding_ns;
+    use crate::src::lib::xmltok::little2_encoding;
+    use crate::src::lib::xmltok::little2_encoding_ns;
     use crate::src::lib::xmltok::streqci;
+    use crate::src::lib::xmltok::utf8_encoding;
+    use crate::src::lib::xmltok::utf8_encoding_ns;
 
     use crate::src::lib::xmltok::KW_UTF_16;
 
@@ -12306,7 +12334,6 @@ pub(crate) use crate::src::lib::xmltok::xmltok_impl_c::{
     normal_nameLength, normal_nameMatchesAscii, normal_predefinedEntityName, normal_prologTok,
     normal_skipS, normal_updatePosition,
 };
-pub(crate) use crate::src::lib::xmltok::xmltok_ns_c::{encodings, encodingsNS};
 pub use crate::xmltok_impl_c::inName;
 pub use crate::xmltok_impl_c::inName_0;
 pub use crate::xmltok_impl_c::inName_1;
@@ -20275,28 +20302,3 @@ pub(crate) unsafe extern "C" fn XmlInitUnknownEncodingNS(
     }
     return enc;
 }
-unsafe extern "C" fn run_static_initializers() {
-    encodings = [
-        &raw const latin1_encoding.enc,
-        &raw const ascii_encoding.enc,
-        &raw const utf8_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const little2_encoding.enc,
-        &raw const utf8_encoding.enc,
-    ];
-    encodingsNS = [
-        &raw const latin1_encoding_ns.enc,
-        &raw const ascii_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const little2_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-    ];
-}
-#[used]
-#[cfg_attr(target_os = "linux", link_section = ".init_array")]
-#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
-#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [run_static_initializers];
