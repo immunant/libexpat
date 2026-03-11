@@ -1237,33 +1237,15 @@ pub unsafe extern "C" fn expat_free(
     mut ptr: *mut ::core::ffi::c_void,
     mut sourceLine: ::core::ffi::c_int,
 ) {
-    if !parser.is_null() {
-    } else {
-        crate::stdlib::__assert_fail(
-            b"parser != NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const ::core::ffi::c_char,
-            906u32,
-            b"void expat_free(XML_Parser, void *, int)\0" as *const u8
-                as *const ::core::ffi::c_char,
-        );
-    };
+    assert!(!parser.is_null());
     if ptr.is_null() {
         return;
     }
     let rootParser: XML_Parser =
         getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
-    if (*rootParser).m_parentParser.is_null() {
-    } else {
-        crate::stdlib::__assert_fail(
-            b"rootParser->m_parentParser == NULL\0" as *const u8 as *const ::core::ffi::c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const ::core::ffi::c_char,
-            913u32,
-            b"void expat_free(XML_Parser, void *, int)\0" as *const u8
-                as *const ::core::ffi::c_char,
-        );
-    };
+    assert!((*rootParser).m_parentParser.is_null());
+    // Extract size (to the eyes of malloc_fcn/realloc_fcn) and
+    // the original pointer returned by malloc/realloc
     let mallocedPtr: *mut ::core::ffi::c_void = (ptr as *mut ::core::ffi::c_char)
         .offset(-(EXPAT_MALLOC_PADDING as isize))
         .offset(-(::core::mem::size_of::<size_t>() as isize))
@@ -1271,22 +1253,13 @@ pub unsafe extern "C" fn expat_free(
     let bytesAllocated: size_t = (::core::mem::size_of::<size_t>())
         .wrapping_add(EXPAT_MALLOC_PADDING)
         .wrapping_add(*(mallocedPtr as *mut size_t));
-    if (*rootParser).m_alloc_tracker.bytesAllocated >= bytesAllocated as XmlBigCount {
-    } else {
-        crate::stdlib::__assert_fail(
-            b"rootParser->m_alloc_tracker.bytesAllocated >= bytesAllocated\0" as *const u8
-                as *const ::core::ffi::c_char,
-            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/lib/xmlparse.c\0" as *const u8
-                as *const ::core::ffi::c_char,
-            922u32,
-            b"void expat_free(XML_Parser, void *, int)\0" as *const u8
-                as *const ::core::ffi::c_char,
-        );
-    };
+    // Update accounting
+    assert!((*rootParser).m_alloc_tracker.bytesAllocated >= bytesAllocated as XmlBigCount);
     (*rootParser).m_alloc_tracker.bytesAllocated = (*rootParser)
         .m_alloc_tracker
         .bytesAllocated
         .wrapping_sub(bytesAllocated as XmlBigCount);
+    // Report as needed
     if (*rootParser).m_alloc_tracker.debugLevel >= 2 {
         expat_heap_stat(
             rootParser,
@@ -1297,6 +1270,7 @@ pub unsafe extern "C" fn expat_free(
             sourceLine,
         );
     }
+    // NOTE: This may be freeing rootParser, so freeing has to come last
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(mallocedPtr);
 }
 #[cfg_attr(feature = "xml-testing", no_mangle)]
