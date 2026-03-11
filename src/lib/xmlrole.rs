@@ -132,15 +132,7 @@ pub type PROLOG_STATE = prolog_state;
 #[repr(C)]
 
 pub struct prolog_state {
-    pub handler: Option<
-        unsafe extern "C" fn(
-            *mut prolog_state,
-            c_int,
-            *const c_char,
-            *const c_char,
-            *const ENCODING,
-        ) -> c_int,
-    >,
+    pub handler: Option<PROLOG_HANDLER>,
     pub level: c_uint,
     pub role_none: c_int,
     pub includeLevel: c_uint,
@@ -211,13 +203,8 @@ pub use crate::src::lib::xmltok::XML_TOK_PREFIXED_NAME;
 pub use crate::src::lib::xmltok::XML_TOK_PROLOG_S;
 pub use crate::src::lib::xmltok::XML_TOK_XML_DECL;
 
-pub type PROLOG_HANDLER = unsafe extern "C" fn(
-    *mut PROLOG_STATE,
-    c_int,
-    *const c_char,
-    *const c_char,
-    *const ENCODING,
-) -> c_int;
+pub type PROLOG_HANDLER =
+    unsafe fn(*mut PROLOG_STATE, c_int, *const c_char, *const c_char, *const ENCODING) -> c_int;
 
 static mut KW_ANY: [c_char; 4] = [
     ASCII_A as c_char,
@@ -447,7 +434,7 @@ static mut KW_SYSTEM: [c_char; 7] = [
     '\0' as c_char,
 ];
 
-unsafe extern "C" fn prolog0(
+unsafe fn prolog0(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -458,7 +445,7 @@ unsafe extern "C" fn prolog0(
         XML_TOK_PROLOG_S => {
             (*state).handler = Some(
                 prolog1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -471,7 +458,7 @@ unsafe extern "C" fn prolog0(
         XML_TOK_XML_DECL => {
             (*state).handler = Some(
                 prolog1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -484,7 +471,7 @@ unsafe extern "C" fn prolog0(
         XML_TOK_PI => {
             (*state).handler = Some(
                 prolog1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -497,7 +484,7 @@ unsafe extern "C" fn prolog0(
         XML_TOK_COMMENT => {
             (*state).handler = Some(
                 prolog1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -518,7 +505,7 @@ unsafe extern "C" fn prolog0(
             {
                 (*state).handler = Some(
                     doctype0
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -532,7 +519,7 @@ unsafe extern "C" fn prolog0(
         XML_TOK_INSTANCE_START_1 => {
             (*state).handler = Some(
                 error
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -547,7 +534,7 @@ unsafe extern "C" fn prolog0(
     return common(state, tok);
 }
 
-unsafe extern "C" fn prolog1(
+unsafe fn prolog1(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -569,7 +556,7 @@ unsafe extern "C" fn prolog1(
             {
                 (*state).handler = Some(
                     doctype0
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -583,7 +570,7 @@ unsafe extern "C" fn prolog1(
         XML_TOK_INSTANCE_START_1 => {
             (*state).handler = Some(
                 error
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -598,7 +585,7 @@ unsafe extern "C" fn prolog1(
     return common(state, tok);
 }
 
-unsafe extern "C" fn prolog2(
+unsafe fn prolog2(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -612,7 +599,7 @@ unsafe extern "C" fn prolog2(
         XML_TOK_INSTANCE_START_1 => {
             (*state).handler = Some(
                 error
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -627,7 +614,7 @@ unsafe extern "C" fn prolog2(
     return common(state, tok);
 }
 
-unsafe extern "C" fn doctype0(
+unsafe fn doctype0(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -639,7 +626,7 @@ unsafe extern "C" fn doctype0(
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             (*state).handler = Some(
                 doctype1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -654,7 +641,7 @@ unsafe extern "C" fn doctype0(
     return common(state, tok);
 }
 
-unsafe extern "C" fn doctype1(
+unsafe fn doctype1(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -666,7 +653,7 @@ unsafe extern "C" fn doctype1(
         XML_TOK_OPEN_BRACKET => {
             (*state).handler = Some(
                 internalSubset
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -679,7 +666,7 @@ unsafe extern "C" fn doctype1(
         XML_TOK_DECL_CLOSE => {
             (*state).handler = Some(
                 prolog2
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -699,7 +686,7 @@ unsafe extern "C" fn doctype1(
             {
                 (*state).handler = Some(
                     doctype3
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -718,7 +705,7 @@ unsafe extern "C" fn doctype1(
             {
                 (*state).handler = Some(
                     doctype2
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -734,7 +721,7 @@ unsafe extern "C" fn doctype1(
     return common(state, tok);
 }
 
-unsafe extern "C" fn doctype2(
+unsafe fn doctype2(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -746,7 +733,7 @@ unsafe extern "C" fn doctype2(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 doctype3
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -761,7 +748,7 @@ unsafe extern "C" fn doctype2(
     return common(state, tok);
 }
 
-unsafe extern "C" fn doctype3(
+unsafe fn doctype3(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -773,7 +760,7 @@ unsafe extern "C" fn doctype3(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 doctype4
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -788,7 +775,7 @@ unsafe extern "C" fn doctype3(
     return common(state, tok);
 }
 
-unsafe extern "C" fn doctype4(
+unsafe fn doctype4(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -800,7 +787,7 @@ unsafe extern "C" fn doctype4(
         XML_TOK_OPEN_BRACKET => {
             (*state).handler = Some(
                 internalSubset
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -813,7 +800,7 @@ unsafe extern "C" fn doctype4(
         XML_TOK_DECL_CLOSE => {
             (*state).handler = Some(
                 prolog2
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -828,7 +815,7 @@ unsafe extern "C" fn doctype4(
     return common(state, tok);
 }
 
-unsafe extern "C" fn doctype5(
+unsafe fn doctype5(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -840,7 +827,7 @@ unsafe extern "C" fn doctype5(
         XML_TOK_DECL_CLOSE => {
             (*state).handler = Some(
                 prolog2
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -855,7 +842,7 @@ unsafe extern "C" fn doctype5(
     return common(state, tok);
 }
 
-unsafe extern "C" fn internalSubset(
+unsafe fn internalSubset(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -874,7 +861,7 @@ unsafe extern "C" fn internalSubset(
             {
                 (*state).handler = Some(
                     entity0
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -893,7 +880,7 @@ unsafe extern "C" fn internalSubset(
             {
                 (*state).handler = Some(
                     attlist0
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -912,7 +899,7 @@ unsafe extern "C" fn internalSubset(
             {
                 (*state).handler = Some(
                     element0
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -931,7 +918,7 @@ unsafe extern "C" fn internalSubset(
             {
                 (*state).handler = Some(
                     notation0
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -950,7 +937,7 @@ unsafe extern "C" fn internalSubset(
         XML_TOK_CLOSE_BRACKET => {
             (*state).handler = Some(
                 doctype5
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -966,7 +953,7 @@ unsafe extern "C" fn internalSubset(
     return common(state, tok);
 }
 
-unsafe extern "C" fn externalSubset0(
+unsafe fn externalSubset0(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -975,7 +962,7 @@ unsafe extern "C" fn externalSubset0(
 ) -> c_int {
     (*state).handler = Some(
         externalSubset1
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *mut PROLOG_STATE,
                 c_int,
                 *const c_char,
@@ -989,7 +976,7 @@ unsafe extern "C" fn externalSubset0(
     return externalSubset1(state, tok, ptr, end, enc);
 }
 
-unsafe extern "C" fn externalSubset1(
+unsafe fn externalSubset1(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -1000,7 +987,7 @@ unsafe extern "C" fn externalSubset1(
         XML_TOK_COND_SECT_OPEN => {
             (*state).handler = Some(
                 condSect0
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1028,7 +1015,7 @@ unsafe extern "C" fn externalSubset1(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity0(
+unsafe fn entity0(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1040,7 +1027,7 @@ unsafe extern "C" fn entity0(
         XML_TOK_PERCENT => {
             (*state).handler = Some(
                 entity1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1053,7 +1040,7 @@ unsafe extern "C" fn entity0(
         XML_TOK_NAME => {
             (*state).handler = Some(
                 entity2
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1068,7 +1055,7 @@ unsafe extern "C" fn entity0(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity1(
+unsafe fn entity1(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1080,7 +1067,7 @@ unsafe extern "C" fn entity1(
         XML_TOK_NAME => {
             (*state).handler = Some(
                 entity7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1095,7 +1082,7 @@ unsafe extern "C" fn entity1(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity2(
+unsafe fn entity2(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -1114,7 +1101,7 @@ unsafe extern "C" fn entity2(
             {
                 (*state).handler = Some(
                     entity4
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1133,7 +1120,7 @@ unsafe extern "C" fn entity2(
             {
                 (*state).handler = Some(
                     entity3
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1147,7 +1134,7 @@ unsafe extern "C" fn entity2(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 declClose
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1163,7 +1150,7 @@ unsafe extern "C" fn entity2(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity3(
+unsafe fn entity3(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1175,7 +1162,7 @@ unsafe extern "C" fn entity3(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 entity4
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1190,7 +1177,7 @@ unsafe extern "C" fn entity3(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity4(
+unsafe fn entity4(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1202,7 +1189,7 @@ unsafe extern "C" fn entity4(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 entity5
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1217,7 +1204,7 @@ unsafe extern "C" fn entity4(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity5(
+unsafe fn entity5(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -1230,7 +1217,7 @@ unsafe extern "C" fn entity5(
             (*state).handler = if (*state).documentEntity != 0 {
                 Some(
                     internalSubset
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1241,7 +1228,7 @@ unsafe extern "C" fn entity5(
             } else {
                 Some(
                     externalSubset1
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1262,7 +1249,7 @@ unsafe extern "C" fn entity5(
             {
                 (*state).handler = Some(
                     entity6
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1278,7 +1265,7 @@ unsafe extern "C" fn entity5(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity6(
+unsafe fn entity6(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1290,7 +1277,7 @@ unsafe extern "C" fn entity6(
         XML_TOK_NAME => {
             (*state).handler = Some(
                 declClose
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1306,7 +1293,7 @@ unsafe extern "C" fn entity6(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity7(
+unsafe fn entity7(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -1325,7 +1312,7 @@ unsafe extern "C" fn entity7(
             {
                 (*state).handler = Some(
                     entity9
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1344,7 +1331,7 @@ unsafe extern "C" fn entity7(
             {
                 (*state).handler = Some(
                     entity8
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1358,7 +1345,7 @@ unsafe extern "C" fn entity7(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 declClose
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1374,7 +1361,7 @@ unsafe extern "C" fn entity7(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity8(
+unsafe fn entity8(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1386,7 +1373,7 @@ unsafe extern "C" fn entity8(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 entity9
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1401,7 +1388,7 @@ unsafe extern "C" fn entity8(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity9(
+unsafe fn entity9(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1413,7 +1400,7 @@ unsafe extern "C" fn entity9(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 entity10
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1428,7 +1415,7 @@ unsafe extern "C" fn entity9(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity10(
+unsafe fn entity10(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1441,7 +1428,7 @@ unsafe extern "C" fn entity10(
             (*state).handler = if (*state).documentEntity != 0 {
                 Some(
                     internalSubset
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1452,7 +1439,7 @@ unsafe extern "C" fn entity10(
             } else {
                 Some(
                     externalSubset1
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1468,7 +1455,7 @@ unsafe extern "C" fn entity10(
     return common(state, tok);
 }
 
-unsafe extern "C" fn notation0(
+unsafe fn notation0(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1480,7 +1467,7 @@ unsafe extern "C" fn notation0(
         XML_TOK_NAME => {
             (*state).handler = Some(
                 notation1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1495,7 +1482,7 @@ unsafe extern "C" fn notation0(
     return common(state, tok);
 }
 
-unsafe extern "C" fn notation1(
+unsafe fn notation1(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -1514,7 +1501,7 @@ unsafe extern "C" fn notation1(
             {
                 (*state).handler = Some(
                     notation3
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1533,7 +1520,7 @@ unsafe extern "C" fn notation1(
             {
                 (*state).handler = Some(
                     notation2
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1549,7 +1536,7 @@ unsafe extern "C" fn notation1(
     return common(state, tok);
 }
 
-unsafe extern "C" fn notation2(
+unsafe fn notation2(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1561,7 +1548,7 @@ unsafe extern "C" fn notation2(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 notation4
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1576,7 +1563,7 @@ unsafe extern "C" fn notation2(
     return common(state, tok);
 }
 
-unsafe extern "C" fn notation3(
+unsafe fn notation3(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1588,7 +1575,7 @@ unsafe extern "C" fn notation3(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 declClose
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1604,7 +1591,7 @@ unsafe extern "C" fn notation3(
     return common(state, tok);
 }
 
-unsafe extern "C" fn notation4(
+unsafe fn notation4(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1616,7 +1603,7 @@ unsafe extern "C" fn notation4(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 declClose
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1631,7 +1618,7 @@ unsafe extern "C" fn notation4(
             (*state).handler = if (*state).documentEntity != 0 {
                 Some(
                     internalSubset
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1642,7 +1629,7 @@ unsafe extern "C" fn notation4(
             } else {
                 Some(
                     externalSubset1
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1658,7 +1645,7 @@ unsafe extern "C" fn notation4(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist0(
+unsafe fn attlist0(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1670,7 +1657,7 @@ unsafe extern "C" fn attlist0(
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             (*state).handler = Some(
                 attlist1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1685,7 +1672,7 @@ unsafe extern "C" fn attlist0(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist1(
+unsafe fn attlist1(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1698,7 +1685,7 @@ unsafe extern "C" fn attlist1(
             (*state).handler = if (*state).documentEntity != 0 {
                 Some(
                     internalSubset
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1709,7 +1696,7 @@ unsafe extern "C" fn attlist1(
             } else {
                 Some(
                     externalSubset1
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1723,7 +1710,7 @@ unsafe extern "C" fn attlist1(
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             (*state).handler = Some(
                 attlist2
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1738,7 +1725,7 @@ unsafe extern "C" fn attlist1(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist2(
+unsafe fn attlist2(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -1776,7 +1763,7 @@ unsafe extern "C" fn attlist2(
                 {
                     (*state).handler = Some(
                         attlist8
-                            as unsafe extern "C" fn(
+                            as unsafe fn(
                                 *mut PROLOG_STATE,
                                 c_int,
                                 *const c_char,
@@ -1797,7 +1784,7 @@ unsafe extern "C" fn attlist2(
             {
                 (*state).handler = Some(
                     attlist5
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -1811,7 +1798,7 @@ unsafe extern "C" fn attlist2(
         XML_TOK_OPEN_PAREN => {
             (*state).handler = Some(
                 attlist3
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1826,7 +1813,7 @@ unsafe extern "C" fn attlist2(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist3(
+unsafe fn attlist3(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1838,7 +1825,7 @@ unsafe extern "C" fn attlist3(
         XML_TOK_NMTOKEN | XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             (*state).handler = Some(
                 attlist4
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1853,7 +1840,7 @@ unsafe extern "C" fn attlist3(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist4(
+unsafe fn attlist4(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1865,7 +1852,7 @@ unsafe extern "C" fn attlist4(
         XML_TOK_CLOSE_PAREN => {
             (*state).handler = Some(
                 attlist8
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1878,7 +1865,7 @@ unsafe extern "C" fn attlist4(
         XML_TOK_OR => {
             (*state).handler = Some(
                 attlist3
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1893,7 +1880,7 @@ unsafe extern "C" fn attlist4(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist5(
+unsafe fn attlist5(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1905,7 +1892,7 @@ unsafe extern "C" fn attlist5(
         XML_TOK_OPEN_PAREN => {
             (*state).handler = Some(
                 attlist6
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1920,7 +1907,7 @@ unsafe extern "C" fn attlist5(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist6(
+unsafe fn attlist6(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1932,7 +1919,7 @@ unsafe extern "C" fn attlist6(
         XML_TOK_NAME => {
             (*state).handler = Some(
                 attlist7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1947,7 +1934,7 @@ unsafe extern "C" fn attlist6(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist7(
+unsafe fn attlist7(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -1959,7 +1946,7 @@ unsafe extern "C" fn attlist7(
         XML_TOK_CLOSE_PAREN => {
             (*state).handler = Some(
                 attlist8
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1972,7 +1959,7 @@ unsafe extern "C" fn attlist7(
         XML_TOK_OR => {
             (*state).handler = Some(
                 attlist6
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -1987,7 +1974,7 @@ unsafe extern "C" fn attlist7(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist8(
+unsafe fn attlist8(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -2006,7 +1993,7 @@ unsafe extern "C" fn attlist8(
             {
                 (*state).handler = Some(
                     attlist1
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2025,7 +2012,7 @@ unsafe extern "C" fn attlist8(
             {
                 (*state).handler = Some(
                     attlist1
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2044,7 +2031,7 @@ unsafe extern "C" fn attlist8(
             {
                 (*state).handler = Some(
                     attlist9
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2058,7 +2045,7 @@ unsafe extern "C" fn attlist8(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 attlist1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2073,7 +2060,7 @@ unsafe extern "C" fn attlist8(
     return common(state, tok);
 }
 
-unsafe extern "C" fn attlist9(
+unsafe fn attlist9(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2085,7 +2072,7 @@ unsafe extern "C" fn attlist9(
         XML_TOK_LITERAL => {
             (*state).handler = Some(
                 attlist1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2100,7 +2087,7 @@ unsafe extern "C" fn attlist9(
     return common(state, tok);
 }
 
-unsafe extern "C" fn element0(
+unsafe fn element0(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2112,7 +2099,7 @@ unsafe extern "C" fn element0(
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             (*state).handler = Some(
                 element1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2127,7 +2114,7 @@ unsafe extern "C" fn element0(
     return common(state, tok);
 }
 
-unsafe extern "C" fn element1(
+unsafe fn element1(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -2146,7 +2133,7 @@ unsafe extern "C" fn element1(
             {
                 (*state).handler = Some(
                     declClose
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2166,7 +2153,7 @@ unsafe extern "C" fn element1(
             {
                 (*state).handler = Some(
                     declClose
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2181,7 +2168,7 @@ unsafe extern "C" fn element1(
         XML_TOK_OPEN_PAREN => {
             (*state).handler = Some(
                 element2
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2197,7 +2184,7 @@ unsafe extern "C" fn element1(
     return common(state, tok);
 }
 
-unsafe extern "C" fn element2(
+unsafe fn element2(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -2216,7 +2203,7 @@ unsafe extern "C" fn element2(
             {
                 (*state).handler = Some(
                     element3
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2231,7 +2218,7 @@ unsafe extern "C" fn element2(
             (*state).level = 2u32;
             (*state).handler = Some(
                 element6
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2244,7 +2231,7 @@ unsafe extern "C" fn element2(
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             (*state).handler = Some(
                 element7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2257,7 +2244,7 @@ unsafe extern "C" fn element2(
         XML_TOK_NAME_QUESTION => {
             (*state).handler = Some(
                 element7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2270,7 +2257,7 @@ unsafe extern "C" fn element2(
         XML_TOK_NAME_ASTERISK => {
             (*state).handler = Some(
                 element7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2283,7 +2270,7 @@ unsafe extern "C" fn element2(
         XML_TOK_NAME_PLUS => {
             (*state).handler = Some(
                 element7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2298,7 +2285,7 @@ unsafe extern "C" fn element2(
     return common(state, tok);
 }
 
-unsafe extern "C" fn element3(
+unsafe fn element3(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2310,7 +2297,7 @@ unsafe extern "C" fn element3(
         XML_TOK_CLOSE_PAREN => {
             (*state).handler = Some(
                 declClose
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2324,7 +2311,7 @@ unsafe extern "C" fn element3(
         XML_TOK_CLOSE_PAREN_ASTERISK => {
             (*state).handler = Some(
                 declClose
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2338,7 +2325,7 @@ unsafe extern "C" fn element3(
         XML_TOK_OR => {
             (*state).handler = Some(
                 element4
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2353,7 +2340,7 @@ unsafe extern "C" fn element3(
     return common(state, tok);
 }
 
-unsafe extern "C" fn element4(
+unsafe fn element4(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2365,7 +2352,7 @@ unsafe extern "C" fn element4(
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             (*state).handler = Some(
                 element5
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2380,7 +2367,7 @@ unsafe extern "C" fn element4(
     return common(state, tok);
 }
 
-unsafe extern "C" fn element5(
+unsafe fn element5(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2392,7 +2379,7 @@ unsafe extern "C" fn element5(
         XML_TOK_CLOSE_PAREN_ASTERISK => {
             (*state).handler = Some(
                 declClose
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2406,7 +2393,7 @@ unsafe extern "C" fn element5(
         XML_TOK_OR => {
             (*state).handler = Some(
                 element4
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2421,7 +2408,7 @@ unsafe extern "C" fn element5(
     return common(state, tok);
 }
 
-unsafe extern "C" fn element6(
+unsafe fn element6(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2437,7 +2424,7 @@ unsafe extern "C" fn element6(
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             (*state).handler = Some(
                 element7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2450,7 +2437,7 @@ unsafe extern "C" fn element6(
         XML_TOK_NAME_QUESTION => {
             (*state).handler = Some(
                 element7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2463,7 +2450,7 @@ unsafe extern "C" fn element6(
         XML_TOK_NAME_ASTERISK => {
             (*state).handler = Some(
                 element7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2476,7 +2463,7 @@ unsafe extern "C" fn element6(
         XML_TOK_NAME_PLUS => {
             (*state).handler = Some(
                 element7
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2491,7 +2478,7 @@ unsafe extern "C" fn element6(
     return common(state, tok);
 }
 
-unsafe extern "C" fn element7(
+unsafe fn element7(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2505,7 +2492,7 @@ unsafe extern "C" fn element7(
             if (*state).level == 0u32 {
                 (*state).handler = Some(
                     declClose
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2522,7 +2509,7 @@ unsafe extern "C" fn element7(
             if (*state).level == 0u32 {
                 (*state).handler = Some(
                     declClose
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2539,7 +2526,7 @@ unsafe extern "C" fn element7(
             if (*state).level == 0u32 {
                 (*state).handler = Some(
                     declClose
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2556,7 +2543,7 @@ unsafe extern "C" fn element7(
             if (*state).level == 0u32 {
                 (*state).handler = Some(
                     declClose
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2571,7 +2558,7 @@ unsafe extern "C" fn element7(
         XML_TOK_COMMA => {
             (*state).handler = Some(
                 element6
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2584,7 +2571,7 @@ unsafe extern "C" fn element7(
         XML_TOK_OR => {
             (*state).handler = Some(
                 element6
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2599,7 +2586,7 @@ unsafe extern "C" fn element7(
     return common(state, tok);
 }
 
-unsafe extern "C" fn condSect0(
+unsafe fn condSect0(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut ptr: *const c_char,
@@ -2618,7 +2605,7 @@ unsafe extern "C" fn condSect0(
             {
                 (*state).handler = Some(
                     condSect1
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2637,7 +2624,7 @@ unsafe extern "C" fn condSect0(
             {
                 (*state).handler = Some(
                     condSect2
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2653,7 +2640,7 @@ unsafe extern "C" fn condSect0(
     return common(state, tok);
 }
 
-unsafe extern "C" fn condSect1(
+unsafe fn condSect1(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2665,7 +2652,7 @@ unsafe extern "C" fn condSect1(
         XML_TOK_OPEN_BRACKET => {
             (*state).handler = Some(
                 externalSubset1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2681,7 +2668,7 @@ unsafe extern "C" fn condSect1(
     return common(state, tok);
 }
 
-unsafe extern "C" fn condSect2(
+unsafe fn condSect2(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2693,7 +2680,7 @@ unsafe extern "C" fn condSect2(
         XML_TOK_OPEN_BRACKET => {
             (*state).handler = Some(
                 externalSubset1
-                    as unsafe extern "C" fn(
+                    as unsafe fn(
                         *mut PROLOG_STATE,
                         c_int,
                         *const c_char,
@@ -2708,7 +2695,7 @@ unsafe extern "C" fn condSect2(
     return common(state, tok);
 }
 
-unsafe extern "C" fn declClose(
+unsafe fn declClose(
     mut state: *mut PROLOG_STATE,
     mut tok: c_int,
     mut _ptr: *const c_char,
@@ -2721,7 +2708,7 @@ unsafe extern "C" fn declClose(
             (*state).handler = if (*state).documentEntity != 0 {
                 Some(
                     internalSubset
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2732,7 +2719,7 @@ unsafe extern "C" fn declClose(
             } else {
                 Some(
                     externalSubset1
-                        as unsafe extern "C" fn(
+                        as unsafe fn(
                             *mut PROLOG_STATE,
                             c_int,
                             *const c_char,
@@ -2748,7 +2735,7 @@ unsafe extern "C" fn declClose(
     return common(state, tok);
 }
 
-unsafe extern "C" fn error(
+unsafe fn error(
     mut _state: *mut PROLOG_STATE,
     mut _tok: c_int,
     mut _ptr: *const c_char,
@@ -2758,13 +2745,13 @@ unsafe extern "C" fn error(
     return XML_ROLE_NONE;
 }
 
-unsafe extern "C" fn common(mut state: *mut PROLOG_STATE, mut tok: c_int) -> c_int {
+unsafe fn common(mut state: *mut PROLOG_STATE, mut tok: c_int) -> c_int {
     if (*state).documentEntity == 0 && tok == XML_TOK_PARAM_ENTITY_REF_1 {
         return XML_ROLE_INNER_PARAM_ENTITY_REF;
     }
     (*state).handler = Some(
         error
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *mut PROLOG_STATE,
                 c_int,
                 *const c_char,
@@ -2774,10 +2761,10 @@ unsafe extern "C" fn common(mut state: *mut PROLOG_STATE, mut tok: c_int) -> c_i
     );
     return XML_ROLE_ERROR;
 }
-pub(crate) unsafe extern "C" fn XmlPrologStateInit(mut state: *mut PROLOG_STATE) {
+pub(crate) unsafe fn XmlPrologStateInit(mut state: *mut PROLOG_STATE) {
     (*state).handler = Some(
         prolog0
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *mut PROLOG_STATE,
                 c_int,
                 *const c_char,
@@ -2789,10 +2776,10 @@ pub(crate) unsafe extern "C" fn XmlPrologStateInit(mut state: *mut PROLOG_STATE)
     (*state).includeLevel = 0u32;
     (*state).inEntityValue = 0;
 }
-pub(crate) unsafe extern "C" fn XmlPrologStateInitExternalEntity(mut state: *mut PROLOG_STATE) {
+pub(crate) unsafe fn XmlPrologStateInitExternalEntity(mut state: *mut PROLOG_STATE) {
     (*state).handler = Some(
         externalSubset0
-            as unsafe extern "C" fn(
+            as unsafe fn(
                 *mut PROLOG_STATE,
                 c_int,
                 *const c_char,
