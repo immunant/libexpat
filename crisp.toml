@@ -1,0 +1,19 @@
+base_dir = "."
+project_name = "runtests"
+src_globs = [
+    "translated_rust/src/*.rs",
+    "translated_rust/src/*/*.rs",
+    "translated_rust/src/*/*/*.rs",
+    "translated_rust/src/*/*/*/*.rs",
+]
+test_command = """
+set -e
+cd translated_rust
+cargo run
+"""
+
+[transpile]
+cmake_src_dir = "expat"
+output_dir = "translated_rust"
+bin_main = "runtests"
+single_target = "runtests"
