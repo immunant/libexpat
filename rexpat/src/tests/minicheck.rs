@@ -73,10 +73,10 @@ use crate::stdlib::vsnprintf;
 pub unsafe extern "C" fn suite_create(
     mut name: *const ::core::ffi::c_char,
 ) -> *mut crate::src::tests::minicheck::Suite {
-    let mut suite: *mut crate::src::tests::minicheck::Suite = crate::stdlib::calloc(
-        1 as crate::__stddef_size_t_h::size_t,
+    let mut suite: *mut crate::src::tests::minicheck::Suite = calloc(
+        1 as size_t,
         ::core::mem::size_of::<crate::src::tests::minicheck::Suite>()
-            as crate::__stddef_size_t_h::size_t,
+            as size_t,
     )
         as *mut crate::src::tests::minicheck::Suite;
     if !suite.is_null() {
@@ -89,10 +89,10 @@ pub unsafe extern "C" fn suite_create(
 pub unsafe extern "C" fn tcase_create(
     mut name: *const ::core::ffi::c_char,
 ) -> *mut crate::src::tests::minicheck::TCase {
-    let mut tc: *mut crate::src::tests::minicheck::TCase = crate::stdlib::calloc(
-        1 as crate::__stddef_size_t_h::size_t,
+    let mut tc: *mut crate::src::tests::minicheck::TCase = calloc(
+        1 as size_t,
         ::core::mem::size_of::<crate::src::tests::minicheck::TCase>()
-            as crate::__stddef_size_t_h::size_t,
+            as size_t,
     )
         as *mut crate::src::tests::minicheck::TCase;
     if !tc.is_null() {
@@ -108,7 +108,7 @@ pub unsafe extern "C" fn suite_add_tcase(
 ) {
     if !suite.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"suite != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn suite_add_tcase(
     };
     if !tc.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn suite_add_tcase(
     };
     if (*tc).next_tcase.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"tc->next_tcase == NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn tcase_add_checked_fixture(
 ) {
     if !tc.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
@@ -168,7 +168,7 @@ pub unsafe extern "C" fn tcase_add_test(
 ) {
     if !tc.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -179,16 +179,16 @@ pub unsafe extern "C" fn tcase_add_test(
     };
     if (*tc).allocated == (*tc).ntests {
         let mut nalloc: ::core::ffi::c_int = (*tc).allocated + 100 as ::core::ffi::c_int;
-        let mut new_size: crate::__stddef_size_t_h::size_t =
+        let mut new_size: size_t =
             (::core::mem::size_of::<crate::src::tests::minicheck::tcase_test_function>()
-                as crate::__stddef_size_t_h::size_t)
-                .wrapping_mul(nalloc as crate::__stddef_size_t_h::size_t);
+                as size_t)
+                .wrapping_mul(nalloc as size_t);
         let new_tests: *mut crate::src::tests::minicheck::tcase_test_function =
-            crate::stdlib::realloc((*tc).tests as *mut ::core::ffi::c_void, new_size)
+            realloc((*tc).tests as *mut ::core::ffi::c_void, new_size)
                 as *mut crate::src::tests::minicheck::tcase_test_function;
         if !new_tests.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            __assert_fail(
                 b"new_tests != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -209,8 +209,8 @@ unsafe extern "C" fn tcase_free(mut tc: *mut crate::src::tests::minicheck::TCase
     if tc.is_null() {
         return;
     }
-    crate::stdlib::free((*tc).tests as *mut ::core::ffi::c_void);
-    crate::stdlib::free(tc as *mut ::core::ffi::c_void);
+    free((*tc).tests as *mut ::core::ffi::c_void);
+    free(tc as *mut ::core::ffi::c_void);
 }
 
 unsafe extern "C" fn suite_free(mut suite: *mut crate::src::tests::minicheck::Suite) {
@@ -222,17 +222,17 @@ unsafe extern "C" fn suite_free(mut suite: *mut crate::src::tests::minicheck::Su
         tcase_free((*suite).tests);
         (*suite).tests = next;
     }
-    crate::stdlib::free(suite as *mut ::core::ffi::c_void);
+    free(suite as *mut ::core::ffi::c_void);
 }
 #[no_mangle]
 
 pub unsafe extern "C" fn srunner_create(
     mut suite: *mut crate::src::tests::minicheck::Suite,
 ) -> *mut crate::src::tests::minicheck::SRunner {
-    let runner: *mut crate::src::tests::minicheck::SRunner = crate::stdlib::calloc(
-        1 as crate::__stddef_size_t_h::size_t,
+    let runner: *mut crate::src::tests::minicheck::SRunner = calloc(
+        1 as size_t,
         ::core::mem::size_of::<crate::src::tests::minicheck::SRunner>()
-            as crate::__stddef_size_t_h::size_t,
+            as size_t,
     )
         as *mut crate::src::tests::minicheck::SRunner;
     if !runner.is_null() {
@@ -241,10 +241,10 @@ pub unsafe extern "C" fn srunner_create(
     return runner;
 }
 
-static mut env: crate::stdlib::jmp_buf = [crate::stdlib::__jmp_buf_tag {
-    __jmpbuf: [0; 8],
-    __mask_was_saved: 0,
-    __saved_mask: crate::stdlib::__sigset_t { __val: [0; 16] },
+static mut env: jmp_buf = [__jmp_buf_tag {
+    __jmpbuf:  [0; 8],
+    __mask_was_saved:  0,
+    __saved_mask:  __sigset_t { __val:  [0; 16] },
 }; 1];
 
 pub const SUBTEST_LEN: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
@@ -278,14 +278,14 @@ pub unsafe extern "C" fn _check_set_test_info(
 pub unsafe extern "C" fn set_subtest(mut fmt: *const ::core::ffi::c_char, mut c2rust_args: ...) {
     let mut ap: ::core::ffi::VaListImpl;
     ap = c2rust_args.clone();
-    crate::stdlib::vsnprintf(
+    vsnprintf(
         &raw mut _check_current_subtest as *mut ::core::ffi::c_char,
-        SUBTEST_LEN as crate::__stddef_size_t_h::size_t,
+        SUBTEST_LEN as size_t,
         fmt,
         ap.as_va_list(),
     );
-    let mut i: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    while i < SUBTEST_LEN as crate::__stddef_size_t_h::size_t {
+    let mut i: size_t = 0 as size_t;
+    while i < SUBTEST_LEN as size_t {
         if _check_current_subtest[i as usize] as ::core::ffi::c_int == '\n' as i32 {
             _check_current_subtest[i as usize] = ' ' as i32 as ::core::ffi::c_char;
         }
@@ -297,7 +297,7 @@ pub unsafe extern "C" fn set_subtest(mut fmt: *const ::core::ffi::c_char, mut c2
 
 unsafe extern "C" fn handle_success(mut verbosity: ::core::ffi::c_int) {
     if verbosity >= crate::src::tests::minicheck::CK_VERBOSE {
-        crate::stdlib::printf(
+        printf(
             b"PASS: %s\n\0".as_ptr() as *const ::core::ffi::c_char,
             _check_current_function,
         );
@@ -312,12 +312,12 @@ unsafe extern "C" fn handle_failure(
 ) {
     (*runner).nfailures += 1;
     if verbosity != crate::src::tests::minicheck::CK_SILENT {
-        if crate::stdlib::strlen(&raw mut _check_current_subtest as *mut ::core::ffi::c_char)
-            != 0 as crate::__stddef_size_t_h::size_t
+        if strlen(&raw mut _check_current_subtest as *mut ::core::ffi::c_char)
+            != 0 as size_t
         {
             phase_info = &raw mut _check_current_subtest as *mut ::core::ffi::c_char;
         }
-        crate::stdlib::printf(
+        printf(
             b"FAIL [%s]: %s (%s at %s:%d)\n\0".as_ptr() as *const ::core::ffi::c_char,
             context,
             _check_current_function,
@@ -340,7 +340,7 @@ pub unsafe extern "C" fn srunner_run_all(
         ::core::ptr::null_mut::<crate::src::tests::minicheck::TCase>();
     if !runner.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"runner != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -374,7 +374,7 @@ pub unsafe extern "C" fn srunner_run_all(
             .setup
             .is_some()
             {
-                if crate::stdlib::_setjmp(&raw mut env as *mut crate::stdlib::__jmp_buf_tag) != 0 {
+                if _setjmp(&raw mut env as *mut __jmp_buf_tag) != 0 {
                     handle_failure(
                         runner,
                         verbosity,
@@ -395,7 +395,7 @@ pub unsafe extern "C" fn srunner_run_all(
             }
             match c2rust_current_block_13 {
                 2868539653012386629 => {
-                    if crate::stdlib::_setjmp(&raw mut env as *mut crate::stdlib::__jmp_buf_tag)
+                    if _setjmp(&raw mut env as *mut __jmp_buf_tag)
                         != 0
                     {
                         handle_failure(
@@ -422,8 +422,8 @@ pub unsafe extern "C" fn srunner_run_all(
                         .teardown
                         .is_some()
                         {
-                            if crate::stdlib::_setjmp(
-                                &raw mut env as *mut crate::stdlib::__jmp_buf_tag,
+                            if _setjmp(
+                                &raw mut env as *mut __jmp_buf_tag,
                             ) != 0
                             {
                                 handle_failure(
@@ -481,7 +481,7 @@ pub unsafe extern "C" fn srunner_summarize(
             passed as ::core::ffi::c_double / (*runner).nchecks as ::core::ffi::c_double;
         let mut display: ::core::ffi::c_int =
             (percentage * 100 as ::core::ffi::c_int as ::core::ffi::c_double) as ::core::ffi::c_int;
-        crate::stdlib::printf(
+        printf(
             b"%d%%: Checks: %d, Failed: %d\n\0".as_ptr() as *const ::core::ffi::c_char,
             display,
             (*runner).nchecks,
@@ -500,11 +500,11 @@ pub unsafe extern "C" fn _fail(
     _check_current_lineno = line;
     if !msg.is_null() {
         let has_newline: ::core::ffi::c_int = (*msg.offset(
-            crate::stdlib::strlen(msg).wrapping_sub(1 as crate::__stddef_size_t_h::size_t) as isize,
+            strlen(msg).wrapping_sub(1 as size_t) as isize,
         ) as ::core::ffi::c_int
             == '\n' as i32) as ::core::ffi::c_int;
-        crate::stdlib::fprintf(
-            crate::stdlib::stderr,
+        fprintf(
+            stderr,
             b"ERROR: %s%s\0".as_ptr() as *const ::core::ffi::c_char,
             msg,
             if has_newline != 0 {
@@ -514,8 +514,8 @@ pub unsafe extern "C" fn _fail(
             },
         );
     }
-    crate::stdlib::longjmp(
-        &raw mut env as *mut crate::stdlib::__jmp_buf_tag,
+    longjmp(
+        &raw mut env as *mut __jmp_buf_tag,
         1 as ::core::ffi::c_int,
     );
 }
@@ -526,7 +526,7 @@ pub unsafe extern "C" fn srunner_ntests_failed(
 ) -> ::core::ffi::c_int {
     if !runner.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"runner != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -543,5 +543,5 @@ pub unsafe extern "C" fn srunner_free(mut runner: *mut crate::src::tests::minich
         return;
     }
     suite_free((*runner).suite);
-    crate::stdlib::free(runner as *mut ::core::ffi::c_void);
+    free(runner as *mut ::core::ffi::c_void);
 }

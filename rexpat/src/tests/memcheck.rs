@@ -13,7 +13,7 @@ pub struct allocation_entry {
     pub next: *mut allocation_entry,
     pub prev: *mut allocation_entry,
     pub allocation: *mut ::core::ffi::c_void,
-    pub num_bytes: crate::__stddef_size_t_h::size_t,
+    pub num_bytes: size_t,
 }
 
 static mut alloc_head: *mut AllocationEntry =
@@ -24,20 +24,20 @@ static mut alloc_tail: *mut AllocationEntry =
 #[no_mangle]
 
 pub unsafe extern "C" fn tracking_malloc(
-    mut size: crate::__stddef_size_t_h::size_t,
+    mut size: size_t,
 ) -> *mut ::core::ffi::c_void {
-    let entry: *mut AllocationEntry = crate::stdlib::malloc(
-        ::core::mem::size_of::<AllocationEntry>() as crate::__stddef_size_t_h::size_t,
+    let entry: *mut AllocationEntry = malloc(
+        ::core::mem::size_of::<AllocationEntry>() as size_t,
     ) as *mut AllocationEntry;
     if entry.is_null() {
-        crate::stdlib::printf(b"Allocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
-        return crate::__stddef_null_h::NULL;
+        printf(b"Allocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
+        return NULL;
     }
     (*entry).num_bytes = size;
-    (*entry).allocation = crate::stdlib::malloc(size);
+    (*entry).allocation = malloc(size);
     if (*entry).allocation.is_null() {
-        crate::stdlib::free(entry as *mut ::core::ffi::c_void);
-        return crate::__stddef_null_h::NULL;
+        free(entry as *mut ::core::ffi::c_void);
+        return NULL;
     }
     (*entry).next = ::core::ptr::null_mut::<allocation_entry>();
     if alloc_head.is_null() {
@@ -82,48 +82,48 @@ pub unsafe extern "C" fn tracking_free(mut ptr: *mut ::core::ffi::c_void) {
         } else {
             alloc_tail = (*entry).next as *mut AllocationEntry;
         }
-        crate::stdlib::free(entry as *mut ::core::ffi::c_void);
+        free(entry as *mut ::core::ffi::c_void);
     } else {
-        crate::stdlib::printf(
+        printf(
             b"Attempting to free unallocated memory at %p\n\0".as_ptr()
                 as *const ::core::ffi::c_char,
             ptr,
         );
     }
-    crate::stdlib::free(ptr);
+    free(ptr);
 }
 #[no_mangle]
 
 pub unsafe extern "C" fn tracking_realloc(
     mut ptr: *mut ::core::ffi::c_void,
-    mut size: crate::__stddef_size_t_h::size_t,
+    mut size: size_t,
 ) -> *mut ::core::ffi::c_void {
     let mut entry: *mut AllocationEntry = ::core::ptr::null_mut::<AllocationEntry>();
     if ptr.is_null() {
         return tracking_malloc(size);
     }
-    if size == 0 as crate::__stddef_size_t_h::size_t {
+    if size == 0 as size_t {
         tracking_free(ptr);
-        return crate::__stddef_null_h::NULL;
+        return NULL;
     }
     entry = find_allocation(ptr);
     if entry.is_null() {
-        crate::stdlib::printf(
+        printf(
             b"Attempting to realloc unallocated memory at %p\n\0".as_ptr()
                 as *const ::core::ffi::c_char,
             ptr,
         );
-        entry = crate::stdlib::malloc(
-            ::core::mem::size_of::<AllocationEntry>() as crate::__stddef_size_t_h::size_t
+        entry = malloc(
+            ::core::mem::size_of::<AllocationEntry>() as size_t
         ) as *mut AllocationEntry;
         if entry.is_null() {
-            crate::stdlib::printf(b"Reallocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
-            return crate::__stddef_null_h::NULL;
+            printf(b"Reallocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
+            return NULL;
         }
-        (*entry).allocation = crate::stdlib::realloc(ptr, size);
+        (*entry).allocation = realloc(ptr, size);
         if (*entry).allocation.is_null() {
-            crate::stdlib::free(entry as *mut ::core::ffi::c_void);
-            return crate::__stddef_null_h::NULL;
+            free(entry as *mut ::core::ffi::c_void);
+            return NULL;
         }
         (*entry).next = ::core::ptr::null_mut::<allocation_entry>();
         if alloc_head.is_null() {
@@ -137,9 +137,9 @@ pub unsafe extern "C" fn tracking_realloc(
         }
     } else {
         let reallocated: *mut ::core::ffi::c_void =
-            crate::stdlib::realloc(ptr, size) as *mut ::core::ffi::c_void;
+            realloc(ptr, size) as *mut ::core::ffi::c_void;
         if reallocated.is_null() {
-            return crate::__stddef_null_h::NULL;
+            return NULL;
         }
         (*entry).allocation = reallocated;
     }
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn tracking_report() -> ::core::ffi::c_int {
     }
     entry = alloc_head;
     while !entry.is_null() {
-        crate::stdlib::printf(
+        printf(
             b"Allocated %lu bytes at %p\n\0".as_ptr() as *const ::core::ffi::c_char,
             (*entry).num_bytes as ::core::ffi::c_ulong,
             (*entry).allocation,

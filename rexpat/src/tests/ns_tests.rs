@@ -140,18 +140,18 @@ use crate::stdlib::strlen;
 #[repr(C)]
 
 pub struct test_case {
-    pub expectedStatus: crate::expat_h::XML_Status,
+    pub expectedStatus: XML_Status,
     pub doc: *const ::core::ffi::c_char,
-    pub namesep: crate::expat_external_h::XML_Char,
+    pub namesep: XML_Char,
 }
 
 unsafe extern "C" fn namespace_setup() {
-    crate::src::tests::common::g_parser = crate::src::lib::xmlparse::XML_ParserCreateNS(
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-        ' ' as i32 as crate::expat_external_h::XML_Char,
+    g_parser = XML_ParserCreateNS(
+        ::core::ptr::null::<XML_Char>(),
+        ' ' as i32 as XML_Char,
     );
-    if crate::src::tests::common::g_parser.is_null() {
-        crate::src::tests::minicheck::_fail(
+    if g_parser.is_null() {
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             60 as ::core::ffi::c_int,
@@ -161,11 +161,11 @@ unsafe extern "C" fn namespace_setup() {
 }
 
 unsafe extern "C" fn namespace_teardown() {
-    crate::src::tests::common::basic_teardown();
+    basic_teardown();
 }
 
 unsafe extern "C" fn test_return_ns_triplet() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_return_ns_triplet\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -175,115 +175,115 @@ unsafe extern "C" fn test_return_ns_triplet() {
         .as_ptr() as *const ::core::ffi::c_char;
     let mut epilog: *const ::core::ffi::c_char =
         b"</foo:e>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut elemstr: [*const crate::expat_external_h::XML_Char; 2] = [
+    let mut elemstr: [*const XML_Char; 2] = [
         b"http://example.org/ e foo\0".as_ptr() as *const ::core::ffi::c_char,
         b"http://example.org/ a bar\0".as_ptr() as *const ::core::ffi::c_char,
     ];
-    crate::src::lib::xmlparse::XML_SetReturnNSTriplet(
-        crate::src::tests::common::g_parser,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+    XML_SetReturnNSTriplet(
+        g_parser,
+        XML_TRUE as ::core::ffi::c_int,
     );
-    crate::src::lib::xmlparse::XML_SetUserData(
-        crate::src::tests::common::g_parser,
-        &raw mut elemstr as *mut *const crate::expat_external_h::XML_Char
+    XML_SetUserData(
+        g_parser,
+        &raw mut elemstr as *mut *const XML_Char
             as *mut ::core::ffi::c_void,
     );
-    crate::src::lib::xmlparse::XML_SetElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::triplet_start_checker
+            triplet_start_checker
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *mut *const XML_Char,
                 ) -> (),
         ),
         Some(
-            crate::src::tests::handlers::triplet_end_checker
+            triplet_end_checker
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                ) -> (),
-        ),
-    );
-    crate::src::lib::xmlparse::XML_SetNamespaceDeclHandler(
-        crate::src::tests::common::g_parser,
-        Some(
-            crate::src::tests::dummy::dummy_start_namespace_decl_handler
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                ) -> (),
-        ),
-        Some(
-            crate::src::tests::dummy::dummy_end_namespace_decl_handler
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::tests::handlers::g_triplet_start_flag =
-        crate::expat_h::XML_FALSE as ::core::ffi::c_int;
-    crate::src::tests::handlers::g_triplet_end_flag =
-        crate::expat_h::XML_FALSE as ::core::ffi::c_int;
-    crate::src::tests::dummy::init_dummy_handlers();
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    XML_SetNamespaceDeclHandler(
+        g_parser,
+        Some(
+            dummy_start_namespace_decl_handler
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    *const XML_Char,
+                    *const XML_Char,
+                ) -> (),
+        ),
+        Some(
+            dummy_end_namespace_decl_handler
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    *const XML_Char,
+                ) -> (),
+        ),
+    );
+    g_triplet_start_flag =
+        XML_FALSE as ::core::ffi::c_int;
+    g_triplet_end_flag =
+        XML_FALSE as ::core::ffi::c_int;
+    init_dummy_handlers();
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_FALSE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_FALSE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             84 as ::core::ffi::c_int,
         );
     }
-    crate::src::lib::xmlparse::XML_SetReturnNSTriplet(
-        crate::src::tests::common::g_parser,
-        crate::expat_h::XML_FALSE as ::core::ffi::c_int,
+    XML_SetReturnNSTriplet(
+        g_parser,
+        XML_FALSE as ::core::ffi::c_int,
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         epilog,
-        crate::stdlib::strlen(epilog) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(epilog) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             89 as ::core::ffi::c_int,
         );
     }
-    if crate::src::tests::handlers::g_triplet_start_flag == 0 {
-        crate::src::tests::minicheck::_fail(
+    if g_triplet_start_flag == 0 {
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             91 as ::core::ffi::c_int,
             b"triplet_start_checker not invoked\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::tests::handlers::g_triplet_end_flag == 0 {
-        crate::src::tests::minicheck::_fail(
+    if g_triplet_end_flag == 0 {
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             93 as ::core::ffi::c_int,
             b"triplet_end_checker not invoked\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::tests::dummy::get_dummy_handler_flags()
-        != crate::src::tests::dummy::DUMMY_START_NS_DECL_HANDLER_FLAG
-            | crate::src::tests::dummy::DUMMY_END_NS_DECL_HANDLER_FLAG
+    if get_dummy_handler_flags()
+        != DUMMY_START_NS_DECL_HANDLER_FLAG
+            | DUMMY_END_NS_DECL_HANDLER_FLAG
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             96 as ::core::ffi::c_int,
@@ -293,24 +293,21 @@ unsafe extern "C" fn test_return_ns_triplet() {
 }
 
 unsafe extern "C" fn test_ns_parser_reset() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_parser_reset\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
         104 as ::core::ffi::c_int,
     );
-    let mut status: crate::expat_h::XML_ParsingStatus = crate::expat_h::XML_ParsingStatus {
-        parsing: crate::expat_h::XML_INITIALIZED,
-        finalBuffer: 0,
-    };
-    crate::src::lib::xmlparse::XML_GetParsingStatus(
-        crate::src::tests::common::g_parser,
-        &raw mut status as *mut _ as *mut crate::expat_h::XML_ParsingStatus,
+    let mut status: XML_ParsingStatus = XML_ParsingStatus { parsing:  XML_INITIALIZED, finalBuffer:  0 };
+    XML_GetParsingStatus(
+        g_parser,
+        &raw mut status as *mut _ as *mut XML_ParsingStatus,
     );
     if status.parsing as ::core::ffi::c_uint
-        != crate::expat_h::XML_INITIALIZED as ::core::ffi::c_int as ::core::ffi::c_uint
+        != XML_INITIALIZED as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             109 as ::core::ffi::c_int,
@@ -318,32 +315,32 @@ unsafe extern "C" fn test_ns_parser_reset() {
         );
     }
     test_return_ns_triplet();
-    crate::src::lib::xmlparse::XML_GetParsingStatus(
-        crate::src::tests::common::g_parser,
-        &raw mut status as *mut _ as *mut crate::expat_h::XML_ParsingStatus,
+    XML_GetParsingStatus(
+        g_parser,
+        &raw mut status as *mut _ as *mut XML_ParsingStatus,
     );
     if status.parsing as ::core::ffi::c_uint
-        != crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+        != XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             113 as ::core::ffi::c_int,
             b"parsing status doesn't end FINISHED\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    crate::src::lib::xmlparse::XML_ParserReset(
-        crate::src::tests::common::g_parser,
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+    XML_ParserReset(
+        g_parser,
+        ::core::ptr::null::<XML_Char>(),
     );
-    crate::src::lib::xmlparse::XML_GetParsingStatus(
-        crate::src::tests::common::g_parser,
-        &raw mut status as *mut _ as *mut crate::expat_h::XML_ParsingStatus,
+    XML_GetParsingStatus(
+        g_parser,
+        &raw mut status as *mut _ as *mut XML_ParsingStatus,
     );
     if status.parsing as ::core::ffi::c_uint
-        != crate::expat_h::XML_INITIALIZED as ::core::ffi::c_int as ::core::ffi::c_uint
+        != XML_INITIALIZED as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             117 as ::core::ffi::c_int,
@@ -354,61 +351,58 @@ unsafe extern "C" fn test_ns_parser_reset() {
 
 unsafe extern "C" fn run_ns_tagname_overwrite_test(
     mut text: *const ::core::ffi::c_char,
-    mut result: *const crate::expat_external_h::XML_Char,
+    mut result: *const XML_Char,
 ) {
-    let mut storage: crate::src::tests::chardata::CharData =
-        crate::src::tests::chardata::CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-    crate::src::tests::chardata::CharData_Init(
-        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+    let mut storage: CharData =
+        CharData { count:  0, data:  [0; 2048] };
+    CharData_Init(
+        &raw mut storage as *mut _ as *mut CharData,
     );
-    crate::src::lib::xmlparse::XML_SetUserData(
-        crate::src::tests::common::g_parser,
+    XML_SetUserData(
+        g_parser,
         &raw mut storage as *mut ::core::ffi::c_void,
     );
-    crate::src::lib::xmlparse::XML_SetElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::overwrite_start_checker
+            overwrite_start_checker
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *mut *const XML_Char,
                 ) -> (),
         ),
         Some(
-            crate::src::tests::handlers::overwrite_end_checker
+            overwrite_end_checker
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
                 ) -> (),
         ),
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             130 as ::core::ffi::c_int,
         );
     }
-    crate::src::tests::chardata::CharData_CheckXMLChars(
-        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+    CharData_CheckXMLChars(
+        &raw mut storage as *mut _ as *mut CharData,
         result,
     );
 }
 
 unsafe extern "C" fn test_ns_tagname_overwrite() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_tagname_overwrite\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -416,13 +410,13 @@ unsafe extern "C" fn test_ns_tagname_overwrite() {
     );
     let mut text: *const ::core::ffi::c_char = b"<n:e xmlns:n='http://example.org/'>\n  <n:f n:attr='foo'/>\n  <n:g n:attr2='bar'/>\n</n:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut result: *const crate::expat_external_h::XML_Char = b"start http://example.org/ e\nstart http://example.org/ f\nattribute http://example.org/ attr\nend http://example.org/ f\nstart http://example.org/ g\nattribute http://example.org/ attr2\nend http://example.org/ g\nend http://example.org/ e\n\0"
-        .as_ptr() as *const crate::expat_external_h::XML_Char;
+    let mut result: *const XML_Char = b"start http://example.org/ e\nstart http://example.org/ f\nattribute http://example.org/ attr\nend http://example.org/ f\nstart http://example.org/ g\nattribute http://example.org/ attr2\nend http://example.org/ g\nend http://example.org/ e\n\0"
+        .as_ptr() as *const XML_Char;
     run_ns_tagname_overwrite_test(text, result);
 }
 
 unsafe extern "C" fn test_ns_tagname_overwrite_triplet() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_tagname_overwrite_triplet\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -430,17 +424,17 @@ unsafe extern "C" fn test_ns_tagname_overwrite_triplet() {
     );
     let mut text: *const ::core::ffi::c_char = b"<n:e xmlns:n='http://example.org/'>\n  <n:f n:attr='foo'/>\n  <n:g n:attr2='bar'/>\n</n:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut result: *const crate::expat_external_h::XML_Char = b"start http://example.org/ e n\nstart http://example.org/ f n\nattribute http://example.org/ attr n\nend http://example.org/ f n\nstart http://example.org/ g n\nattribute http://example.org/ attr2 n\nend http://example.org/ g n\nend http://example.org/ e n\n\0"
-        .as_ptr() as *const crate::expat_external_h::XML_Char;
-    crate::src::lib::xmlparse::XML_SetReturnNSTriplet(
-        crate::src::tests::common::g_parser,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+    let mut result: *const XML_Char = b"start http://example.org/ e n\nstart http://example.org/ f n\nattribute http://example.org/ attr n\nend http://example.org/ f n\nstart http://example.org/ g n\nattribute http://example.org/ attr2 n\nend http://example.org/ g n\nend http://example.org/ e n\n\0"
+        .as_ptr() as *const XML_Char;
+    XML_SetReturnNSTriplet(
+        g_parser,
+        XML_TRUE as ::core::ffi::c_int,
     );
     run_ns_tagname_overwrite_test(text, result);
 }
 
 unsafe extern "C" fn test_start_ns_clears_start_element() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_start_ns_clears_start_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -448,49 +442,49 @@ unsafe extern "C" fn test_start_ns_clears_start_element() {
     );
     let mut text: *const ::core::ffi::c_char =
         b"<e xmlns='http://example.org/'></e>\0".as_ptr() as *const ::core::ffi::c_char;
-    crate::src::lib::xmlparse::XML_SetStartElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetStartElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::start_element_fail
+            start_element_fail
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *mut *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::lib::xmlparse::XML_SetStartNamespaceDeclHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetStartNamespaceDeclHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::start_ns_clearing_start_element
+            start_ns_clearing_start_element
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::lib::xmlparse::XML_SetEndNamespaceDeclHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetEndNamespaceDeclHandler(
+        g_parser,
         Some(
-            crate::src::tests::dummy::dummy_end_namespace_decl_handler
+            dummy_end_namespace_decl_handler
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::lib::xmlparse::XML_UseParserAsHandlerArg(crate::src::tests::common::g_parser);
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    XML_UseParserAsHandlerArg(g_parser);
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             185 as ::core::ffi::c_int,
@@ -499,7 +493,7 @@ unsafe extern "C" fn test_start_ns_clears_start_element() {
 }
 
 unsafe extern "C" fn test_default_ns_from_ext_subset_and_ext_ge() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_default_ns_from_ext_subset_and_ext_ge\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -507,48 +501,48 @@ unsafe extern "C" fn test_default_ns_from_ext_subset_and_ext_ge() {
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    crate::src::lib::xmlparse::XML_SetParamEntityParsing(
-        crate::src::tests::common::g_parser,
-        crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+    XML_SetParamEntityParsing(
+        g_parser,
+        XML_PARAM_ENTITY_PARSING_ALWAYS,
     );
-    crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetExternalEntityRefHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::external_entity_handler
+            external_entity_handler
                 as unsafe extern "C" fn(
-                    crate::expat_h::XML_Parser,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
+                    XML_Parser,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
                 ) -> ::core::ffi::c_int,
         ),
     );
-    crate::src::lib::xmlparse::XML_SetStartElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetStartElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::dummy::dummy_start_element
+            dummy_start_element
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *mut *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::lib::xmlparse::XML_SetUserData(
-        crate::src::tests::common::g_parser,
-        crate::__stddef_null_h::NULL,
+    XML_SetUserData(
+        g_parser,
+        NULL,
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             206 as ::core::ffi::c_int,
@@ -557,7 +551,7 @@ unsafe extern "C" fn test_default_ns_from_ext_subset_and_ext_ge() {
 }
 
 unsafe extern "C" fn test_ns_prefix_with_empty_uri_1() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_prefix_with_empty_uri_1\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -566,9 +560,9 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_1() {
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns:prefix='http://example.org/'>\n  <e xmlns:prefix=''/>\n</doc>\0".as_ptr()
             as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_UNDECLARING_PREFIX,
+        XML_ERROR_UNDECLARING_PREFIX,
         b"Did not report re-setting namespace URI with prefix to ''.\0".as_ptr()
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -578,7 +572,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_1() {
 }
 
 unsafe extern "C" fn test_ns_prefix_with_empty_uri_2() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_prefix_with_empty_uri_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -586,9 +580,9 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_2() {
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0'?>\n<docelem xmlns:pre=''/>\0".as_ptr() as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_UNDECLARING_PREFIX,
+        XML_ERROR_UNDECLARING_PREFIX,
         b"Did not report setting namespace URI with prefix to ''.\0".as_ptr()
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -598,7 +592,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_2() {
 }
 
 unsafe extern "C" fn test_ns_prefix_with_empty_uri_3() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_prefix_with_empty_uri_3\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -606,9 +600,9 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_3() {
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ELEMENT doc EMPTY>\n  <!ATTLIST doc\n    xmlns:prefix CDATA ''>\n]>\n<doc/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_UNDECLARING_PREFIX,
+        XML_ERROR_UNDECLARING_PREFIX,
         b"Didn't report attr default setting NS w/ prefix to ''.\0".as_ptr()
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -618,7 +612,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_3() {
 }
 
 unsafe extern "C" fn test_ns_prefix_with_empty_uri_4() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_prefix_with_empty_uri_4\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -626,37 +620,37 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_4() {
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ELEMENT prefix:doc EMPTY>\n  <!ATTLIST prefix:doc\n    xmlns:prefix CDATA 'http://example.org/'>\n]>\n<prefix:doc/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut elemstr: [*const crate::expat_external_h::XML_Char; 1] =
+    let mut elemstr: [*const XML_Char; 1] =
         [b"http://example.org/ doc prefix\0".as_ptr() as *const ::core::ffi::c_char];
-    crate::src::lib::xmlparse::XML_SetReturnNSTriplet(
-        crate::src::tests::common::g_parser,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+    XML_SetReturnNSTriplet(
+        g_parser,
+        XML_TRUE as ::core::ffi::c_int,
     );
-    crate::src::lib::xmlparse::XML_SetUserData(
-        crate::src::tests::common::g_parser,
-        &raw mut elemstr as *mut *const crate::expat_external_h::XML_Char
+    XML_SetUserData(
+        g_parser,
+        &raw mut elemstr as *mut *const XML_Char
             as *mut ::core::ffi::c_void,
     );
-    crate::src::lib::xmlparse::XML_SetEndElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetEndElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::triplet_end_checker
+            triplet_end_checker
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
                 ) -> (),
         ),
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             263 as ::core::ffi::c_int,
@@ -665,7 +659,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_4() {
 }
 
 unsafe extern "C" fn test_ns_unbound_prefix() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_unbound_prefix\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -673,27 +667,27 @@ unsafe extern "C" fn test_ns_unbound_prefix() {
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ELEMENT prefix:doc EMPTY>\n  <!ATTLIST prefix:doc\n    notxmlns:prefix CDATA 'http://example.org/'>\n]>\n<prefix:doc/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             278 as ::core::ffi::c_int,
             b"Unbound prefix incorrectly passed\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_GetErrorCode(crate::src::tests::common::g_parser)
+    if XML_GetErrorCode(g_parser)
         as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_UNBOUND_PREFIX as ::core::ffi::c_int as ::core::ffi::c_uint
+        != XML_ERROR_UNBOUND_PREFIX as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             280 as ::core::ffi::c_int,
@@ -702,7 +696,7 @@ unsafe extern "C" fn test_ns_unbound_prefix() {
 }
 
 unsafe extern "C" fn test_ns_default_with_empty_uri() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_default_with_empty_uri\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -711,37 +705,37 @@ unsafe extern "C" fn test_ns_default_with_empty_uri() {
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns='http://example.org/'>\n  <e xmlns=''/>\n</doc>\0".as_ptr()
             as *const ::core::ffi::c_char;
-    crate::src::lib::xmlparse::XML_SetStartNamespaceDeclHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetStartNamespaceDeclHandler(
+        g_parser,
         Some(
-            crate::src::tests::dummy::dummy_start_namespace_decl_handler
+            dummy_start_namespace_decl_handler
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::lib::xmlparse::XML_SetEndNamespaceDeclHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetEndNamespaceDeclHandler(
+        g_parser,
         Some(
-            crate::src::tests::dummy::dummy_end_namespace_decl_handler
+            dummy_end_namespace_decl_handler
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
                 ) -> (),
         ),
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             294 as ::core::ffi::c_int,
@@ -750,7 +744,7 @@ unsafe extern "C" fn test_ns_default_with_empty_uri() {
 }
 
 unsafe extern "C" fn test_ns_duplicate_attrs_diff_prefixes() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_duplicate_attrs_diff_prefixes\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -758,9 +752,9 @@ unsafe extern "C" fn test_ns_duplicate_attrs_diff_prefixes() {
     );
     let mut text: *const ::core::ffi::c_char = b"<doc xmlns:a='http://example.org/a'\n     xmlns:b='http://example.org/a'\n     a:a='v' b:a='v' />\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE,
+        XML_ERROR_DUPLICATE_ATTRIBUTE,
         b"did not report multiple attributes with same URI+name\0".as_ptr()
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -770,7 +764,7 @@ unsafe extern "C" fn test_ns_duplicate_attrs_diff_prefixes() {
 }
 
 unsafe extern "C" fn test_ns_duplicate_hashes() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_duplicate_hashes\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -779,16 +773,16 @@ unsafe extern "C" fn test_ns_duplicate_hashes() {
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns:a='http://example.org/a'\n     a:a='v' a:i='w' />\0".as_ptr()
             as *const ::core::ffi::c_char;
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             329 as ::core::ffi::c_int,
@@ -797,7 +791,7 @@ unsafe extern "C" fn test_ns_duplicate_hashes() {
 }
 
 unsafe extern "C" fn test_ns_unbound_prefix_on_attribute() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_unbound_prefix_on_attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -805,9 +799,9 @@ unsafe extern "C" fn test_ns_unbound_prefix_on_attribute() {
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc a:attr=''/>\0".as_ptr() as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_UNBOUND_PREFIX,
+        XML_ERROR_UNBOUND_PREFIX,
         b"did not report unbound prefix on attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -816,16 +810,16 @@ unsafe extern "C" fn test_ns_unbound_prefix_on_attribute() {
 }
 
 unsafe extern "C" fn test_ns_unbound_prefix_on_element() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_unbound_prefix_on_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
         342 as ::core::ffi::c_int,
     );
     let mut text: *const ::core::ffi::c_char = b"<a:doc/>\0".as_ptr() as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_UNBOUND_PREFIX,
+        XML_ERROR_UNBOUND_PREFIX,
         b"did not report unbound prefix on element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -834,7 +828,7 @@ unsafe extern "C" fn test_ns_unbound_prefix_on_element() {
 }
 
 unsafe extern "C" fn test_ns_long_element() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_long_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -842,48 +836,48 @@ unsafe extern "C" fn test_ns_long_element() {
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:thisisalongenoughelementnametotriggerareallocation\n xmlns:foo='http://example.org/' bar:a='12'\n xmlns:bar='http://example.org/'></foo:thisisalongenoughelementnametotriggerareallocation>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut elemstr: [*const crate::expat_external_h::XML_Char; 2] = [
+    let mut elemstr: [*const XML_Char; 2] = [
         b"http://example.org/ thisisalongenoughelementnametotriggerareallocation foo\0".as_ptr()
             as *const ::core::ffi::c_char,
         b"http://example.org/ a bar\0".as_ptr() as *const ::core::ffi::c_char,
     ];
-    crate::src::lib::xmlparse::XML_SetReturnNSTriplet(
-        crate::src::tests::common::g_parser,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+    XML_SetReturnNSTriplet(
+        g_parser,
+        XML_TRUE as ::core::ffi::c_int,
     );
-    crate::src::lib::xmlparse::XML_SetUserData(
-        crate::src::tests::common::g_parser,
-        &raw mut elemstr as *mut *const crate::expat_external_h::XML_Char
+    XML_SetUserData(
+        g_parser,
+        &raw mut elemstr as *mut *const XML_Char
             as *mut ::core::ffi::c_void,
     );
-    crate::src::lib::xmlparse::XML_SetElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::triplet_start_checker
+            triplet_start_checker
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *mut *const XML_Char,
                 ) -> (),
         ),
         Some(
-            crate::src::tests::handlers::triplet_end_checker
+            triplet_end_checker
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
                 ) -> (),
         ),
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             366 as ::core::ffi::c_int,
@@ -892,7 +886,7 @@ unsafe extern "C" fn test_ns_long_element() {
 }
 
 unsafe extern "C" fn test_ns_mixed_prefix_atts() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_mixed_prefix_atts\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -901,16 +895,16 @@ unsafe extern "C" fn test_ns_mixed_prefix_atts() {
     let mut text: *const ::core::ffi::c_char =
         b"<e a='12' bar:b='13'\n xmlns:bar='http://example.org/'></e>\0".as_ptr()
             as *const ::core::ffi::c_char;
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             378 as ::core::ffi::c_int,
@@ -919,7 +913,7 @@ unsafe extern "C" fn test_ns_mixed_prefix_atts() {
 }
 
 unsafe extern "C" fn test_ns_extend_uri_buffer() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_extend_uri_buffer\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -927,16 +921,16 @@ unsafe extern "C" fn test_ns_extend_uri_buffer() {
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:e xmlns:foo='http://example.org/'> <foo:thisisalongenoughnametotriggerallocationaction   foo:a='12' /></foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             393 as ::core::ffi::c_int,
@@ -945,7 +939,7 @@ unsafe extern "C" fn test_ns_extend_uri_buffer() {
 }
 
 unsafe extern "C" fn test_ns_reserved_attributes() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_reserved_attributes\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -957,28 +951,28 @@ unsafe extern "C" fn test_ns_reserved_attributes() {
     let mut text2: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://example.org/' foo:xmlns='12' />\0".as_ptr()
             as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text1,
-        crate::expat_h::XML_ERROR_RESERVED_PREFIX_XMLNS,
+        XML_ERROR_RESERVED_PREFIX_XMLNS,
         b"xmlns not rejected as an attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
         406 as ::core::ffi::c_int,
     );
-    crate::src::lib::xmlparse::XML_ParserReset(
-        crate::src::tests::common::g_parser,
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+    XML_ParserReset(
+        g_parser,
+        ::core::ptr::null::<XML_Char>(),
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text2,
-        crate::stdlib::strlen(text2) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text2) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             410 as ::core::ffi::c_int,
@@ -987,7 +981,7 @@ unsafe extern "C" fn test_ns_reserved_attributes() {
 }
 
 unsafe extern "C" fn test_ns_reserved_attributes_2() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_reserved_attributes_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1002,33 +996,33 @@ unsafe extern "C" fn test_ns_reserved_attributes_2() {
     let mut text3: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://www.w3.org/2000/xmlns/' />\0".as_ptr()
             as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text1,
-        crate::expat_h::XML_ERROR_RESERVED_PREFIX_XML,
+        XML_ERROR_RESERVED_PREFIX_XML,
         b"xml not rejected as an attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
         423 as ::core::ffi::c_int,
     );
-    crate::src::lib::xmlparse::XML_ParserReset(
-        crate::src::tests::common::g_parser,
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+    XML_ParserReset(
+        g_parser,
+        ::core::ptr::null::<XML_Char>(),
     );
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text2,
-        crate::expat_h::XML_ERROR_RESERVED_NAMESPACE_URI,
+        XML_ERROR_RESERVED_NAMESPACE_URI,
         b"Use of w3.org URL not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
         426 as ::core::ffi::c_int,
     );
-    crate::src::lib::xmlparse::XML_ParserReset(
-        crate::src::tests::common::g_parser,
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+    XML_ParserReset(
+        g_parser,
+        ::core::ptr::null::<XML_Char>(),
     );
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text3,
-        crate::expat_h::XML_ERROR_RESERVED_NAMESPACE_URI,
+        XML_ERROR_RESERVED_NAMESPACE_URI,
         b"Use of w3.org xmlns URL not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1037,7 +1031,7 @@ unsafe extern "C" fn test_ns_reserved_attributes_2() {
 }
 
 unsafe extern "C" fn test_ns_extremely_long_prefix() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_extremely_long_prefix\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1047,31 +1041,31 @@ unsafe extern "C" fn test_ns_extremely_long_prefix() {
         .as_ptr() as *const ::core::ffi::c_char;
     let mut text2: *const ::core::ffi::c_char = b" xmlns:ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP='foo'\n></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text1,
-        crate::stdlib::strlen(text1) as ::core::ffi::c_int,
-        crate::expat_h::XML_FALSE as ::core::ffi::c_int,
+        strlen(text1) as ::core::ffi::c_int,
+        XML_FALSE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             516 as ::core::ffi::c_int,
         );
     }
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text2,
-        crate::stdlib::strlen(text2) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        strlen(text2) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             519 as ::core::ffi::c_int,
@@ -1080,7 +1074,7 @@ unsafe extern "C" fn test_ns_extremely_long_prefix() {
 }
 
 unsafe extern "C" fn test_ns_unknown_encoding_success() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_unknown_encoding_success\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1088,21 +1082,21 @@ unsafe extern "C" fn test_ns_unknown_encoding_success() {
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?>\n<foo:e xmlns:foo='http://example.org/'>Hi</foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    crate::src::lib::xmlparse::XML_SetUnknownEncodingHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetUnknownEncodingHandler(
+        g_parser,
         ::core::mem::transmute(Some(
-            crate::src::tests::handlers::MiscEncodingHandler
+            MiscEncodingHandler
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut crate::expat_h::XML_Encoding,
+                    *const XML_Char,
+                    *mut XML_Encoding,
                 ) -> ::core::ffi::c_int,
         )),
-        crate::__stddef_null_h::NULL,
+        NULL,
     );
-    crate::src::tests::common::_run_character_check(
+    _run_character_check(
         text,
-        b"Hi\0".as_ptr() as *const crate::expat_external_h::XML_Char,
+        b"Hi\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
         529 as ::core::ffi::c_int,
@@ -1110,7 +1104,7 @@ unsafe extern "C" fn test_ns_unknown_encoding_success() {
 }
 
 unsafe extern "C" fn test_ns_double_colon() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_double_colon\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1119,19 +1113,19 @@ unsafe extern "C" fn test_ns_double_colon() {
     let mut text: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://example.org/' foo:a:b='bar' />\0".as_ptr()
             as *const ::core::ffi::c_char;
-    let status: crate::expat_h::XML_Status = crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    let status: XML_Status = _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
-    ) as crate::expat_h::XML_Status;
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
+    ) as XML_Status;
     if status as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        || crate::src::lib::xmlparse::XML_GetErrorCode(crate::src::tests::common::g_parser)
+        == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        || XML_GetErrorCode(g_parser)
             as ::core::ffi::c_uint
-            != crate::expat_h::XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
+            != XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             542 as ::core::ffi::c_int,
@@ -1142,7 +1136,7 @@ unsafe extern "C" fn test_ns_double_colon() {
 }
 
 unsafe extern "C" fn test_ns_double_colon_element() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_double_colon_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1150,19 +1144,19 @@ unsafe extern "C" fn test_ns_double_colon_element() {
     );
     let mut text: *const ::core::ffi::c_char =
         b"<foo:bar:e xmlns:foo='http://example.org/' />\0".as_ptr() as *const ::core::ffi::c_char;
-    let status: crate::expat_h::XML_Status = crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    let status: XML_Status = _XML_Parse_SINGLE_BYTES(
+        g_parser,
         text,
-        crate::stdlib::strlen(text) as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
-    ) as crate::expat_h::XML_Status;
+        strlen(text) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
+    ) as XML_Status;
     if status as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        || crate::src::lib::xmlparse::XML_GetErrorCode(crate::src::tests::common::g_parser)
+        == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        || XML_GetErrorCode(g_parser)
             as ::core::ffi::c_uint
-            != crate::expat_h::XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
+            != XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             561 as ::core::ffi::c_int,
@@ -1173,7 +1167,7 @@ unsafe extern "C" fn test_ns_double_colon_element() {
 }
 
 unsafe extern "C" fn test_ns_bad_attr_leafname() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_bad_attr_leafname\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1182,9 +1176,9 @@ unsafe extern "C" fn test_ns_bad_attr_leafname() {
     let mut text: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://example.org/' foo:?ar='baz' />\0".as_ptr()
             as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_INVALID_TOKEN,
+        XML_ERROR_INVALID_TOKEN,
         b"Invalid character in leafname not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1193,7 +1187,7 @@ unsafe extern "C" fn test_ns_bad_attr_leafname() {
 }
 
 unsafe extern "C" fn test_ns_bad_element_leafname() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_bad_element_leafname\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1201,9 +1195,9 @@ unsafe extern "C" fn test_ns_bad_element_leafname() {
     );
     let mut text: *const ::core::ffi::c_char =
         b"<foo:?oc xmlns:foo='http://example.org/' />\0".as_ptr() as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_INVALID_TOKEN,
+        XML_ERROR_INVALID_TOKEN,
         b"Invalid character in element leafname not faulted\0".as_ptr()
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -1213,7 +1207,7 @@ unsafe extern "C" fn test_ns_bad_element_leafname() {
 }
 
 unsafe extern "C" fn test_ns_utf16_leafname() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_utf16_leafname\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1225,55 +1219,52 @@ unsafe extern "C" fn test_ns_utf16_leafname() {
     >(
         *b"<\0n\0:\0e\0 \0x\0m\0l\0n\0s\0:\0n\0=\0'\0U\0R\0I\0'\0 \0n\0:\0\x04\x0E=\0'\0a\0'\0 \0/\0>\0\0",
     );
-    let mut expected: *const crate::expat_external_h::XML_Char =
-        b"a\0".as_ptr() as *const crate::expat_external_h::XML_Char;
-    let mut storage: crate::src::tests::chardata::CharData =
-        crate::src::tests::chardata::CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-    crate::src::tests::chardata::CharData_Init(
-        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+    let mut expected: *const XML_Char =
+        b"a\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData =
+        CharData { count:  0, data:  [0; 2048] };
+    CharData_Init(
+        &raw mut storage as *mut _ as *mut CharData,
     );
-    crate::src::lib::xmlparse::XML_SetStartElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetStartElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::accumulate_attribute
+            accumulate_attribute
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *mut *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::lib::xmlparse::XML_SetUserData(
-        crate::src::tests::common::g_parser,
+    XML_SetUserData(
+        g_parser,
         &raw mut storage as *mut ::core::ffi::c_void,
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 59]>() as ::core::ffi::c_int
             - 1 as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             605 as ::core::ffi::c_int,
         );
     }
-    crate::src::tests::chardata::CharData_CheckXMLChars(
-        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+    CharData_CheckXMLChars(
+        &raw mut storage as *mut _ as *mut CharData,
         expected,
     );
 }
 
 unsafe extern "C" fn test_ns_utf16_element_leafname() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_utf16_element_leafname\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1283,55 +1274,52 @@ unsafe extern "C" fn test_ns_utf16_element_leafname() {
         ::core::mem::transmute::<[u8; 41], [::core::ffi::c_char; 41]>(
             *b"\0<\0n\0:\x0E\x04\0 \0x\0m\0l\0n\0s\0:\0n\0=\0'\0U\0R\0I\0'\0/\0>\0",
         );
-    let mut expected: *const crate::expat_external_h::XML_Char =
-        b"URI \xE0\xB8\x84\0".as_ptr() as *const crate::expat_external_h::XML_Char;
-    let mut storage: crate::src::tests::chardata::CharData =
-        crate::src::tests::chardata::CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-    crate::src::tests::chardata::CharData_Init(
-        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+    let mut expected: *const XML_Char =
+        b"URI \xE0\xB8\x84\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData =
+        CharData { count:  0, data:  [0; 2048] };
+    CharData_Init(
+        &raw mut storage as *mut _ as *mut CharData,
     );
-    crate::src::lib::xmlparse::XML_SetStartElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetStartElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::start_element_event_handler
+            start_element_event_handler
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *mut *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::lib::xmlparse::XML_SetUserData(
-        crate::src::tests::common::g_parser,
+    XML_SetUserData(
+        g_parser,
         &raw mut storage as *mut ::core::ffi::c_void,
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 41]>() as ::core::ffi::c_int
             - 1 as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             628 as ::core::ffi::c_int,
         );
     }
-    crate::src::tests::chardata::CharData_CheckXMLChars(
-        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+    CharData_CheckXMLChars(
+        &raw mut storage as *mut _ as *mut CharData,
         expected,
     );
 }
 
 unsafe extern "C" fn test_ns_utf16_doctype() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_utf16_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1343,67 +1331,64 @@ unsafe extern "C" fn test_ns_utf16_doctype() {
     >(
         *b"\0<\0!\0D\0O\0C\0T\0Y\0P\0E\0 \0f\0o\0o\0:\x0E\x04\0 \0[\0 \0<\0!\0E\0N\0T\0I\0T\0Y\0 \0b\0a\0r\0 \0'\0b\0a\0z\0'\0>\0 \0]\0>\0\n\0<\0f\0o\0o\0:\x0E\x04\0 \0x\0m\0l\0n\0s\0:\0f\0o\0o\0=\0'\0U\0R\0I\0'\0>\0&\0b\0a\0r\0;\0<\0/\0f\0o\0o\0:\x0E\x04\0>\0",
     );
-    let mut expected: *const crate::expat_external_h::XML_Char =
-        b"URI \xE0\xB8\x84\0".as_ptr() as *const crate::expat_external_h::XML_Char;
-    let mut storage: crate::src::tests::chardata::CharData =
-        crate::src::tests::chardata::CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-    crate::src::tests::chardata::CharData_Init(
-        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+    let mut expected: *const XML_Char =
+        b"URI \xE0\xB8\x84\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData =
+        CharData { count:  0, data:  [0; 2048] };
+    CharData_Init(
+        &raw mut storage as *mut _ as *mut CharData,
     );
-    crate::src::lib::xmlparse::XML_SetUserData(
-        crate::src::tests::common::g_parser,
+    XML_SetUserData(
+        g_parser,
         &raw mut storage as *mut ::core::ffi::c_void,
     );
-    crate::src::lib::xmlparse::XML_SetStartElementHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetStartElementHandler(
+        g_parser,
         Some(
-            crate::src::tests::handlers::start_element_event_handler
+            start_element_event_handler
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut *const crate::expat_external_h::XML_Char,
+                    *const XML_Char,
+                    *mut *const XML_Char,
                 ) -> (),
         ),
     );
-    crate::src::lib::xmlparse::XML_SetUnknownEncodingHandler(
-        crate::src::tests::common::g_parser,
+    XML_SetUnknownEncodingHandler(
+        g_parser,
         ::core::mem::transmute(Some(
-            crate::src::tests::handlers::MiscEncodingHandler
+            MiscEncodingHandler
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
-                    *const crate::expat_external_h::XML_Char,
-                    *mut crate::expat_h::XML_Encoding,
+                    *const XML_Char,
+                    *mut XML_Encoding,
                 ) -> ::core::ffi::c_int,
         )),
-        crate::__stddef_null_h::NULL,
+        NULL,
     );
-    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
-        crate::src::tests::common::g_parser,
+    if _XML_Parse_SINGLE_BYTES(
+        g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 155]>() as ::core::ffi::c_int
             - 1 as ::core::ffi::c_int,
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
     ) as ::core::ffi::c_uint
-        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        crate::src::tests::common::_xml_failure(
-            crate::src::tests::common::g_parser,
+        _xml_failure(
+            g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             659 as ::core::ffi::c_int,
         );
     }
-    crate::src::tests::chardata::CharData_CheckXMLChars(
-        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+    CharData_CheckXMLChars(
+        &raw mut storage as *mut _ as *mut CharData,
         expected,
     );
 }
 
 unsafe extern "C" fn test_ns_invalid_doctype() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_invalid_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1412,9 +1397,9 @@ unsafe extern "C" fn test_ns_invalid_doctype() {
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE foo:!bad [ <!ENTITY bar 'baz' ]>\n<foo:!bad>&bar;</foo:!bad>\0".as_ptr()
             as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_INVALID_TOKEN,
+        XML_ERROR_INVALID_TOKEN,
         b"Invalid character in document local name not faulted\0".as_ptr()
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -1424,7 +1409,7 @@ unsafe extern "C" fn test_ns_invalid_doctype() {
 }
 
 unsafe extern "C" fn test_ns_double_colon_doctype() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_double_colon_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1433,9 +1418,9 @@ unsafe extern "C" fn test_ns_double_colon_doctype() {
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE foo:a:doc [ <!ENTITY bar 'baz' ]>\n<foo:a:doc>&bar;</foo:a:doc>\0".as_ptr()
             as *const ::core::ffi::c_char;
-    crate::src::tests::common::_expect_failure(
+    _expect_failure(
         text,
-        crate::expat_h::XML_ERROR_SYNTAX,
+        XML_ERROR_SYNTAX,
         b"Double colon in document name not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1444,7 +1429,7 @@ unsafe extern "C" fn test_ns_double_colon_doctype() {
 }
 
 unsafe extern "C" fn test_ns_separator_in_uri() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_ns_separator_in_uri\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -1452,68 +1437,68 @@ unsafe extern "C" fn test_ns_separator_in_uri() {
     );
     let mut cases: [test_case; 3] = [
         test_case {
-            expectedStatus: crate::expat_h::XML_STATUS_OK,
+            expectedStatus: XML_STATUS_OK,
             doc: b"<doc xmlns='one_two' />\0".as_ptr() as *const ::core::ffi::c_char,
-            namesep: '\n' as i32 as crate::expat_external_h::XML_Char,
+            namesep: '\n' as i32 as XML_Char,
         },
         test_case {
-            expectedStatus: crate::expat_h::XML_STATUS_ERROR,
+            expectedStatus: XML_STATUS_ERROR,
             doc: b"<doc xmlns='one&#x0A;two' />\0".as_ptr() as *const ::core::ffi::c_char,
-            namesep: '\n' as i32 as crate::expat_external_h::XML_Char,
+            namesep: '\n' as i32 as XML_Char,
         },
         test_case {
-            expectedStatus: crate::expat_h::XML_STATUS_OK,
+            expectedStatus: XML_STATUS_OK,
             doc: b"<doc xmlns='one:two' />\0".as_ptr() as *const ::core::ffi::c_char,
-            namesep: ':' as i32 as crate::expat_external_h::XML_Char,
+            namesep: ':' as i32 as XML_Char,
         },
     ];
-    let mut i: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    let mut failCount: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
+    let mut i: size_t = 0 as size_t;
+    let mut failCount: size_t = 0 as size_t;
     while i
         < (::core::mem::size_of::<[test_case; 3]>() as usize)
             .wrapping_div(::core::mem::size_of::<test_case>() as usize)
     {
-        crate::src::tests::minicheck::set_subtest(
+        set_subtest(
             b"%s\0".as_ptr() as *const ::core::ffi::c_char,
             cases[i as usize].doc,
         );
-        let mut parser: crate::expat_h::XML_Parser = crate::src::lib::xmlparse::XML_ParserCreateNS(
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        let mut parser: XML_Parser = XML_ParserCreateNS(
+            ::core::ptr::null::<XML_Char>(),
             cases[i as usize].namesep,
         );
-        crate::src::lib::xmlparse::XML_SetElementHandler(
+        XML_SetElementHandler(
             parser,
             Some(
-                crate::src::tests::dummy::dummy_start_element
+                dummy_start_element
                     as unsafe extern "C" fn(
                         *mut ::core::ffi::c_void,
-                        *const crate::expat_external_h::XML_Char,
-                        *mut *const crate::expat_external_h::XML_Char,
+                        *const XML_Char,
+                        *mut *const XML_Char,
                     ) -> (),
             ),
             Some(
-                crate::src::tests::dummy::dummy_end_element
+                dummy_end_element
                     as unsafe extern "C" fn(
                         *mut ::core::ffi::c_void,
-                        *const crate::expat_external_h::XML_Char,
+                        *const XML_Char,
                     ) -> (),
             ),
         );
-        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             parser,
             cases[i as usize].doc,
-            crate::stdlib::strlen(cases[i as usize].doc) as ::core::ffi::c_int,
-            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+            strlen(cases[i as usize].doc) as ::core::ffi::c_int,
+            XML_TRUE as ::core::ffi::c_int,
         ) as ::core::ffi::c_uint
             != cases[i as usize].expectedStatus as ::core::ffi::c_uint
         {
             failCount = failCount.wrapping_add(1);
         }
-        crate::src::lib::xmlparse::XML_ParserFree(parser);
+        XML_ParserFree(parser);
         i = i.wrapping_add(1);
     }
     if failCount != 0 {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             709 as ::core::ffi::c_int,
@@ -1523,150 +1508,150 @@ unsafe extern "C" fn test_ns_separator_in_uri() {
 }
 #[no_mangle]
 
-pub unsafe extern "C" fn make_namespace_test_case(mut s: *mut crate::src::tests::minicheck::Suite) {
-    let mut tc_namespace: *mut crate::src::tests::minicheck::TCase =
-        crate::src::tests::minicheck::tcase_create(
+pub unsafe extern "C" fn make_namespace_test_case(mut s: *mut Suite) {
+    let mut tc_namespace: *mut TCase =
+        tcase_create(
             b"XML namespaces\0".as_ptr() as *const ::core::ffi::c_char
-        ) as *mut crate::src::tests::minicheck::TCase;
-    crate::src::tests::minicheck::suite_add_tcase(
-        s as *mut crate::src::tests::minicheck::Suite,
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+        ) as *mut TCase;
+    suite_add_tcase(
+        s as *mut Suite,
+        tc_namespace as *mut TCase,
     );
-    crate::src::tests::minicheck::tcase_add_checked_fixture(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_checked_fixture(
+        tc_namespace as *mut TCase,
         Some(namespace_setup as unsafe extern "C" fn() -> ()),
         Some(namespace_teardown as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_return_ns_triplet as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_parser_reset as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_tagname_overwrite as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_tagname_overwrite_triplet as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_start_ns_clears_start_element as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test__ifdef_xml_dtd(
+        tc_namespace as *mut TCase,
         Some(test_default_ns_from_ext_subset_and_ext_ge as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_prefix_with_empty_uri_1 as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_prefix_with_empty_uri_2 as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_prefix_with_empty_uri_3 as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_prefix_with_empty_uri_4 as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_unbound_prefix as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_default_with_empty_uri as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_duplicate_attrs_diff_prefixes as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_duplicate_hashes as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_unbound_prefix_on_attribute as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_unbound_prefix_on_element as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_long_element as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_mixed_prefix_atts as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_extend_uri_buffer as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_reserved_attributes as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_reserved_attributes_2 as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_extremely_long_prefix as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_unknown_encoding_success as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_double_colon as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_double_colon_element as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_bad_attr_leafname as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_bad_element_leafname as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_utf16_leafname as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_utf16_element_leafname as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::common::tcase_add_test__if_xml_ge(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test__if_xml_ge(
+        tc_namespace as *mut TCase,
         Some(test_ns_utf16_doctype as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_invalid_doctype as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_double_colon_doctype as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_namespace as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_namespace as *mut TCase,
         Some(test_ns_separator_in_uri as unsafe extern "C" fn() -> ()),
     );
 }

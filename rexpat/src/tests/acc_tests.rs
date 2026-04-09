@@ -110,455 +110,455 @@ pub use crate::stdlib::_IO_FILE;
 
 pub struct TestCase {
     pub offsetOfThreshold: ::core::ffi::c_int,
-    pub expectedStatus: crate::expat_h::XML_Status,
+    pub expectedStatus: XML_Status,
 }
 
 unsafe extern "C" fn test_accounting_precision() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_accounting_precision\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
         59 as ::core::ffi::c_int,
     );
-    let mut cases: [crate::src::tests::handlers::AccountingTestCase; 36] = [
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e/>\0".as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    let mut cases: [AccountingTestCase; 36] = [
+        AccountingTestCase {
+    primaryText:   b"<e/>\0".as_ptr() as *const ::core::ffi::c_char,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e></e>\0".as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+        AccountingTestCase {
+    primaryText:   b"<e></e>\0".as_ptr() as *const ::core::ffi::c_char,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e k1=\"v2\" k2=\"v2\"/>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<e k1=\"v2\" k2=\"v2\"/>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e k1=\"v2\" k2=\"v2\"></e>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<e k1=\"v2\" k2=\"v2\"></e>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<p:e xmlns:p=\"https://domain.invalid/\" />\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<p:e xmlns:p=\"https://domain.invalid/\" />\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e k=\"&amp;&apos;&gt;&lt;&quot;\" />\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<e k=\"&amp;&apos;&gt;&lt;&quot;\" />\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(5 as usize) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e1 xmlns='https://example.org/'>\n  <e2 xmlns=''/>\n</e1>\0"
+        AccountingTestCase {
+    primaryText:   b"<e1 xmlns='https://example.org/'>\n  <e2 xmlns=''/>\n</e1>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e>text</e>\0".as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+        AccountingTestCase {
+    primaryText:   b"<e>text</e>\0".as_ptr() as *const ::core::ffi::c_char,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e1><e2>text1<e3/>text2</e2></e1>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<e1><e2>text1<e3/>text2</e2></e1>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e>&amp;&apos;&gt;&lt;&quot;</e>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<e>&amp;&apos;&gt;&lt;&quot;</e>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(5 as usize) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e>&#65;&#41;</e>\0".as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+        AccountingTestCase {
+    primaryText:   b"<e>&#65;&#41;</e>\0".as_ptr() as *const ::core::ffi::c_char,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<?xml version=\"1.0\"?><root/>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<?xml version=\"1.0\"?><root/>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"  <e1>  <e2>  </e2>  </e1>  \0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"  <e1>  <e2>  </e2>  </e1>  \0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e1  ><e2  /></e1  >\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<e1  ><e2  /></e1  >\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e1><e2 k = \"v\"/><e3 k = 'v'/></e1>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<e1><e2 k = \"v\"/><e3 k = 'v'/></e1>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!-- Comment --><e><!-- Comment --></e>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<!-- Comment --><e><!-- Comment --></e>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<?xml-stylesheet type=\"text/xsl\" href=\"https://domain.invalid/\" media=\"all\"?><e/>\0"
+        AccountingTestCase {
+    primaryText:   b"<?xml-stylesheet type=\"text/xsl\" href=\"https://domain.invalid/\" media=\"all\"?><e/>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<?pi0?><?pi1 ?><?pi2  ?><r/><?pi4?>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<?pi0?><?pi1 ?><?pi2  ?><r/><?pi4?>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<?pi0?><?pi1 ?><?pi2  ?><!DOCTYPE r SYSTEM 'first.ent'><r/>\0"
+        AccountingTestCase {
+    primaryText:   b"<?pi0?><?pi1 ?><?pi2  ?><!DOCTYPE r SYSTEM 'first.ent'><r/>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  b"<?pi3?><!ENTITY % e1 SYSTEM 'second.ent'><?pi4?>%e1;<?pi5?>\0"
+    firstExternalText:   b"<?pi3?><!ENTITY % e1 SYSTEM 'second.ent'><?pi4?>%e1;<?pi5?>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  b"<?pi6?>\0".as_ptr() as *const ::core::ffi::c_char,
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    secondExternalText:   b"<?pi6?>\0".as_ptr() as *const ::core::ffi::c_char,
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<e><![CDATA[one two three]]></e>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<e><![CDATA[one two three]]></e>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r [\n<!ENTITY e \"111<![CDATA[2 <= 2]]>333\">\n]>\n<r>&e;</r>\n\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r [\n<!ENTITY e \"111<![CDATA[2 <= 2]]>333\">\n]>\n<r>&e;</r>\n\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    crate::stdlib::strlen(
+                    strlen(
                         b"111<![CDATA[2 <= 2]]>333\0".as_ptr()
                             as *const ::core::ffi::c_char,
                     ) as usize,
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r [\n<!ENTITY % draft 'INCLUDE'>\n<!ENTITY % final 'IGNORE'>\n<!ENTITY % import SYSTEM \"first.ent\">\n%import;\n]>\n<r/>\n\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r [\n<!ENTITY % draft 'INCLUDE'>\n<!ENTITY % final 'IGNORE'>\n<!ENTITY % import SYSTEM \"first.ent\">\n%import;\n]>\n<r/>\n\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  b"<![%draft;[<!--1-->]]>\n<![%final;[<!--22-->]]>\0"
+    firstExternalText:   b"<![%draft;[<!--1-->]]>\n<![%final;[<!--22-->]]>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    (crate::stdlib::strlen(b"INCLUDE\0".as_ptr() as *const ::core::ffi::c_char)
+                    (strlen(b"INCLUDE\0".as_ptr() as *const ::core::ffi::c_char)
                         as usize)
                         .wrapping_add(
-                            crate::stdlib::strlen(b"IGNORE\0".as_ptr() as *const ::core::ffi::c_char)
+                            strlen(b"IGNORE\0".as_ptr() as *const ::core::ffi::c_char)
                                 as usize,
                         ),
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE root [\n<!ENTITY nine \"123456789\">\n]>\n<root>&nine;</root>\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE root [\n<!ENTITY nine \"123456789\">\n]>\n<root>&nine;</root>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    crate::stdlib::strlen(b"123456789\0".as_ptr() as *const ::core::ffi::c_char)
+                    strlen(b"123456789\0".as_ptr() as *const ::core::ffi::c_char)
                         as usize,
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE root [\n<!ENTITY nine \"123456789\">\n]>\n<root k1=\"&nine;\"/>\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE root [\n<!ENTITY nine \"123456789\">\n]>\n<root k1=\"&nine;\"/>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    crate::stdlib::strlen(b"123456789\0".as_ptr() as *const ::core::ffi::c_char)
+                    strlen(b"123456789\0".as_ptr() as *const ::core::ffi::c_char)
                         as usize,
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE root [\n<!ENTITY nine \"123456789\">\n<!ENTITY nine2 \"&nine;&nine;\">\n]>\n<root>&nine2;&nine2;&nine2;</root>\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE root [\n<!ENTITY nine \"123456789\">\n<!ENTITY nine2 \"&nine;&nine;\">\n]>\n<root>&nine2;&nine2;&nine2;</root>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(3 as usize)
                 .wrapping_mul(2 as usize)
                 .wrapping_mul(
-                    (crate::stdlib::strlen(b"&nine;\0".as_ptr() as *const ::core::ffi::c_char) as usize)
+                    (strlen(b"&nine;\0".as_ptr() as *const ::core::ffi::c_char) as usize)
                         .wrapping_add(
-                            crate::stdlib::strlen(b"123456789\0".as_ptr() as *const ::core::ffi::c_char)
+                            strlen(b"123456789\0".as_ptr() as *const ::core::ffi::c_char)
                                 as usize,
                         ),
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r [\n  <!ENTITY five SYSTEM 'first.ent'>\n]>\n<r>&five;</r>\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r [\n  <!ENTITY five SYSTEM 'first.ent'>\n]>\n<r>&five;</r>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  b"12345\0".as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   b"12345\0".as_ptr() as *const ::core::ffi::c_char,
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r [\n  <!ENTITY five SYSTEM 'first.ent'>\n]>\n<r>&five;</r>\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r [\n  <!ENTITY five SYSTEM 'first.ent'>\n]>\n<r>&five;</r>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  b"\xEF\xBB\xBF\0".as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    firstExternalText:   b"\xEF\xBB\xBF\0".as_ptr() as *const ::core::ffi::c_char,
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r [\n<!ENTITY % comment \"<!---->\">\n%comment;\n]>\n<r/>\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r [\n<!ENTITY % comment \"<!---->\">\n%comment;\n]>\n<r/>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    crate::stdlib::strlen(b"<!---->\0".as_ptr() as *const ::core::ffi::c_char) as usize,
+                    strlen(b"<!---->\0".as_ptr() as *const ::core::ffi::c_char) as usize,
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r [\n<!ENTITY % ninedef \"&#60;!ENTITY nine &#34;123456789&#34;&#62;\">\n%ninedef;\n]>\n<r>&nine;</r>\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r [\n<!ENTITY % ninedef \"&#60;!ENTITY nine &#34;123456789&#34;&#62;\">\n%ninedef;\n]>\n<r>&nine;</r>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    (crate::stdlib::strlen(
+                    (strlen(
                         b"<!ENTITY nine \"123456789\">\0".as_ptr()
                             as *const ::core::ffi::c_char,
                     ) as usize)
                         .wrapping_add(
-                            crate::stdlib::strlen(b"123456789\0".as_ptr() as *const ::core::ffi::c_char)
+                            strlen(b"123456789\0".as_ptr() as *const ::core::ffi::c_char)
                                 as usize,
                         ),
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r [\n<!ENTITY % comment \"<!--1-->\">\n<!ENTITY % comment2 \"&#37;comment;<!--22-->&#37;comment;\">\n%comment2;\n]>\n<r/>\n\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r [\n<!ENTITY % comment \"<!--1-->\">\n<!ENTITY % comment2 \"&#37;comment;<!--22-->&#37;comment;\">\n%comment2;\n]>\n<r/>\n\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    (crate::stdlib::strlen(
+                    (strlen(
                         b"%comment;<!--22-->%comment;\0".as_ptr()
                             as *const ::core::ffi::c_char,
                     ) as usize)
                         .wrapping_add(
                             (2 as usize)
                                 .wrapping_mul(
-                                    crate::stdlib::strlen(b"<!--1-->\0".as_ptr() as *const ::core::ffi::c_char)
+                                    strlen(b"<!--1-->\0".as_ptr() as *const ::core::ffi::c_char)
                                         as usize,
                                 ),
                         ),
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r [\n  <!ENTITY % five \"12345\">\n  <!ENTITY % five2def \"&#60;!ENTITY five2 &#34;[&#37;five;][&#37;five;]]]]&#34;&#62;\">\n  %five2def;\n]>\n<r>&five2;</r>\0"
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r [\n  <!ENTITY % five \"12345\">\n  <!ENTITY % five2def \"&#60;!ENTITY five2 &#34;[&#37;five;][&#37;five;]]]]&#34;&#62;\">\n  %five2def;\n]>\n<r>&five2;</r>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    firstExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    firstExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    (crate::stdlib::strlen(
+                    (strlen(
                         b"<!ENTITY five2 \"[%five;][%five;]]]]\">\0".as_ptr()
                             as *const ::core::ffi::c_char,
                     ) as usize)
                         .wrapping_add(
                             (2 as usize)
                                 .wrapping_mul(
-                                    crate::stdlib::strlen(b"12345\0".as_ptr() as *const ::core::ffi::c_char)
+                                    strlen(b"12345\0".as_ptr() as *const ::core::ffi::c_char)
                                         as usize,
                                 ),
                         )
                         .wrapping_add(
-                            crate::stdlib::strlen(
+                            strlen(
                                 b"[12345][12345]]]]\0".as_ptr()
                                     as *const ::core::ffi::c_char,
                             ) as usize,
                         ),
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r SYSTEM \"first.ent\">\n<r/>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r SYSTEM \"first.ent\">\n<r/>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  b"<!ENTITY % comment '<!--1-->'>\n<!ENTITY % comment2 '<!--22-->%comment;<!--22-->%comment;<!--22-->'>\n%comment2;\0"
+    firstExternalText:   b"<!ENTITY % comment '<!--1-->'>\n<!ENTITY % comment2 '<!--22-->%comment;<!--22-->%comment;<!--22-->'>\n%comment2;\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  ::core::ptr::null::<::core::ffi::c_char>(),
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    secondExternalText:   ::core::ptr::null::<::core::ffi::c_char>(),
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    (crate::stdlib::strlen(
+                    (strlen(
                         b"<!--22-->%comment;<!--22-->%comment;<!--22-->\0".as_ptr()
                             as *const ::core::ffi::c_char,
                     ) as usize)
                         .wrapping_add(
                             (2 as usize)
                                 .wrapping_mul(
-                                    crate::stdlib::strlen(b"<!---->\0".as_ptr() as *const ::core::ffi::c_char)
+                                    strlen(b"<!---->\0".as_ptr() as *const ::core::ffi::c_char)
                                         as usize,
                                 ),
                         ),
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r SYSTEM 'first.ent'>\n<r/>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r SYSTEM 'first.ent'>\n<r/>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  b"<!ENTITY % e1 PUBLIC 'foo' 'second.ent'>\n<!ENTITY % e2 '<!--22-->%e1;<!--22-->'>\n%e2;\n\0"
+    firstExternalText:   b"<!ENTITY % e1 PUBLIC 'foo' 'second.ent'>\n<!ENTITY % e2 '<!--22-->%e1;<!--22-->'>\n%e2;\n\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  b"<!--1-->\0".as_ptr() as *const ::core::ffi::c_char,
-    expectedCountBytesIndirectExtra:  (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+    secondExternalText:   b"<!--1-->\0".as_ptr() as *const ::core::ffi::c_char,
+    expectedCountBytesIndirectExtra:   (::core::mem::size_of::<XML_Char>()
                 as usize)
                 .wrapping_mul(
-                    crate::stdlib::strlen(
+                    strlen(
                         b"<!--22--><!--1--><!--22-->\0".as_ptr()
                             as *const ::core::ffi::c_char,
                     ) as usize,
                 ) as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r SYSTEM 'first.ent'>\n<r/>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r SYSTEM 'first.ent'>\n<r/>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  b"<!ENTITY % e1 SYSTEM 'second.ent'>\n<!ENTITY % e2 '%e1;'>\0"
+    firstExternalText:   b"<!ENTITY % e1 SYSTEM 'second.ent'>\n<!ENTITY % e2 '%e1;'>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  b"<?xml version='1.0' encoding='utf-8'?>\nhello\nxml\0"
+    secondExternalText:   b"<?xml version='1.0' encoding='utf-8'?>\nhello\nxml\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE r SYSTEM 'first.ent'>\n<r/>\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE r SYSTEM 'first.ent'>\n<r/>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  b"<!ENTITY % e1 SYSTEM 'second.ent'>\n<!ENTITY % e2 '%e1;'>\0"
+    firstExternalText:   b"<!ENTITY % e1 SYSTEM 'second.ent'>\n<!ENTITY % e2 '%e1;'>\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  b"<?xml version='1.0' encoding='utf-8'?>\nhello\nxml\n\0"
+    secondExternalText:   b"<?xml version='1.0' encoding='utf-8'?>\nhello\nxml\n\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    expectedCountBytesIndirectExtra:  0 as ::core::ffi::c_ulonglong,
+    expectedCountBytesIndirectExtra:   0 as ::core::ffi::c_ulonglong,
 },
-        crate::src::tests::handlers::AccountingTestCase {
-    primaryText:  b"<!DOCTYPE doc SYSTEM 'first.ent'>\n<doc></doc>\n\0".as_ptr()
+        AccountingTestCase {
+    primaryText:   b"<!DOCTYPE doc SYSTEM 'first.ent'>\n<doc></doc>\n\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    firstExternalText:  b"<!ELEMENT doc EMPTY>\n<!ENTITY % e1 SYSTEM 'second.ent'>\n<!ENTITY % e2 '%e1;'>\n%e1;\n\0"
+    firstExternalText:   b"<!ELEMENT doc EMPTY>\n<!ENTITY % e1 SYSTEM 'second.ent'>\n<!ENTITY % e2 '%e1;'>\n%e1;\n\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-    secondExternalText:  b"\xEF\xBB\xBF<!ATTLIST doc a1 CDATA 'value'>\0".as_ptr()
+    secondExternalText:   b"\xEF\xBB\xBF<!ATTLIST doc a1 CDATA 'value'>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    expectedCountBytesIndirectExtra:  crate::stdlib::strlen(
+    expectedCountBytesIndirectExtra:   strlen(
                 b"\xEF\xBB\xBF<!ATTLIST doc a1 CDATA 'value'>\0".as_ptr()
                     as *const ::core::ffi::c_char,
             ) as ::core::ffi::c_ulonglong,
 },
     ];
-    let countCases: crate::__stddef_size_t_h::size_t =
-        (::core::mem::size_of::<[crate::src::tests::handlers::AccountingTestCase; 36]>()
-            as crate::__stddef_size_t_h::size_t)
+    let countCases: size_t =
+        (::core::mem::size_of::<[AccountingTestCase; 36]>()
+            as size_t)
             .wrapping_div(
-                ::core::mem::size_of::<crate::src::tests::handlers::AccountingTestCase>()
-                    as crate::__stddef_size_t_h::size_t,
+                ::core::mem::size_of::<AccountingTestCase>()
+                    as size_t,
             );
-    let mut u: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
+    let mut u: size_t = 0 as size_t;
     while u < countCases {
         let expectedCountBytesDirect: ::core::ffi::c_ulonglong =
-            crate::stdlib::strlen(cases[u as usize].primaryText) as ::core::ffi::c_ulonglong;
+            strlen(cases[u as usize].primaryText) as ::core::ffi::c_ulonglong;
         let expectedCountBytesIndirect: ::core::ffi::c_ulonglong =
             ((if !cases[u as usize].firstExternalText.is_null() {
-                crate::stdlib::strlen(cases[u as usize].firstExternalText)
+                strlen(cases[u as usize].firstExternalText)
             } else {
-                0 as crate::__stddef_size_t_h::size_t
+                0 as size_t
             })
             .wrapping_add(
                 (if !cases[u as usize].secondExternalText.is_null() {
-                    crate::stdlib::strlen(cases[u as usize].secondExternalText)
+                    strlen(cases[u as usize].secondExternalText)
                 } else {
-                    0 as crate::__stddef_size_t_h::size_t
+                    0 as size_t
                 }),
             ) as ::core::ffi::c_ulonglong)
                 .wrapping_add(cases[u as usize].expectedCountBytesIndirectExtra);
-        let mut parser: crate::expat_h::XML_Parser =
-            crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
-                crate::expat_external_h::XML_Char,
+        let mut parser: XML_Parser =
+            XML_ParserCreate(::core::ptr::null::<
+                XML_Char,
             >());
-        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+        XML_SetParamEntityParsing(
             parser,
-            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+            XML_PARAM_ENTITY_PARSING_ALWAYS,
         );
         if !cases[u as usize].firstExternalText.is_null() {
-            crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            XML_SetExternalEntityRefHandler(
                 parser,
                 Some(
-                    crate::src::tests::handlers::accounting_external_entity_ref_handler
+                    accounting_external_entity_ref_handler
                         as unsafe extern "C" fn(
-                            crate::expat_h::XML_Parser,
-                            *const crate::expat_external_h::XML_Char,
-                            *const crate::expat_external_h::XML_Char,
-                            *const crate::expat_external_h::XML_Char,
-                            *const crate::expat_external_h::XML_Char,
+                            XML_Parser,
+                            *const XML_Char,
+                            *const XML_Char,
+                            *const XML_Char,
+                            *const XML_Char,
                         ) -> ::core::ffi::c_int,
                 ),
             );
-            crate::src::lib::xmlparse::XML_SetUserData(
+            XML_SetUserData(
                 parser,
-                (&raw mut cases as *mut crate::src::tests::handlers::AccountingTestCase)
+                (&raw mut cases as *mut AccountingTestCase)
                     .offset(u as isize)
-                    as *mut crate::src::tests::handlers::AccountingTestCase
+                    as *mut AccountingTestCase
                     as *mut ::core::ffi::c_void,
             );
         }
-        let mut status: crate::expat_h::XML_Status =
-            crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+        let mut status: XML_Status =
+            _XML_Parse_SINGLE_BYTES(
                 parser,
                 cases[u as usize].primaryText,
-                crate::stdlib::strlen(cases[u as usize].primaryText) as ::core::ffi::c_int,
-                crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+                strlen(cases[u as usize].primaryText) as ::core::ffi::c_int,
+                XML_TRUE as ::core::ffi::c_int,
             );
         if status as ::core::ffi::c_uint
-            != crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            crate::src::tests::common::_xml_failure(
+            _xml_failure(
                 parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -566,23 +566,23 @@ unsafe extern "C" fn test_accounting_precision() {
             );
         }
         let actualCountBytesDirect: ::core::ffi::c_ulonglong =
-            crate::src::lib::xmlparse::testingAccountingGetCountBytesDirect(parser)
+            testingAccountingGetCountBytesDirect(parser)
                 as ::core::ffi::c_ulonglong;
         let actualCountBytesIndirect: ::core::ffi::c_ulonglong =
-            crate::src::lib::xmlparse::testingAccountingGetCountBytesIndirect(parser)
+            testingAccountingGetCountBytesIndirect(parser)
                 as ::core::ffi::c_ulonglong;
-        crate::src::lib::xmlparse::XML_ParserFree(parser);
+        XML_ParserFree(parser);
         if actualCountBytesDirect != expectedCountBytesDirect {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
+            fprintf(
+                stderr,
                 b"Document %lu of %lu: Expected %llu count direct bytes, got %llu instead.\n\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                u.wrapping_add(1 as crate::__stddef_size_t_h::size_t),
+                u.wrapping_add(1 as size_t),
                 countCases,
                 expectedCountBytesDirect,
                 actualCountBytesDirect,
             );
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 280 as ::core::ffi::c_int,
@@ -590,16 +590,16 @@ unsafe extern "C" fn test_accounting_precision() {
             );
         }
         if actualCountBytesIndirect != expectedCountBytesIndirect {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
+            fprintf(
+                stderr,
                 b"Document %lu of %lu: Expected %llu count indirect bytes, got %llu instead.\n\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                u.wrapping_add(1 as crate::__stddef_size_t_h::size_t),
+                u.wrapping_add(1 as size_t),
                 countCases,
                 expectedCountBytesIndirect,
                 actualCountBytesIndirect,
             );
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 290 as ::core::ffi::c_int,
@@ -611,24 +611,24 @@ unsafe extern "C" fn test_accounting_precision() {
 }
 
 unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_billion_laughs_attack_protection_api\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
         296 as ::core::ffi::c_int,
     );
-    let mut parserWithoutParent: crate::expat_h::XML_Parser =
-        crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
-            crate::expat_external_h::XML_Char,
+    let mut parserWithoutParent: XML_Parser =
+        XML_ParserCreate(::core::ptr::null::<
+            XML_Char,
         >());
-    let mut parserWithParent: crate::expat_h::XML_Parser =
-        crate::src::lib::xmlparse::XML_ExternalEntityParserCreate(
+    let mut parserWithParent: XML_Parser =
+        XML_ExternalEntityParserCreate(
             parserWithoutParent,
-            b"entity123\0".as_ptr() as *const crate::expat_external_h::XML_Char,
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+            b"entity123\0".as_ptr() as *const XML_Char,
+            ::core::ptr::null::<XML_Char>(),
         );
     if parserWithoutParent.is_null() {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             301 as ::core::ffi::c_int,
@@ -636,20 +636,20 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
         );
     }
     if parserWithParent.is_null() {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             303 as ::core::ffi::c_int,
             b"parserWithParent is NULL\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-        ::core::ptr::null_mut::<crate::expat_h::XML_ParserStruct>(),
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
         123.0f32,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             308 as ::core::ffi::c_int,
@@ -657,13 +657,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
         parserWithParent,
         123.0f32,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             312 as ::core::ffi::c_int,
@@ -671,13 +671,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
         parserWithoutParent,
         ::core::f32::NAN,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             316 as ::core::ffi::c_int,
@@ -685,13 +685,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
         parserWithoutParent,
         -1.0f32,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             320 as ::core::ffi::c_int,
@@ -699,13 +699,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
         parserWithoutParent,
         0.9f32,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             324 as ::core::ffi::c_int,
@@ -713,13 +713,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
         parserWithoutParent,
         1.0f32,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+        == XML_FALSE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             330 as ::core::ffi::c_int,
@@ -727,13 +727,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
         parserWithoutParent,
         123456.789f32,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+        == XML_FALSE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             334 as ::core::ffi::c_int,
@@ -741,13 +741,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
         parserWithoutParent,
         ::core::f32::INFINITY,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+        == XML_FALSE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             338 as ::core::ffi::c_int,
@@ -755,13 +755,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionActivationThreshold(
-        ::core::ptr::null_mut::<crate::expat_h::XML_ParserStruct>(),
+    if XML_SetBillionLaughsAttackProtectionActivationThreshold(
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
         123 as ::core::ffi::c_ulonglong,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             343 as ::core::ffi::c_int,
@@ -769,13 +769,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionActivationThreshold(
+    if XML_SetBillionLaughsAttackProtectionActivationThreshold(
         parserWithParent,
         123 as ::core::ffi::c_ulonglong,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             347 as ::core::ffi::c_int,
@@ -783,13 +783,13 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionActivationThreshold(
+    if XML_SetBillionLaughsAttackProtectionActivationThreshold(
         parserWithoutParent,
         123 as ::core::ffi::c_ulonglong,
     ) as ::core::ffi::c_int
-        == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+        == XML_FALSE as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             353 as ::core::ffi::c_int,
@@ -797,12 +797,12 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    crate::src::lib::xmlparse::XML_ParserFree(parserWithParent);
-    crate::src::lib::xmlparse::XML_ParserFree(parserWithoutParent);
+    XML_ParserFree(parserWithParent);
+    XML_ParserFree(parserWithoutParent);
 }
 
 unsafe extern "C" fn test_helper_unsigned_char_to_printable() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_helper_unsigned_char_to_printable\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -810,23 +810,23 @@ unsafe extern "C" fn test_helper_unsigned_char_to_printable() {
     );
     let mut uc: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
     loop {
-        crate::src::tests::minicheck::set_subtest(
+        set_subtest(
             b"char %u\0".as_ptr() as *const ::core::ffi::c_char,
             uc as ::core::ffi::c_uint,
         );
         let printable: *const ::core::ffi::c_char =
-            crate::src::lib::xmlparse::unsignedCharToPrintable(uc) as *const ::core::ffi::c_char;
+            unsignedCharToPrintable(uc) as *const ::core::ffi::c_char;
         if printable.is_null() {
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 367 as ::core::ffi::c_int,
                 b"unsignedCharToPrintable returned NULL\0".as_ptr() as *const ::core::ffi::c_char,
             );
-        } else if crate::stdlib::strlen(printable)
-            < 1 as ::core::ffi::c_int as crate::__stddef_size_t_h::size_t
+        } else if strlen(printable)
+            < 1 as ::core::ffi::c_int as size_t
         {
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 369 as ::core::ffi::c_int,
@@ -841,26 +841,26 @@ unsafe extern "C" fn test_helper_unsigned_char_to_printable() {
         }
         uc = uc.wrapping_add(1);
     }
-    crate::src::tests::minicheck::set_subtest(b"char 'A'\0".as_ptr() as *const ::core::ffi::c_char);
-    if crate::stdlib::strcmp(
-        crate::src::lib::xmlparse::unsignedCharToPrintable('A' as i32 as ::core::ffi::c_uchar),
+    set_subtest(b"char 'A'\0".as_ptr() as *const ::core::ffi::c_char);
+    if strcmp(
+        unsignedCharToPrintable('A' as i32 as ::core::ffi::c_uchar),
         b"A\0".as_ptr() as *const ::core::ffi::c_char,
     ) != 0 as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             378 as ::core::ffi::c_int,
             b"unsignedCharToPrintable result mistaken\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    crate::src::tests::minicheck::set_subtest(b"char '\\'\0".as_ptr() as *const ::core::ffi::c_char);
-    if crate::stdlib::strcmp(
-        crate::src::lib::xmlparse::unsignedCharToPrintable('\\' as i32 as ::core::ffi::c_uchar),
+    set_subtest(b"char '\\'\0".as_ptr() as *const ::core::ffi::c_char);
+    if strcmp(
+        unsignedCharToPrintable('\\' as i32 as ::core::ffi::c_uchar),
         b"\\\\\0".as_ptr() as *const ::core::ffi::c_char,
     ) != 0 as ::core::ffi::c_int
     {
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             381 as ::core::ffi::c_int,
@@ -870,7 +870,7 @@ unsafe extern "C" fn test_helper_unsigned_char_to_printable() {
 }
 
 unsafe extern "C" fn test_amplification_isolated_external_parser() {
-    crate::src::tests::minicheck::_check_set_test_info(
+    _check_set_test_info(
         b"test_amplification_isolated_external_parser\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
@@ -887,58 +887,58 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
     let mut cases: [TestCase; 5] = [
         TestCase {
             offsetOfThreshold: -2 as ::core::ffi::c_int,
-            expectedStatus: crate::expat_h::XML_STATUS_ERROR,
+            expectedStatus: XML_STATUS_ERROR,
         },
         TestCase {
             offsetOfThreshold: -1 as ::core::ffi::c_int,
-            expectedStatus: crate::expat_h::XML_STATUS_ERROR,
+            expectedStatus: XML_STATUS_ERROR,
         },
         TestCase {
             offsetOfThreshold: 0 as ::core::ffi::c_int,
-            expectedStatus: crate::expat_h::XML_STATUS_ERROR,
+            expectedStatus: XML_STATUS_ERROR,
         },
         TestCase {
             offsetOfThreshold: 1 as ::core::ffi::c_int,
-            expectedStatus: crate::expat_h::XML_STATUS_OK,
+            expectedStatus: XML_STATUS_OK,
         },
         TestCase {
             offsetOfThreshold: 2 as ::core::ffi::c_int,
-            expectedStatus: crate::expat_h::XML_STATUS_OK,
+            expectedStatus: XML_STATUS_OK,
         },
     ];
-    let mut i: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
+    let mut i: size_t = 0 as size_t;
     while i
         < (::core::mem::size_of::<[TestCase; 5]>() as usize)
             .wrapping_div(::core::mem::size_of::<TestCase>() as usize)
     {
         let offsetOfThreshold: ::core::ffi::c_int = cases[i as usize].offsetOfThreshold;
-        let expectedStatus: crate::expat_h::XML_Status = cases[i as usize].expectedStatus;
+        let expectedStatus: XML_Status = cases[i as usize].expectedStatus;
         let activationThresholdBytes: ::core::ffi::c_ulonglong =
             (docLen + offsetOfThreshold) as ::core::ffi::c_ulonglong;
-        crate::src::tests::minicheck::set_subtest(
+        set_subtest(
             b"offsetOfThreshold=%d, expectedStatus=%d\0".as_ptr() as *const ::core::ffi::c_char,
             offsetOfThreshold,
             expectedStatus as ::core::ffi::c_uint,
         );
-        let mut parser: crate::expat_h::XML_Parser =
-            crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
-                crate::expat_external_h::XML_Char,
+        let mut parser: XML_Parser =
+            XML_ParserCreate(::core::ptr::null::<
+                XML_Char,
             >());
         if parser.is_null() {
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 414 as ::core::ffi::c_int,
                 b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if !(crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+        if !(XML_SetBillionLaughsAttackProtectionMaximumAmplification(
             parser,
             maximumToleratedAmplification,
         ) as ::core::ffi::c_int
-            == 1 as ::core::ffi::c_int as crate::expat_h::XML_Bool as ::core::ffi::c_int)
+            == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
         {
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 418 as ::core::ffi::c_int,
@@ -946,13 +946,13 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
                     .as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if !(crate::src::lib::xmlparse::XML_SetBillionLaughsAttackProtectionActivationThreshold(
+        if !(XML_SetBillionLaughsAttackProtectionActivationThreshold(
             parser,
             activationThresholdBytes,
         ) as ::core::ffi::c_int
-            == 1 as ::core::ffi::c_int as crate::expat_h::XML_Bool as ::core::ffi::c_int)
+            == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
         {
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 421 as ::core::ffi::c_int,
@@ -960,29 +960,29 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
                     .as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        let mut ext_parser: crate::expat_h::XML_Parser =
-            crate::src::lib::xmlparse::XML_ExternalEntityParserCreate(
+        let mut ext_parser: XML_Parser =
+            XML_ExternalEntityParserCreate(
                 parser,
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                ::core::ptr::null::<XML_Char>(),
+                ::core::ptr::null::<XML_Char>(),
             );
         if ext_parser.is_null() {
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 424 as ::core::ffi::c_int,
                 b"check failed: ext_parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        let actualStatus: crate::expat_h::XML_Status =
-            crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+        let actualStatus: XML_Status =
+            _XML_Parse_SINGLE_BYTES(
                 ext_parser,
                 &raw const doc as *const ::core::ffi::c_char,
                 docLen,
-                crate::expat_h::XML_TRUE as ::core::ffi::c_int,
-            ) as crate::expat_h::XML_Status;
+                XML_TRUE as ::core::ffi::c_int,
+            ) as XML_Status;
         if !(actualStatus as ::core::ffi::c_uint == expectedStatus as ::core::ffi::c_uint) {
-            crate::src::tests::minicheck::_fail(
+            _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
                 429 as ::core::ffi::c_int,
@@ -991,13 +991,13 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
             );
         }
         if actualStatus as ::core::ffi::c_uint
-            != crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            if !(crate::src::lib::xmlparse::XML_GetErrorCode(ext_parser) as ::core::ffi::c_uint
-                == crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH as ::core::ffi::c_int
+            if !(XML_GetErrorCode(ext_parser) as ::core::ffi::c_uint
+                == XML_ERROR_AMPLIFICATION_LIMIT_BREACH as ::core::ffi::c_int
                     as ::core::ffi::c_uint)
             {
-                crate::src::tests::minicheck::_fail(
+                _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
                     432 as ::core::ffi::c_int,
@@ -1006,38 +1006,38 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
                 );
             }
         }
-        crate::src::lib::xmlparse::XML_ParserFree(ext_parser);
-        crate::src::lib::xmlparse::XML_ParserFree(parser);
+        XML_ParserFree(ext_parser);
+        XML_ParserFree(parser);
         i = i.wrapping_add(1);
     }
 }
 #[no_mangle]
 
 pub unsafe extern "C" fn make_accounting_test_case(
-    mut s: *mut crate::src::tests::minicheck::Suite,
+    mut s: *mut Suite,
 ) {
-    let mut tc_accounting: *mut crate::src::tests::minicheck::TCase =
-        crate::src::tests::minicheck::tcase_create(
+    let mut tc_accounting: *mut TCase =
+        tcase_create(
             b"accounting tests\0".as_ptr() as *const ::core::ffi::c_char
-        ) as *mut crate::src::tests::minicheck::TCase;
-    crate::src::tests::minicheck::suite_add_tcase(
-        s as *mut crate::src::tests::minicheck::Suite,
-        tc_accounting as *mut crate::src::tests::minicheck::TCase,
+        ) as *mut TCase;
+    suite_add_tcase(
+        s as *mut Suite,
+        tc_accounting as *mut TCase,
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_accounting as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_accounting as *mut TCase,
         Some(test_accounting_precision as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_accounting as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_accounting as *mut TCase,
         Some(test_billion_laughs_attack_protection_api as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::minicheck::tcase_add_test(
-        tc_accounting as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test(
+        tc_accounting as *mut TCase,
         Some(test_helper_unsigned_char_to_printable as unsafe extern "C" fn() -> ()),
     );
-    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
-        tc_accounting as *mut crate::src::tests::minicheck::TCase,
+    tcase_add_test__ifdef_xml_dtd(
+        tc_accounting as *mut TCase,
         Some(test_amplification_isolated_external_parser as unsafe extern "C" fn() -> ()),
     );
 }

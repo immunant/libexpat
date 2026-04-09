@@ -113,32 +113,32 @@ pub use ::rexpat::__stddef_null_h::NULL;
 pub use ::rexpat::stdlib::_IO_FILE;
 #[no_mangle]
 
-pub static mut g_parser: crate::expat_h::XML_Parser =
-    ::core::ptr::null::<::rexpat::expat_h::XML_ParserStruct>()
-        as *mut ::rexpat::expat_h::XML_ParserStruct;
+pub static mut g_parser: XML_Parser =
+    ::core::ptr::null::<XML_ParserStruct>()
+        as *mut XML_ParserStruct;
 
-unsafe extern "C" fn make_suite() -> *mut ::rexpat::src::tests::acc_tests::Suite {
-    let mut s: *mut ::rexpat::src::tests::acc_tests::Suite =
-        ::rexpat::src::tests::minicheck::suite_create(
+unsafe extern "C" fn make_suite() -> *mut Suite {
+    let mut s: *mut Suite =
+        suite_create(
             b"basic\0".as_ptr() as *const ::core::ffi::c_char
-        ) as *mut ::rexpat::src::tests::acc_tests::Suite;
-    ::rexpat::src::tests::basic_tests::make_basic_test_case(
-        s as *mut ::rexpat::src::tests::acc_tests::Suite,
+        ) as *mut Suite;
+    make_basic_test_case(
+        s as *mut Suite,
     );
-    ::rexpat::src::tests::ns_tests::make_namespace_test_case(
-        s as *mut ::rexpat::src::tests::acc_tests::Suite,
+    make_namespace_test_case(
+        s as *mut Suite,
     );
-    ::rexpat::src::tests::misc_tests::make_miscellaneous_test_case(
-        s as *mut ::rexpat::src::tests::acc_tests::Suite,
+    make_miscellaneous_test_case(
+        s as *mut Suite,
     );
-    ::rexpat::src::tests::alloc_tests::make_alloc_test_case(
-        s as *mut ::rexpat::src::tests::acc_tests::Suite,
+    make_alloc_test_case(
+        s as *mut Suite,
     );
-    ::rexpat::src::tests::nsalloc_tests::make_nsalloc_test_case(
-        s as *mut ::rexpat::src::tests::acc_tests::Suite,
+    make_nsalloc_test_case(
+        s as *mut Suite,
     );
-    ::rexpat::src::tests::acc_tests::make_accounting_test_case(
-        s as *mut ::rexpat::src::tests::acc_tests::Suite,
+    make_accounting_test_case(
+        s as *mut Suite,
     );
     return s;
 }
@@ -149,30 +149,30 @@ unsafe fn main_0(
 ) -> ::core::ffi::c_int {
     let mut i: ::core::ffi::c_int = 0;
     let mut nf: ::core::ffi::c_int = 0;
-    let mut verbosity: ::core::ffi::c_int = crate::minicheck_h::CK_NORMAL;
-    let mut s: *mut ::rexpat::src::tests::acc_tests::Suite = make_suite();
-    let mut sr: *mut ::rexpat::src::tests::minicheck::SRunner =
-        ::rexpat::src::tests::minicheck::srunner_create(
-            s as *mut ::rexpat::src::tests::acc_tests::Suite,
-        ) as *mut ::rexpat::src::tests::minicheck::SRunner;
+    let mut verbosity: ::core::ffi::c_int = CK_NORMAL;
+    let mut s: *mut Suite = make_suite();
+    let mut sr: *mut SRunner =
+        srunner_create(
+            s as *mut Suite,
+        ) as *mut SRunner;
     i = 1 as ::core::ffi::c_int;
     while i < argc {
         let mut opt: *mut ::core::ffi::c_char = *argv.offset(i as isize);
-        if ::rexpat::stdlib::strcmp(opt, b"-v\0".as_ptr() as *const ::core::ffi::c_char)
+        if strcmp(opt, b"-v\0".as_ptr() as *const ::core::ffi::c_char)
             == 0 as ::core::ffi::c_int
-            || ::rexpat::stdlib::strcmp(opt, b"--verbose\0".as_ptr() as *const ::core::ffi::c_char)
+            || strcmp(opt, b"--verbose\0".as_ptr() as *const ::core::ffi::c_char)
                 == 0 as ::core::ffi::c_int
         {
-            verbosity = ::rexpat::src::tests::minicheck::CK_VERBOSE;
-        } else if ::rexpat::stdlib::strcmp(opt, b"-q\0".as_ptr() as *const ::core::ffi::c_char)
+            verbosity = CK_VERBOSE;
+        } else if strcmp(opt, b"-q\0".as_ptr() as *const ::core::ffi::c_char)
             == 0 as ::core::ffi::c_int
-            || ::rexpat::stdlib::strcmp(opt, b"--quiet\0".as_ptr() as *const ::core::ffi::c_char)
+            || strcmp(opt, b"--quiet\0".as_ptr() as *const ::core::ffi::c_char)
                 == 0 as ::core::ffi::c_int
         {
-            verbosity = ::rexpat::src::tests::minicheck::CK_SILENT;
+            verbosity = CK_SILENT;
         } else {
-            ::rexpat::stdlib::fprintf(
-                crate::stdlib::stderr as *mut ::rexpat::stdlib::_IO_FILE,
+            fprintf(
+                stderr as *mut _IO_FILE,
                 b"runtests: unknown option '%s'\n\0".as_ptr() as *const ::core::ffi::c_char,
                 opt,
             );
@@ -180,52 +180,52 @@ unsafe fn main_0(
         }
         i += 1;
     }
-    if verbosity != ::rexpat::src::tests::minicheck::CK_SILENT {
-        ::rexpat::stdlib::printf(
+    if verbosity != CK_SILENT {
+        printf(
             b"Expat version: %s\n\0".as_ptr() as *const ::core::ffi::c_char,
-            ::rexpat::src::lib::xmlparse::XML_ExpatVersion(),
+            XML_ExpatVersion(),
         );
     }
-    crate::common_h::g_chunkSize = 0 as ::core::ffi::c_int;
-    while crate::common_h::g_chunkSize <= 5 as ::core::ffi::c_int {
+    g_chunkSize = 0 as ::core::ffi::c_int;
+    while g_chunkSize <= 5 as ::core::ffi::c_int {
         let mut enabled: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         while enabled <= 1 as ::core::ffi::c_int {
             let mut context: [::core::ffi::c_char; 100] = [0; 100];
-            crate::internal_h::g_reparseDeferralEnabledDefault =
-                enabled as crate::expat_h::XML_Bool;
-            ::rexpat::stdlib::snprintf(
+            g_reparseDeferralEnabledDefault =
+                enabled as XML_Bool;
+            snprintf(
                 &raw mut context as *mut ::core::ffi::c_char,
                 ::core::mem::size_of::<[::core::ffi::c_char; 100]>()
-                    as crate::__stddef_size_t_h::size_t,
+                    as size_t,
                 b"chunksize=%d deferral=%d\0".as_ptr() as *const ::core::ffi::c_char,
-                crate::common_h::g_chunkSize,
+                g_chunkSize,
                 enabled,
             );
             context[(::core::mem::size_of::<[::core::ffi::c_char; 100]>() as usize)
                 .wrapping_sub(1 as usize) as usize] = '\0' as i32 as ::core::ffi::c_char;
-            ::rexpat::src::tests::minicheck::srunner_run_all(
-                sr as *mut ::rexpat::src::tests::minicheck::SRunner,
+            srunner_run_all(
+                sr as *mut SRunner,
                 &raw mut context as *mut ::core::ffi::c_char,
                 verbosity,
             );
             enabled += 1;
         }
-        crate::common_h::g_chunkSize += 1;
+        g_chunkSize += 1;
     }
-    ::rexpat::src::tests::minicheck::srunner_summarize(
-        sr as *mut ::rexpat::src::tests::minicheck::SRunner,
+    srunner_summarize(
+        sr as *mut SRunner,
         verbosity,
     );
-    nf = ::rexpat::src::tests::minicheck::srunner_ntests_failed(
-        sr as *mut ::rexpat::src::tests::minicheck::SRunner,
+    nf = srunner_ntests_failed(
+        sr as *mut SRunner,
     );
-    ::rexpat::src::tests::minicheck::srunner_free(
-        sr as *mut ::rexpat::src::tests::minicheck::SRunner,
+    srunner_free(
+        sr as *mut SRunner,
     );
     return if nf == 0 as ::core::ffi::c_int {
-        crate::stdlib::EXIT_SUCCESS
+        EXIT_SUCCESS
     } else {
-        crate::stdlib::EXIT_FAILURE
+        EXIT_FAILURE
     };
 }
 pub fn main() {

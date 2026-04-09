@@ -2,7 +2,7 @@
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct StructDataEntry {
-    pub str: *const crate::expat_external_h::XML_Char,
+    pub str: *const XML_Char,
     pub data0: ::core::ffi::c_int,
     pub data1: ::core::ffi::c_int,
     pub data2: ::core::ffi::c_int,
@@ -32,18 +32,18 @@ use crate::stdlib::strlen;
 pub const STRUCT_EXTENSION_COUNT: ::core::ffi::c_int = 8 as ::core::ffi::c_int;
 
 unsafe extern "C" fn xmlstrdup(
-    mut s: *const crate::expat_external_h::XML_Char,
-) -> *mut crate::expat_external_h::XML_Char {
-    let mut byte_count: crate::__stddef_size_t_h::size_t =
-        crate::stdlib::strlen(s as *const ::core::ffi::c_char)
-            .wrapping_add(1 as crate::__stddef_size_t_h::size_t)
-            .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-                as crate::__stddef_size_t_h::size_t);
-    let dup: *mut crate::expat_external_h::XML_Char =
-        crate::stdlib::malloc(byte_count) as *mut crate::expat_external_h::XML_Char;
+    mut s: *const XML_Char,
+) -> *mut XML_Char {
+    let mut byte_count: size_t =
+        strlen(s as *const ::core::ffi::c_char)
+            .wrapping_add(1 as size_t)
+            .wrapping_mul(::core::mem::size_of::<XML_Char>()
+                as size_t);
+    let dup: *mut XML_Char =
+        malloc(byte_count) as *mut XML_Char;
     if !dup.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"dup != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -51,7 +51,7 @@ unsafe extern "C" fn xmlstrdup(
             b"XML_Char *xmlstrdup(const XML_Char *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    crate::stdlib::memcpy(
+    memcpy(
         dup as *mut ::core::ffi::c_void,
         s as *const ::core::ffi::c_void,
         byte_count,
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn StructData_Init(
 ) {
     if !storage.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn StructData_Init(
 
 pub unsafe extern "C" fn StructData_AddItem(
     mut storage: *mut crate::src::tests::structdata::StructData,
-    mut s: *const crate::expat_external_h::XML_Char,
+    mut s: *const XML_Char,
     mut data0: ::core::ffi::c_int,
     mut data1: ::core::ffi::c_int,
     mut data2: ::core::ffi::c_int,
@@ -90,7 +90,7 @@ pub unsafe extern "C" fn StructData_AddItem(
         ::core::ptr::null_mut::<crate::src::tests::structdata::StructDataEntry>();
     if !storage.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn StructData_AddItem(
     };
     if !s.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"s != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -114,16 +114,16 @@ pub unsafe extern "C" fn StructData_AddItem(
         let mut new_entries: *mut crate::src::tests::structdata::StructDataEntry =
             ::core::ptr::null_mut::<crate::src::tests::structdata::StructDataEntry>();
         (*storage).max_count += STRUCT_EXTENSION_COUNT;
-        new_entries = crate::stdlib::realloc(
+        new_entries = realloc(
             (*storage).entries as *mut ::core::ffi::c_void,
-            ((*storage).max_count as crate::__stddef_size_t_h::size_t).wrapping_mul(
+            ((*storage).max_count as size_t).wrapping_mul(
                 ::core::mem::size_of::<crate::src::tests::structdata::StructDataEntry>()
-                    as crate::__stddef_size_t_h::size_t,
+                    as size_t,
             ),
         ) as *mut crate::src::tests::structdata::StructDataEntry;
         if !new_entries.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            __assert_fail(
                 b"new_entries != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -152,7 +152,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
     let mut buffer: [::core::ffi::c_char; 1024] = [0; 1024];
     if !storage.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -163,7 +163,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
     };
     if !expected.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"expected != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -173,17 +173,17 @@ pub unsafe extern "C" fn StructData_CheckItems(
         );
     };
     if count != (*storage).count {
-        crate::stdlib::snprintf(
+        snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
             ::core::mem::size_of::<[::core::ffi::c_char; 1024]>()
-                as crate::__stddef_size_t_h::size_t,
+                as size_t,
             b"wrong number of entries: got %d, expected %d\0".as_ptr()
                 as *const ::core::ffi::c_char,
             (*storage).count,
             count,
         );
         StructData_Dispose(storage);
-        crate::src::tests::minicheck::_fail(
+        _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
             119 as ::core::ffi::c_int,
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
                 as *const crate::src::tests::structdata::StructDataEntry;
             if !got.is_null() {
             } else {
-                crate::stdlib::__assert_fail(
+                __assert_fail(
                     b"got != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
@@ -211,7 +211,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
             };
             if !want.is_null() {
             } else {
-                crate::stdlib::__assert_fail(
+                __assert_fail(
                     b"want != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
@@ -220,13 +220,13 @@ pub unsafe extern "C" fn StructData_CheckItems(
                         .as_ptr() as *const ::core::ffi::c_char,
                 );
             };
-            if crate::stdlib::strcmp(
+            if strcmp(
                 (*got).str as *const ::core::ffi::c_char,
                 (*want).str as *const ::core::ffi::c_char,
             ) != 0 as ::core::ffi::c_int
             {
                 StructData_Dispose(storage);
-                crate::src::tests::minicheck::_fail(
+                _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
                     130 as ::core::ffi::c_int,
@@ -236,10 +236,10 @@ pub unsafe extern "C" fn StructData_CheckItems(
                 || (*got).data1 != (*want).data1
                 || (*got).data2 != (*want).data2
             {
-                crate::stdlib::snprintf(
+                snprintf(
                     &raw mut buffer as *mut ::core::ffi::c_char,
                     ::core::mem::size_of::<[::core::ffi::c_char; 1024]>()
-                        as crate::__stddef_size_t_h::size_t,
+                        as size_t,
                     b"struct '%s' expected (%d,%d,%d), got (%d,%d,%d)\0".as_ptr()
                         as *const ::core::ffi::c_char,
                     (*got).str,
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
                     (*got).data2,
                 );
                 StructData_Dispose(storage);
-                crate::src::tests::minicheck::_fail(
+                _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
                     140 as ::core::ffi::c_int,
@@ -270,7 +270,7 @@ pub unsafe extern "C" fn StructData_Dispose(
     let mut i: ::core::ffi::c_int = 0;
     if !storage.is_null() {
     } else {
-        crate::stdlib::__assert_fail(
+        __assert_fail(
             b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -280,12 +280,12 @@ pub unsafe extern "C" fn StructData_Dispose(
     };
     i = 0 as ::core::ffi::c_int;
     while i < (*storage).count {
-        crate::stdlib::free(
+        free(
             (*(*storage).entries.offset(i as isize)).str as *mut ::core::ffi::c_void,
         );
         i += 1;
     }
-    crate::stdlib::free((*storage).entries as *mut ::core::ffi::c_void);
+    free((*storage).entries as *mut ::core::ffi::c_void);
     (*storage).count = 0 as ::core::ffi::c_int;
     (*storage).entries = ::core::ptr::null_mut::<crate::src::tests::structdata::StructDataEntry>();
 }

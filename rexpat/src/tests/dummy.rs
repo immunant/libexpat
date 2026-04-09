@@ -85,8 +85,8 @@ pub unsafe extern "C" fn get_dummy_handler_flags() -> ::core::ffi::c_ulong {
 
 pub unsafe extern "C" fn dummy_xdecl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut version: *const crate::expat_external_h::XML_Char,
-    mut encoding: *const crate::expat_external_h::XML_Char,
+    mut version: *const XML_Char,
+    mut encoding: *const XML_Char,
     mut standalone: ::core::ffi::c_int,
 ) {
 }
@@ -94,9 +94,9 @@ pub unsafe extern "C" fn dummy_xdecl_handler(
 
 pub unsafe extern "C" fn dummy_start_doctype_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut doctypeName: *const crate::expat_external_h::XML_Char,
-    mut sysid: *const crate::expat_external_h::XML_Char,
-    mut pubid: *const crate::expat_external_h::XML_Char,
+    mut doctypeName: *const XML_Char,
+    mut sysid: *const XML_Char,
+    mut pubid: *const XML_Char,
     mut has_internal_subset: ::core::ffi::c_int,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_START_DOCTYPE_HANDLER_FLAG;
@@ -110,14 +110,14 @@ pub unsafe extern "C" fn dummy_end_doctype_handler(mut userData: *mut ::core::ff
 
 pub unsafe extern "C" fn dummy_entity_decl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut entityName: *const crate::expat_external_h::XML_Char,
+    mut entityName: *const XML_Char,
     mut is_parameter_entity: ::core::ffi::c_int,
-    mut value: *const crate::expat_external_h::XML_Char,
+    mut value: *const XML_Char,
     mut value_length: ::core::ffi::c_int,
-    mut base: *const crate::expat_external_h::XML_Char,
-    mut systemId: *const crate::expat_external_h::XML_Char,
-    mut publicId: *const crate::expat_external_h::XML_Char,
-    mut notationName: *const crate::expat_external_h::XML_Char,
+    mut base: *const XML_Char,
+    mut systemId: *const XML_Char,
+    mut publicId: *const XML_Char,
+    mut notationName: *const XML_Char,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_ENTITY_DECL_HANDLER_FLAG;
 }
@@ -125,10 +125,10 @@ pub unsafe extern "C" fn dummy_entity_decl_handler(
 
 pub unsafe extern "C" fn dummy_notation_decl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut notationName: *const crate::expat_external_h::XML_Char,
-    mut base: *const crate::expat_external_h::XML_Char,
-    mut systemId: *const crate::expat_external_h::XML_Char,
-    mut publicId: *const crate::expat_external_h::XML_Char,
+    mut notationName: *const XML_Char,
+    mut base: *const XML_Char,
+    mut systemId: *const XML_Char,
+    mut publicId: *const XML_Char,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_NOTATION_DECL_HANDLER_FLAG;
 }
@@ -136,12 +136,12 @@ pub unsafe extern "C" fn dummy_notation_decl_handler(
 
 pub unsafe extern "C" fn dummy_element_decl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut name: *const crate::expat_external_h::XML_Char,
-    mut model: *mut crate::expat_h::XML_Content,
+    mut name: *const XML_Char,
+    mut model: *mut XML_Content,
 ) {
-    crate::src::lib::xmlparse::XML_FreeContentModel(
-        crate::src::tests::common::g_parser,
-        model as *mut crate::expat_h::XML_cp,
+    XML_FreeContentModel(
+        g_parser,
+        model as *mut XML_cp,
     );
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_ELEMENT_DECL_HANDLER_FLAG;
 }
@@ -149,10 +149,10 @@ pub unsafe extern "C" fn dummy_element_decl_handler(
 
 pub unsafe extern "C" fn dummy_attlist_decl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut elname: *const crate::expat_external_h::XML_Char,
-    mut attname: *const crate::expat_external_h::XML_Char,
-    mut att_type: *const crate::expat_external_h::XML_Char,
-    mut dflt: *const crate::expat_external_h::XML_Char,
+    mut elname: *const XML_Char,
+    mut attname: *const XML_Char,
+    mut att_type: *const XML_Char,
+    mut dflt: *const XML_Char,
     mut isrequired: ::core::ffi::c_int,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_ATTLIST_DECL_HANDLER_FLAG;
@@ -161,7 +161,7 @@ pub unsafe extern "C" fn dummy_attlist_decl_handler(
 
 pub unsafe extern "C" fn dummy_comment_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut data: *const crate::expat_external_h::XML_Char,
+    mut data: *const XML_Char,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_COMMENT_HANDLER_FLAG;
 }
@@ -169,8 +169,8 @@ pub unsafe extern "C" fn dummy_comment_handler(
 
 pub unsafe extern "C" fn dummy_pi_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut target: *const crate::expat_external_h::XML_Char,
-    mut data: *const crate::expat_external_h::XML_Char,
+    mut target: *const XML_Char,
+    mut data: *const XML_Char,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_PI_HANDLER_FLAG;
 }
@@ -178,8 +178,8 @@ pub unsafe extern "C" fn dummy_pi_handler(
 
 pub unsafe extern "C" fn dummy_start_element(
     mut userData: *mut ::core::ffi::c_void,
-    mut name: *const crate::expat_external_h::XML_Char,
-    mut atts: *mut *const crate::expat_external_h::XML_Char,
+    mut name: *const XML_Char,
+    mut atts: *mut *const XML_Char,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_START_ELEMENT_HANDLER_FLAG;
 }
@@ -187,7 +187,7 @@ pub unsafe extern "C" fn dummy_start_element(
 
 pub unsafe extern "C" fn dummy_end_element(
     mut userData: *mut ::core::ffi::c_void,
-    mut name: *const crate::expat_external_h::XML_Char,
+    mut name: *const XML_Char,
 ) {
 }
 #[no_mangle]
@@ -204,7 +204,7 @@ pub unsafe extern "C" fn dummy_end_cdata_handler(mut userData: *mut ::core::ffi:
 
 pub unsafe extern "C" fn dummy_cdata_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut s: *const crate::expat_external_h::XML_Char,
+    mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
 }
@@ -212,8 +212,8 @@ pub unsafe extern "C" fn dummy_cdata_handler(
 
 pub unsafe extern "C" fn dummy_start_namespace_decl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut prefix: *const crate::expat_external_h::XML_Char,
-    mut uri: *const crate::expat_external_h::XML_Char,
+    mut prefix: *const XML_Char,
+    mut uri: *const XML_Char,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_START_NS_DECL_HANDLER_FLAG;
 }
@@ -221,7 +221,7 @@ pub unsafe extern "C" fn dummy_start_namespace_decl_handler(
 
 pub unsafe extern "C" fn dummy_end_namespace_decl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut prefix: *const crate::expat_external_h::XML_Char,
+    mut prefix: *const XML_Char,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_END_NS_DECL_HANDLER_FLAG;
 }
@@ -229,11 +229,11 @@ pub unsafe extern "C" fn dummy_end_namespace_decl_handler(
 
 pub unsafe extern "C" fn dummy_unparsed_entity_decl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut entityName: *const crate::expat_external_h::XML_Char,
-    mut base: *const crate::expat_external_h::XML_Char,
-    mut systemId: *const crate::expat_external_h::XML_Char,
-    mut publicId: *const crate::expat_external_h::XML_Char,
-    mut notationName: *const crate::expat_external_h::XML_Char,
+    mut entityName: *const XML_Char,
+    mut base: *const XML_Char,
+    mut systemId: *const XML_Char,
+    mut publicId: *const XML_Char,
+    mut notationName: *const XML_Char,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_UNPARSED_ENTITY_DECL_HANDLER_FLAG;
 }
@@ -241,7 +241,7 @@ pub unsafe extern "C" fn dummy_unparsed_entity_decl_handler(
 
 pub unsafe extern "C" fn dummy_default_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut s: *const crate::expat_external_h::XML_Char,
+    mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
 }
@@ -249,9 +249,9 @@ pub unsafe extern "C" fn dummy_default_handler(
 
 pub unsafe extern "C" fn dummy_start_doctype_decl_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut doctypeName: *const crate::expat_external_h::XML_Char,
-    mut sysid: *const crate::expat_external_h::XML_Char,
-    mut pubid: *const crate::expat_external_h::XML_Char,
+    mut doctypeName: *const XML_Char,
+    mut sysid: *const XML_Char,
+    mut pubid: *const XML_Char,
     mut has_internal_subset: ::core::ffi::c_int,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG;
@@ -265,7 +265,7 @@ pub unsafe extern "C" fn dummy_end_doctype_decl_handler(mut userData: *mut ::cor
 
 pub unsafe extern "C" fn dummy_skip_handler(
     mut userData: *mut ::core::ffi::c_void,
-    mut entityName: *const crate::expat_external_h::XML_Char,
+    mut entityName: *const XML_Char,
     mut is_parameter_entity: ::core::ffi::c_int,
 ) {
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_SKIP_HANDLER_FLAG;
