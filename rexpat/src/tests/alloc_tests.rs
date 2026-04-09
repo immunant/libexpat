@@ -1,0 +1,4766 @@
+pub use crate::__stddef_null_h::NULL;
+pub use crate::__stddef_size_t_h::size_t;
+
+pub use crate::common_h::ALLOC_ALWAYS_SUCCEED;
+pub use crate::common_h::REALLOC_ALWAYS_SUCCEED;
+pub use crate::expat_external_h::XML_Char;
+pub use crate::src::tests::chardata::CharData;
+pub use crate::src::tests::chardata::CharData_CheckXMLChars;
+pub use crate::src::tests::chardata::CharData_Init;
+pub use crate::src::tests::common::_XML_Parse_SINGLE_BYTES;
+pub use crate::src::tests::common::_expect_failure;
+pub use crate::src::tests::common::_xml_failure;
+pub use crate::src::tests::common::basic_teardown;
+pub use crate::src::tests::common::duff_allocator;
+pub use crate::src::tests::common::duff_reallocator;
+pub use crate::src::tests::common::g_allocation_count;
+pub use crate::src::tests::common::g_parser;
+pub use crate::src::tests::common::g_reallocation_count;
+pub use crate::src::tests::common::get_buffer_test_text;
+pub use crate::src::tests::common::tcase_add_test__if_xml_ge;
+pub use crate::src::tests::common::tcase_add_test__ifdef_xml_dtd;
+pub use crate::src::tests::dummy::dummy_attlist_decl_handler;
+pub use crate::src::tests::dummy::dummy_comment_handler;
+pub use crate::src::tests::dummy::dummy_element_decl_handler;
+pub use crate::src::tests::dummy::dummy_end_cdata_handler;
+pub use crate::src::tests::dummy::dummy_end_doctype_decl_handler;
+pub use crate::src::tests::dummy::dummy_end_doctype_handler;
+pub use crate::src::tests::dummy::dummy_entity_decl_handler;
+pub use crate::src::tests::dummy::dummy_notation_decl_handler;
+pub use crate::src::tests::dummy::dummy_pi_handler;
+pub use crate::src::tests::dummy::dummy_start_cdata_handler;
+pub use crate::src::tests::dummy::dummy_start_doctype_decl_handler;
+pub use crate::src::tests::dummy::dummy_start_doctype_handler;
+pub use crate::src::tests::dummy::dummy_unparsed_entity_decl_handler;
+pub use crate::src::tests::dummy::dummy_xdecl_handler;
+pub use crate::src::tests::dummy::get_dummy_handler_flags;
+pub use crate::src::tests::dummy::init_dummy_handlers;
+pub use crate::src::tests::dummy::DUMMY_ATTLIST_DECL_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_COMMENT_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_ELEMENT_DECL_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_END_CDATA_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_END_DOCTYPE_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_ENTITY_DECL_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_NOTATION_DECL_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_PI_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_START_CDATA_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_START_DOCTYPE_HANDLER_FLAG;
+pub use crate::src::tests::dummy::DUMMY_UNPARSED_ENTITY_DECL_HANDLER_FLAG;
+pub use crate::stdlib::__assert_fail;
+pub use crate::stdlib::__ASSERT_FUNCTION;
+
+pub use crate::expat_h::XML_AttlistDeclHandler;
+pub use crate::expat_h::XML_Bool;
+pub use crate::expat_h::XML_CharacterDataHandler;
+pub use crate::expat_h::XML_CommentHandler;
+pub use crate::expat_h::XML_Content;
+pub use crate::expat_h::XML_Content_Quant;
+pub use crate::expat_h::XML_Content_Type;
+pub use crate::expat_h::XML_DefaultHandler;
+pub use crate::expat_h::XML_ElementDeclHandler;
+pub use crate::expat_h::XML_Encoding;
+pub use crate::expat_h::XML_EndCdataSectionHandler;
+pub use crate::expat_h::XML_EndDoctypeDeclHandler;
+pub use crate::expat_h::XML_EntityDeclHandler;
+pub use crate::expat_h::XML_Error;
+pub use crate::expat_h::XML_ExternalEntityRefHandler;
+pub use crate::expat_h::XML_Memory_Handling_Suite;
+pub use crate::expat_h::XML_NotationDeclHandler;
+pub use crate::expat_h::XML_ParamEntityParsing;
+pub use crate::expat_h::XML_Parser;
+pub use crate::expat_h::XML_ParserStruct;
+pub use crate::expat_h::XML_ProcessingInstructionHandler;
+pub use crate::expat_h::XML_StartCdataSectionHandler;
+pub use crate::expat_h::XML_StartDoctypeDeclHandler;
+pub use crate::expat_h::XML_StartElementHandler;
+pub use crate::expat_h::XML_Status;
+pub use crate::expat_h::XML_UnknownEncodingHandler;
+pub use crate::expat_h::XML_UnparsedEntityDeclHandler;
+pub use crate::expat_h::XML_XmlDeclHandler;
+pub use crate::expat_h::XML_cp;
+pub use crate::expat_h::XML_CQUANT_NONE;
+pub use crate::expat_h::XML_CQUANT_OPT;
+pub use crate::expat_h::XML_CQUANT_PLUS;
+pub use crate::expat_h::XML_CQUANT_REP;
+pub use crate::expat_h::XML_CTYPE_ANY;
+pub use crate::expat_h::XML_CTYPE_CHOICE;
+pub use crate::expat_h::XML_CTYPE_EMPTY;
+pub use crate::expat_h::XML_CTYPE_MIXED;
+pub use crate::expat_h::XML_CTYPE_NAME;
+pub use crate::expat_h::XML_CTYPE_SEQ;
+pub use crate::expat_h::XML_ERROR_ABORTED;
+pub use crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+pub use crate::expat_h::XML_ERROR_ASYNC_ENTITY;
+pub use crate::expat_h::XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF;
+pub use crate::expat_h::XML_ERROR_BAD_CHAR_REF;
+pub use crate::expat_h::XML_ERROR_BINARY_ENTITY_REF;
+pub use crate::expat_h::XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
+pub use crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
+pub use crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
+pub use crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+pub use crate::expat_h::XML_ERROR_FEATURE_REQUIRES_XML_DTD;
+pub use crate::expat_h::XML_ERROR_FINISHED;
+pub use crate::expat_h::XML_ERROR_INCOMPLETE_PE;
+pub use crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
+pub use crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+pub use crate::expat_h::XML_ERROR_INVALID_TOKEN;
+pub use crate::expat_h::XML_ERROR_JUNK_AFTER_DOC_ELEMENT;
+pub use crate::expat_h::XML_ERROR_MISPLACED_XML_PI;
+pub use crate::expat_h::XML_ERROR_NONE;
+pub use crate::expat_h::XML_ERROR_NOT_STANDALONE;
+pub use crate::expat_h::XML_ERROR_NOT_STARTED;
+pub use crate::expat_h::XML_ERROR_NOT_SUSPENDED;
+pub use crate::expat_h::XML_ERROR_NO_BUFFER;
+pub use crate::expat_h::XML_ERROR_NO_ELEMENTS;
+pub use crate::expat_h::XML_ERROR_NO_MEMORY;
+pub use crate::expat_h::XML_ERROR_PARAM_ENTITY_REF;
+pub use crate::expat_h::XML_ERROR_PARTIAL_CHAR;
+pub use crate::expat_h::XML_ERROR_PUBLICID;
+pub use crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
+pub use crate::expat_h::XML_ERROR_RESERVED_NAMESPACE_URI;
+pub use crate::expat_h::XML_ERROR_RESERVED_PREFIX_XML;
+pub use crate::expat_h::XML_ERROR_RESERVED_PREFIX_XMLNS;
+pub use crate::expat_h::XML_ERROR_SUSPENDED;
+pub use crate::expat_h::XML_ERROR_SUSPEND_PE;
+pub use crate::expat_h::XML_ERROR_SYNTAX;
+pub use crate::expat_h::XML_ERROR_TAG_MISMATCH;
+pub use crate::expat_h::XML_ERROR_TEXT_DECL;
+pub use crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
+pub use crate::expat_h::XML_ERROR_UNCLOSED_CDATA_SECTION;
+pub use crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
+pub use crate::expat_h::XML_ERROR_UNDECLARING_PREFIX;
+pub use crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
+pub use crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+pub use crate::expat_h::XML_ERROR_UNKNOWN_ENCODING;
+pub use crate::expat_h::XML_ERROR_XML_DECL;
+pub use crate::expat_h::XML_FALSE;
+pub use crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS;
+pub use crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
+pub use crate::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE;
+pub use crate::expat_h::XML_STATUS_ERROR;
+pub use crate::expat_h::XML_STATUS_OK;
+pub use crate::expat_h::XML_STATUS_SUSPENDED;
+pub use crate::expat_h::XML_TRUE;
+pub use crate::internal_h::EXPAT_MALLOC_ALIGNMENT;
+pub use crate::internal_h::EXPAT_MALLOC_PADDING;
+pub use crate::src::lib::xmlparse::expat_free;
+pub use crate::src::lib::xmlparse::expat_malloc;
+pub use crate::src::lib::xmlparse::expat_realloc;
+pub use crate::src::lib::xmlparse::g_reparseDeferralEnabledDefault;
+pub use crate::src::lib::xmlparse::XML_ExternalEntityParserCreate;
+pub use crate::src::lib::xmlparse::XML_GetBuffer;
+pub use crate::src::lib::xmlparse::XML_GetErrorCode;
+pub use crate::src::lib::xmlparse::XML_MemFree;
+pub use crate::src::lib::xmlparse::XML_MemMalloc;
+pub use crate::src::lib::xmlparse::XML_MemRealloc;
+pub use crate::src::lib::xmlparse::XML_ParseBuffer;
+pub use crate::src::lib::xmlparse::XML_ParserCreate;
+pub use crate::src::lib::xmlparse::XML_ParserCreate_MM;
+pub use crate::src::lib::xmlparse::XML_ParserFree;
+pub use crate::src::lib::xmlparse::XML_ParserReset;
+pub use crate::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold;
+pub use crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification;
+pub use crate::src::lib::xmlparse::XML_SetAttlistDeclHandler;
+pub use crate::src::lib::xmlparse::XML_SetBase;
+pub use crate::src::lib::xmlparse::XML_SetCdataSectionHandler;
+pub use crate::src::lib::xmlparse::XML_SetCharacterDataHandler;
+pub use crate::src::lib::xmlparse::XML_SetCommentHandler;
+pub use crate::src::lib::xmlparse::XML_SetDefaultHandler;
+pub use crate::src::lib::xmlparse::XML_SetDoctypeDeclHandler;
+pub use crate::src::lib::xmlparse::XML_SetElementDeclHandler;
+pub use crate::src::lib::xmlparse::XML_SetEncoding;
+pub use crate::src::lib::xmlparse::XML_SetEntityDeclHandler;
+pub use crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler;
+pub use crate::src::lib::xmlparse::XML_SetNotationDeclHandler;
+pub use crate::src::lib::xmlparse::XML_SetParamEntityParsing;
+pub use crate::src::lib::xmlparse::XML_SetProcessingInstructionHandler;
+pub use crate::src::lib::xmlparse::XML_SetStartElementHandler;
+pub use crate::src::lib::xmlparse::XML_SetUnknownEncodingHandler;
+pub use crate::src::lib::xmlparse::XML_SetUnparsedEntityDeclHandler;
+pub use crate::src::lib::xmlparse::XML_SetUserData;
+pub use crate::src::lib::xmlparse::XML_SetXmlDeclHandler;
+pub use crate::src::lib::xmlparse::XML_UseForeignDTD;
+pub use crate::src::tests::handlers::accumulate_characters;
+pub use crate::src::tests::handlers::ext_faults;
+pub use crate::src::tests::handlers::external_entity_alloc;
+pub use crate::src::tests::handlers::external_entity_alloc_set_encoding;
+pub use crate::src::tests::handlers::external_entity_dbl_handler;
+pub use crate::src::tests::handlers::external_entity_dbl_handler_2;
+pub use crate::src::tests::handlers::external_entity_duff_loader;
+pub use crate::src::tests::handlers::external_entity_faulter;
+pub use crate::src::tests::handlers::external_entity_null_loader;
+pub use crate::src::tests::handlers::external_entity_optioner;
+pub use crate::src::tests::handlers::external_entity_parser_create_alloc_fail_handler;
+pub use crate::src::tests::handlers::external_entity_public;
+pub use crate::src::tests::handlers::external_entity_reallocator;
+pub use crate::src::tests::handlers::long_encoding_handler;
+pub use crate::src::tests::handlers::record_element_start_handler;
+pub use crate::src::tests::handlers::unknown_released_encoding_handler;
+pub use crate::src::tests::handlers::ExtFaults;
+pub use crate::src::tests::handlers::ExtOption;
+pub use crate::src::tests::minicheck::set_subtest;
+pub use crate::src::tests::minicheck::tcase_setup_function;
+pub use crate::src::tests::minicheck::tcase_teardown_function;
+pub use crate::src::tests::minicheck::tcase_test_function;
+pub use crate::src::tests::minicheck::Suite;
+pub use crate::src::tests::minicheck::TCase;
+pub use crate::src::tests::minicheck::_check_set_test_info;
+pub use crate::src::tests::minicheck::_fail;
+pub use crate::src::tests::minicheck::suite_add_tcase;
+pub use crate::src::tests::minicheck::tcase_add_checked_fixture;
+pub use crate::src::tests::minicheck::tcase_add_test;
+pub use crate::src::tests::minicheck::tcase_create;
+pub use crate::stdbool_h::false_0;
+pub use crate::stdbool_h::true_0;
+use crate::stdlib::free;
+use crate::stdlib::malloc;
+use crate::stdlib::memcpy;
+use crate::stdlib::memset;
+use crate::stdlib::realloc;
+use crate::stdlib::strlen;
+
+unsafe extern "C" fn alloc_setup() {
+    let mut memsuite: crate::expat_h::XML_Memory_Handling_Suite =
+        crate::expat_h::XML_Memory_Handling_Suite {
+            malloc_fcn: Some(
+                crate::src::tests::common::duff_allocator
+                    as unsafe extern "C" fn(
+                        crate::__stddef_size_t_h::size_t,
+                    ) -> *mut ::core::ffi::c_void,
+            ),
+            realloc_fcn: Some(
+                crate::src::tests::common::duff_reallocator
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        crate::__stddef_size_t_h::size_t,
+                    ) -> *mut ::core::ffi::c_void,
+            ),
+            free_fcn: Some(
+                crate::stdlib::free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
+            ),
+        };
+    crate::src::tests::common::g_allocation_count = crate::common_h::ALLOC_ALWAYS_SUCCEED;
+    crate::src::tests::common::g_reallocation_count = crate::common_h::REALLOC_ALWAYS_SUCCEED;
+    crate::src::tests::common::g_parser = crate::src::lib::xmlparse::XML_ParserCreate_MM(
+        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        &raw mut memsuite as *mut _ as *const crate::expat_h::XML_Memory_Handling_Suite,
+        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+    );
+    if crate::src::tests::common::g_parser.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            74 as ::core::ffi::c_int,
+            b"Parser not created\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn alloc_teardown() {
+    crate::src::tests::common::basic_teardown();
+}
+
+unsafe extern "C" fn test_alloc_parse_xdecl() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_xdecl\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        83 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<?xml version='1.0' encoding='utf-8'?>\n<doc>Hello, world</doc>\0".as_ptr()
+            as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetXmlDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_xdecl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            104 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            106 as ::core::ffi::c_int,
+            b"Parse failed with max allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parse_xdecl_2() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_xdecl_2\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        113 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='ThisIsAStupidlyLongEncodingNameIntendedToTriggerPoolGrowth123456ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMN'?><doc>Hello, world</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetXmlDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_xdecl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetUnknownEncodingHandler(
+            crate::src::tests::common::g_parser,
+            ::core::mem::transmute(Some(
+                crate::src::tests::handlers::long_encoding_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut crate::expat_h::XML_Encoding,
+                    ) -> ::core::ffi::c_int,
+            )),
+            crate::__stddef_null_h::NULL,
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            150 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            152 as ::core::ffi::c_int,
+            b"Parse failed with max allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parse_pi() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_pi\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        157 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<?xml version='1.0' encoding='utf-8'?>\n<?pi unknown?>\n<doc>Hello, world</doc>\0"
+            .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetProcessingInstructionHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_pi_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            177 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            179 as ::core::ffi::c_int,
+            b"Parse failed with max allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parse_pi_2() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_pi_2\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        183 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<?xml version='1.0' encoding='utf-8'?>\n<doc>Hello, world<?pi unknown?>\n</doc>\0"
+            .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetProcessingInstructionHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_pi_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            203 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            205 as ::core::ffi::c_int,
+            b"Parse failed with max allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parse_pi_3() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_pi_3\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        209 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?This processing instruction should be long enough to ensure thatit triggers the growth of an internal string pool when the      allocator fails at a cruicial moment FGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPQ?><doc/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetProcessingInstructionHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_pi_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            244 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            246 as ::core::ffi::c_int,
+            b"Parse failed with max allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parse_comment() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_comment\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        250 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<?xml version='1.0' encoding='utf-8'?>\n<!-- Test parsing this comment --><doc>Hi</doc>\0"
+            .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetCommentHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_comment_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            268 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            270 as ::core::ffi::c_int,
+            b"Parse failed with max allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parse_comment_2() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_comment_2\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        274 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='utf-8'?>\n<doc>Hello, world<!-- Parse this comment too --></doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetCommentHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_comment_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            294 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            296 as ::core::ffi::c_int,
+            b"Parse failed with max allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_create_external_parser() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_create_external_parser\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        303 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut foo_text: [::core::ffi::c_char; 26] = ::core::mem::transmute::<
+        [u8; 26],
+        [::core::ffi::c_char; 26],
+    >(*b"<!ELEMENT doc (#PCDATA)*>\0");
+    crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+        crate::src::tests::common::g_parser,
+        crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+    );
+    crate::src::lib::xmlparse::XML_SetUserData(
+        crate::src::tests::common::g_parser,
+        &raw mut foo_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+    );
+    crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+        crate::src::tests::common::g_parser,
+        Some(
+            crate::src::tests::handlers::external_entity_duff_loader
+                as unsafe extern "C" fn(
+                    crate::expat_h::XML_Parser,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                ) -> ::core::ffi::c_int,
+        ),
+    );
+    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+        crate::src::tests::common::g_parser,
+        text,
+        crate::stdlib::strlen(text) as ::core::ffi::c_int,
+        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+    ) as ::core::ffi::c_uint
+        != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            314 as ::core::ffi::c_int,
+            b"External parser allocator returned success incorrectly\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_run_external_parser() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_run_external_parser\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        320 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut foo_text: [::core::ffi::c_char; 26] = ::core::mem::transmute::<
+        [u8; 26],
+        [::core::ffi::c_char; 26],
+    >(*b"<!ELEMENT doc (#PCDATA)*>\0");
+    let mut i: ::core::ffi::c_uint = 0;
+    let max_alloc_count: ::core::ffi::c_uint = 15 as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
+    while i < max_alloc_count {
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut foo_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_null_loader
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        crate::src::tests::common::g_allocation_count = i as ::core::ffi::c_int;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i = i.wrapping_add(1);
+    }
+    if i == 0 as ::core::ffi::c_uint {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            341 as ::core::ffi::c_int,
+            b"Parsing ignored failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            343 as ::core::ffi::c_int,
+            b"Parsing failed with allocation count 10\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_dtd_copy_default_atts() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_dtd_copy_default_atts\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        350 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut callno: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+        crate::src::tests::common::g_parser,
+        crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+    );
+    crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+        crate::src::tests::common::g_parser,
+        Some(
+            crate::src::tests::handlers::external_entity_dbl_handler
+                as unsafe extern "C" fn(
+                    crate::expat_h::XML_Parser,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                ) -> ::core::ffi::c_int,
+        ),
+    );
+    crate::src::lib::xmlparse::XML_SetUserData(
+        crate::src::tests::common::g_parser,
+        &raw mut callno as *mut ::core::ffi::c_void,
+    );
+    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+        crate::src::tests::common::g_parser,
+        text,
+        crate::stdlib::strlen(text) as ::core::ffi::c_int,
+        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+    ) as ::core::ffi::c_uint
+        == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        crate::src::tests::common::_xml_failure(
+            crate::src::tests::common::g_parser,
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            365 as ::core::ffi::c_int,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_external_entity() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_external_entity\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        370 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let alloc_test_max_repeats: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
+    let mut callno: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < alloc_test_max_repeats {
+        crate::src::tests::common::g_allocation_count = -1 as ::core::ffi::c_int;
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_dbl_handler_2
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        callno = 0 as ::core::ffi::c_int;
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut callno as *mut ::core::ffi::c_void,
+        );
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    crate::src::tests::common::g_allocation_count = -1 as ::core::ffi::c_int;
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            398 as ::core::ffi::c_int,
+            b"External entity parsed despite duff allocator\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if i == alloc_test_max_repeats {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            400 as ::core::ffi::c_int,
+            b"External entity not parsed at max allocation count\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_ext_entity_set_encoding() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_ext_entity_set_encoding\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        405 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_allocation_count: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_allocation_count {
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc_set_encoding
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        crate::src::tests::common::g_allocation_count = -1 as ::core::ffi::c_int;
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            426 as ::core::ffi::c_int,
+            b"Encoding check succeeded despite failing allocator\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_allocation_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            428 as ::core::ffi::c_int,
+            b"Encoding failed at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_internal_entity() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        435 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='unsupported-encoding'?>\n<!DOCTYPE test [<!ENTITY foo 'bar'>]>\n<test a='&foo;'/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_uint = 0;
+    let max_alloc_count: ::core::ffi::c_uint = 20 as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i as ::core::ffi::c_int;
+        crate::src::lib::xmlparse::XML_SetUnknownEncodingHandler(
+            crate::src::tests::common::g_parser,
+            ::core::mem::transmute(Some(
+                crate::src::tests::handlers::unknown_released_encoding_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut crate::expat_h::XML_Encoding,
+                    ) -> ::core::ffi::c_int,
+            )),
+            crate::__stddef_null_h::NULL,
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i = i.wrapping_add(1);
+    }
+    if i == 0 as ::core::ffi::c_uint {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            454 as ::core::ffi::c_int,
+            b"Internal entity worked despite failing allocations\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            456 as ::core::ffi::c_int,
+            b"Internal entity failed at max allocation count\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parameter_entity() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        460 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE foo [<!ENTITY % param1 \"<!ENTITY internal 'some_text'>\">%param1;]> <foo>&internal;content</foo>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let alloc_test_max_repeats: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < alloc_test_max_repeats {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    crate::src::tests::common::g_allocation_count = -1 as ::core::ffi::c_int;
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            479 as ::core::ffi::c_int,
+            b"Parameter entity processed despite duff allocator\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if i == alloc_test_max_repeats {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            481 as ::core::ffi::c_int,
+            b"Parameter entity not processed at max allocation count\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_dtd_default_handling() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_dtd_default_handling\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        488 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY e SYSTEM 'http://example.org/e'>\n<!NOTATION n SYSTEM 'http://example.org/n'>\n<!ENTITY e1 SYSTEM 'http://example.org/e' NDATA n>\n<!ELEMENT doc (#PCDATA)>\n<!ATTLIST doc a CDATA #IMPLIED>\n<?pi in dtd?>\n<!--comment in dtd-->\n]>\n<doc><![CDATA[text in doc]]></doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut expected: *const crate::expat_external_h::XML_Char =
+        b"\n\n\n\n\n\n\n\n\n<doc>text in doc</doc>\0".as_ptr()
+            as *const crate::expat_external_h::XML_Char;
+    let mut storage: crate::src::tests::chardata::CharData =
+        crate::src::tests::chardata::CharData {
+            count: 0,
+            data: [0; 2048],
+        };
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::tests::dummy::init_dummy_handlers();
+        crate::src::lib::xmlparse::XML_SetDefaultHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::accumulate_characters
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetDoctypeDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_start_doctype_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+            Some(
+                crate::src::tests::dummy::dummy_end_doctype_handler
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetEntityDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_entity_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetNotationDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_notation_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetElementDeclHandler(
+            crate::src::tests::common::g_parser,
+            ::core::mem::transmute(Some(
+                crate::src::tests::dummy::dummy_element_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut crate::expat_h::XML_Content,
+                    ) -> (),
+            )),
+        );
+        crate::src::lib::xmlparse::XML_SetAttlistDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_attlist_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetProcessingInstructionHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_pi_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetCommentHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_comment_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetCdataSectionHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_start_cdata_handler
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
+            ),
+            Some(
+                crate::src::tests::dummy::dummy_end_cdata_handler
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetUnparsedEntityDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_unparsed_entity_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::tests::chardata::CharData_Init(
+            &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+        );
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut storage as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetCharacterDataHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::accumulate_characters
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            531 as ::core::ffi::c_int,
+            b"Default DTD parsed despite allocation failures\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            533 as ::core::ffi::c_int,
+            b"Default DTD not parsed with maximum alloc count\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::tests::chardata::CharData_CheckXMLChars(
+        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+        expected,
+    );
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_START_DOCTYPE_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_END_DOCTYPE_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_ENTITY_DECL_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_NOTATION_DECL_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_ELEMENT_DECL_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_ATTLIST_DECL_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_COMMENT_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_PI_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_START_CDATA_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_END_CDATA_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_UNPARSED_ENTITY_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            542 as ::core::ffi::c_int,
+            b"Not all handlers were called\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_explicit_encoding() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_explicit_encoding\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        547 as ::core::ffi::c_int,
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::lib::xmlparse::XML_SetEncoding(
+            crate::src::tests::common::g_parser,
+            b"us-ascii\0".as_ptr() as *const crate::expat_external_h::XML_Char,
+        ) as ::core::ffi::c_uint
+            == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            557 as ::core::ffi::c_int,
+            b"Encoding set despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            559 as ::core::ffi::c_int,
+            b"Encoding not set at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_set_base() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_set_base\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        564 as ::core::ffi::c_int,
+    );
+    let mut new_base: *const crate::expat_external_h::XML_Char =
+        b"/local/file/name.xml\0".as_ptr() as *const crate::expat_external_h::XML_Char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::lib::xmlparse::XML_SetBase(crate::src::tests::common::g_parser, new_base)
+            as ::core::ffi::c_uint
+            == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            575 as ::core::ffi::c_int,
+            b"Base set despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            577 as ::core::ffi::c_int,
+            b"Base not set with max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_buffer() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_buffer\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        582 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = crate::src::tests::common::get_buffer_test_text;
+    let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        buffer = crate::src::lib::xmlparse::XML_GetBuffer(
+            crate::src::tests::common::g_parser,
+            1536 as ::core::ffi::c_int,
+        );
+        if buffer.is_null() {
+            crate::src::tests::minicheck::_fail(
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                593 as ::core::ffi::c_int,
+                b"1.5K buffer reallocation failed\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+        if !buffer.is_null() {
+        } else {
+            crate::stdlib::__assert_fail(
+                b"buffer != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                594 as ::core::ffi::c_uint,
+                crate::stdlib::__ASSERT_FUNCTION.as_ptr(),
+            );
+        };
+        crate::stdlib::memcpy(
+            buffer,
+            text as *const ::core::ffi::c_void,
+            crate::stdlib::strlen(text),
+        );
+        if crate::src::lib::xmlparse::XML_ParseBuffer(
+            crate::src::tests::common::g_parser,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_FALSE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    crate::src::tests::common::g_reallocation_count = -1 as ::core::ffi::c_int;
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            605 as ::core::ffi::c_int,
+            b"Parse succeeded with no reallocation\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    } else if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            607 as ::core::ffi::c_int,
+            b"Parse failed with max reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_ext_entity_realloc_buffer() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_ext_entity_realloc_buffer\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        612 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_reallocator
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut i as *mut ::core::ffi::c_void,
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            631 as ::core::ffi::c_int,
+            b"Succeeded with no reallocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            633 as ::core::ffi::c_int,
+            b"Failed with max reallocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_many_attributes() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_many_attributes\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        638 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ATTLIST doc za CDATA 'default'>\n<!ATTLIST doc zb CDATA 'def2'>\n<!ATTLIST doc zc CDATA 'def3'>\n]>\n<doc a='1'     b='2'     c='3'     d='4'     e='5'     f='6'     g='7'     h='8'     i='9'     j='10'     k='11'     l='12'     m='13'     n='14'     p='15'     q='16'     r='17'     s='18'></doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            676 as ::core::ffi::c_int,
+            b"Parse succeeded despite no reallocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            678 as ::core::ffi::c_int,
+            b"Parse failed at max reallocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_public_entity_value() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_public_entity_value\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        683 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc></doc>\n\0".as_ptr()
+            as *const ::core::ffi::c_char;
+    let mut dtd_text: [::core::ffi::c_char; 1109] = ::core::mem::transmute::<
+        [u8; 1109],
+        [::core::ffi::c_char; 1109],
+    >(
+        *b"<!ELEMENT doc EMPTY>\n<!ENTITY % e1 PUBLIC 'foo' 'bar.ent'>\n<!ENTITY % ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP '%e1;'>\n%e1;\n\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::tests::dummy::init_dummy_handlers();
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_public
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetEntityDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_entity_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            728 as ::core::ffi::c_int,
+            b"Parsing worked despite failing allocation\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            730 as ::core::ffi::c_int,
+            b"Parsing failed at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_ENTITY_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            732 as ::core::ffi::c_int,
+            b"Entity declaration handler not called\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_subst_public_entity_value() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_subst_public_entity_value\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        736 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc></doc>\n\0".as_ptr()
+            as *const ::core::ffi::c_char;
+    let mut dtd_text: [::core::ffi::c_char; 2108] = ::core::mem::transmute::<
+        [u8; 2108],
+        [::core::ffi::c_char; 2108],
+    >(
+        *b"<!ELEMENT doc EMPTY>\n<!ENTITY % ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP PUBLIC 'foo' 'bar.ent'>\n%ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP;\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_public
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            792 as ::core::ffi::c_int,
+            b"Parsing worked despite failing reallocation\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            794 as ::core::ffi::c_int,
+            b"Parsing failed at max reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parse_public_doctype() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_public_doctype\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        798 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/' 'test'>\n<doc></doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::tests::dummy::init_dummy_handlers();
+        crate::src::lib::xmlparse::XML_SetDoctypeDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_start_doctype_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+            Some(
+                crate::src::tests::dummy::dummy_end_doctype_decl_handler
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            837 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            839 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            843 as ::core::ffi::c_int,
+            b"Doctype handler functions not called\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_parse_public_doctype_long_name() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_parse_public_doctype_long_name\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        847 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC 'http://example.com/foo' 'ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOP'>\n<doc></doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetDoctypeDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_start_doctype_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+            Some(
+                crate::src::tests::dummy::dummy_end_doctype_decl_handler
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            885 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            887 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_set_foreign_dtd() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_set_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        892 as ::core::ffi::c_int,
+    );
+    let mut text1: *const ::core::ffi::c_char =
+        b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0".as_ptr()
+            as *const ::core::ffi::c_char;
+    let mut text2: [::core::ffi::c_char; 26] = ::core::mem::transmute::<
+        [u8; 26],
+        [::core::ffi::c_char; 26],
+    >(*b"<!ELEMENT doc (#PCDATA)*>\0");
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut text2 as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        if crate::src::lib::xmlparse::XML_UseForeignDTD(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_TRUE,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            crate::src::tests::minicheck::_fail(
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                905 as ::core::ffi::c_int,
+                b"Could not set foreign DTD\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text1,
+            crate::stdlib::strlen(text1) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            914 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            916 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_attribute_enum_value() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        921 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='no'?>\n<!DOCTYPE animal SYSTEM 'test.dtd'>\n<animal>This is a \n    <a/>  \n\nyellow tiger</animal>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut dtd_text: [::core::ffi::c_char; 108] = ::core::mem::transmute::<
+        [u8; 108],
+        [::core::ffi::c_char; 108],
+    >(
+        *b"<!ELEMENT animal (#PCDATA|a)*>\n<!ELEMENT a EMPTY>\n<!ATTLIST animal xml:space (default|preserve) 'preserve'>\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetAttlistDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_attlist_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            946 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            948 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_attribute_enum_value() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        953 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='no'?>\n<!DOCTYPE animal SYSTEM 'test.dtd'>\n<animal>This is a yellow tiger</animal>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut dtd_text: [::core::ffi::c_char; 1097] = ::core::mem::transmute::<
+        [u8; 1097],
+        [::core::ffi::c_char; 1097],
+    >(
+        *b"<!ELEMENT animal (#PCDATA)*>\n<!ATTLIST animal thing (default|ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO) 'default'>\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetAttlistDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_attlist_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1002 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1004 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_implied_attribute() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_implied_attribute\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1009 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc EMPTY>\n<!ATTLIST doc a (ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMN) #IMPLIED>\n]><doc/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        crate::src::lib::xmlparse::XML_SetAttlistDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_attlist_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1052 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1054 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_default_attribute() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_default_attribute\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1059 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc EMPTY>\n<!ATTLIST doc a (ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMN) 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO'>\n]><doc/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        crate::src::lib::xmlparse::XML_SetAttlistDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_attlist_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1102 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1104 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_notation() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_notation\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1109 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!NOTATION ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP SYSTEM 'http://example.org/n'>\n<!ENTITY e SYSTEM 'http://example.org/e' NDATA ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::tests::dummy::init_dummy_handlers();
+        crate::src::lib::xmlparse::XML_SetNotationDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_notation_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetEntityDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_entity_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                        *const crate::expat_external_h::XML_Char,
+                        ::core::ffi::c_int,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1167 as ::core::ffi::c_int,
+            b"Parse succeeded despite allocation failures\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1169 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_ENTITY_DECL_HANDLER_FLAG
+            | crate::src::tests::dummy::DUMMY_NOTATION_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1172 as ::core::ffi::c_int,
+            b"Entity declaration handler not called\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_public_notation() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_public_notation\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1177 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!NOTATION note PUBLIC 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/' 'foo'>\n<!ENTITY e SYSTEM 'http://example.com/e' NDATA note>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::tests::dummy::init_dummy_handlers();
+        crate::src::lib::xmlparse::XML_SetNotationDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_notation_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1217 as ::core::ffi::c_int,
+            b"Parse succeeded despite allocation failures\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1219 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_NOTATION_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1221 as ::core::ffi::c_int,
+            b"Notation handler not called\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_system_notation() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_system_notation\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1226 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!NOTATION note SYSTEM 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/'>\n<!ENTITY e SYSTEM 'http://example.com/e' NDATA note>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::tests::dummy::init_dummy_handlers();
+        crate::src::lib::xmlparse::XML_SetNotationDeclHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_notation_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1266 as ::core::ffi::c_int,
+            b"Parse succeeded despite allocation failures\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1268 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_NOTATION_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1270 as ::core::ffi::c_int,
+            b"Notation handler not called\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_nested_groups() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_nested_groups\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1274 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>\n<!ELEMENT e EMPTY>]>\n<doc><e/></doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut storage: crate::src::tests::chardata::CharData =
+        crate::src::tests::chardata::CharData {
+            count: 0,
+            data: [0; 2048],
+        };
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::tests::chardata::CharData_Init(
+            &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+        );
+        crate::src::lib::xmlparse::XML_SetElementDeclHandler(
+            crate::src::tests::common::g_parser,
+            ::core::mem::transmute(Some(
+                crate::src::tests::dummy::dummy_element_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut crate::expat_h::XML_Content,
+                    ) -> (),
+            )),
+        );
+        crate::src::lib::xmlparse::XML_SetStartElementHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::record_element_start_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut storage as *mut ::core::ffi::c_void,
+        );
+        crate::src::tests::dummy::init_dummy_handlers();
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1305 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1307 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::tests::chardata::CharData_CheckXMLChars(
+        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+        b"doce\0".as_ptr() as *const crate::expat_external_h::XML_Char,
+    );
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_ELEMENT_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1310 as ::core::ffi::c_int,
+            b"Element handler not fired\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_nested_groups() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_nested_groups\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1314 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>\n<!ELEMENT e EMPTY>]>\n<doc><e/></doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut storage: crate::src::tests::chardata::CharData =
+        crate::src::tests::chardata::CharData {
+            count: 0,
+            data: [0; 2048],
+        };
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        crate::src::tests::chardata::CharData_Init(
+            &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+        );
+        crate::src::lib::xmlparse::XML_SetElementDeclHandler(
+            crate::src::tests::common::g_parser,
+            ::core::mem::transmute(Some(
+                crate::src::tests::dummy::dummy_element_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut crate::expat_h::XML_Content,
+                    ) -> (),
+            )),
+        );
+        crate::src::lib::xmlparse::XML_SetStartElementHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::record_element_start_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut storage as *mut ::core::ffi::c_void,
+        );
+        crate::src::tests::dummy::init_dummy_handlers();
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1345 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1347 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::tests::chardata::CharData_CheckXMLChars(
+        &raw mut storage as *mut _ as *mut crate::src::tests::chardata::CharData,
+        b"doce\0".as_ptr() as *const crate::expat_external_h::XML_Char,
+    );
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_ELEMENT_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1350 as ::core::ffi::c_int,
+            b"Element handler not fired\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_large_group() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_large_group\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1354 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (a1|a2|a3|a4|a5|a6|a7|a8|b1|b2|b3|b4|b5|b6|b7|b8|c1|c2|c3|c4|c5|c6|c7|c8|d1|d2|d3|d4|d5|d6|d7|d8|e1)+>\n]>\n<doc>\n<a1/>\n</doc>\n\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetElementDeclHandler(
+            crate::src::tests::common::g_parser,
+            ::core::mem::transmute(Some(
+                crate::src::tests::dummy::dummy_element_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut crate::expat_h::XML_Content,
+                    ) -> (),
+            )),
+        );
+        crate::src::tests::dummy::init_dummy_handlers();
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1382 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1384 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_ELEMENT_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1386 as ::core::ffi::c_int,
+            b"Element handler flag not raised\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_group_choice() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_group_choice\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1390 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (a1|a2|a3|a4|a5|a6|a7|a8|b1|b2|b3|b4|b5|b6|b7|b8|c1|c2|c3|c4|c5|c6|c7|c8|d1|d2|d3|d4|d5|d6|d7|d8|e1)+>\n]>\n<doc>\n<a1/>\n<b2 attr='foo'>This is a foo</b2>\n<c3></c3>\n</doc>\n\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        crate::src::lib::xmlparse::XML_SetElementDeclHandler(
+            crate::src::tests::common::g_parser,
+            ::core::mem::transmute(Some(
+                crate::src::tests::dummy::dummy_element_decl_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *mut crate::expat_h::XML_Content,
+                    ) -> (),
+            )),
+        );
+        crate::src::tests::dummy::init_dummy_handlers();
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1420 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1422 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_ELEMENT_DECL_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1424 as ::core::ffi::c_int,
+            b"Element handler flag not raised\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_pi_in_epilog() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_pi_in_epilog\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1428 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<doc></doc>\n<?pi in epilog?>\0".as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetProcessingInstructionHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_pi_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::tests::dummy::init_dummy_handlers();
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1446 as ::core::ffi::c_int,
+            b"Parse completed despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1448 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_PI_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1450 as ::core::ffi::c_int,
+            b"Processing instruction handler not invoked\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_comment_in_epilog() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_comment_in_epilog\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1454 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<doc></doc>\n<!-- comment in epilog -->\0".as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetCommentHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::dummy::dummy_comment_handler
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> (),
+            ),
+        );
+        crate::src::tests::dummy::init_dummy_handlers();
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1472 as ::core::ffi::c_int,
+            b"Parse completed despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1474 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::tests::dummy::get_dummy_handler_flags()
+        != crate::src::tests::dummy::DUMMY_COMMENT_HANDLER_FLAG
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1476 as ::core::ffi::c_int,
+            b"Processing instruction handler not invoked\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_long_attribute_value() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_long_attribute_value\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1480 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [<!ENTITY foo 'This entity will be substituted as an attribute value, and is   calculated to be exactly long enough that the terminating NUL   that the library adds internally will trigger the string pool togrow. GHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>]>\n<doc a='&foo;'></doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1515 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1517 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_attribute_whitespace() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_attribute_whitespace\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1521 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<doc a=' '></doc>\0".as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1536 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1538 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_attribute_predefined_entity() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_attribute_predefined_entity\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1542 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<doc a='&amp;'></doc>\0".as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1557 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1559 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_long_attr_default_with_char_ref() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_long_attr_default_with_char_ref\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1567 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [<!ATTLIST doc a CDATA 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHI&#x31;'>]>\n<doc/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1602 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1604 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_long_attr_value() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_long_attr_value\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1611 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE test [<!ENTITY foo '\nABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>]>\n<test a='&foo;'/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1646 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1648 as ::core::ffi::c_int,
+            b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_nested_entities() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_nested_entities\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1657 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>\n<doc />\0".as_ptr()
+            as *const ::core::ffi::c_char;
+    let mut test_data: crate::src::tests::handlers::ExtFaults = crate::src::tests::handlers::ext_faults {
+    parse_text:  b"<!ENTITY % pe1 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>\n<!ENTITY % pe2 '%pe1;'>\n<!ENTITY % pe3 '%pe2;'>\0"
+            .as_ptr() as *const ::core::ffi::c_char,
+    fail_text:  b"Memory Fail not faulted\0".as_ptr() as *const ::core::ffi::c_char,
+    encoding:  ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+    error:  crate::expat_h::XML_ERROR_NO_MEMORY,
+};
+    crate::src::tests::common::g_allocation_count = 12 as ::core::ffi::c_int;
+    crate::src::lib::xmlparse::XML_SetUserData(
+        crate::src::tests::common::g_parser,
+        &raw mut test_data as *mut ::core::ffi::c_void,
+    );
+    crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+        crate::src::tests::common::g_parser,
+        crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+    );
+    crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+        crate::src::tests::common::g_parser,
+        Some(
+            crate::src::tests::handlers::external_entity_faulter
+                as unsafe extern "C" fn(
+                    crate::expat_h::XML_Parser,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                ) -> ::core::ffi::c_int,
+        ),
+    );
+    crate::src::tests::common::_expect_failure(
+        text,
+        crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING,
+        b"Entity allocation failure not noted\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1690 as ::core::ffi::c_int,
+    );
+}
+
+unsafe extern "C" fn test_alloc_realloc_param_entity_newline() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_param_entity_newline\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1694 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc/>\0".as_ptr()
+            as *const ::core::ffi::c_char;
+    let mut dtd_text: [::core::ffi::c_char; 1048] = ::core::mem::transmute::<
+        [u8; 1048],
+        [::core::ffi::c_char; 1048],
+    >(
+        *b"<!ENTITY % pe '<!ATTLIST doc att CDATA \"This default value is carefully crafted so that the carriage    return right at the end of the entity string causes an internal string pool to have to grow.  This allows us to test the alloc  failure path from that point. OPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDE\">\n'>%pe;\n\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1734 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1736 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_ce_extends_pe() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_ce_extends_pe\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1740 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc/>\0".as_ptr()
+            as *const ::core::ffi::c_char;
+    let mut dtd_text: [::core::ffi::c_char; 1056] = ::core::mem::transmute::<
+        [u8; 1056],
+        [::core::ffi::c_char; 1056],
+    >(
+        *b"<!ENTITY % pe '<!ATTLIST doc att CDATA \"This default value is carefully crafted so that the character   entity at the end causes an internal string pool to have to     grow.  This allows us to test the allocation failure path from  that point onwards. EFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFG&#x51;\">\n'>%pe;\n\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1780 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1782 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_realloc_attributes() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_realloc_attributes\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1786 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ATTLIST doc\n    a1  (a|b|c)   'a'\n    a2  (foo|bar) #IMPLIED\n    a3  NMTOKEN   #IMPLIED\n    a4  NMTOKENS  #IMPLIED\n    a5  ID        #IMPLIED\n    a6  IDREF     #IMPLIED\n    a7  IDREFS    #IMPLIED\n    a8  ENTITY    #IMPLIED\n    a9  ENTITIES  #IMPLIED\n    a10 CDATA     #IMPLIED\n  >]>\n<doc>wombat</doc>\n\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_realloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        crate::src::tests::common::g_reallocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1815 as ::core::ffi::c_int,
+            b"Parse succeeded despite failing reallocator\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if i == max_realloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1817 as ::core::ffi::c_int,
+            b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_long_doc_name() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_long_doc_name\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1821 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<LongRootElementNameThatWillCauseTheNextAllocationToExpandTheStringPoolForTheDTDQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ a='1'/>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1854 as ::core::ffi::c_int,
+            b"Parsing worked despite failing reallocations\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1856 as ::core::ffi::c_int,
+            b"Parsing failed even at max reallocation count\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_long_base() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_long_base\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1860 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char =
+        b"<!DOCTYPE doc [\n  <!ENTITY e SYSTEM 'foo'>\n]>\n<doc>&e;</doc>\0".as_ptr()
+            as *const ::core::ffi::c_char;
+    let mut entity_text: [::core::ffi::c_char; 12] =
+        ::core::mem::transmute::<[u8; 12], [::core::ffi::c_char; 12]>(*b"Hello world\0");
+    let mut base: *const crate::expat_external_h::XML_Char = b"LongBaseURI/that/will/overflow/an/internal/buffer/and/cause/it/to/have/to/grow/PQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/\0"
+        .as_ptr() as *const crate::expat_external_h::XML_Char;
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut entity_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        if crate::src::lib::xmlparse::XML_SetBase(crate::src::tests::common::g_parser, base)
+            as ::core::ffi::c_uint
+            == crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            crate::src::lib::xmlparse::XML_ParserReset(
+                crate::src::tests::common::g_parser,
+                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+            );
+        } else {
+            if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+                crate::src::tests::common::g_parser,
+                text,
+                crate::stdlib::strlen(text) as ::core::ffi::c_int,
+                crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+            ) as ::core::ffi::c_uint
+                != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                break;
+            }
+            alloc_teardown();
+            alloc_setup();
+        }
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1906 as ::core::ffi::c_int,
+            b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1908 as ::core::ffi::c_int,
+            b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_long_public_id() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_long_public_id\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1912 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY e PUBLIC 'LongPublicIDThatShouldResultInAnInternalStringPoolGrowingAtASpecificMomentKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB' 'bar'>\n]>\n<doc>&e;</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut entity_text: [::core::ffi::c_char; 12] =
+        ::core::mem::transmute::<[u8; 12], [::core::ffi::c_char; 12]>(*b"Hello world\0");
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut entity_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1953 as ::core::ffi::c_int,
+            b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            1955 as ::core::ffi::c_int,
+            b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_long_entity_value() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_long_entity_value\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        1959 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY e1 'Long entity value that should provoke a string pool to grow while setting up to parse the external entity below. xyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB'>\n  <!ENTITY e2 SYSTEM 'bar'>\n]>\n<doc>&e2;</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut entity_text: [::core::ffi::c_char; 12] =
+        ::core::mem::transmute::<[u8; 12], [::core::ffi::c_char; 12]>(*b"Hello world\0");
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut entity_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_alloc
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2001 as ::core::ffi::c_int,
+            b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2003 as ::core::ffi::c_int,
+            b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_long_notation() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_long_notation\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2007 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!NOTATION note SYSTEM 'ALongNotationNameThatShouldProvokeStringPoolGrowthWhileCallingAnExternalEntityParserUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB'>\n  <!ENTITY e1 SYSTEM 'foo' NDATA ALongNotationNameThatShouldProvokeStringPoolGrowthWhileCallingAnExternalEntityParserUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB>\n  <!ENTITY e2 SYSTEM 'bar'>\n]>\n<doc>&e2;</doc>\0"
+        .as_ptr() as *const ::core::ffi::c_char;
+    let mut options: [crate::src::tests::handlers::ExtOption; 3] = [
+        crate::src::tests::handlers::ExtOption {
+            system_id: b"foo\0".as_ptr() as *const crate::expat_external_h::XML_Char,
+            parse_text: b"Entity Foo\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        crate::src::tests::handlers::ExtOption {
+            system_id: b"bar\0".as_ptr() as *const crate::expat_external_h::XML_Char,
+            parse_text: b"Entity Bar\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        crate::src::tests::handlers::ExtOption {
+            system_id: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+            parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
+        },
+    ];
+    let mut i: ::core::ffi::c_int = 0;
+    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
+    i = 0 as ::core::ffi::c_int;
+    while i < max_alloc_count {
+        crate::src::tests::common::g_allocation_count = i;
+        crate::src::lib::xmlparse::XML_SetUserData(
+            crate::src::tests::common::g_parser,
+            &raw mut options as *mut crate::src::tests::handlers::ExtOption
+                as *mut ::core::ffi::c_void,
+        );
+        crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+            crate::src::tests::common::g_parser,
+            crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+            crate::src::tests::common::g_parser,
+            Some(
+                crate::src::tests::handlers::external_entity_optioner
+                    as unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+            crate::src::tests::common::g_parser,
+            text,
+            crate::stdlib::strlen(text) as ::core::ffi::c_int,
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2070 as ::core::ffi::c_int,
+            b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    } else if i == max_alloc_count {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2072 as ::core::ffi::c_int,
+            b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+}
+
+unsafe extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_reset_after_external_entity_parser_create_fail\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2076 as ::core::ffi::c_int,
+    );
+    let text: *const ::core::ffi::c_char =
+        b"<!DOCTYPE doc SYSTEM 'foo'><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
+    crate::src::lib::xmlparse::XML_SetExternalEntityRefHandler(
+        crate::src::tests::common::g_parser,
+        Some(
+            crate::src::tests::handlers::external_entity_parser_create_alloc_fail_handler
+                as unsafe extern "C" fn(
+                    crate::expat_h::XML_Parser,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                ) -> ::core::ffi::c_int,
+        ),
+    );
+    crate::src::lib::xmlparse::XML_SetParamEntityParsing(
+        crate::src::tests::common::g_parser,
+        crate::expat_h::XML_PARAM_ENTITY_PARSING_ALWAYS,
+    );
+    if crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+        crate::src::tests::common::g_parser,
+        text,
+        crate::stdlib::strlen(text) as ::core::ffi::c_int,
+        crate::expat_h::XML_TRUE as ::core::ffi::c_int,
+    ) as ::core::ffi::c_uint
+        != crate::expat_h::XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2085 as ::core::ffi::c_int,
+            b"Call to parse was expected to fail\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_GetErrorCode(crate::src::tests::common::g_parser)
+        as ::core::ffi::c_uint
+        != crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING as ::core::ffi::c_int
+            as ::core::ffi::c_uint
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2088 as ::core::ffi::c_int,
+            b"Call to parse was expected to fail from the external entity handler\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::lib::xmlparse::XML_ParserReset(
+        crate::src::tests::common::g_parser,
+        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+    );
+}
+
+unsafe extern "C" fn sizeRecordedFor(
+    mut ptr: *mut ::core::ffi::c_void,
+) -> crate::__stddef_size_t_h::size_t {
+    return *((ptr as *mut ::core::ffi::c_char)
+        .offset(-(crate::internal_h::EXPAT_MALLOC_PADDING as isize))
+        .offset(-(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as usize as isize))
+        as *mut crate::__stddef_size_t_h::size_t);
+}
+
+unsafe extern "C" fn test_alloc_tracker_size_recorded() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_tracker_size_recorded\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2101 as ::core::ffi::c_int,
+    );
+    let mut memsuite: crate::expat_h::XML_Memory_Handling_Suite =
+        crate::expat_h::XML_Memory_Handling_Suite {
+            malloc_fcn: Some(
+                crate::stdlib::malloc
+                    as unsafe extern "C" fn(
+                        crate::__stddef_size_t_h::size_t,
+                    ) -> *mut ::core::ffi::c_void,
+            ),
+            realloc_fcn: Some(
+                crate::stdlib::realloc
+                    as unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        crate::__stddef_size_t_h::size_t,
+                    ) -> *mut ::core::ffi::c_void,
+            ),
+            free_fcn: Some(
+                crate::stdlib::free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
+            ),
+        };
+    let mut values: [bool; 2] = [
+        crate::stdbool_h::true_0 != 0,
+        crate::stdbool_h::false_0 != 0,
+    ];
+    let mut i: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
+    while i
+        < (::core::mem::size_of::<[bool; 2]>() as usize)
+            .wrapping_div(::core::mem::size_of::<bool>() as usize)
+    {
+        let useMemSuite: bool = values[i as usize];
+        crate::src::tests::minicheck::set_subtest(
+            b"useMemSuite=%d\0".as_ptr() as *const ::core::ffi::c_char,
+            useMemSuite as ::core::ffi::c_int,
+        );
+        let mut parser: crate::expat_h::XML_Parser = if useMemSuite as ::core::ffi::c_int != 0 {
+            crate::src::lib::xmlparse::XML_ParserCreate_MM(
+                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                &raw mut memsuite as *mut _ as *const crate::expat_h::XML_Memory_Handling_Suite,
+                b"|\0".as_ptr() as *const crate::expat_external_h::XML_Char,
+            )
+        } else {
+            crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
+                crate::expat_external_h::XML_Char,
+            >())
+        };
+        let mut ptr: *mut ::core::ffi::c_void = crate::src::lib::xmlparse::expat_malloc(
+            parser,
+            10 as crate::__stddef_size_t_h::size_t,
+            -1 as ::core::ffi::c_int,
+        );
+        if ptr.is_null() {
+            crate::src::tests::minicheck::_fail(
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                2115 as ::core::ffi::c_int,
+                b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+        if !(sizeRecordedFor(ptr) == 10 as crate::__stddef_size_t_h::size_t) {
+            crate::src::tests::minicheck::_fail(
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                2116 as ::core::ffi::c_int,
+                b"check failed: sizeRecordedFor(ptr) == 10\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+            );
+        }
+        if !crate::src::lib::xmlparse::expat_realloc(
+            parser,
+            ptr,
+            (18446744073709551615 as crate::__stddef_size_t_h::size_t)
+                .wrapping_div(2 as crate::__stddef_size_t_h::size_t),
+            -1 as ::core::ffi::c_int,
+        )
+        .is_null()
+        {
+            crate::src::tests::minicheck::_fail(
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                2118 as ::core::ffi::c_int,
+                b"check failed: expat_realloc(parser, ptr, SIZE_MAX / 2, -1) == NULL\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+            );
+        }
+        if !(sizeRecordedFor(ptr) == 10 as crate::__stddef_size_t_h::size_t) {
+            crate::src::tests::minicheck::_fail(
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                2120 as ::core::ffi::c_int,
+                b"check failed: sizeRecordedFor(ptr) == 10\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+            );
+        }
+        ptr = crate::src::lib::xmlparse::expat_realloc(
+            parser,
+            ptr,
+            20 as crate::__stddef_size_t_h::size_t,
+            -1 as ::core::ffi::c_int,
+        );
+        if ptr.is_null() {
+            crate::src::tests::minicheck::_fail(
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                2124 as ::core::ffi::c_int,
+                b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+        if !(sizeRecordedFor(ptr) == 20 as crate::__stddef_size_t_h::size_t) {
+            crate::src::tests::minicheck::_fail(
+                b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                2125 as ::core::ffi::c_int,
+                b"check failed: sizeRecordedFor(ptr) == 20\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+            );
+        }
+        crate::src::lib::xmlparse::expat_free(parser, ptr, -1 as ::core::ffi::c_int);
+        crate::src::lib::xmlparse::XML_ParserFree(parser);
+        i = i.wrapping_add(1);
+    }
+}
+
+unsafe extern "C" fn test_alloc_tracker_pointer_alignment() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_tracker_pointer_alignment\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2135 as ::core::ffi::c_int,
+    );
+    let mut parser: crate::expat_h::XML_Parser =
+        crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
+            crate::expat_external_h::XML_Char,
+        >());
+    if !(::core::mem::size_of::<::core::ffi::c_longlong>() as usize
+        >= ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as usize)
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2138 as ::core::ffi::c_int,
+            b"check failed: sizeof(long long) >= sizeof(size_t)\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    let ptr: *mut ::core::ffi::c_longlong = crate::src::lib::xmlparse::expat_malloc(
+        parser,
+        (4 as crate::__stddef_size_t_h::size_t)
+            .wrapping_mul(::core::mem::size_of::<::core::ffi::c_longlong>()
+                as crate::__stddef_size_t_h::size_t),
+        -1 as ::core::ffi::c_int,
+    ) as *mut ::core::ffi::c_longlong;
+    *ptr.offset(0 as ::core::ffi::c_int as isize) = 0 as ::core::ffi::c_longlong;
+    *ptr.offset(1 as ::core::ffi::c_int as isize) = 1 as ::core::ffi::c_longlong;
+    *ptr.offset(2 as ::core::ffi::c_int as isize) = 2 as ::core::ffi::c_longlong;
+    *ptr.offset(3 as ::core::ffi::c_int as isize) = 3 as ::core::ffi::c_longlong;
+    crate::src::lib::xmlparse::expat_free(
+        parser,
+        ptr as *mut ::core::ffi::c_void,
+        -1 as ::core::ffi::c_int,
+    );
+    crate::src::lib::xmlparse::XML_ParserFree(parser);
+}
+
+unsafe extern "C" fn test_alloc_tracker_maximum_amplification() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_tracker_maximum_amplification\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2151 as ::core::ffi::c_int,
+    );
+    if crate::src::lib::xmlparse::g_reparseDeferralEnabledDefault as ::core::ffi::c_int
+        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+    {
+        return;
+    }
+    let mut parser: crate::expat_h::XML_Parser =
+        crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
+            crate::expat_external_h::XML_Char,
+        >());
+    let chunk: *const ::core::ffi::c_char = b"<e>\0".as_ptr() as *const ::core::ffi::c_char;
+    if !(crate::src::tests::common::_XML_Parse_SINGLE_BYTES(
+        parser,
+        chunk,
+        crate::stdlib::strlen(chunk) as ::core::ffi::c_int,
+        0 as ::core::ffi::c_int as crate::expat_h::XML_Bool as ::core::ffi::c_int,
+    ) as ::core::ffi::c_uint
+        == crate::expat_h::XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint)
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
+                .as_ptr() as *const ::core::ffi::c_char,
+            2162 as ::core::ffi::c_int,
+            b"check failed: _XML_Parse_SINGLE_BYTES(parser, chunk, (int)strlen(chunk), XML_FALSE) == XML_STATUS_OK\0"
+                .as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if !(crate::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold(
+        parser,
+        0 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == 1 as ::core::ffi::c_int as crate::expat_h::XML_Bool as ::core::ffi::c_int)
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2166 as ::core::ffi::c_int,
+            b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"
+                .as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if !crate::src::lib::xmlparse::expat_malloc(
+        parser,
+        1000 as crate::__stddef_size_t_h::size_t,
+        -1 as ::core::ffi::c_int,
+    )
+    .is_null()
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2169 as ::core::ffi::c_int,
+            b"check failed: expat_malloc(parser, 1000, -1) == NULL\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if !(crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(parser, 3000.0f32)
+        as ::core::ffi::c_int
+        == 1 as ::core::ffi::c_int as crate::expat_h::XML_Bool as ::core::ffi::c_int)
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2174 as ::core::ffi::c_int,
+            b"check failed: XML_SetAllocTrackerMaximumAmplification(parser, 3000.0f) == XML_TRUE\0"
+                .as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    let ptr: *mut ::core::ffi::c_void = crate::src::lib::xmlparse::expat_malloc(
+        parser,
+        1000 as crate::__stddef_size_t_h::size_t,
+        -1 as ::core::ffi::c_int,
+    ) as *mut ::core::ffi::c_void;
+    if ptr.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2177 as ::core::ffi::c_int,
+            b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::lib::xmlparse::expat_free(parser, ptr, -1 as ::core::ffi::c_int);
+    crate::src::lib::xmlparse::XML_ParserFree(parser);
+}
+
+unsafe extern "C" fn test_alloc_tracker_threshold() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_tracker_threshold\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2185 as ::core::ffi::c_int,
+    );
+    let mut parser: crate::expat_h::XML_Parser =
+        crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
+            crate::expat_external_h::XML_Char,
+        >());
+    let ptr: *mut ::core::ffi::c_void = crate::src::lib::xmlparse::expat_malloc(
+        parser,
+        1000 as crate::__stddef_size_t_h::size_t,
+        -1 as ::core::ffi::c_int,
+    ) as *mut ::core::ffi::c_void;
+    if ptr.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2191 as ::core::ffi::c_int,
+            b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::lib::xmlparse::expat_free(parser, ptr, -1 as ::core::ffi::c_int);
+    if !(crate::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold(
+        parser,
+        999 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == 1 as ::core::ffi::c_int as crate::expat_h::XML_Bool as ::core::ffi::c_int)
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2195 as ::core::ffi::c_int,
+            b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 999) == XML_TRUE\0"
+                .as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if !crate::src::lib::xmlparse::expat_malloc(
+        parser,
+        1000 as crate::__stddef_size_t_h::size_t,
+        -1 as ::core::ffi::c_int,
+    )
+    .is_null()
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2196 as ::core::ffi::c_int,
+            b"check failed: expat_malloc(parser, 1000, -1) == NULL\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::lib::xmlparse::XML_ParserFree(parser);
+}
+
+unsafe extern "C" fn test_alloc_tracker_getbuffer_unlimited() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_tracker_getbuffer_unlimited\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2203 as ::core::ffi::c_int,
+    );
+    let mut parser: crate::expat_h::XML_Parser =
+        crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
+            crate::expat_external_h::XML_Char,
+        >());
+    if !(crate::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold(
+        parser,
+        0 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == 1 as ::core::ffi::c_int as crate::expat_h::XML_Bool as ::core::ffi::c_int)
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2208 as ::core::ffi::c_int,
+            b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"
+                .as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if !crate::src::lib::xmlparse::expat_malloc(
+        parser,
+        1000 as crate::__stddef_size_t_h::size_t,
+        -1 as ::core::ffi::c_int,
+    )
+    .is_null()
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2211 as ::core::ffi::c_int,
+            b"check failed: expat_malloc(parser, 1000, -1) == NULL\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_GetBuffer(parser, 1000 as ::core::ffi::c_int).is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2214 as ::core::ffi::c_int,
+            b"check failed: XML_GetBuffer(parser, 1000) != NULL\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::lib::xmlparse::XML_ParserFree(parser);
+}
+
+unsafe extern "C" fn test_alloc_tracker_api() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_alloc_tracker_api\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2220 as ::core::ffi::c_int,
+    );
+    let mut parserWithoutParent: crate::expat_h::XML_Parser =
+        crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
+            crate::expat_external_h::XML_Char,
+        >());
+    let mut parserWithParent: crate::expat_h::XML_Parser =
+        crate::src::lib::xmlparse::XML_ExternalEntityParserCreate(
+            parserWithoutParent,
+            b"entity123\0".as_ptr() as *const crate::expat_external_h::XML_Char,
+            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        );
+    if parserWithoutParent.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2225 as ::core::ffi::c_int,
+            b"parserWithoutParent is NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if parserWithParent.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2227 as ::core::ffi::c_int,
+            b"parserWithParent is NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(
+        ::core::ptr::null_mut::<crate::expat_h::XML_ParserStruct>(),
+        123.0f32,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2232 as ::core::ffi::c_int,
+            b"Call with NULL parser is NOT supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(
+        parserWithParent,
+        123.0f32,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2235 as ::core::ffi::c_int,
+            b"Call with non-root parser is NOT supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(
+        parserWithoutParent,
+        ::core::f32::NAN,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2238 as ::core::ffi::c_int,
+            b"Call with NaN limit is NOT supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(
+        parserWithoutParent,
+        -1.0f32,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2241 as ::core::ffi::c_int,
+            b"Call with negative limit is NOT supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(
+        parserWithoutParent,
+        0.9f32,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2244 as ::core::ffi::c_int,
+            b"Call with positive limit <1.0 is NOT supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(
+        parserWithoutParent,
+        1.0f32,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2249 as ::core::ffi::c_int,
+            b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(
+        parserWithoutParent,
+        123456.789f32,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2252 as ::core::ffi::c_int,
+            b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerMaximumAmplification(
+        parserWithoutParent,
+        ::core::f32::INFINITY,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2255 as ::core::ffi::c_int,
+            b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold(
+        ::core::ptr::null_mut::<crate::expat_h::XML_ParserStruct>(),
+        123 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2259 as ::core::ffi::c_int,
+            b"Call with NULL parser is NOT supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold(
+        parserWithParent,
+        123 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2261 as ::core::ffi::c_int,
+            b"Call with non-root parser is NOT supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if crate::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold(
+        parserWithoutParent,
+        123 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2266 as ::core::ffi::c_int,
+            b"Call with non-NULL parentless parser is supposed to succeed\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::lib::xmlparse::XML_ParserFree(parserWithParent);
+    crate::src::lib::xmlparse::XML_ParserFree(parserWithoutParent);
+}
+
+unsafe extern "C" fn test_mem_api_cycle() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_mem_api_cycle\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2274 as ::core::ffi::c_int,
+    );
+    let mut parser: crate::expat_h::XML_Parser =
+        crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
+            crate::expat_external_h::XML_Char,
+        >());
+    let mut ptr: *mut ::core::ffi::c_void =
+        crate::src::lib::xmlparse::XML_MemMalloc(parser, 10 as crate::__stddef_size_t_h::size_t);
+    if ptr.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2279 as ::core::ffi::c_int,
+            b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    crate::stdlib::memset(ptr, 'x' as i32, 10 as crate::__stddef_size_t_h::size_t);
+    ptr = crate::src::lib::xmlparse::XML_MemRealloc(
+        parser,
+        ptr,
+        20 as crate::__stddef_size_t_h::size_t,
+    );
+    if ptr.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2284 as ::core::ffi::c_int,
+            b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    crate::stdlib::memset(ptr, 'y' as i32, 20 as crate::__stddef_size_t_h::size_t);
+    crate::src::lib::xmlparse::XML_MemFree(parser, ptr);
+    crate::src::lib::xmlparse::XML_ParserFree(parser);
+}
+
+unsafe extern "C" fn test_mem_api_unlimited() {
+    crate::src::tests::minicheck::_check_set_test_info(
+        b"test_mem_api_unlimited\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+            as *const ::core::ffi::c_char,
+        2293 as ::core::ffi::c_int,
+    );
+    let mut parser: crate::expat_h::XML_Parser =
+        crate::src::lib::xmlparse::XML_ParserCreate(::core::ptr::null::<
+            crate::expat_external_h::XML_Char,
+        >());
+    if !(crate::src::lib::xmlparse::XML_SetAllocTrackerActivationThreshold(
+        parser,
+        0 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == 1 as ::core::ffi::c_int as crate::expat_h::XML_Bool as ::core::ffi::c_int)
+    {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2297 as ::core::ffi::c_int,
+            b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"
+                .as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    let mut ptr: *mut ::core::ffi::c_void =
+        crate::src::lib::xmlparse::XML_MemMalloc(parser, 1000 as crate::__stddef_size_t_h::size_t);
+    if ptr.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2302 as ::core::ffi::c_int,
+            b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    ptr = crate::src::lib::xmlparse::XML_MemRealloc(
+        parser,
+        ptr,
+        2000 as crate::__stddef_size_t_h::size_t,
+    );
+    if ptr.is_null() {
+        crate::src::tests::minicheck::_fail(
+            b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            2306 as ::core::ffi::c_int,
+            b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        );
+    }
+    crate::src::lib::xmlparse::XML_MemFree(parser, ptr);
+    crate::src::lib::xmlparse::XML_ParserFree(parser);
+}
+#[no_mangle]
+
+pub unsafe extern "C" fn make_alloc_test_case(mut s: *mut crate::src::tests::minicheck::Suite) {
+    let mut tc_alloc: *mut crate::src::tests::minicheck::TCase =
+        crate::src::tests::minicheck::tcase_create(
+            b"allocation tests\0".as_ptr() as *const ::core::ffi::c_char
+        ) as *mut crate::src::tests::minicheck::TCase;
+    crate::src::tests::minicheck::suite_add_tcase(
+        s as *mut crate::src::tests::minicheck::Suite,
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+    );
+    crate::src::tests::minicheck::tcase_add_checked_fixture(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(alloc_setup as unsafe extern "C" fn() -> ()),
+        Some(alloc_teardown as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_xdecl as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_xdecl_2 as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_pi as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_pi_2 as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_pi_3 as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_comment as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_comment_2 as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_create_external_parser as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_run_external_parser as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_dtd_copy_default_atts as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_external_entity as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_ext_entity_set_encoding as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_internal_entity as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parameter_entity as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_dtd_default_handling as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_explicit_encoding as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_set_base as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_buffer as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_ext_entity_realloc_buffer as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_many_attributes as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_public_entity_value as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_subst_public_entity_value as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_public_doctype as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_parse_public_doctype_long_name as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_set_foreign_dtd as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_attribute_enum_value as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_attribute_enum_value as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_implied_attribute as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_default_attribute as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_notation as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_public_notation as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_system_notation as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_nested_groups as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_nested_groups as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_large_group as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_group_choice as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_pi_in_epilog as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_comment_in_epilog as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_long_attribute_value as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_attribute_whitespace as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_attribute_predefined_entity as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_long_attr_default_with_char_ref as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_long_attr_value as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_nested_entities as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_param_entity_newline as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_ce_extends_pe as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_realloc_attributes as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_long_doc_name as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_long_base as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_long_public_id as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_long_entity_value as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_long_notation as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__ifdef_xml_dtd(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(
+            test_alloc_reset_after_external_entity_parser_create_fail
+                as unsafe extern "C" fn() -> (),
+        ),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_tracker_size_recorded as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_tracker_pointer_alignment as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_tracker_maximum_amplification as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_tracker_threshold as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_tracker_getbuffer_unlimited as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_alloc_tracker_api as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::minicheck::tcase_add_test(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_mem_api_cycle as unsafe extern "C" fn() -> ()),
+    );
+    crate::src::tests::common::tcase_add_test__if_xml_ge(
+        tc_alloc as *mut crate::src::tests::minicheck::TCase,
+        Some(test_mem_api_unlimited as unsafe extern "C" fn() -> ()),
+    );
+}

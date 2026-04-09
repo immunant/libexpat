@@ -1,0 +1,24 @@
+[workspace]
+members = [
+]
+[package]
+name = "rexpat"
+authors = ["C2Rust"]
+version = "0.0.0"
+publish = false
+edition = "2021"
+autobins = false
+
+[lib]
+name = "rexpat"
+path = "lib.rs"
+crate-type = ["staticlib", "rlib"]
+[[bin]]
+path = "src/tests/runtests.rs"
+name = "runtests"
+[dependencies]
+c2rust-bitfields = "0.22.1"
+
+
+[profile.release]
+strip = "debuginfo"
