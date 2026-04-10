@@ -165,5 +165,5 @@ pub unsafe extern "C" fn tracking_report() -> ::core::ffi::c_int {
         );
         entry =  (*entry).next;
     }
-    return 0i32;
+    return 0;
 }

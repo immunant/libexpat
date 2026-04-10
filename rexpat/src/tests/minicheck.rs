@@ -1,7 +1,7 @@
 // =============== BEGIN minicheck_h ================
-pub const CK_SILENT: ::core::ffi::c_int = 0i32;
+pub const CK_SILENT: ::core::ffi::c_int = 0;
 
-pub const CK_VERBOSE: ::core::ffi::c_int = 2i32;
+pub const CK_VERBOSE: ::core::ffi::c_int = 2;
 
 pub type tcase_setup_function = Option<unsafe extern "C" fn() -> ()>;
 
@@ -74,7 +74,7 @@ pub unsafe extern "C" fn suite_create(
     mut name: *const ::core::ffi::c_char,
 ) -> *mut crate::src::tests::minicheck::Suite {
     let mut suite: *mut crate::src::tests::minicheck::Suite = calloc(
-        1usize,
+        1,
         
         ::core::mem::size_of::<crate::src::tests::minicheck::Suite>(),
     )
@@ -90,7 +90,7 @@ pub unsafe extern "C" fn tcase_create(
     mut name: *const ::core::ffi::c_char,
 ) -> *mut crate::src::tests::minicheck::TCase {
     let mut tc: *mut crate::src::tests::minicheck::TCase = calloc(
-        1usize,
+        1,
         
         ::core::mem::size_of::<crate::src::tests::minicheck::TCase>(),
     )
@@ -178,7 +178,7 @@ pub unsafe extern "C" fn tcase_add_test(
         );
     };
     if (*tc).allocated == (*tc).ntests {
-        let mut nalloc: ::core::ffi::c_int = (*tc).allocated + 100i32;
+        let mut nalloc: ::core::ffi::c_int = (*tc).allocated + 100;
         let mut new_size: size_t =
             (::core::mem::size_of::<crate::src::tests::minicheck::tcase_test_function>())
                 .wrapping_mul(nalloc as size_t);
@@ -229,7 +229,7 @@ pub unsafe extern "C" fn srunner_create(
     mut suite: *mut crate::src::tests::minicheck::Suite,
 ) -> *mut crate::src::tests::minicheck::SRunner {
     let runner: *mut crate::src::tests::minicheck::SRunner = calloc(
-        1usize,
+        1,
         
         ::core::mem::size_of::<crate::src::tests::minicheck::SRunner>(),
     )
@@ -246,14 +246,14 @@ static mut env: jmp_buf = [__jmp_buf_tag {
     __saved_mask:  __sigset_t { __val:  [0; 16] },
 }; 1];
 
-pub const SUBTEST_LEN: ::core::ffi::c_int = 50i32;
+pub const SUBTEST_LEN: ::core::ffi::c_int = 50;
 
 static mut _check_current_function: *const ::core::ffi::c_char =
     ::core::ptr::null::<::core::ffi::c_char>();
 
 static mut _check_current_subtest: [::core::ffi::c_char; 50] = [0; 50];
 
-static mut _check_current_lineno: ::core::ffi::c_int = -1i32;
+static mut _check_current_lineno: ::core::ffi::c_int = -1;
 
 static mut _check_current_filename: *const ::core::ffi::c_char =
     ::core::ptr::null::<::core::ffi::c_char>();
@@ -283,14 +283,14 @@ pub unsafe extern "C" fn set_subtest(mut fmt: *const ::core::ffi::c_char, mut c2
         fmt,
         ap.as_va_list(),
     );
-    let mut i: size_t = 0usize;
+    let mut i: size_t = 0;
     while i < SUBTEST_LEN as size_t {
         if _check_current_subtest[i] as ::core::ffi::c_int == '\n' as i32 {
             _check_current_subtest[i] =  ' ' as ::core::ffi::c_char;
         }
         i = i.wrapping_add(1);
     }
-    _check_current_subtest[(SUBTEST_LEN - 1i32) as usize] =
+    _check_current_subtest[(SUBTEST_LEN - 1) as usize] =
         
         '\0' as ::core::ffi::c_char;
 }
@@ -313,7 +313,7 @@ unsafe extern "C" fn handle_failure(
     (*runner).nfailures += 1;
     if verbosity != crate::src::tests::minicheck::CK_SILENT {
         if strlen(&raw mut _check_current_subtest as *mut ::core::ffi::c_char)
-            != 0usize
+            != 0
         {
             phase_info = &raw mut _check_current_subtest as *mut ::core::ffi::c_char;
         }
@@ -356,7 +356,7 @@ pub unsafe extern "C" fn srunner_run_all(
     {
         let mut i: ::core::ffi::c_int = 0;
         let mut c2rust_current_block_13: u64;
-        ::core::ptr::write_volatile(&raw mut i, 0i32);
+        ::core::ptr::write_volatile(&raw mut i, 0);
         while ::core::ptr::read_volatile::<::core::ffi::c_int>(&raw const i)
             < (*::core::ptr::read_volatile::<*mut crate::src::tests::minicheck::TCase>(
                 &raw const tc,
@@ -516,7 +516,7 @@ pub unsafe extern "C" fn _fail(
     }
     longjmp(
         &raw mut env as *mut __jmp_buf_tag,
-        1i32,
+        1,
     );
 }
 #[no_mangle]

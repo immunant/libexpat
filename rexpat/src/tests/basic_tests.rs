@@ -6,71 +6,71 @@ pub mod siphash_h {
         mut key: *mut crate::siphash_h::sipkey,
         mut src: *const ::core::ffi::c_void,
     ) -> *mut crate::siphash_h::sipkey {
-        (*key).k[0usize] = (*(src as *const ::core::ffi::c_uchar)
-            .offset(0isize)
+        (*key).k[0] = (*(src as *const ::core::ffi::c_uchar)
+            .offset(0)
             as uint64_t)
-            << 0i32
-            | (*(src as *const ::core::ffi::c_uchar).offset(1isize)
+            << 0
+            | (*(src as *const ::core::ffi::c_uchar).offset(1)
                 as uint64_t)
-                << 8i32
-            | (*(src as *const ::core::ffi::c_uchar).offset(2isize)
+                << 8
+            | (*(src as *const ::core::ffi::c_uchar).offset(2)
                 as uint64_t)
-                << 16i32
-            | (*(src as *const ::core::ffi::c_uchar).offset(3isize)
+                << 16
+            | (*(src as *const ::core::ffi::c_uchar).offset(3)
                 as uint64_t)
-                << 24i32
-            | (*(src as *const ::core::ffi::c_uchar).offset(4isize)
+                << 24
+            | (*(src as *const ::core::ffi::c_uchar).offset(4)
                 as uint64_t)
-                << 32i32
-            | (*(src as *const ::core::ffi::c_uchar).offset(5isize)
+                << 32
+            | (*(src as *const ::core::ffi::c_uchar).offset(5)
                 as uint64_t)
-                << 40i32
-            | (*(src as *const ::core::ffi::c_uchar).offset(6isize)
+                << 40
+            | (*(src as *const ::core::ffi::c_uchar).offset(6)
                 as uint64_t)
-                << 48i32
-            | (*(src as *const ::core::ffi::c_uchar).offset(7isize)
+                << 48
+            | (*(src as *const ::core::ffi::c_uchar).offset(7)
                 as uint64_t)
-                << 56i32;
-        (*key).k[1usize] = (*(src as *const ::core::ffi::c_uchar)
-            .offset(8isize)
-            .offset(0isize)
+                << 56;
+        (*key).k[1] = (*(src as *const ::core::ffi::c_uchar)
+            .offset(8)
+            .offset(0)
             as uint64_t)
-            << 0i32
+            << 0
             | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8isize)
-                .offset(1isize)
+                .offset(8)
+                .offset(1)
                 as uint64_t)
-                << 8i32
+                << 8
             | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8isize)
-                .offset(2isize)
+                .offset(8)
+                .offset(2)
                 as uint64_t)
-                << 16i32
+                << 16
             | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8isize)
-                .offset(3isize)
+                .offset(8)
+                .offset(3)
                 as uint64_t)
-                << 24i32
+                << 24
             | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8isize)
-                .offset(4isize)
+                .offset(8)
+                .offset(4)
                 as uint64_t)
-                << 32i32
+                << 32
             | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8isize)
-                .offset(5isize)
+                .offset(8)
+                .offset(5)
                 as uint64_t)
-                << 40i32
+                << 40
             | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8isize)
-                .offset(6isize)
+                .offset(8)
+                .offset(6)
                 as uint64_t)
-                << 48i32
+                << 48
             | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8isize)
-                .offset(7isize)
+                .offset(8)
+                .offset(7)
                 as uint64_t)
-                << 56i32;
+                << 56;
         return key;
     }
 
@@ -79,28 +79,28 @@ pub mod siphash_h {
         rounds: ::core::ffi::c_int,
     ) {
         let mut i: ::core::ffi::c_int = 0;
-        i = 0i32;
+        i = 0;
         while i < rounds {
             (*H).v0 = (*H).v0.wrapping_add((*H).v1);
-            (*H).v1 = (*H).v1 << 13i32
-                | (*H).v1 >> 64i32 - 13i32;
+            (*H).v1 = (*H).v1 << 13
+                | (*H).v1 >> 64 - 13;
             (*H).v1 ^= (*H).v0;
-            (*H).v0 = (*H).v0 << 32i32
-                | (*H).v0 >> 64i32 - 32i32;
+            (*H).v0 = (*H).v0 << 32
+                | (*H).v0 >> 64 - 32;
             (*H).v2 = (*H).v2.wrapping_add((*H).v3);
-            (*H).v3 = (*H).v3 << 16i32
-                | (*H).v3 >> 64i32 - 16i32;
+            (*H).v3 = (*H).v3 << 16
+                | (*H).v3 >> 64 - 16;
             (*H).v3 ^= (*H).v2;
             (*H).v0 = (*H).v0.wrapping_add((*H).v3);
-            (*H).v3 = (*H).v3 << 21i32
-                | (*H).v3 >> 64i32 - 21i32;
+            (*H).v3 = (*H).v3 << 21
+                | (*H).v3 >> 64 - 21;
             (*H).v3 ^= (*H).v0;
             (*H).v2 = (*H).v2.wrapping_add((*H).v1);
-            (*H).v1 = (*H).v1 << 17i32
-                | (*H).v1 >> 64i32 - 17i32;
+            (*H).v1 = (*H).v1 << 17
+                | (*H).v1 >> 64 - 17;
             (*H).v1 ^= (*H).v2;
-            (*H).v2 = (*H).v2 << 32i32
-                | (*H).v2 >> 64i32 - 32i32;
+            (*H).v2 = (*H).v2 << 32
+                | (*H).v2 >> 64 - 32;
             i += 1;
         }
     }
@@ -110,21 +110,21 @@ pub mod siphash_h {
         mut key: *const crate::siphash_h::sipkey,
     ) -> *mut crate::siphash_h::siphash {
         (*H).v0 = ((0x736f6d65u64)
-            << 32i32
-            | 0x70736575u64)
-            ^ (*key).k[0usize];
+            << 32
+            | 0x70736575)
+            ^ (*key).k[0];
         (*H).v1 = ((0x646f7261u64)
-            << 32i32
-            | 0x6e646f6du64)
-            ^ (*key).k[1usize];
+            << 32
+            | 0x6e646f6d)
+            ^ (*key).k[1];
         (*H).v2 = ((0x6c796765u64)
-            << 32i32
-            | 0x6e657261u64)
-            ^ (*key).k[0usize];
+            << 32
+            | 0x6e657261)
+            ^ (*key).k[0];
         (*H).v3 = ((0x74656462u64)
-            << 32i32
-            | 0x79746573u64)
-            ^ (*key).k[1usize];
+            << 32
+            | 0x79746573)
+            ^ (*key).k[1];
         (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
         (*H).c = 0u64;
         return H;
@@ -162,24 +162,24 @@ pub mod siphash_h {
             {
                 break;
             }
-            m = ((*H).buf[0usize] as uint64_t)
-                << 0i32
-                | ((*H).buf[1usize] as uint64_t)
-                    << 8i32
-                | ((*H).buf[2usize] as uint64_t)
-                    << 16i32
-                | ((*H).buf[3usize] as uint64_t)
-                    << 24i32
-                | ((*H).buf[4usize] as uint64_t)
-                    << 32i32
-                | ((*H).buf[5usize] as uint64_t)
-                    << 40i32
-                | ((*H).buf[6usize] as uint64_t)
-                    << 48i32
-                | ((*H).buf[7usize] as uint64_t)
-                    << 56i32;
+            m = ((*H).buf[0] as uint64_t)
+                << 0
+                | ((*H).buf[1] as uint64_t)
+                    << 8
+                | ((*H).buf[2] as uint64_t)
+                    << 16
+                | ((*H).buf[3] as uint64_t)
+                    << 24
+                | ((*H).buf[4] as uint64_t)
+                    << 32
+                | ((*H).buf[5] as uint64_t)
+                    << 40
+                | ((*H).buf[6] as uint64_t)
+                    << 48
+                | ((*H).buf[7] as uint64_t)
+                    << 56;
             (*H).v3 ^= m;
-            sip_round(H, 2i32);
+            sip_round(H, 2);
             (*H).v0 ^= m;
             (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
             (*H).c = (*H).c.wrapping_add(8u64);
@@ -197,12 +197,12 @@ pub mod siphash_h {
             .p
             .offset_from(&raw mut (*H).buf as *mut ::core::ffi::c_uchar) as ::core::ffi::c_char;
         let mut b: uint64_t =
-            (*H).c.wrapping_add(left as uint64_t) << 56i32;
+            (*H).c.wrapping_add(left as uint64_t) << 56;
         let mut c2rust_current_block_6: u64;
         match left as ::core::ffi::c_int {
             7 => {
-                b |= ((*H).buf[6usize] as uint64_t)
-                    << 48i32;
+                b |= ((*H).buf[6] as uint64_t)
+                    << 48;
                 c2rust_current_block_6 = 15934335782010006484;
             }
             6 => {
@@ -229,40 +229,40 @@ pub mod siphash_h {
         }
         match c2rust_current_block_6 {
             15934335782010006484 => {
-                b |= ((*H).buf[5usize] as uint64_t)
-                    << 40i32;
+                b |= ((*H).buf[5] as uint64_t)
+                    << 40;
                 c2rust_current_block_6 = 927806753801690604;
             }
             _ => {}
         }
         match c2rust_current_block_6 {
             927806753801690604 => {
-                b |= ((*H).buf[4usize] as uint64_t)
-                    << 32i32;
+                b |= ((*H).buf[4] as uint64_t)
+                    << 32;
                 c2rust_current_block_6 = 5149041459065675557;
             }
             _ => {}
         }
         match c2rust_current_block_6 {
             5149041459065675557 => {
-                b |= ((*H).buf[3usize] as uint64_t)
-                    << 24i32;
+                b |= ((*H).buf[3] as uint64_t)
+                    << 24;
                 c2rust_current_block_6 = 17473121293339793080;
             }
             _ => {}
         }
         match c2rust_current_block_6 {
             17473121293339793080 => {
-                b |= ((*H).buf[2usize] as uint64_t)
-                    << 16i32;
+                b |= ((*H).buf[2] as uint64_t)
+                    << 16;
                 c2rust_current_block_6 = 8772994252565639119;
             }
             _ => {}
         }
         match c2rust_current_block_6 {
             8772994252565639119 => {
-                b |= ((*H).buf[1usize] as uint64_t)
-                    << 8i32;
+                b |= ((*H).buf[1] as uint64_t)
+                    << 8;
                 c2rust_current_block_6 = 9642291731049860871;
             }
             _ => {}
@@ -275,10 +275,10 @@ pub mod siphash_h {
             _ => {}
         }
         (*H).v3 ^= b;
-        sip_round(H, 2i32);
+        sip_round(H, 2);
         (*H).v0 ^= b;
         (*H).v2 ^= 0xffu64;
-        sip_round(H, 4i32);
+        sip_round(H, 4);
         return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
     }
 
@@ -311,644 +311,644 @@ pub mod siphash_h {
     pub unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
         pub static mut vectors: [[::core::ffi::c_uchar; 8]; 64] = [
             [
-                0x31u8,
-                0xeu8,
-                0xeu8,
-                0xddu8,
-                0x47u8,
-                0xdbu8,
-                0x6fu8,
-                0x72u8,
+                0x31,
+                0xe,
+                0xe,
+                0xdd,
+                0x47,
+                0xdb,
+                0x6f,
+                0x72,
             ],
             [
-                0xfdu8,
-                0x67u8,
-                0xdcu8,
-                0x93u8,
-                0xc5u8,
-                0x39u8,
-                0xf8u8,
-                0x74u8,
+                0xfd,
+                0x67,
+                0xdc,
+                0x93,
+                0xc5,
+                0x39,
+                0xf8,
+                0x74,
             ],
             [
-                0x5au8,
-                0x4fu8,
-                0xa9u8,
-                0xd9u8,
-                0x9u8,
-                0x80u8,
-                0x6cu8,
-                0xdu8,
+                0x5a,
+                0x4f,
+                0xa9,
+                0xd9,
+                0x9,
+                0x80,
+                0x6c,
+                0xd,
             ],
             [
-                0x2du8,
-                0x7eu8,
-                0xfbu8,
-                0xd7u8,
-                0x96u8,
-                0x66u8,
-                0x67u8,
-                0x85u8,
+                0x2d,
+                0x7e,
+                0xfb,
+                0xd7,
+                0x96,
+                0x66,
+                0x67,
+                0x85,
             ],
             [
-                0xb7u8,
-                0x87u8,
-                0x71u8,
-                0x27u8,
-                0xe0u8,
-                0x94u8,
-                0x27u8,
-                0xcfu8,
+                0xb7,
+                0x87,
+                0x71,
+                0x27,
+                0xe0,
+                0x94,
+                0x27,
+                0xcf,
             ],
             [
-                0x8du8,
-                0xa6u8,
-                0x99u8,
-                0xcdu8,
-                0x64u8,
-                0x55u8,
-                0x76u8,
-                0x18u8,
+                0x8d,
+                0xa6,
+                0x99,
+                0xcd,
+                0x64,
+                0x55,
+                0x76,
+                0x18,
             ],
             [
-                0xceu8,
-                0xe3u8,
-                0xfeu8,
-                0x58u8,
-                0x6eu8,
-                0x46u8,
-                0xc9u8,
-                0xcbu8,
+                0xce,
+                0xe3,
+                0xfe,
+                0x58,
+                0x6e,
+                0x46,
+                0xc9,
+                0xcb,
             ],
             [
-                0x37u8,
-                0xd1u8,
-                0x1u8,
-                0x8bu8,
-                0xf5u8,
-                0u8,
-                0x2u8,
-                0xabu8,
+                0x37,
+                0xd1,
+                0x1,
+                0x8b,
+                0xf5,
+                0,
+                0x2,
+                0xab,
             ],
             [
-                0x62u8,
-                0x24u8,
-                0x93u8,
-                0x9au8,
-                0x79u8,
-                0xf5u8,
-                0xf5u8,
-                0x93u8,
+                0x62,
+                0x24,
+                0x93,
+                0x9a,
+                0x79,
+                0xf5,
+                0xf5,
+                0x93,
             ],
             [
-                0xb0u8,
-                0xe4u8,
-                0xa9u8,
-                0xbu8,
-                0xdfu8,
-                0x82u8,
-                0u8,
-                0x9eu8,
+                0xb0,
+                0xe4,
+                0xa9,
+                0xb,
+                0xdf,
+                0x82,
+                0,
+                0x9e,
             ],
             [
-                0xf3u8,
-                0xb9u8,
-                0xddu8,
-                0x94u8,
-                0xc5u8,
-                0xbbu8,
-                0x5du8,
-                0x7au8,
+                0xf3,
+                0xb9,
+                0xdd,
+                0x94,
+                0xc5,
+                0xbb,
+                0x5d,
+                0x7a,
             ],
             [
-                0xa7u8,
-                0xadu8,
-                0x6bu8,
-                0x22u8,
-                0x46u8,
-                0x2fu8,
-                0xb3u8,
-                0xf4u8,
+                0xa7,
+                0xad,
+                0x6b,
+                0x22,
+                0x46,
+                0x2f,
+                0xb3,
+                0xf4,
             ],
             [
-                0xfbu8,
-                0xe5u8,
-                0xeu8,
-                0x86u8,
-                0xbcu8,
-                0x8fu8,
-                0x1eu8,
-                0x75u8,
+                0xfb,
+                0xe5,
+                0xe,
+                0x86,
+                0xbc,
+                0x8f,
+                0x1e,
+                0x75,
             ],
             [
-                0x90u8,
-                0x3du8,
-                0x84u8,
-                0xc0u8,
-                0x27u8,
-                0x56u8,
-                0xeau8,
-                0x14u8,
+                0x90,
+                0x3d,
+                0x84,
+                0xc0,
+                0x27,
+                0x56,
+                0xea,
+                0x14,
             ],
             [
-                0xeeu8,
-                0xf2u8,
-                0x7au8,
-                0x8eu8,
-                0x90u8,
-                0xcau8,
-                0x23u8,
-                0xf7u8,
+                0xee,
+                0xf2,
+                0x7a,
+                0x8e,
+                0x90,
+                0xca,
+                0x23,
+                0xf7,
             ],
             [
-                0xe5u8,
-                0x45u8,
-                0xbeu8,
-                0x49u8,
-                0x61u8,
-                0xcau8,
-                0x29u8,
-                0xa1u8,
+                0xe5,
+                0x45,
+                0xbe,
+                0x49,
+                0x61,
+                0xca,
+                0x29,
+                0xa1,
             ],
             [
-                0xdbu8,
-                0x9bu8,
-                0xc2u8,
-                0x57u8,
-                0x7fu8,
-                0xccu8,
-                0x2au8,
-                0x3fu8,
+                0xdb,
+                0x9b,
+                0xc2,
+                0x57,
+                0x7f,
+                0xcc,
+                0x2a,
+                0x3f,
             ],
             [
-                0x94u8,
-                0x47u8,
-                0xbeu8,
-                0x2cu8,
-                0xf5u8,
-                0xe9u8,
-                0x9au8,
-                0x69u8,
+                0x94,
+                0x47,
+                0xbe,
+                0x2c,
+                0xf5,
+                0xe9,
+                0x9a,
+                0x69,
             ],
             [
-                0x9cu8,
-                0xd3u8,
-                0x8du8,
-                0x96u8,
-                0xf0u8,
-                0xb3u8,
-                0xc1u8,
-                0x4bu8,
+                0x9c,
+                0xd3,
+                0x8d,
+                0x96,
+                0xf0,
+                0xb3,
+                0xc1,
+                0x4b,
             ],
             [
-                0xbdu8,
-                0x61u8,
-                0x79u8,
-                0xa7u8,
-                0x1du8,
-                0xc9u8,
-                0x6du8,
-                0xbbu8,
+                0xbd,
+                0x61,
+                0x79,
+                0xa7,
+                0x1d,
+                0xc9,
+                0x6d,
+                0xbb,
             ],
             [
-                0x98u8,
-                0xeeu8,
-                0xa2u8,
-                0x1au8,
-                0xf2u8,
-                0x5cu8,
-                0xd6u8,
-                0xbeu8,
+                0x98,
+                0xee,
+                0xa2,
+                0x1a,
+                0xf2,
+                0x5c,
+                0xd6,
+                0xbe,
             ],
             [
-                0xc7u8,
-                0x67u8,
-                0x3bu8,
-                0x2eu8,
-                0xb0u8,
-                0xcbu8,
-                0xf2u8,
-                0xd0u8,
+                0xc7,
+                0x67,
+                0x3b,
+                0x2e,
+                0xb0,
+                0xcb,
+                0xf2,
+                0xd0,
             ],
             [
-                0x88u8,
-                0x3eu8,
-                0xa3u8,
-                0xe3u8,
-                0x95u8,
-                0x67u8,
-                0x53u8,
-                0x93u8,
+                0x88,
+                0x3e,
+                0xa3,
+                0xe3,
+                0x95,
+                0x67,
+                0x53,
+                0x93,
             ],
             [
-                0xc8u8,
-                0xceu8,
-                0x5cu8,
-                0xcdu8,
-                0x8cu8,
-                0x3u8,
-                0xcu8,
-                0xa8u8,
+                0xc8,
+                0xce,
+                0x5c,
+                0xcd,
+                0x8c,
+                0x3,
+                0xc,
+                0xa8,
             ],
             [
-                0x94u8,
-                0xafu8,
-                0x49u8,
-                0xf6u8,
-                0xc6u8,
-                0x50u8,
-                0xadu8,
-                0xb8u8,
+                0x94,
+                0xaf,
+                0x49,
+                0xf6,
+                0xc6,
+                0x50,
+                0xad,
+                0xb8,
             ],
             [
-                0xeau8,
-                0xb8u8,
-                0x85u8,
-                0x8au8,
-                0xdeu8,
-                0x92u8,
-                0xe1u8,
-                0xbcu8,
+                0xea,
+                0xb8,
+                0x85,
+                0x8a,
+                0xde,
+                0x92,
+                0xe1,
+                0xbc,
             ],
             [
-                0xf3u8,
-                0x15u8,
-                0xbbu8,
-                0x5bu8,
-                0xb8u8,
-                0x35u8,
-                0xd8u8,
-                0x17u8,
+                0xf3,
+                0x15,
+                0xbb,
+                0x5b,
+                0xb8,
+                0x35,
+                0xd8,
+                0x17,
             ],
             [
-                0xadu8,
-                0xcfu8,
-                0x6bu8,
-                0x7u8,
-                0x63u8,
-                0x61u8,
-                0x2eu8,
-                0x2fu8,
+                0xad,
+                0xcf,
+                0x6b,
+                0x7,
+                0x63,
+                0x61,
+                0x2e,
+                0x2f,
             ],
             [
-                0xa5u8,
-                0xc9u8,
-                0x1du8,
-                0xa7u8,
-                0xacu8,
-                0xaau8,
-                0x4du8,
-                0xdeu8,
+                0xa5,
+                0xc9,
+                0x1d,
+                0xa7,
+                0xac,
+                0xaa,
+                0x4d,
+                0xde,
             ],
             [
-                0x71u8,
-                0x65u8,
-                0x95u8,
-                0x87u8,
-                0x66u8,
-                0x50u8,
-                0xa2u8,
-                0xa6u8,
+                0x71,
+                0x65,
+                0x95,
+                0x87,
+                0x66,
+                0x50,
+                0xa2,
+                0xa6,
             ],
             [
-                0x28u8,
-                0xefu8,
-                0x49u8,
-                0x5cu8,
-                0x53u8,
-                0xa3u8,
-                0x87u8,
-                0xadu8,
+                0x28,
+                0xef,
+                0x49,
+                0x5c,
+                0x53,
+                0xa3,
+                0x87,
+                0xad,
             ],
             [
-                0x42u8,
-                0xc3u8,
-                0x41u8,
-                0xd8u8,
-                0xfau8,
-                0x92u8,
-                0xd8u8,
-                0x32u8,
+                0x42,
+                0xc3,
+                0x41,
+                0xd8,
+                0xfa,
+                0x92,
+                0xd8,
+                0x32,
             ],
             [
-                0xceu8,
-                0x7cu8,
-                0xf2u8,
-                0x72u8,
-                0x2fu8,
-                0x51u8,
-                0x27u8,
-                0x71u8,
+                0xce,
+                0x7c,
+                0xf2,
+                0x72,
+                0x2f,
+                0x51,
+                0x27,
+                0x71,
             ],
             [
-                0xe3u8,
-                0x78u8,
-                0x59u8,
-                0xf9u8,
-                0x46u8,
-                0x23u8,
-                0xf3u8,
-                0xa7u8,
+                0xe3,
+                0x78,
+                0x59,
+                0xf9,
+                0x46,
+                0x23,
+                0xf3,
+                0xa7,
             ],
             [
-                0x38u8,
-                0x12u8,
-                0x5u8,
-                0xbbu8,
-                0x1au8,
-                0xb0u8,
-                0xe0u8,
-                0x12u8,
+                0x38,
+                0x12,
+                0x5,
+                0xbb,
+                0x1a,
+                0xb0,
+                0xe0,
+                0x12,
             ],
             [
-                0xaeu8,
-                0x97u8,
-                0xa1u8,
-                0xfu8,
-                0xd4u8,
-                0x34u8,
-                0xe0u8,
-                0x15u8,
+                0xae,
+                0x97,
+                0xa1,
+                0xf,
+                0xd4,
+                0x34,
+                0xe0,
+                0x15,
             ],
             [
-                0xb4u8,
-                0xa3u8,
-                0x15u8,
-                0x8u8,
-                0xbeu8,
-                0xffu8,
-                0x4du8,
-                0x31u8,
+                0xb4,
+                0xa3,
+                0x15,
+                0x8,
+                0xbe,
+                0xff,
+                0x4d,
+                0x31,
             ],
             [
-                0x81u8,
-                0x39u8,
-                0x62u8,
-                0x29u8,
-                0xf0u8,
-                0x90u8,
-                0x79u8,
-                0x2u8,
+                0x81,
+                0x39,
+                0x62,
+                0x29,
+                0xf0,
+                0x90,
+                0x79,
+                0x2,
             ],
             [
-                0x4du8,
-                0xcu8,
-                0xf4u8,
-                0x9eu8,
-                0xe5u8,
-                0xd4u8,
-                0xdcu8,
-                0xcau8,
+                0x4d,
+                0xc,
+                0xf4,
+                0x9e,
+                0xe5,
+                0xd4,
+                0xdc,
+                0xca,
             ],
             [
-                0x5cu8,
-                0x73u8,
-                0x33u8,
-                0x6au8,
-                0x76u8,
-                0xd8u8,
-                0xbfu8,
-                0x9au8,
+                0x5c,
+                0x73,
+                0x33,
+                0x6a,
+                0x76,
+                0xd8,
+                0xbf,
+                0x9a,
             ],
             [
-                0xd0u8,
-                0xa7u8,
-                0x4u8,
-                0x53u8,
-                0x6bu8,
-                0xa9u8,
-                0x3eu8,
-                0xeu8,
+                0xd0,
+                0xa7,
+                0x4,
+                0x53,
+                0x6b,
+                0xa9,
+                0x3e,
+                0xe,
             ],
             [
-                0x92u8,
-                0x59u8,
-                0x58u8,
-                0xfcu8,
-                0xd6u8,
-                0x42u8,
-                0xcu8,
-                0xadu8,
+                0x92,
+                0x59,
+                0x58,
+                0xfc,
+                0xd6,
+                0x42,
+                0xc,
+                0xad,
             ],
             [
-                0xa9u8,
-                0x15u8,
-                0xc2u8,
-                0x9bu8,
-                0xc8u8,
-                0x6u8,
-                0x73u8,
-                0x18u8,
+                0xa9,
+                0x15,
+                0xc2,
+                0x9b,
+                0xc8,
+                0x6,
+                0x73,
+                0x18,
             ],
             [
-                0x95u8,
-                0x2bu8,
-                0x79u8,
-                0xf3u8,
-                0xbcu8,
-                0xau8,
-                0xa6u8,
-                0xd4u8,
+                0x95,
+                0x2b,
+                0x79,
+                0xf3,
+                0xbc,
+                0xa,
+                0xa6,
+                0xd4,
             ],
             [
-                0xf2u8,
-                0x1du8,
-                0xf2u8,
-                0xe4u8,
-                0x1du8,
-                0x45u8,
-                0x35u8,
-                0xf9u8,
+                0xf2,
+                0x1d,
+                0xf2,
+                0xe4,
+                0x1d,
+                0x45,
+                0x35,
+                0xf9,
             ],
             [
-                0x87u8,
-                0x57u8,
-                0x75u8,
-                0x19u8,
-                0x4u8,
-                0x8fu8,
-                0x53u8,
-                0xa9u8,
+                0x87,
+                0x57,
+                0x75,
+                0x19,
+                0x4,
+                0x8f,
+                0x53,
+                0xa9,
             ],
             [
-                0x10u8,
-                0xa5u8,
-                0x6cu8,
-                0xf5u8,
-                0xdfu8,
-                0xcdu8,
-                0x9au8,
-                0xdbu8,
+                0x10,
+                0xa5,
+                0x6c,
+                0xf5,
+                0xdf,
+                0xcd,
+                0x9a,
+                0xdb,
             ],
             [
-                0xebu8,
-                0x75u8,
-                0x9u8,
-                0x5cu8,
-                0xcdu8,
-                0x98u8,
-                0x6cu8,
-                0xd0u8,
+                0xeb,
+                0x75,
+                0x9,
+                0x5c,
+                0xcd,
+                0x98,
+                0x6c,
+                0xd0,
             ],
             [
-                0x51u8,
-                0xa9u8,
-                0xcbu8,
-                0x9eu8,
-                0xcbu8,
-                0xa3u8,
-                0x12u8,
-                0xe6u8,
+                0x51,
+                0xa9,
+                0xcb,
+                0x9e,
+                0xcb,
+                0xa3,
+                0x12,
+                0xe6,
             ],
             [
-                0x96u8,
-                0xafu8,
-                0xadu8,
-                0xfcu8,
-                0x2cu8,
-                0xe6u8,
-                0x66u8,
-                0xc7u8,
+                0x96,
+                0xaf,
+                0xad,
+                0xfc,
+                0x2c,
+                0xe6,
+                0x66,
+                0xc7,
             ],
             [
-                0x72u8,
-                0xfeu8,
-                0x52u8,
-                0x97u8,
-                0x5au8,
-                0x43u8,
-                0x64u8,
-                0xeeu8,
+                0x72,
+                0xfe,
+                0x52,
+                0x97,
+                0x5a,
+                0x43,
+                0x64,
+                0xee,
             ],
             [
-                0x5au8,
-                0x16u8,
-                0x45u8,
-                0xb2u8,
-                0x76u8,
-                0xd5u8,
-                0x92u8,
-                0xa1u8,
+                0x5a,
+                0x16,
+                0x45,
+                0xb2,
+                0x76,
+                0xd5,
+                0x92,
+                0xa1,
             ],
             [
-                0xb2u8,
-                0x74u8,
-                0xcbu8,
-                0x8eu8,
-                0xbfu8,
-                0x87u8,
-                0x87u8,
-                0xau8,
+                0xb2,
+                0x74,
+                0xcb,
+                0x8e,
+                0xbf,
+                0x87,
+                0x87,
+                0xa,
             ],
             [
-                0x6fu8,
-                0x9bu8,
-                0xb4u8,
-                0x20u8,
-                0x3du8,
-                0xe7u8,
-                0xb3u8,
-                0x81u8,
+                0x6f,
+                0x9b,
+                0xb4,
+                0x20,
+                0x3d,
+                0xe7,
+                0xb3,
+                0x81,
             ],
             [
-                0xeau8,
-                0xecu8,
-                0xb2u8,
-                0xa3u8,
-                0xbu8,
-                0x22u8,
-                0xa8u8,
-                0x7fu8,
+                0xea,
+                0xec,
+                0xb2,
+                0xa3,
+                0xb,
+                0x22,
+                0xa8,
+                0x7f,
             ],
             [
-                0x99u8,
-                0x24u8,
-                0xa4u8,
-                0x3cu8,
-                0xc1u8,
-                0x31u8,
-                0x57u8,
-                0x24u8,
+                0x99,
+                0x24,
+                0xa4,
+                0x3c,
+                0xc1,
+                0x31,
+                0x57,
+                0x24,
             ],
             [
-                0xbdu8,
-                0x83u8,
-                0x8du8,
-                0x3au8,
-                0xafu8,
-                0xbfu8,
-                0x8du8,
-                0xb7u8,
+                0xbd,
+                0x83,
+                0x8d,
+                0x3a,
+                0xaf,
+                0xbf,
+                0x8d,
+                0xb7,
             ],
             [
-                0xbu8,
-                0x1au8,
-                0x2au8,
-                0x32u8,
-                0x65u8,
-                0xd5u8,
-                0x1au8,
-                0xeau8,
+                0xb,
+                0x1a,
+                0x2a,
+                0x32,
+                0x65,
+                0xd5,
+                0x1a,
+                0xea,
             ],
             [
-                0x13u8,
-                0x50u8,
-                0x79u8,
-                0xa3u8,
-                0x23u8,
-                0x1cu8,
-                0xe6u8,
-                0x60u8,
+                0x13,
+                0x50,
+                0x79,
+                0xa3,
+                0x23,
+                0x1c,
+                0xe6,
+                0x60,
             ],
             [
-                0x93u8,
-                0x2bu8,
-                0x28u8,
-                0x46u8,
-                0xe4u8,
-                0xd7u8,
-                0x6u8,
-                0x66u8,
+                0x93,
+                0x2b,
+                0x28,
+                0x46,
+                0xe4,
+                0xd7,
+                0x6,
+                0x66,
             ],
             [
-                0xe1u8,
-                0x91u8,
-                0x5fu8,
-                0x5cu8,
-                0xb1u8,
-                0xecu8,
-                0xa4u8,
-                0x6cu8,
+                0xe1,
+                0x91,
+                0x5f,
+                0x5c,
+                0xb1,
+                0xec,
+                0xa4,
+                0x6c,
             ],
             [
-                0xf3u8,
-                0x25u8,
-                0x96u8,
-                0x5cu8,
-                0xa1u8,
-                0x6du8,
-                0x62u8,
-                0x9fu8,
+                0xf3,
+                0x25,
+                0x96,
+                0x5c,
+                0xa1,
+                0x6d,
+                0x62,
+                0x9f,
             ],
             [
-                0x57u8,
-                0x5fu8,
-                0xf2u8,
-                0x8eu8,
-                0x60u8,
-                0x38u8,
-                0x1bu8,
-                0xe5u8,
+                0x57,
+                0x5f,
+                0xf2,
+                0x8e,
+                0x60,
+                0x38,
+                0x1b,
+                0xe5,
             ],
             [
-                0x72u8,
-                0x45u8,
-                0x6u8,
-                0xebu8,
-                0x4cu8,
-                0x32u8,
-                0x8au8,
-                0x95u8,
+                0x72,
+                0x45,
+                0x6,
+                0xeb,
+                0x4c,
+                0x32,
+                0x8a,
+                0x95,
             ],
         ];
         let mut in_0: [::core::ffi::c_uchar; 64] = [0; 64];
@@ -959,7 +959,7 @@ pub mod siphash_h {
             
             b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\0".as_ptr() as *const ::core::ffi::c_void,
         );
-        i = 0usize;
+        i = 0;
         while i <  ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() {
             in_0[i] = i as ::core::ffi::c_uchar;
             if siphash24(
@@ -967,29 +967,29 @@ pub mod siphash_h {
                 &raw mut in_0 as *const ::core::ffi::c_void,
                 i,
                 &raw mut k,
-            ) != (vectors[i][0usize]
+            ) != (vectors[i][0]
                 as uint64_t)
-                << 0i32
-                | (vectors[i][1usize] as uint64_t)
-                    << 8i32
-                | (vectors[i][2usize] as uint64_t)
-                    << 16i32
-                | (vectors[i][3usize] as uint64_t)
-                    << 24i32
-                | (vectors[i][4usize] as uint64_t)
-                    << 32i32
-                | (vectors[i][5usize] as uint64_t)
-                    << 40i32
-                | (vectors[i][6usize] as uint64_t)
-                    << 48i32
-                | (vectors[i][7usize] as uint64_t)
-                    << 56i32
+                << 0
+                | (vectors[i][1] as uint64_t)
+                    << 8
+                | (vectors[i][2] as uint64_t)
+                    << 16
+                | (vectors[i][3] as uint64_t)
+                    << 24
+                | (vectors[i][4] as uint64_t)
+                    << 32
+                | (vectors[i][5] as uint64_t)
+                    << 40
+                | (vectors[i][6] as uint64_t)
+                    << 48
+                | (vectors[i][7] as uint64_t)
+                    << 56
             {
                 return 0i32;
             }
             i = i.wrapping_add(1);
         }
-        return 1i32;
+        return 1;
     }
     use crate::__stddef_size_t_h::size_t;
     use crate::stdlib::uint64_t;
@@ -1463,7 +1463,7 @@ unsafe extern "C" fn test_nul_byte() {
         b"test_nul_byte\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        82i32,
+        82,
     );
     let mut text: [::core::ffi::c_char; 13] =
         ::core::mem::transmute::<[u8; 13], [::core::ffi::c_char; 13]>(*b"<doc>\0</doc>\0");
@@ -1500,7 +1500,7 @@ unsafe extern "C" fn test_u0000_char() {
         b"test_u0000_char\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        94i32,
+        94,
     );
     _expect_failure(
         b"<doc>&#0;</doc>\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1508,7 +1508,7 @@ unsafe extern "C" fn test_u0000_char() {
         b"Parser did not report error on NUL-byte.\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        97i32,
+        97,
     );
 }
 
@@ -1517,7 +1517,7 @@ unsafe extern "C" fn test_siphash_self() {
         b"test_siphash_self\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        101i32,
+        101,
     );
     if sip24_valid() == 0 {
         _fail(
@@ -1534,7 +1534,7 @@ unsafe extern "C" fn test_siphash_spec() {
         b"test_siphash_spec\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        107i32,
+        107,
     );
     let message: [::core::ffi::c_char; 16] =
         ::core::mem::transmute::<[u8; 16], [::core::ffi::c_char; 16]>(
@@ -1544,8 +1544,8 @@ unsafe extern "C" fn test_siphash_spec() {
         (::core::mem::size_of::<[::core::ffi::c_char; 16]>())
             .wrapping_sub(1usize);
     let expected: uint64_t =
-        (0xa129ca61u64) << 32i32
-            | 0x49be45e5u64;
+        (0xa129ca61) << 32
+            | 0x49be45e5;
     let mut state: siphash = siphash {
     v0:  0,
     v1:  0,
@@ -1566,11 +1566,11 @@ unsafe extern "C" fn test_siphash_spec() {
         &raw mut state,
         
         &raw const message as *const ::core::ffi::c_void,
-        4usize,
+        4,
     );
     sip24_update(
         &raw mut state,
-        (&raw const message as *const ::core::ffi::c_char).offset(4isize)
+        (&raw const message as *const ::core::ffi::c_char).offset(4)
             as *const ::core::ffi::c_void,
         len.wrapping_sub(4usize),
     );
@@ -1578,7 +1578,7 @@ unsafe extern "C" fn test_siphash_spec() {
         &raw mut state,
         
         &raw const message as *const ::core::ffi::c_void,
-        0usize,
+        0,
     );
     if sip24_final(&raw mut state) != expected {
         _fail(
@@ -1609,7 +1609,7 @@ unsafe extern "C" fn test_bom_utf8() {
         b"test_bom_utf8\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        136i32,
+        136,
     );
     let mut text: *const ::core::ffi::c_char =
         b"\xEF\xBB\xBF<e/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -1635,7 +1635,7 @@ unsafe extern "C" fn test_bom_utf16_be() {
         b"test_bom_utf16_be\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        146i32,
+        146,
     );
     let mut text: [::core::ffi::c_char; 11] =
         ::core::mem::transmute::<[u8; 11], [::core::ffi::c_char; 11]>(*b"\xFE\xFF\0<\0e\0/\0>\0");
@@ -1662,7 +1662,7 @@ unsafe extern "C" fn test_bom_utf16_le() {
         b"test_bom_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        155i32,
+        155,
     );
     let mut text: [::core::ffi::c_char; 11] =
         ::core::mem::transmute::<[u8; 11], [::core::ffi::c_char; 11]>(*b"\xFF\xFE<\0e\0/\0>\0\0");
@@ -1689,11 +1689,11 @@ unsafe extern "C" fn test_nobom_utf16_le() {
         b"test_nobom_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        164i32,
+        164,
     );
     let mut text: [::core::ffi::c_char; 11] =
         ::core::mem::transmute::<[u8; 11], [::core::ffi::c_char; 11]>(*b" \0<\0e\0/\0>\0\0");
-    if g_chunkSize == 1i32 {
+    if g_chunkSize == 1 {
         return;
     }
     if  _XML_Parse_SINGLE_BYTES(
@@ -1719,14 +1719,14 @@ unsafe extern "C" fn test_hash_collision() {
         b"test_hash_collision\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        179i32,
+        179,
     );
     let mut text: *const ::core::ffi::c_char = b"<doc>\n<a1/><a2/><a3/><a4/><a5/><a6/><a7/><a8/>\n<b1></b1><b2 attr='foo'>This is a foo</b2><b3></b3><b4></b4>\n<b5></b5><b6></b6><b7></b7><b8></b8>\n<c1/><c2/><c3/><c4/><c5/><c6/><c7/><c8/>\n<d1/><d2/><d3/><d4/><d5/><d6/><d7/>\n<d8>This triggers the table growth and collides with b2</d8>\n</doc>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
     XML_SetHashSalt(
         g_parser,
-        (0xffffffffu64) << 32i32
-            | 0xff99fc90u64,
+        (0xffffffff) << 32
+            | 0xff99fc90,
     );
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
@@ -1750,7 +1750,7 @@ unsafe extern "C" fn test_danish_latin1() {
         b"test_danish_latin1\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        208i32,
+        208,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='iso-8859-1'?>\n<e>J\xF8rgen \xE6\xF8\xE5\xC6\xD8\xC5</e>\0"
@@ -1763,7 +1763,7 @@ unsafe extern "C" fn test_danish_latin1() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        218i32,
+        218,
     );
 }
 
@@ -1772,7 +1772,7 @@ unsafe extern "C" fn test_french_charref_hexidecimal() {
         b"test_french_charref_hexidecimal\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        223i32,
+        223,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>&#xE9;&#xE8;&#xE0;&#xE7;&#xEA;&#xC8;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1784,7 +1784,7 @@ unsafe extern "C" fn test_french_charref_hexidecimal() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        232i32,
+        232,
     );
 }
 
@@ -1793,7 +1793,7 @@ unsafe extern "C" fn test_french_charref_decimal() {
         b"test_french_charref_decimal\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        236i32,
+        236,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>&#233;&#232;&#224;&#231;&#234;&#200;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1805,7 +1805,7 @@ unsafe extern "C" fn test_french_charref_decimal() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        245i32,
+        245,
     );
 }
 
@@ -1814,7 +1814,7 @@ unsafe extern "C" fn test_french_latin1() {
         b"test_french_latin1\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        249i32,
+        249,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>\xE9\xE8\xE0\xE7\xEA\xC8</doc>\0"
@@ -1827,7 +1827,7 @@ unsafe extern "C" fn test_french_latin1() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        258i32,
+        258,
     );
 }
 
@@ -1836,7 +1836,7 @@ unsafe extern "C" fn test_french_utf8() {
         b"test_french_utf8\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        262i32,
+        262,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='utf-8'?>\n<doc>\xC3\xA9</doc>\0".as_ptr()
@@ -1848,7 +1848,7 @@ unsafe extern "C" fn test_french_utf8() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        270i32,
+        270,
     );
 }
 
@@ -1857,7 +1857,7 @@ unsafe extern "C" fn test_utf8_false_rejection() {
         b"test_utf8_false_rejection\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        279i32,
+        279,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc>\xEF\xBA\xBF</doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -1868,7 +1868,7 @@ unsafe extern "C" fn test_utf8_false_rejection() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        286i32,
+        286,
     );
 }
 
@@ -1877,12 +1877,12 @@ unsafe extern "C" fn test_illegal_utf8() {
         b"test_illegal_utf8\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        295i32,
+        295,
     );
     let mut text: [::core::ffi::c_char; 100] = [0; 100];
     let mut i: ::core::ffi::c_int = 0;
-    i = 128i32;
-    while i <= 255i32 {
+    i = 128;
+    while i <= 255 {
         snprintf(
             &raw mut text as *mut ::core::ffi::c_char,
             
@@ -1948,7 +1948,7 @@ unsafe extern "C" fn test_utf8_auto_align() {
         b"test_utf8_auto_align\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        322i32,
+        322,
     );
     let mut cases: [TestCase_1; 11] = [
         TestCase_1 {
@@ -1996,7 +1996,7 @@ unsafe extern "C" fn test_utf8_auto_align() {
             input: b"\xF7\xBF\xBF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
         },
     ];
-    let mut i: size_t = 0usize;
+    let mut i: size_t = 0;
     let mut success: bool = true_0 != 0;
     while i
         < (::core::mem::size_of::<[TestCase_1; 11]>())
@@ -2013,7 +2013,7 @@ unsafe extern "C" fn test_utf8_auto_align() {
         );
         actualMovementInChars =  fromLim.offset_from(fromLimInitially);
         if actualMovementInChars != cases[i].expectedMovementInChars {
-            let mut j: size_t = 0usize;
+            let mut j: size_t = 0;
             success = false_0 != 0;
             printf(
                 b"[-] UTF-8 case %2u: Expected movement by %2d chars, actually moved by %2d chars: \"\0"
@@ -2049,7 +2049,7 @@ unsafe extern "C" fn test_utf16() {
         b"test_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        376i32,
+        376,
     );
     let mut text: [::core::ffi::c_char; 141] = ::core::mem::transmute::<
         [u8; 141],
@@ -2108,9 +2108,9 @@ unsafe extern "C" fn test_utf16_le_epilog_newline() {
         b"test_utf16_le_epilog_newline\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        407i32,
+        407,
     );
-    let mut first_chunk_bytes: ::core::ffi::c_uint = 17u32;
+    let mut first_chunk_bytes: ::core::ffi::c_uint = 17;
     let mut text: [::core::ffi::c_char; 19] = ::core::mem::transmute::<
         [u8; 19],
         [::core::ffi::c_char; 19],
@@ -2167,7 +2167,7 @@ unsafe extern "C" fn test_not_utf16() {
         b"test_not_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        430i32,
+        430,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='utf-16'?><doc>Hi</doc>\0".as_ptr()
@@ -2190,7 +2190,7 @@ unsafe extern "C" fn test_not_utf16() {
         b"UTF-16 declared in UTF-8 not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        437i32,
+        437,
     );
 }
 
@@ -2199,7 +2199,7 @@ unsafe extern "C" fn test_bad_encoding() {
         b"test_bad_encoding\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        442i32,
+        442,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc>Hi</doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -2222,7 +2222,7 @@ unsafe extern "C" fn test_bad_encoding() {
         b"Unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        448i32,
+        448,
     );
 }
 
@@ -2231,7 +2231,7 @@ unsafe extern "C" fn test_latin1_umlauts() {
         b"test_latin1_umlauts\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        453i32,
+        453,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<e a='\xE4 \xF6 \xFC &#228; &#246; &#252; &#x00E4; &#x0F6; &#xFC; >'\n  >\xE4 \xF6 \xFC &#228; &#246; &#252; &#x00E4; &#x0F6; &#xFC; ></e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -2243,7 +2243,7 @@ unsafe extern "C" fn test_latin1_umlauts() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        468i32,
+        468,
     );
     XML_ParserReset(
         g_parser,
@@ -2254,7 +2254,7 @@ unsafe extern "C" fn test_latin1_umlauts() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        470i32,
+        470,
     );
     XML_ParserReset(
         g_parser,
@@ -2276,7 +2276,7 @@ unsafe extern "C" fn test_latin1_umlauts() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        474i32,
+        474,
     );
     XML_ParserReset(
         g_parser,
@@ -2298,7 +2298,7 @@ unsafe extern "C" fn test_latin1_umlauts() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        477i32,
+        477,
     );
 }
 
@@ -2307,7 +2307,7 @@ unsafe extern "C" fn test_long_utf8_character() {
         b"test_long_utf8_character\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        482i32,
+        482,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='utf-8'?>\n<do\xF0\x90\x80\x80/>\0".as_ptr()
@@ -2319,7 +2319,7 @@ unsafe extern "C" fn test_long_utf8_character() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        488i32,
+        488,
     );
 }
 
@@ -2328,7 +2328,7 @@ unsafe extern "C" fn test_long_latin1_attribute() {
         b"test_long_latin1_attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        495i32,
+        495,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc att='ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO\xE4'>\n</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -2339,7 +2339,7 @@ unsafe extern "C" fn test_long_latin1_attribute() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        545i32,
+        545,
     );
 }
 
@@ -2348,7 +2348,7 @@ unsafe extern "C" fn test_long_ascii_attribute() {
         b"test_long_ascii_attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        552i32,
+        552,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<doc att='ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP01234'>\n</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -2359,7 +2359,7 @@ unsafe extern "C" fn test_long_ascii_attribute() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        596i32,
+        596,
     );
 }
 
@@ -2368,7 +2368,7 @@ unsafe extern "C" fn test_line_number_after_parse() {
         b"test_line_number_after_parse\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        601i32,
+        601,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<tag>\n\n\n</tag>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -2390,7 +2390,7 @@ unsafe extern "C" fn test_line_number_after_parse() {
     }
     lineno =
         XML_GetCurrentLineNumber(g_parser);
-    if lineno != 4u64 {
+    if lineno != 4 {
         let mut buffer: [::core::ffi::c_char; 100] = [0; 100];
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
@@ -2413,7 +2413,7 @@ unsafe extern "C" fn test_column_number_after_parse() {
         b"test_column_number_after_parse\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        621i32,
+        621,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<tag></tag>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -2435,7 +2435,7 @@ unsafe extern "C" fn test_column_number_after_parse() {
     }
     colno =
         XML_GetCurrentColumnNumber(g_parser);
-    if colno != 11u64 {
+    if colno != 11 {
         let mut buffer: [::core::ffi::c_char; 100] = [0; 100];
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
@@ -2458,7 +2458,7 @@ unsafe extern "C" fn test_line_and_column_numbers_inside_handlers() {
         b"test_line_and_column_numbers_inside_handlers\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        639i32,
+        639,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<a>\n  <b>\r\n    <c/>\r  </b>\n  <d>\n    <f/>\n  </d>\n</a>\0".as_ptr()
@@ -2466,62 +2466,62 @@ unsafe extern "C" fn test_line_and_column_numbers_inside_handlers() {
     let expected: [StructDataEntry; 10] = [
         StructDataEntry {
     str:  b"a\0".as_ptr() as *const XML_Char,
-    data0:  0i32,
-    data1:  1i32,
+    data0:  0,
+    data1:  1,
     data2:  STRUCT_START_TAG,
 },
         StructDataEntry {
     str:  b"b\0".as_ptr() as *const XML_Char,
-    data0:  2i32,
-    data1:  2i32,
+    data0:  2,
+    data1:  2,
     data2:  STRUCT_START_TAG,
 },
         StructDataEntry {
     str:  b"c\0".as_ptr() as *const XML_Char,
-    data0:  4i32,
-    data1:  3i32,
+    data0:  4,
+    data1:  3,
     data2:  STRUCT_START_TAG,
 },
         StructDataEntry {
     str:  b"c\0".as_ptr() as *const XML_Char,
-    data0:  8i32,
-    data1:  3i32,
+    data0:  8,
+    data1:  3,
     data2:  STRUCT_END_TAG,
 },
         StructDataEntry {
     str:  b"b\0".as_ptr() as *const XML_Char,
-    data0:  2i32,
-    data1:  4i32,
+    data0:  2,
+    data1:  4,
     data2:  STRUCT_END_TAG,
 },
         StructDataEntry {
     str:  b"d\0".as_ptr() as *const XML_Char,
-    data0:  2i32,
-    data1:  5i32,
+    data0:  2,
+    data1:  5,
     data2:  STRUCT_START_TAG,
 },
         StructDataEntry {
     str:  b"f\0".as_ptr() as *const XML_Char,
-    data0:  4i32,
-    data1:  6i32,
+    data0:  4,
+    data1:  6,
     data2:  STRUCT_START_TAG,
 },
         StructDataEntry {
     str:  b"f\0".as_ptr() as *const XML_Char,
-    data0:  8i32,
-    data1:  6i32,
+    data0:  8,
+    data1:  6,
     data2:  STRUCT_END_TAG,
 },
         StructDataEntry {
     str:  b"d\0".as_ptr() as *const XML_Char,
-    data0:  2i32,
-    data1:  7i32,
+    data0:  2,
+    data1:  7,
     data2:  STRUCT_END_TAG,
 },
         StructDataEntry {
     str:  b"a\0".as_ptr() as *const XML_Char,
-    data0:  0i32,
-    data1:  8i32,
+    data0:  0,
+    data1:  8,
     data2:  STRUCT_END_TAG,
 },
     ];
@@ -2600,7 +2600,7 @@ unsafe extern "C" fn test_line_number_after_error() {
         b"test_line_number_after_error\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        671i32,
+        671,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<a>\n  <b>\n  </a>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -2622,7 +2622,7 @@ unsafe extern "C" fn test_line_number_after_error() {
     }
     lineno =
         XML_GetCurrentLineNumber(g_parser);
-    if lineno != 3u64 {
+    if lineno != 3 {
         let mut buffer: [::core::ffi::c_char; 100] = [0; 100];
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
@@ -2645,7 +2645,7 @@ unsafe extern "C" fn test_column_number_after_error() {
         b"test_column_number_after_error\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        691i32,
+        691,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<a>\n  <b>\n  </a>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -2667,7 +2667,7 @@ unsafe extern "C" fn test_column_number_after_error() {
     }
     colno =
         XML_GetCurrentColumnNumber(g_parser);
-    if colno != 4u64 {
+    if colno != 4 {
         let mut buffer: [::core::ffi::c_char; 100] = [0; 100];
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
@@ -2690,7 +2690,7 @@ unsafe extern "C" fn test_really_long_lines() {
         b"test_really_long_lines\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        711i32,
+        711,
     );
     let mut text: *const ::core::ffi::c_char = b"<e>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+</e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -2716,7 +2716,7 @@ unsafe extern "C" fn test_really_long_encoded_lines() {
         b"test_really_long_encoded_lines\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        746i32,
+        746,
     );
     let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?><e>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+</e>\0"
@@ -2779,7 +2779,7 @@ unsafe extern "C" fn test_end_element_events() {
         b"test_end_element_events\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        793i32,
+        793,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<a><b><c/></b><d><f/></d></a>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -2831,8 +2831,8 @@ unsafe extern "C" fn is_whitespace_normalized(
     mut s: *const XML_Char,
     mut is_cdata: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    let mut blanks: ::core::ffi::c_int = 0i32;
-    let mut at_start: ::core::ffi::c_int = 1i32;
+    let mut blanks: ::core::ffi::c_int = 0;
+    let mut at_start: ::core::ffi::c_int = 1;
     while *s != 0 {
         if *s as ::core::ffi::c_int == ' ' as i32 {
             blanks += 1;
@@ -2843,11 +2843,11 @@ unsafe extern "C" fn is_whitespace_normalized(
             return 0i32;
         } else {
             if at_start != 0 {
-                at_start = 0i32;
+                at_start = 0;
                 if blanks != 0 && is_cdata == 0 {
                     return 0i32;
                 }
-            } else if blanks > 1i32 && is_cdata == 0 {
+            } else if blanks > 1 && is_cdata == 0 {
                 return 0i32;
             }
             blanks = 0i32;
@@ -2857,7 +2857,7 @@ unsafe extern "C" fn is_whitespace_normalized(
     if blanks != 0 && is_cdata == 0 {
         return 0i32;
     }
-    return 1i32;
+    return 1;
 }
 
 unsafe extern "C" fn test_helper_is_whitespace_normalized() {
@@ -2865,11 +2865,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
         b"test_helper_is_whitespace_normalized\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        848i32,
+        848,
     );
     if is_whitespace_normalized(
         b"abc\0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) != 0
     {
     } else {
@@ -2884,7 +2884,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"abc\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) != 0
     {
     } else {
@@ -2899,7 +2899,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"abc def ghi\0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) != 0
     {
     } else {
@@ -2915,7 +2915,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"abc def ghi\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) != 0
     {
     } else {
@@ -2931,7 +2931,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b" abc def ghi\0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) == 0
     {
     } else {
@@ -2947,7 +2947,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b" abc def ghi\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) != 0
     {
     } else {
@@ -2963,7 +2963,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"abc  def ghi\0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) == 0
     {
     } else {
@@ -2979,7 +2979,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"abc  def ghi\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) != 0
     {
     } else {
@@ -2995,7 +2995,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"abc def ghi \0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) == 0
     {
     } else {
@@ -3011,7 +3011,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"abc def ghi \0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) != 0
     {
     } else {
@@ -3027,7 +3027,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b" \0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) == 0
     {
     } else {
@@ -3042,7 +3042,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b" \0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) != 0
     {
     } else {
@@ -3057,7 +3057,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"\t\0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) == 0
     {
     } else {
@@ -3072,7 +3072,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"\t\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) == 0
     {
     } else {
@@ -3087,7 +3087,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"\n\0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) == 0
     {
     } else {
@@ -3102,7 +3102,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"\n\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) == 0
     {
     } else {
@@ -3117,7 +3117,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"\r\0".as_ptr() as *const XML_Char,
-        0i32,
+        0,
     ) == 0
     {
     } else {
@@ -3132,7 +3132,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"\r\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) == 0
     {
     } else {
@@ -3147,7 +3147,7 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
     };
     if is_whitespace_normalized(
         b"abc\t def\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     ) == 0
     {
     } else {
@@ -3169,28 +3169,28 @@ unsafe extern "C" fn check_attr_contains_normalized_whitespace(
     mut atts: *mut *const XML_Char,
 ) {
     let mut i: ::core::ffi::c_int = 0;
-    i = 0i32;
+    i = 0;
     while !(*atts.offset(i as isize)).is_null() {
         let mut attrname: *const XML_Char = *atts.offset(i as isize);
         let mut value: *const XML_Char =
-            *atts.offset((i + 1i32) as isize);
+            *atts.offset((i + 1) as isize);
         if strcmp(
             b"attr\0".as_ptr() as *const ::core::ffi::c_char,
             
             attrname,
-        ) == 0i32
+        ) == 0
             || strcmp(
                 b"ents\0".as_ptr() as *const ::core::ffi::c_char,
                 
                 attrname,
-            ) == 0i32
+            ) == 0
             || strcmp(
                 b"refs\0".as_ptr() as *const ::core::ffi::c_char,
                 
                 attrname,
-            ) == 0i32
+            ) == 0
         {
-            if is_whitespace_normalized(value, 0i32) == 0 {
+            if is_whitespace_normalized(value, 0) == 0 {
                 let mut buffer: [::core::ffi::c_char; 256] = [0; 256];
                 snprintf(
                     &raw mut buffer as *mut ::core::ffi::c_char,
@@ -3209,7 +3209,7 @@ unsafe extern "C" fn check_attr_contains_normalized_whitespace(
                 );
             }
         }
-        i += 2i32;
+        i += 2;
     }
 }
 
@@ -3218,7 +3218,7 @@ unsafe extern "C" fn test_attr_whitespace_normalization() {
         b"test_attr_whitespace_normalization\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        895i32,
+        895,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ATTLIST doc\n            attr NMTOKENS #REQUIRED\n            ents ENTITIES #REQUIRED\n            refs IDREFS   #REQUIRED>\n]>\n<doc attr='    a  b c\t\td\te\t' refs=' id-1   \t  id-2\t\t'  \n     ents=' ent-1   \t\r\n            ent-2  ' >\n  <e id='id-1'/>\n  <e id='id-2'/>\n</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3255,7 +3255,7 @@ unsafe extern "C" fn test_xmldecl_misplaced() {
         b"test_xmldecl_misplaced\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        922i32,
+        922,
     );
     _expect_failure(
         b"\n<?xml version='1.0'?>\n<a/>\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3263,7 +3263,7 @@ unsafe extern "C" fn test_xmldecl_misplaced() {
         b"failed to report misplaced XML declaration\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        927i32,
+        927,
     );
 }
 
@@ -3272,7 +3272,7 @@ unsafe extern "C" fn test_xmldecl_invalid() {
         b"test_xmldecl_invalid\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        931i32,
+        931,
     );
     _expect_failure(
         b"<?xml version='1.0' \xC3\xA7?>\n<doc/>\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3280,7 +3280,7 @@ unsafe extern "C" fn test_xmldecl_invalid() {
         b"Failed to report invalid XML declaration\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        933i32,
+        933,
     );
 }
 
@@ -3289,7 +3289,7 @@ unsafe extern "C" fn test_xmldecl_missing_attr() {
         b"test_xmldecl_missing_attr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        937i32,
+        937,
     );
     _expect_failure(
         b"<?xml ='1.0'?>\n<doc/>\n\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3298,7 +3298,7 @@ unsafe extern "C" fn test_xmldecl_missing_attr() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        939i32,
+        939,
     );
 }
 
@@ -3307,7 +3307,7 @@ unsafe extern "C" fn test_xmldecl_missing_value() {
         b"test_xmldecl_missing_value\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        943i32,
+        943,
     );
     _expect_failure(
         b"<?xml version='1.0' encoding='us-ascii' standalone?>\n<doc/>\0".as_ptr()
@@ -3316,7 +3316,7 @@ unsafe extern "C" fn test_xmldecl_missing_value() {
         b"Failed to report missing attribute value\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        947i32,
+        947,
     );
 }
 
@@ -3325,7 +3325,7 @@ unsafe extern "C" fn test_unknown_encoding_internal_entity() {
         b"test_unknown_encoding_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        952i32,
+        952,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='unsupported-encoding'?>\n<!DOCTYPE test [<!ENTITY foo 'bar'>]>\n<test a='&foo;'/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3363,7 +3363,7 @@ unsafe extern "C" fn test_unrecognised_encoding_internal_entity() {
         b"test_unrecognised_encoding_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        965i32,
+        965,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='unsupported-encoding'?>\n<!DOCTYPE test [<!ENTITY foo 'bar'>]>\n<test a='&foo;'/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3401,7 +3401,7 @@ unsafe extern "C" fn test_ext_entity_set_encoding() {
         b"test_ext_entity_set_encoding\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        978i32,
+        978,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3433,7 +3433,7 @@ unsafe extern "C" fn test_ext_entity_set_encoding() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        995i32,
+        995,
     );
 }
 
@@ -3442,7 +3442,7 @@ unsafe extern "C" fn test_ext_entity_no_handler() {
         b"test_ext_entity_no_handler\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1000i32,
+        1000,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3462,7 +3462,7 @@ unsafe extern "C" fn test_ext_entity_no_handler() {
         b"\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1007i32,
+        1007,
     );
 }
 
@@ -3471,7 +3471,7 @@ unsafe extern "C" fn test_ext_entity_set_bom() {
         b"test_ext_entity_set_bom\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1012i32,
+        1012,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3503,7 +3503,7 @@ unsafe extern "C" fn test_ext_entity_set_bom() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1028i32,
+        1028,
     );
 }
 
@@ -3512,7 +3512,7 @@ unsafe extern "C" fn test_ext_entity_bad_encoding() {
         b"test_ext_entity_bad_encoding\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1033i32,
+        1033,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3546,7 +3546,7 @@ unsafe extern "C" fn test_ext_entity_bad_encoding() {
         b"Bad encoding should not have been accepted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1045i32,
+        1045,
     );
 }
 
@@ -3555,7 +3555,7 @@ unsafe extern "C" fn test_ext_entity_bad_encoding_2() {
         b"test_ext_entity_bad_encoding_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1050i32,
+        1050,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3594,7 +3594,7 @@ unsafe extern "C" fn test_ext_entity_bad_encoding_2() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1062i32,
+        1062,
     );
 }
 
@@ -3604,7 +3604,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_unread_external_subset() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1069i32,
+        1069,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3630,7 +3630,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_no_external_subset() {
         b"test_wfc_undeclared_entity_no_external_subset\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1082i32,
+        1082,
     );
     _expect_failure(
         b"<doc>&entity;</doc>\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3639,7 +3639,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_no_external_subset() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1084i32,
+        1084,
     );
 }
 
@@ -3648,7 +3648,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_standalone() {
         b"test_wfc_undeclared_entity_standalone\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1091i32,
+        1091,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii' standalone='yes'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3659,7 +3659,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_standalone() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1098i32,
+        1098,
     );
 }
 
@@ -3669,7 +3669,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_with_external_subset_standalone(
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1105i32,
+        1105,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii' standalone='yes'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3706,7 +3706,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_with_external_subset_standalone(
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1116i32,
+        1116,
     );
 }
 
@@ -3716,7 +3716,7 @@ unsafe extern "C" fn test_entity_with_external_subset_unless_standalone() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1123i32,
+        1123,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii' standalone='yes'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3752,7 +3752,7 @@ unsafe extern "C" fn test_entity_with_external_subset_unless_standalone() {
         b"Parser did not report undefined entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1135i32,
+        1135,
     );
 }
 
@@ -3761,7 +3761,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_with_external_subset() {
         b"test_wfc_undeclared_entity_with_external_subset\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1142i32,
+        1142,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3794,7 +3794,7 @@ unsafe extern "C" fn test_wfc_undeclared_entity_with_external_subset() {
         b"\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1150i32,
+        1150,
     );
 }
 
@@ -3803,7 +3803,7 @@ unsafe extern "C" fn test_not_standalone_handler_reject() {
         b"test_not_standalone_handler_reject\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1155i32,
+        1155,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3846,7 +3846,7 @@ unsafe extern "C" fn test_not_standalone_handler_reject() {
         b"NotStandalone handler failed to reject\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1166i32,
+        1166,
     );
     XML_ParserReset(
         g_parser,
@@ -3865,7 +3865,7 @@ unsafe extern "C" fn test_not_standalone_handler_reject() {
         b"NotStandalone handler failed to reject\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1172i32,
+        1172,
     );
 }
 
@@ -3874,7 +3874,7 @@ unsafe extern "C" fn test_not_standalone_handler_accept() {
         b"test_not_standalone_handler_accept\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1177i32,
+        1177,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -3914,7 +3914,7 @@ unsafe extern "C" fn test_not_standalone_handler_accept() {
         b"\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1186i32,
+        1186,
     );
     XML_ParserReset(
         g_parser,
@@ -3932,7 +3932,7 @@ unsafe extern "C" fn test_not_standalone_handler_accept() {
         b"\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1191i32,
+        1191,
     );
 }
 
@@ -3941,7 +3941,7 @@ unsafe extern "C" fn test_entity_start_tag_level_greater_than_one() {
         b"test_entity_start_tag_level_greater_than_one\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1195i32,
+        1195,
     );
     let text: *const ::core::ffi::c_char =
         b"<!DOCTYPE t1 [\n  <!ENTITY e1 'hello'>\n]>\n<t1>\n  <t2>&e1;</t2>\n</t1>\n\0".as_ptr()
@@ -3954,7 +3954,7 @@ unsafe extern "C" fn test_entity_start_tag_level_greater_than_one() {
         parser,
         text,
         strlen(text) as ::core::ffi::c_int,
-        1i32,
+        1,
     )
         ==  XML_STATUS_OK)
     {
@@ -3974,7 +3974,7 @@ unsafe extern "C" fn test_wfc_no_recursive_entity_refs() {
         b"test_wfc_no_recursive_entity_refs\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1211i32,
+        1211,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ENTITY entity '&#38;entity;'>\n]>\n<doc>&entity;</doc>\0".as_ptr()
@@ -3986,7 +3986,7 @@ unsafe extern "C" fn test_wfc_no_recursive_entity_refs() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1218i32,
+        1218,
     );
 }
 
@@ -3995,7 +3995,7 @@ unsafe extern "C" fn test_no_indirectly_recursive_entity_refs() {
         b"test_no_indirectly_recursive_entity_refs\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1222i32,
+        1222,
     );
     let cases: [TestCase_0; 3] = [
         TestCase_0 {
@@ -4016,12 +4016,12 @@ unsafe extern "C" fn test_no_indirectly_recursive_entity_refs() {
     ];
     let reset_or_not: [XML_Bool; 2] =
         [XML_TRUE, XML_FALSE];
-    let mut i: size_t = 0usize;
+    let mut i: size_t = 0;
     while i
         < (::core::mem::size_of::<[TestCase_0; 3]>())
             .wrapping_div(::core::mem::size_of::<TestCase_0>())
     {
-        let mut j: size_t = 0usize;
+        let mut j: size_t = 0;
         while j
             < (::core::mem::size_of::<[XML_Bool; 2]>())
                 .wrapping_div(::core::mem::size_of::<XML_Bool>())
@@ -4044,7 +4044,7 @@ unsafe extern "C" fn test_no_indirectly_recursive_entity_refs() {
                 if !(XML_SetParamEntityParsing(
                     parser,
                     XML_PARAM_ENTITY_PARSING_ALWAYS,
-                ) == 1i32)
+                ) == 1)
                 {
                     _fail(
                         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
@@ -4115,7 +4115,7 @@ unsafe extern "C" fn test_recursive_external_parameter_entity_2() {
         b"test_recursive_external_parameter_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1309i32,
+        1309,
     );
     let mut cases: [TestCase; 4] = [
         TestCase {
@@ -4137,7 +4137,7 @@ unsafe extern "C" fn test_recursive_external_parameter_entity_2() {
             expectedStatus: XML_STATUS_OK,
         },
     ];
-    let mut i: size_t = 0usize;
+    let mut i: size_t = 0;
     while i
         < (::core::mem::size_of::<[TestCase; 4]>())
             .wrapping_div(::core::mem::size_of::<TestCase>())
@@ -4217,7 +4217,7 @@ unsafe extern "C" fn test_ext_entity_invalid_parse() {
         b"test_ext_entity_invalid_parse\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1353i32,
+        1353,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -4283,7 +4283,7 @@ unsafe extern "C" fn test_ext_entity_invalid_parse() {
             b"Parser did not report external entity error\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            1374i32,
+            1374,
         );
         XML_ParserReset(
             g_parser,
@@ -4298,7 +4298,7 @@ unsafe extern "C" fn test_dtd_default_handling() {
         b"test_dtd_default_handling\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1381i32,
+        1381,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY e SYSTEM 'http://example.org/e'>\n<!NOTATION n SYSTEM 'http://example.org/n'>\n<!ELEMENT doc EMPTY>\n<!ATTLIST doc a CDATA #IMPLIED>\n<?pi in dtd?>\n<!--comment in dtd-->\n]><doc/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -4428,7 +4428,7 @@ unsafe extern "C" fn test_dtd_default_handling() {
         b"\n\n\n\n\n\n\n<doc/>\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1402i32,
+        1402,
     );
 }
 
@@ -4437,7 +4437,7 @@ unsafe extern "C" fn test_dtd_attr_handling() {
         b"test_dtd_attr_handling\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1407i32,
+        1407,
     );
     let mut prolog: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n<!ELEMENT doc EMPTY>\n\0".as_ptr() as *const ::core::ffi::c_char;
@@ -4556,7 +4556,7 @@ unsafe extern "C" fn test_empty_ns_without_namespaces() {
         b"test_empty_ns_without_namespaces\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1462i32,
+        1462,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns:prefix='http://example.org/'>\n  <e xmlns:prefix=''/>\n</doc>\0".as_ptr()
@@ -4583,7 +4583,7 @@ unsafe extern "C" fn test_ns_in_attribute_default_without_namespaces() {
         b"test_ns_in_attribute_default_without_namespaces\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1477i32,
+        1477,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE e:element [\n  <!ATTLIST e:element\n    xmlns:e CDATA 'http://example.org/'>\n      ]>\n<e:element/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -4609,7 +4609,7 @@ unsafe extern "C" fn test_stop_parser_between_char_data_calls() {
         b"test_stop_parser_between_char_data_calls\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1492i32,
+        1492,
     );
     let mut text: *const ::core::ffi::c_char = long_character_data_text;
     XML_SetCharacterDataHandler(
@@ -4656,7 +4656,7 @@ unsafe extern "C" fn test_suspend_parser_between_char_data_calls() {
         b"test_suspend_parser_between_char_data_calls\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1513i32,
+        1513,
     );
     let mut text: *const ::core::ffi::c_char = long_character_data_text;
     XML_SetCharacterDataHandler(
@@ -4731,7 +4731,7 @@ unsafe extern "C" fn test_repeated_stop_parser_between_char_data_calls() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1541i32,
+        1541,
     );
     let mut text: *const ::core::ffi::c_char = long_character_data_text;
     XML_SetCharacterDataHandler(
@@ -4833,7 +4833,7 @@ unsafe extern "C" fn test_good_cdata_ascii() {
         b"test_good_cdata_ascii\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1571i32,
+        1571,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<a><![CDATA[<greeting>Hello, world!</greeting>]]></a>\0".as_ptr()
@@ -4957,7 +4957,7 @@ unsafe extern "C" fn test_good_cdata_utf16() {
         b"test_good_cdata_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1602i32,
+        1602,
     );
     let text: [::core::ffi::c_char; 129] = ::core::mem::transmute::<
         [u8; 129],
@@ -4992,7 +4992,7 @@ unsafe extern "C" fn test_good_cdata_utf16() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 129]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -5016,7 +5016,7 @@ unsafe extern "C" fn test_good_cdata_utf16_le() {
         b"test_good_cdata_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1629i32,
+        1629,
     );
     let text: [::core::ffi::c_char; 129] = ::core::mem::transmute::<
         [u8; 129],
@@ -5051,7 +5051,7 @@ unsafe extern "C" fn test_good_cdata_utf16_le() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 129]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -5075,7 +5075,7 @@ unsafe extern "C" fn test_long_cdata_utf16() {
         b"test_long_cdata_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1661i32,
+        1661,
     );
     let text: [::core::ffi::c_char; 2197] = ::core::mem::transmute::<
         [u8; 2197],
@@ -5164,7 +5164,7 @@ unsafe extern "C" fn test_multichar_cdata_utf16() {
         b"test_multichar_cdata_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1732i32,
+        1732,
     );
     let text: [::core::ffi::c_char; 127] = ::core::mem::transmute::<
         [u8; 127],
@@ -5199,7 +5199,7 @@ unsafe extern "C" fn test_multichar_cdata_utf16() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 127]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -5223,7 +5223,7 @@ unsafe extern "C" fn test_utf16_bad_surrogate_pair() {
         b"test_utf16_bad_surrogate_pair\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1772i32,
+        1772,
     );
     let text: [::core::ffi::c_char; 123] = ::core::mem::transmute::<
         [u8; 123],
@@ -5235,7 +5235,7 @@ unsafe extern "C" fn test_utf16_bad_surrogate_pair() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 123]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -5264,7 +5264,7 @@ unsafe extern "C" fn test_bad_cdata() {
         b"test_bad_cdata\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1799i32,
+        1799,
     );
     let mut cases: [CaseData_0; 21] = [
         CaseData_0 {
@@ -5352,7 +5352,7 @@ unsafe extern "C" fn test_bad_cdata() {
             expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
         },
     ];
-    let mut i: size_t = 0usize;
+    let mut i: size_t = 0;
     while i
         < (::core::mem::size_of::<[CaseData_0; 21]>())
             .wrapping_div(::core::mem::size_of::<CaseData_0>())
@@ -5421,7 +5421,7 @@ unsafe extern "C" fn test_bad_cdata_utf16() {
         b"test_bad_cdata_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1855i32,
+        1855,
     );
     let prolog: [::core::ffi::c_char; 87] = ::core::mem::transmute::<
         [u8; 87],
@@ -5554,7 +5554,7 @@ unsafe extern "C" fn test_bad_cdata_utf16() {
         },
     ];
     let mut i: size_t = 0;
-    i = 0usize;
+    i = 0;
     while i
         < (::core::mem::size_of::<[CaseData; 24]>())
             .wrapping_div(::core::mem::size_of::<CaseData>())
@@ -5569,7 +5569,7 @@ unsafe extern "C" fn test_bad_cdata_utf16() {
             g_parser,
             &raw const prolog as *const ::core::ffi::c_char,
             ::core::mem::size_of::<[::core::ffi::c_char; 87]>() as ::core::ffi::c_int
-                - 1i32,
+                - 1,
             XML_FALSE as ::core::ffi::c_int,
         )
             ==  XML_STATUS_ERROR
@@ -5639,7 +5639,7 @@ unsafe extern "C" fn test_stop_parser_between_cdata_calls() {
         b"test_stop_parser_between_cdata_calls\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1930i32,
+        1930,
     );
     let mut text: *const ::core::ffi::c_char = long_cdata_text;
     XML_SetCharacterDataHandler(
@@ -5660,7 +5660,7 @@ unsafe extern "C" fn test_stop_parser_between_cdata_calls() {
         b"Parse not aborted in CDATA handler\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1935i32,
+        1935,
     );
 }
 
@@ -5669,9 +5669,9 @@ unsafe extern "C" fn test_suspend_parser_between_cdata_calls() {
         b"test_suspend_parser_between_cdata_calls\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1940i32,
+        1940,
     );
-    if g_chunkSize != 0i32 {
+    if g_chunkSize != 0 {
         return;
     }
     let mut text: *const ::core::ffi::c_char = long_cdata_text;
@@ -5731,11 +5731,11 @@ unsafe extern "C" fn test_memory_allocation() {
         b"test_memory_allocation\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1965i32,
+        1965,
     );
     let mut buffer: *mut ::core::ffi::c_char = XML_MemMalloc(
         g_parser,
-        256usize,
+        256,
     ) as *mut ::core::ffi::c_char;
     let mut p: *mut ::core::ffi::c_char = ::core::ptr::null_mut::<::core::ffi::c_char>();
     if buffer.is_null() {
@@ -5746,13 +5746,13 @@ unsafe extern "C" fn test_memory_allocation() {
             b"Allocation failed\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else {
-        *buffer.offset(0isize) =  'T' as ::core::ffi::c_char;
-        *buffer.offset(1isize) =  'E' as ::core::ffi::c_char;
-        *buffer.offset(2isize) =  'S' as ::core::ffi::c_char;
-        *buffer.offset(3isize) =  'T' as ::core::ffi::c_char;
-        *buffer.offset(4isize) =  '\0' as ::core::ffi::c_char;
+        *buffer.offset(0) =  'T' as ::core::ffi::c_char;
+        *buffer.offset(1) =  'E' as ::core::ffi::c_char;
+        *buffer.offset(2) =  'S' as ::core::ffi::c_char;
+        *buffer.offset(3) =  'T' as ::core::ffi::c_char;
+        *buffer.offset(4) =  '\0' as ::core::ffi::c_char;
         if strcmp(buffer, b"TEST\0".as_ptr() as *const ::core::ffi::c_char)
-            != 0i32
+            != 0
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
@@ -5764,7 +5764,7 @@ unsafe extern "C" fn test_memory_allocation() {
             p = XML_MemRealloc(
                 g_parser,
                 buffer as *mut ::core::ffi::c_void,
-                512usize,
+                512,
             ) as *mut ::core::ffi::c_char;
             if p.is_null() {
                 _fail(
@@ -5775,11 +5775,11 @@ unsafe extern "C" fn test_memory_allocation() {
                 );
             } else {
                 buffer = p;
-                *buffer.offset(0isize) =
+                *buffer.offset(0) =
                     
                     'V' as ::core::ffi::c_char;
                 if strcmp(buffer, b"VEST\0".as_ptr() as *const ::core::ffi::c_char)
-                    != 0i32
+                    != 0
                 {
                     _fail(
                         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
@@ -5803,7 +5803,7 @@ unsafe extern "C" fn test_default_current() {
         b"test_default_current\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1999i32,
+        1999,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc>hell]</doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -5821,7 +5821,7 @@ unsafe extern "C" fn test_default_current() {
     arg:  0,
 }; 50],
 };
-    storage.count = 0i32;
+    storage.count = 0;
     XML_SetDefaultHandler(
         g_parser,
         Some(
@@ -5863,7 +5863,7 @@ unsafe extern "C" fn test_default_current() {
             2015i32,
         );
     }
-    let mut i: ::core::ffi::c_int = 0i32;
+    let mut i: ::core::ffi::c_int = 0;
     let c2rust_fresh2 = i;
     i = i + 1;
     let mut e: *const handler_record_entry =
@@ -5874,12 +5874,12 @@ unsafe extern "C" fn test_default_current() {
             c2rust_fresh2,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2017i32,
+            2017,
         );
     if !(strcmp(
         (*e).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -5889,7 +5889,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e).arg == 5i32) {
+    if !((*e).arg == 5) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -5897,8 +5897,8 @@ unsafe extern "C" fn test_default_current() {
             b"check failed: e->arg == (5)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    let mut cdata_len_remaining: ::core::ffi::c_int = 5i32;
-    while cdata_len_remaining > 0i32 {
+    let mut cdata_len_remaining: ::core::ffi::c_int = 5;
+    while cdata_len_remaining > 0 {
         let c2rust_fresh3 = i;
         i = i + 1;
         let mut c_entry: *const handler_record_entry =
@@ -5910,12 +5910,12 @@ unsafe extern "C" fn test_default_current() {
                 c2rust_fresh3,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                2022i32,
+                2022,
             );
         if !(strcmp(
             (*c_entry).name,
             b"record_cdata_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0i32)
+        ) == 0)
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
@@ -5925,7 +5925,7 @@ unsafe extern "C" fn test_default_current() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if !((*c_entry).arg > 0i32) {
+        if !((*c_entry).arg > 0) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -5954,12 +5954,12 @@ unsafe extern "C" fn test_default_current() {
                 c2rust_fresh4,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                2029i32,
+                2029,
             );
         if !(strcmp(
             (*e_0).name,
             b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0i32)
+        ) == 0)
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
@@ -5988,12 +5988,12 @@ unsafe extern "C" fn test_default_current() {
             c2rust_fresh5,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2031i32,
+            2031,
         );
     if !(strcmp(
         (*e_1).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6003,7 +6003,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_1).arg == 6i32) {
+    if !((*e_1).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6030,7 +6030,7 @@ unsafe extern "C" fn test_default_current() {
     arg:  0,
 }; 50],
 };
-    storage_0.count = 0i32;
+    storage_0.count = 0;
     XML_ParserReset(
         g_parser,
         ::core::ptr::null::<XML_Char>(),
@@ -6076,7 +6076,7 @@ unsafe extern "C" fn test_default_current() {
             2046i32,
         );
     }
-    let mut i_0: ::core::ffi::c_int = 0i32;
+    let mut i_0: ::core::ffi::c_int = 0;
     let c2rust_fresh6 = i_0;
     i_0 = i_0 + 1;
     let mut e_2: *const handler_record_entry =
@@ -6087,12 +6087,12 @@ unsafe extern "C" fn test_default_current() {
             c2rust_fresh6,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2048i32,
+            2048,
         );
     if !(strcmp(
         (*e_2).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6102,7 +6102,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_2).arg == 5i32) {
+    if !((*e_2).arg == 5) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6110,8 +6110,8 @@ unsafe extern "C" fn test_default_current() {
             b"check failed: e->arg == (5)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    let mut cdata_len_remaining_0: ::core::ffi::c_int = 5i32;
-    while cdata_len_remaining_0 > 0i32 {
+    let mut cdata_len_remaining_0: ::core::ffi::c_int = 5;
+    while cdata_len_remaining_0 > 0 {
         let c2rust_fresh7 = i_0;
         i_0 = i_0 + 1;
         let mut c_entry_0: *const handler_record_entry =
@@ -6123,12 +6123,12 @@ unsafe extern "C" fn test_default_current() {
                 c2rust_fresh7,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                2053i32,
+                2053,
             );
         if !(strcmp(
             (*c_entry_0).name,
             b"record_cdata_nodefault_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0i32)
+        ) == 0)
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
@@ -6138,7 +6138,7 @@ unsafe extern "C" fn test_default_current() {
                     .as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if !((*c_entry_0).arg > 0i32) {
+        if !((*c_entry_0).arg > 0) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -6167,12 +6167,12 @@ unsafe extern "C" fn test_default_current() {
             c2rust_fresh8,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2059i32,
+            2059,
         );
     if !(strcmp(
         (*e_3).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6182,7 +6182,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_3).arg == 6i32) {
+    if !((*e_3).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6209,7 +6209,7 @@ unsafe extern "C" fn test_default_current() {
     arg:  0,
 }; 50],
 };
-    storage_1.count = 0i32;
+    storage_1.count = 0;
     XML_ParserReset(
         g_parser,
         ::core::ptr::null::<XML_Char>(),
@@ -6260,15 +6260,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            0i32,
+            0,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2077i32,
+            2077,
         );
     if !(strcmp(
         (*e_4).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6278,7 +6278,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_4).arg == 9i32) {
+    if !((*e_4).arg == 9) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6291,15 +6291,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            1i32,
+            1,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2078i32,
+            2078,
         );
     if !(strcmp(
         (*e_5).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6309,7 +6309,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_5).arg == 1i32) {
+    if !((*e_5).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6322,15 +6322,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            2i32,
+            2,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2079i32,
+            2079,
         );
     if !(strcmp(
         (*e_6).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6340,7 +6340,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_6).arg == 3i32) {
+    if !((*e_6).arg == 3) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6353,15 +6353,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            3i32,
+            3,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2080i32,
+            2080,
         );
     if !(strcmp(
         (*e_7).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6371,7 +6371,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_7).arg == 1i32) {
+    if !((*e_7).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6384,15 +6384,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            4i32,
+            4,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2081i32,
+            2081,
         );
     if !(strcmp(
         (*e_8).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6402,7 +6402,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_8).arg == 1i32) {
+    if !((*e_8).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6415,15 +6415,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            5i32,
+            5,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2082i32,
+            2082,
         );
     if !(strcmp(
         (*e_9).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6433,7 +6433,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_9).arg == 1i32) {
+    if !((*e_9).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6446,15 +6446,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            6i32,
+            6,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2083i32,
+            2083,
         );
     if !(strcmp(
         (*e_10).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6464,7 +6464,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_10).arg == 8i32) {
+    if !((*e_10).arg == 8) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6477,15 +6477,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            7i32,
+            7,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2084i32,
+            2084,
         );
     if !(strcmp(
         (*e_11).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6495,7 +6495,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_11).arg == 1i32) {
+    if !((*e_11).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6508,15 +6508,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            8i32,
+            8,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2085i32,
+            2085,
         );
     if !(strcmp(
         (*e_12).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6526,7 +6526,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_12).arg == 6i32) {
+    if !((*e_12).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6539,15 +6539,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            9i32,
+            9,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2086i32,
+            2086,
         );
     if !(strcmp(
         (*e_13).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6557,7 +6557,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_13).arg == 1i32) {
+    if !((*e_13).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6570,15 +6570,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            10i32,
+            10,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2087i32,
+            2087,
         );
     if !(strcmp(
         (*e_14).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6588,7 +6588,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_14).arg == 7i32) {
+    if !((*e_14).arg == 7) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6601,15 +6601,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            11i32,
+            11,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2088i32,
+            2088,
         );
     if !(strcmp(
         (*e_15).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6619,7 +6619,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_15).arg == 1i32) {
+    if !((*e_15).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6632,15 +6632,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            12i32,
+            12,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2089i32,
+            2089,
         );
     if !(strcmp(
         (*e_16).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6650,7 +6650,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_16).arg == 1i32) {
+    if !((*e_16).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6663,15 +6663,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            13i32,
+            13,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2090i32,
+            2090,
         );
     if !(strcmp(
         (*e_17).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6681,7 +6681,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_17).arg == 1i32) {
+    if !((*e_17).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6694,15 +6694,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            14i32,
+            14,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2091i32,
+            2091,
         );
     if !(strcmp(
         (*e_18).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6712,7 +6712,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_18).arg == 1i32) {
+    if !((*e_18).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6725,15 +6725,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            15i32,
+            15,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2092i32,
+            2092,
         );
     if !(strcmp(
         (*e_19).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6743,7 +6743,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_19).arg == 1i32) {
+    if !((*e_19).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6756,15 +6756,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            16i32,
+            16,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2093i32,
+            2093,
         );
     if !(strcmp(
         (*e_20).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6774,7 +6774,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_20).arg == 5i32) {
+    if !((*e_20).arg == 5) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6787,15 +6787,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            17i32,
+            17,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2094i32,
+            2094,
         );
     if !(strcmp(
         (*e_21).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6805,7 +6805,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_21).arg == 8i32) {
+    if !((*e_21).arg == 8) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6818,15 +6818,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_1 as *const handler_record_list,
-            18i32,
+            18,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2095i32,
+            2095,
         );
     if !(strcmp(
         (*e_22).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6836,7 +6836,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_22).arg == 6i32) {
+    if !((*e_22).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6844,7 +6844,7 @@ unsafe extern "C" fn test_default_current() {
             b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if !(storage_1.count == 19i32) {
+    if !(storage_1.count == 19) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6863,7 +6863,7 @@ unsafe extern "C" fn test_default_current() {
     arg:  0,
 }; 50],
 };
-    storage_2.count = 0i32;
+    storage_2.count = 0;
     XML_ParserReset(
         g_parser,
         ::core::ptr::null::<XML_Char>(),
@@ -6925,15 +6925,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            0i32,
+            0,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2114i32,
+            2114,
         );
     if !(strcmp(
         (*e_23).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6943,7 +6943,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_23).arg == 9i32) {
+    if !((*e_23).arg == 9) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6956,15 +6956,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            1i32,
+            1,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2115i32,
+            2115,
         );
     if !(strcmp(
         (*e_24).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -6974,7 +6974,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_24).arg == 1i32) {
+    if !((*e_24).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -6987,15 +6987,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            2i32,
+            2,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2116i32,
+            2116,
         );
     if !(strcmp(
         (*e_25).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7005,7 +7005,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_25).arg == 3i32) {
+    if !((*e_25).arg == 3) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7018,15 +7018,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            3i32,
+            3,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2117i32,
+            2117,
         );
     if !(strcmp(
         (*e_26).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7036,7 +7036,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_26).arg == 1i32) {
+    if !((*e_26).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7049,15 +7049,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            4i32,
+            4,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2118i32,
+            2118,
         );
     if !(strcmp(
         (*e_27).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7067,7 +7067,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_27).arg == 1i32) {
+    if !((*e_27).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7080,15 +7080,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            5i32,
+            5,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2119i32,
+            2119,
         );
     if !(strcmp(
         (*e_28).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7098,7 +7098,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_28).arg == 1i32) {
+    if !((*e_28).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7111,15 +7111,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            6i32,
+            6,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2120i32,
+            2120,
         );
     if !(strcmp(
         (*e_29).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7129,7 +7129,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_29).arg == 8i32) {
+    if !((*e_29).arg == 8) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7142,15 +7142,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            7i32,
+            7,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2121i32,
+            2121,
         );
     if !(strcmp(
         (*e_30).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7160,7 +7160,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_30).arg == 1i32) {
+    if !((*e_30).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7173,15 +7173,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            8i32,
+            8,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2122i32,
+            2122,
         );
     if !(strcmp(
         (*e_31).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7191,7 +7191,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_31).arg == 6i32) {
+    if !((*e_31).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7204,15 +7204,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            9i32,
+            9,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2123i32,
+            2123,
         );
     if !(strcmp(
         (*e_32).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7222,7 +7222,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_32).arg == 1i32) {
+    if !((*e_32).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7235,15 +7235,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            10i32,
+            10,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2124i32,
+            2124,
         );
     if !(strcmp(
         (*e_33).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7253,7 +7253,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_33).arg == 7i32) {
+    if !((*e_33).arg == 7) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7266,15 +7266,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            11i32,
+            11,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2125i32,
+            2125,
         );
     if !(strcmp(
         (*e_34).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7284,7 +7284,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_34).arg == 1i32) {
+    if !((*e_34).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7297,15 +7297,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            12i32,
+            12,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2126i32,
+            2126,
         );
     if !(strcmp(
         (*e_35).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7315,7 +7315,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_35).arg == 1i32) {
+    if !((*e_35).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7328,15 +7328,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            13i32,
+            13,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2127i32,
+            2127,
         );
     if !(strcmp(
         (*e_36).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7346,7 +7346,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_36).arg == 1i32) {
+    if !((*e_36).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7359,15 +7359,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            14i32,
+            14,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2128i32,
+            2128,
         );
     if !(strcmp(
         (*e_37).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7377,7 +7377,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_37).arg == 1i32) {
+    if !((*e_37).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7390,15 +7390,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            15i32,
+            15,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2129i32,
+            2129,
         );
     if !(strcmp(
         (*e_38).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7408,7 +7408,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_38).arg == 1i32) {
+    if !((*e_38).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7421,15 +7421,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            16i32,
+            16,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2130i32,
+            2130,
         );
     if !(strcmp(
         (*e_39).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7439,7 +7439,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_39).arg == 5i32) {
+    if !((*e_39).arg == 5) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7452,15 +7452,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            17i32,
+            17,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2131i32,
+            2131,
         );
     if !(strcmp(
         (*e_40).name,
         b"record_skip_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7470,7 +7470,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_40).arg == 0i32) {
+    if !((*e_40).arg == 0) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7483,15 +7483,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_2 as *const handler_record_list,
-            18i32,
+            18,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2132i32,
+            2132,
         );
     if !(strcmp(
         (*e_41).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7501,7 +7501,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_41).arg == 6i32) {
+    if !((*e_41).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7509,7 +7509,7 @@ unsafe extern "C" fn test_default_current() {
             b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if !(storage_2.count == 19i32) {
+    if !(storage_2.count == 19) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7528,7 +7528,7 @@ unsafe extern "C" fn test_default_current() {
     arg:  0,
 }; 50],
 };
-    storage_3.count = 0i32;
+    storage_3.count = 0;
     XML_ParserReset(
         g_parser,
         ::core::ptr::null::<XML_Char>(),
@@ -7579,15 +7579,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            0i32,
+            0,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2149i32,
+            2149,
         );
     if !(strcmp(
         (*e_42).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7597,7 +7597,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_42).arg == 9i32) {
+    if !((*e_42).arg == 9) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7610,15 +7610,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            1i32,
+            1,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2150i32,
+            2150,
         );
     if !(strcmp(
         (*e_43).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7628,7 +7628,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_43).arg == 1i32) {
+    if !((*e_43).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7641,15 +7641,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            2i32,
+            2,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2151i32,
+            2151,
         );
     if !(strcmp(
         (*e_44).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7659,7 +7659,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_44).arg == 3i32) {
+    if !((*e_44).arg == 3) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7672,15 +7672,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            3i32,
+            3,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2152i32,
+            2152,
         );
     if !(strcmp(
         (*e_45).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7690,7 +7690,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_45).arg == 1i32) {
+    if !((*e_45).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7703,15 +7703,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            4i32,
+            4,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2153i32,
+            2153,
         );
     if !(strcmp(
         (*e_46).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7721,7 +7721,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_46).arg == 1i32) {
+    if !((*e_46).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7734,15 +7734,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            5i32,
+            5,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2154i32,
+            2154,
         );
     if !(strcmp(
         (*e_47).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7752,7 +7752,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_47).arg == 1i32) {
+    if !((*e_47).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7765,15 +7765,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            6i32,
+            6,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2155i32,
+            2155,
         );
     if !(strcmp(
         (*e_48).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7783,7 +7783,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_48).arg == 8i32) {
+    if !((*e_48).arg == 8) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7796,15 +7796,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            7i32,
+            7,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2156i32,
+            2156,
         );
     if !(strcmp(
         (*e_49).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7814,7 +7814,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_49).arg == 1i32) {
+    if !((*e_49).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7827,15 +7827,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            8i32,
+            8,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2157i32,
+            2157,
         );
     if !(strcmp(
         (*e_50).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7845,7 +7845,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_50).arg == 6i32) {
+    if !((*e_50).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7858,15 +7858,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            9i32,
+            9,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2158i32,
+            2158,
         );
     if !(strcmp(
         (*e_51).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7876,7 +7876,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_51).arg == 1i32) {
+    if !((*e_51).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7889,15 +7889,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            10i32,
+            10,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2159i32,
+            2159,
         );
     if !(strcmp(
         (*e_52).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7907,7 +7907,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_52).arg == 7i32) {
+    if !((*e_52).arg == 7) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7920,15 +7920,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            11i32,
+            11,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2160i32,
+            2160,
         );
     if !(strcmp(
         (*e_53).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7938,7 +7938,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_53).arg == 1i32) {
+    if !((*e_53).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7951,15 +7951,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            12i32,
+            12,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2161i32,
+            2161,
         );
     if !(strcmp(
         (*e_54).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -7969,7 +7969,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_54).arg == 1i32) {
+    if !((*e_54).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -7982,15 +7982,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            13i32,
+            13,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2162i32,
+            2162,
         );
     if !(strcmp(
         (*e_55).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8000,7 +8000,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_55).arg == 1i32) {
+    if !((*e_55).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8013,15 +8013,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            14i32,
+            14,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2163i32,
+            2163,
         );
     if !(strcmp(
         (*e_56).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8031,7 +8031,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_56).arg == 1i32) {
+    if !((*e_56).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8044,15 +8044,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            15i32,
+            15,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2164i32,
+            2164,
         );
     if !(strcmp(
         (*e_57).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8062,7 +8062,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_57).arg == 1i32) {
+    if !((*e_57).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8075,15 +8075,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            16i32,
+            16,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2165i32,
+            2165,
         );
     if !(strcmp(
         (*e_58).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8093,7 +8093,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_58).arg == 5i32) {
+    if !((*e_58).arg == 5) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8106,15 +8106,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            17i32,
+            17,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2166i32,
+            2166,
         );
     if !(strcmp(
         (*e_59).name,
         b"record_cdata_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8124,7 +8124,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_59).arg == 1i32) {
+    if !((*e_59).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8137,15 +8137,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            18i32,
+            18,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2167i32,
+            2167,
         );
     if !(strcmp(
         (*e_60).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8155,7 +8155,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_60).arg == 1i32) {
+    if !((*e_60).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8168,15 +8168,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_3 as *const handler_record_list,
-            19i32,
+            19,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2168i32,
+            2168,
         );
     if !(strcmp(
         (*e_61).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8186,7 +8186,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_61).arg == 6i32) {
+    if !((*e_61).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8194,7 +8194,7 @@ unsafe extern "C" fn test_default_current() {
             b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if !(storage_3.count == 20i32) {
+    if !(storage_3.count == 20) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8213,7 +8213,7 @@ unsafe extern "C" fn test_default_current() {
     arg:  0,
 }; 50],
 };
-    storage_4.count = 0i32;
+    storage_4.count = 0;
     XML_ParserReset(
         g_parser,
         ::core::ptr::null::<XML_Char>(),
@@ -8264,15 +8264,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            0i32,
+            0,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2185i32,
+            2185,
         );
     if !(strcmp(
         (*e_62).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8282,7 +8282,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_62).arg == 9i32) {
+    if !((*e_62).arg == 9) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8295,15 +8295,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            1i32,
+            1,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2186i32,
+            2186,
         );
     if !(strcmp(
         (*e_63).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8313,7 +8313,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_63).arg == 1i32) {
+    if !((*e_63).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8326,15 +8326,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            2i32,
+            2,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2187i32,
+            2187,
         );
     if !(strcmp(
         (*e_64).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8344,7 +8344,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_64).arg == 3i32) {
+    if !((*e_64).arg == 3) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8357,15 +8357,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            3i32,
+            3,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2188i32,
+            2188,
         );
     if !(strcmp(
         (*e_65).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8375,7 +8375,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_65).arg == 1i32) {
+    if !((*e_65).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8388,15 +8388,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            4i32,
+            4,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2189i32,
+            2189,
         );
     if !(strcmp(
         (*e_66).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8406,7 +8406,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_66).arg == 1i32) {
+    if !((*e_66).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8419,15 +8419,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            5i32,
+            5,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2190i32,
+            2190,
         );
     if !(strcmp(
         (*e_67).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8437,7 +8437,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_67).arg == 1i32) {
+    if !((*e_67).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8450,15 +8450,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            6i32,
+            6,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2191i32,
+            2191,
         );
     if !(strcmp(
         (*e_68).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8468,7 +8468,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_68).arg == 8i32) {
+    if !((*e_68).arg == 8) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8481,15 +8481,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            7i32,
+            7,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2192i32,
+            2192,
         );
     if !(strcmp(
         (*e_69).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8499,7 +8499,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_69).arg == 1i32) {
+    if !((*e_69).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8512,15 +8512,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            8i32,
+            8,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2193i32,
+            2193,
         );
     if !(strcmp(
         (*e_70).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8530,7 +8530,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_70).arg == 6i32) {
+    if !((*e_70).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8543,15 +8543,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            9i32,
+            9,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2194i32,
+            2194,
         );
     if !(strcmp(
         (*e_71).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8561,7 +8561,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_71).arg == 1i32) {
+    if !((*e_71).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8574,15 +8574,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            10i32,
+            10,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2195i32,
+            2195,
         );
     if !(strcmp(
         (*e_72).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8592,7 +8592,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_72).arg == 7i32) {
+    if !((*e_72).arg == 7) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8605,15 +8605,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            11i32,
+            11,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2196i32,
+            2196,
         );
     if !(strcmp(
         (*e_73).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8623,7 +8623,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_73).arg == 1i32) {
+    if !((*e_73).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8636,15 +8636,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            12i32,
+            12,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2197i32,
+            2197,
         );
     if !(strcmp(
         (*e_74).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8654,7 +8654,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_74).arg == 1i32) {
+    if !((*e_74).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8667,15 +8667,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            13i32,
+            13,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2198i32,
+            2198,
         );
     if !(strcmp(
         (*e_75).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8685,7 +8685,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_75).arg == 1i32) {
+    if !((*e_75).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8698,15 +8698,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            14i32,
+            14,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2199i32,
+            2199,
         );
     if !(strcmp(
         (*e_76).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8716,7 +8716,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_76).arg == 1i32) {
+    if !((*e_76).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8729,15 +8729,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            15i32,
+            15,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2200i32,
+            2200,
         );
     if !(strcmp(
         (*e_77).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8747,7 +8747,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_77).arg == 1i32) {
+    if !((*e_77).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8760,15 +8760,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            16i32,
+            16,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2201i32,
+            2201,
         );
     if !(strcmp(
         (*e_78).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8778,7 +8778,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_78).arg == 5i32) {
+    if !((*e_78).arg == 5) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8791,15 +8791,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            17i32,
+            17,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2203i32,
+            2203,
         );
     if !(strcmp(
         (*e_79).name,
         b"record_cdata_nodefault_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8809,7 +8809,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_79).arg == 1i32) {
+    if !((*e_79).arg == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8822,15 +8822,15 @@ unsafe extern "C" fn test_default_current() {
         _handler_record_get(
             
             &raw mut storage_4 as *const handler_record_list,
-            18i32,
+            18,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2204i32,
+            2204,
         );
     if !(strcmp(
         (*e_80).name,
         b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32)
+    ) == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -8840,7 +8840,7 @@ unsafe extern "C" fn test_default_current() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !((*e_80).arg == 6i32) {
+    if !((*e_80).arg == 6) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8848,7 +8848,7 @@ unsafe extern "C" fn test_default_current() {
             b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if !(storage_4.count == 19i32) {
+    if !(storage_4.count == 19) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -8863,7 +8863,7 @@ unsafe extern "C" fn test_dtd_elements() {
         b"test_dtd_elements\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2211i32,
+        2211,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (chapter)>\n<!ELEMENT chapter (#PCDATA)>\n]>\n<doc><chapter>Wombats are go</chapter></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -8900,268 +8900,268 @@ unsafe extern "C" fn element_decl_check_model(
     mut name: *const XML_Char,
     mut model: *mut XML_Content,
 ) {
-    let mut errorFlags: uint32_t = 0u32;
+    let mut errorFlags: uint32_t = 0;
     errorFlags = errorFlags
         | if strcmp(
             
             name,
             b"junk\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0i32
+        ) == 0
         {
-            0u32
+            0
         } else {
-            (1u32) << 0i32
+            (1) << 0
         };
     errorFlags = errorFlags
         | if !model.is_null() {
-            0u32
+            0
         } else {
-            (1u32) << 1i32
+            (1) << 1
         };
     if !model.is_null() {
         errorFlags = errorFlags
-            | if  (*model.offset(0isize)).type_0
+            | if  (*model.offset(0)).type_0
                 ==  XML_CTYPE_SEQ
             {
-                0u32
+                0
             } else {
-                (1u32) << 2i32
+                (1) << 2
             };
         errorFlags = errorFlags
-            | if  (*model.offset(0isize)).quant
+            | if  (*model.offset(0)).quant
                 ==  XML_CQUANT_NONE
             {
-                0u32
+                0
             } else {
-                (1u32) << 3i32
+                (1) << 3
             };
         errorFlags = errorFlags
-            | if (*model.offset(0isize)).numchildren
+            | if (*model.offset(0)).numchildren
                 == 2u32
             {
-                0u32
+                0
             } else {
-                (1u32) << 4i32
+                (1) << 4
             };
         errorFlags = errorFlags
-            | if (*model.offset(0isize)).children
-                ==  model.offset(1isize)
+            | if (*model.offset(0)).children
+                ==  model.offset(1)
             {
-                0u32
+                0
             } else {
-                (1u32) << 5i32
+                (1) << 5
             };
         errorFlags = errorFlags
-            | if (*model.offset(0isize))
+            | if (*model.offset(0))
                 .name
                 .is_null()
             {
-                0u32
+                0
             } else {
-                (1u32) << 6i32
+                (1) << 6
             };
         errorFlags = errorFlags
-            | if  (*model.offset(1isize)).type_0
+            | if  (*model.offset(1)).type_0
                 ==  XML_CTYPE_CHOICE
             {
-                0u32
+                0
             } else {
-                (1u32) << 7i32
+                (1) << 7
             };
         errorFlags = errorFlags
-            | if  (*model.offset(1isize)).quant
+            | if  (*model.offset(1)).quant
                 ==  XML_CQUANT_NONE
             {
-                0u32
+                0
             } else {
-                (1u32) << 8i32
+                (1) << 8
             };
         errorFlags = errorFlags
-            | if (*model.offset(1isize)).numchildren
+            | if (*model.offset(1)).numchildren
                 == 3u32
             {
-                0u32
+                0
             } else {
-                (1u32) << 9i32
+                (1) << 9
             };
         errorFlags = errorFlags
-            | if (*model.offset(1isize)).children
-                ==  model.offset(3isize)
+            | if (*model.offset(1)).children
+                ==  model.offset(3)
             {
-                0u32
+                0
             } else {
-                (1u32) << 10i32
+                (1) << 10
             };
         errorFlags = errorFlags
-            | if (*model.offset(1isize))
+            | if (*model.offset(1))
                 .name
                 .is_null()
             {
-                0u32
+                0
             } else {
-                (1u32) << 11i32
+                (1) << 11
             };
         errorFlags = errorFlags
-            | if  (*model.offset(2isize)).type_0
+            | if  (*model.offset(2)).type_0
                 ==  XML_CTYPE_NAME
             {
-                0u32
+                0
             } else {
-                (1u32) << 12i32
+                (1) << 12
             };
         errorFlags = errorFlags
-            | if  (*model.offset(2isize)).quant
+            | if  (*model.offset(2)).quant
                 ==  XML_CQUANT_REP
             {
-                0u32
+                0
             } else {
-                (1u32) << 13i32
+                (1) << 13
             };
         errorFlags = errorFlags
-            | if (*model.offset(2isize)).numchildren
+            | if (*model.offset(2)).numchildren
                 == 0u32
             {
-                0u32
+                0
             } else {
-                (1u32) << 14i32
+                (1) << 14
             };
         errorFlags = errorFlags
-            | if (*model.offset(2isize))
+            | if (*model.offset(2))
                 .children
                 .is_null()
             {
-                0u32
+                0
             } else {
-                (1u32) << 15i32
+                (1) << 15
             };
         errorFlags = errorFlags
             | if strcmp(
-                (*model.offset(2isize)).name,
+                (*model.offset(2)).name,
                 b"zebra\0".as_ptr() as *const ::core::ffi::c_char,
-            ) == 0i32
+            ) == 0
             {
-                0u32
+                0
             } else {
-                (1u32) << 16i32
+                (1) << 16
             };
         errorFlags = errorFlags
-            | if  (*model.offset(3isize)).type_0
+            | if  (*model.offset(3)).type_0
                 ==  XML_CTYPE_NAME
             {
-                0u32
+                0
             } else {
-                (1u32) << 17i32
+                (1) << 17
             };
         errorFlags = errorFlags
-            | if  (*model.offset(3isize)).quant
+            | if  (*model.offset(3)).quant
                 ==  XML_CQUANT_NONE
             {
-                0u32
+                0
             } else {
-                (1u32) << 18i32
+                (1) << 18
             };
         errorFlags = errorFlags
-            | if (*model.offset(3isize)).numchildren
+            | if (*model.offset(3)).numchildren
                 == 0u32
             {
-                0u32
+                0
             } else {
-                (1u32) << 19i32
+                (1) << 19
             };
         errorFlags = errorFlags
-            | if (*model.offset(3isize))
+            | if (*model.offset(3))
                 .children
                 .is_null()
             {
-                0u32
+                0
             } else {
-                (1u32) << 20i32
+                (1) << 20
             };
         errorFlags = errorFlags
             | if strcmp(
-                (*model.offset(3isize)).name,
+                (*model.offset(3)).name,
                 b"bar\0".as_ptr() as *const ::core::ffi::c_char,
-            ) == 0i32
+            ) == 0
             {
-                0u32
+                0
             } else {
-                (1u32) << 21i32
+                (1) << 21
             };
         errorFlags = errorFlags
-            | if  (*model.offset(4isize)).type_0
+            | if  (*model.offset(4)).type_0
                 ==  XML_CTYPE_NAME
             {
-                0u32
+                0
             } else {
-                (1u32) << 22i32
+                (1) << 22
             };
         errorFlags = errorFlags
-            | if  (*model.offset(4isize)).quant
+            | if  (*model.offset(4)).quant
                 ==  XML_CQUANT_NONE
             {
-                0u32
+                0
             } else {
-                (1u32) << 23i32
+                (1) << 23
             };
         errorFlags = errorFlags
-            | if (*model.offset(4isize)).numchildren
+            | if (*model.offset(4)).numchildren
                 == 0u32
             {
-                0u32
+                0
             } else {
-                (1u32) << 24i32
+                (1) << 24
             };
         errorFlags = errorFlags
-            | if (*model.offset(4isize))
+            | if (*model.offset(4))
                 .children
                 .is_null()
             {
-                0u32
+                0
             } else {
-                (1u32) << 25i32
+                (1) << 25
             };
         errorFlags = errorFlags
             | if strcmp(
-                (*model.offset(4isize)).name,
+                (*model.offset(4)).name,
                 b"foo\0".as_ptr() as *const ::core::ffi::c_char,
-            ) == 0i32
+            ) == 0
             {
-                0u32
+                0
             } else {
-                (1u32) << 26i32
+                (1) << 26
             };
         errorFlags = errorFlags
-            | if  (*model.offset(5isize)).type_0
+            | if  (*model.offset(5)).type_0
                 ==  XML_CTYPE_NAME
             {
-                0u32
+                0
             } else {
-                (1u32) << 27i32
+                (1) << 27
             };
         errorFlags = errorFlags
-            | if  (*model.offset(5isize)).quant
+            | if  (*model.offset(5)).quant
                 ==  XML_CQUANT_PLUS
             {
-                0u32
+                0
             } else {
-                (1u32) << 28i32
+                (1) << 28
             };
         errorFlags = errorFlags
-            | if (*model.offset(5isize)).numchildren
+            | if (*model.offset(5)).numchildren
                 == 0u32
             {
-                0u32
+                0
             } else {
-                (1u32) << 29i32
+                (1) << 29
             };
         errorFlags = errorFlags
-            | if (*model.offset(5isize))
+            | if (*model.offset(5))
                 .children
                 .is_null()
             {
-                0u32
+                0
             } else {
-                (1u32) << 30i32
+                (1) << 30
             };
         errorFlags = errorFlags
             | if strcmp(
@@ -9191,7 +9191,7 @@ unsafe extern "C" fn test_dtd_elements_nesting() {
         b"test_dtd_elements_nesting\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2285i32,
+        2285,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE foo [\n<!ELEMENT junk ((bar|foo|xyz+), zebra*)>\n]>\n<foo/>\0".as_ptr()
@@ -9228,7 +9228,7 @@ unsafe extern "C" fn test_dtd_elements_nesting() {
         );
     }
     if  *(g_parser as *mut *mut ::core::ffi::c_void) as uint32_t
-        != 0u32
+        != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -9245,7 +9245,7 @@ unsafe extern "C" fn test_set_foreign_dtd() {
         b"test_set_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2305i32,
+        2305,
     );
     let mut text1: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='us-ascii'?>\n\0".as_ptr() as *const ::core::ffi::c_char;
@@ -9258,7 +9258,7 @@ unsafe extern "C" fn test_set_foreign_dtd() {
 };
     XML_SetHashSalt(
         g_parser,
-        0x12345678u64,
+        0x12345678,
     );
     XML_SetParamEntityParsing(
         g_parser,
@@ -9335,7 +9335,7 @@ unsafe extern "C" fn test_set_foreign_dtd() {
     }
     if XML_SetHashSalt(
         g_parser,
-        0x23456789u64,
+        0x23456789,
     ) != 0
     {
         _fail(
@@ -9367,7 +9367,7 @@ unsafe extern "C" fn test_foreign_dtd_not_standalone() {
         b"test_foreign_dtd_not_standalone\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2341i32,
+        2341,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0".as_ptr()
@@ -9424,7 +9424,7 @@ unsafe extern "C" fn test_foreign_dtd_not_standalone() {
         b"NotStandalonehandler failed to reject\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2353i32,
+        2353,
     );
 }
 
@@ -9433,7 +9433,7 @@ unsafe extern "C" fn test_invalid_foreign_dtd() {
         b"test_invalid_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2358i32,
+        2358,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0".as_ptr()
@@ -9476,7 +9476,7 @@ unsafe extern "C" fn test_invalid_foreign_dtd() {
         b"Bad DTD should not have been accepted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2369i32,
+        2369,
     );
 }
 
@@ -9485,7 +9485,7 @@ unsafe extern "C" fn test_foreign_dtd_with_doctype() {
         b"test_foreign_dtd_with_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2374i32,
+        2374,
     );
     let mut text1: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc [<!ENTITY entity 'hello world'>]>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -9498,7 +9498,7 @@ unsafe extern "C" fn test_foreign_dtd_with_doctype() {
 };
     XML_SetHashSalt(
         g_parser,
-        0x12345678u64,
+        0x12345678,
     );
     XML_SetParamEntityParsing(
         g_parser,
@@ -9575,7 +9575,7 @@ unsafe extern "C" fn test_foreign_dtd_with_doctype() {
     }
     if XML_SetHashSalt(
         g_parser,
-        0x23456789u64,
+        0x23456789,
     ) != 0
     {
         _fail(
@@ -9607,7 +9607,7 @@ unsafe extern "C" fn test_foreign_dtd_without_external_subset() {
         b"test_foreign_dtd_without_external_subset\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2411i32,
+        2411,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [<!ENTITY foo 'bar'>]>\n<doc>&foo;</doc>\0".as_ptr()
@@ -9659,7 +9659,7 @@ unsafe extern "C" fn test_empty_foreign_dtd() {
         b"test_empty_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2425i32,
+        2425,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0".as_ptr()
@@ -9691,7 +9691,7 @@ unsafe extern "C" fn test_empty_foreign_dtd() {
         b"Undefined entity not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2433i32,
+        2433,
     );
 }
 
@@ -9700,7 +9700,7 @@ unsafe extern "C" fn test_set_base() {
         b"test_set_base\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2438i32,
+        2438,
     );
     let mut old_base: *const XML_Char =
         ::core::ptr::null::<XML_Char>();
@@ -9722,7 +9722,7 @@ unsafe extern "C" fn test_set_base() {
         XML_GetBase(g_parser),
         
         new_base,
-    ) != 0i32
+    ) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -9760,7 +9760,7 @@ unsafe extern "C" fn test_attributes() {
         b"test_attributes\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2456i32,
+        2456,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (tag)>\n<!ATTLIST doc id ID #REQUIRED>\n]><doc a='1' id='one' b='2'><tag c='3'/></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -9795,26 +9795,26 @@ unsafe extern "C" fn test_attributes() {
     let mut info: [ElementInfo; 3] = [
         elementInfo {
     name:  b"doc\0".as_ptr() as *const XML_Char,
-    attr_count:  3i32,
+    attr_count:  3,
     id_name:  b"id\0".as_ptr() as *const XML_Char,
     attributes:  ::core::ptr::null_mut::<AttrInfo>(),
 },
         elementInfo {
     name:  b"tag\0".as_ptr() as *const XML_Char,
-    attr_count:  1i32,
+    attr_count:  1,
     id_name:  ::core::ptr::null::<XML_Char>(),
     attributes:  ::core::ptr::null_mut::<AttrInfo>(),
 },
         elementInfo {
     name:  ::core::ptr::null::<XML_Char>(),
-    attr_count:  0i32,
+    attr_count:  0,
     id_name:  ::core::ptr::null::<XML_Char>(),
     attributes:  ::core::ptr::null_mut::<AttrInfo>(),
 },
     ];
-    info[0usize].attributes =
+    info[0].attributes =
         &raw mut doc_info as *mut AttrInfo;
-    info[1usize].attributes =
+    info[1].attributes =
         &raw mut tag_info as *mut AttrInfo;
     let mut parser: XML_Parser =
         XML_ParserCreate(::core::ptr::null::<
@@ -9871,9 +9871,9 @@ unsafe extern "C" fn test_reset_in_entity() {
         b"test_reset_in_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2495i32,
+        2495,
     );
-    if g_chunkSize != 0i32 {
+    if g_chunkSize != 0 {
         return;
     }
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY wombat 'wom'>\n<!ENTITY entity 'hi &wom; there'>\n]>\n<doc>&entity;</doc>\0"
@@ -9947,7 +9947,7 @@ unsafe extern "C" fn test_resume_invalid_parse() {
         b"test_resume_invalid_parse\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2526i32,
+        2526,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc>Hello</doc\0".as_ptr() as *const ::core::ffi::c_char;
@@ -10005,7 +10005,7 @@ unsafe extern "C" fn test_resume_resuspended() {
         b"test_resume_resuspended\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2542i32,
+        2542,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc>Hello<meep/>world</doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -10075,7 +10075,7 @@ unsafe extern "C" fn test_cdata_default() {
         b"test_cdata_default\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2561i32,
+        2561,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc><![CDATA[Hello\nworld]]></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -10130,7 +10130,7 @@ unsafe extern "C" fn test_subordinate_reset() {
         b"test_subordinate_reset\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2578i32,
+        2578,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -10173,7 +10173,7 @@ unsafe extern "C" fn test_subordinate_suspend() {
         b"test_subordinate_suspend\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2592i32,
+        2592,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -10216,7 +10216,7 @@ unsafe extern "C" fn test_subordinate_xdecl_suspend() {
         b"test_subordinate_xdecl_suspend\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2608i32,
+        2608,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY entity SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -10260,7 +10260,7 @@ unsafe extern "C" fn test_subordinate_xdecl_abort() {
         b"test_subordinate_xdecl_abort\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2624i32,
+        2624,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY entity SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -10304,7 +10304,7 @@ unsafe extern "C" fn test_ext_entity_invalid_suspended_parse() {
         b"test_ext_entity_invalid_suspended_parse\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2641i32,
+        2641,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -10334,7 +10334,7 @@ unsafe extern "C" fn test_ext_entity_invalid_suspended_parse() {
     let mut fault: *mut ExtFaults =
         ::core::ptr::null_mut::<ExtFaults>();
     fault =  (&raw mut faults as *mut ExtFaults)
-        .offset(0isize);
+        .offset(0);
     while !(*fault).parse_text.is_null() {
         set_subtest(
             b"%s\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10367,7 +10367,7 @@ unsafe extern "C" fn test_ext_entity_invalid_suspended_parse() {
             b"Parser did not report external entity error\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            2663i32,
+            2663,
         );
         XML_ParserReset(
             g_parser,
@@ -10382,7 +10382,7 @@ unsafe extern "C" fn test_explicit_encoding() {
         b"test_explicit_encoding\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2670i32,
+        2670,
     );
     let mut text1: *const ::core::ffi::c_char =
         b"<doc>Hello \0".as_ptr() as *const ::core::ffi::c_char;
@@ -10477,7 +10477,7 @@ unsafe extern "C" fn test_trailing_cr() {
         b"test_trailing_cr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2696i32,
+        2696,
     );
     let mut text: *const ::core::ffi::c_char = b"<doc>\r\0".as_ptr() as *const ::core::ffi::c_char;
     let mut found_cr: ::core::ffi::c_int = 0;
@@ -10496,7 +10496,7 @@ unsafe extern "C" fn test_trailing_cr() {
         g_parser,
         &raw mut found_cr as *mut ::core::ffi::c_void,
     );
-    found_cr = 0i32;
+    found_cr = 0;
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
@@ -10512,7 +10512,7 @@ unsafe extern "C" fn test_trailing_cr() {
             b"Failed to fault unclosed doc\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if found_cr == 0i32 {
+    if found_cr == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -10539,7 +10539,7 @@ unsafe extern "C" fn test_trailing_cr() {
         g_parser,
         &raw mut found_cr as *mut ::core::ffi::c_void,
     );
-    found_cr = 0i32;
+    found_cr = 0;
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
@@ -10555,7 +10555,7 @@ unsafe extern "C" fn test_trailing_cr() {
             b"Failed to fault unclosed doc\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if found_cr == 0i32 {
+    if found_cr == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -10570,7 +10570,7 @@ unsafe extern "C" fn test_ext_entity_trailing_cr() {
         b"test_ext_entity_trailing_cr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2724i32,
+        2724,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -10596,7 +10596,7 @@ unsafe extern "C" fn test_ext_entity_trailing_cr() {
         g_parser,
         &raw mut found_cr as *mut ::core::ffi::c_void,
     );
-    found_cr = 0i32;
+    found_cr = 0;
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
@@ -10612,7 +10612,7 @@ unsafe extern "C" fn test_ext_entity_trailing_cr() {
             2737i32,
         );
     }
-    if found_cr == 0i32 {
+    if found_cr == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -10645,7 +10645,7 @@ unsafe extern "C" fn test_ext_entity_trailing_cr() {
         g_parser,
         &raw mut found_cr as *mut ::core::ffi::c_void,
     );
-    found_cr = 0i32;
+    found_cr = 0;
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
@@ -10661,7 +10661,7 @@ unsafe extern "C" fn test_ext_entity_trailing_cr() {
             2749i32,
         );
     }
-    if found_cr == 0i32 {
+    if found_cr == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -10676,7 +10676,7 @@ unsafe extern "C" fn test_trailing_rsqb() {
         b"test_trailing_rsqb\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2756i32,
+        2756,
     );
     let mut text8: *const ::core::ffi::c_char = b"<doc>]\0".as_ptr() as *const ::core::ffi::c_char;
     let text16: [::core::ffi::c_char; 15] = ::core::mem::transmute::<
@@ -10700,7 +10700,7 @@ unsafe extern "C" fn test_trailing_rsqb() {
         g_parser,
         &raw mut found_rsqb as *mut ::core::ffi::c_void,
     );
-    found_rsqb = 0i32;
+    found_rsqb = 0;
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         text8,
@@ -10716,7 +10716,7 @@ unsafe extern "C" fn test_trailing_rsqb() {
             b"Failed to fault unclosed doc\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if found_rsqb == 0i32 {
+    if found_rsqb == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -10743,12 +10743,12 @@ unsafe extern "C" fn test_trailing_rsqb() {
         g_parser,
         &raw mut found_rsqb as *mut ::core::ffi::c_void,
     );
-    found_rsqb = 0i32;
+    found_rsqb = 0;
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         &raw const text16 as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 15]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_OK
@@ -10760,7 +10760,7 @@ unsafe extern "C" fn test_trailing_rsqb() {
             b"Failed to fault unclosed doc\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if found_rsqb == 0i32 {
+    if found_rsqb == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -10787,12 +10787,12 @@ unsafe extern "C" fn test_trailing_rsqb() {
         g_parser,
         &raw mut found_rsqb as *mut ::core::ffi::c_void,
     );
-    found_rsqb = 0i32;
+    found_rsqb = 0;
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         &raw const text16 as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 15]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_OK
@@ -10804,7 +10804,7 @@ unsafe extern "C" fn test_trailing_rsqb() {
             b"Failed to fault unclosed doc\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if found_rsqb == 0i32 {
+    if found_rsqb == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -10819,7 +10819,7 @@ unsafe extern "C" fn test_ext_entity_trailing_rsqb() {
         b"test_ext_entity_trailing_rsqb\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2798i32,
+        2798,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -10845,7 +10845,7 @@ unsafe extern "C" fn test_ext_entity_trailing_rsqb() {
         g_parser,
         &raw mut found_rsqb as *mut ::core::ffi::c_void,
     );
-    found_rsqb = 0i32;
+    found_rsqb = 0;
     if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
@@ -10861,7 +10861,7 @@ unsafe extern "C" fn test_ext_entity_trailing_rsqb() {
             2811i32,
         );
     }
-    if found_rsqb == 0i32 {
+    if found_rsqb == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -10876,7 +10876,7 @@ unsafe extern "C" fn test_ext_entity_good_cdata() {
         b"test_ext_entity_good_cdata\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2818i32,
+        2818,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -10919,15 +10919,15 @@ unsafe extern "C" fn test_user_parameters() {
         b"test_user_parameters\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2833i32,
+        2833,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!-- Primary parse -->\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut epilog: *const ::core::ffi::c_char =
         b"<!-- Back to primary parser -->\n</doc>\0".as_ptr() as *const ::core::ffi::c_char;
-    g_comment_count = 0i32;
-    g_skip_count = 0i32;
-    g_xdecl_count = 0i32;
+    g_comment_count = 0;
+    g_skip_count = 0;
+    g_xdecl_count = 0;
     XML_SetParamEntityParsing(
         g_parser,
         XML_PARAM_ENTITY_PARSING_ALWAYS,
@@ -11028,7 +11028,7 @@ unsafe extern "C" fn test_user_parameters() {
             2860i32,
         );
     }
-    if g_comment_count != 3i32 {
+    if g_comment_count != 3 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -11036,7 +11036,7 @@ unsafe extern "C" fn test_user_parameters() {
             b"Comment handler not invoked enough times\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if g_skip_count != 1i32 {
+    if g_skip_count != 1 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -11044,7 +11044,7 @@ unsafe extern "C" fn test_user_parameters() {
             b"Skip handler not invoked enough times\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if g_xdecl_count != 1i32 {
+    if g_xdecl_count != 1 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -11059,7 +11059,7 @@ unsafe extern "C" fn test_ext_entity_ref_parameter() {
         b"test_ext_entity_ref_parameter\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2879i32,
+        2879,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -11149,7 +11149,7 @@ unsafe extern "C" fn test_empty_parse() {
         b"test_empty_parse\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2908i32,
+        2908,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -11157,7 +11157,7 @@ unsafe extern "C" fn test_empty_parse() {
     if  XML_Parse(
         g_parser,
         ::core::ptr::null::<::core::ffi::c_char>(),
-        0i32,
+        0,
         XML_FALSE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -11172,7 +11172,7 @@ unsafe extern "C" fn test_empty_parse() {
     if  XML_Parse(
         g_parser,
         ::core::ptr::null::<::core::ffi::c_char>(),
-        0i32,
+        0,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -11217,7 +11217,7 @@ unsafe extern "C" fn test_empty_parse() {
     if  XML_Parse(
         g_parser,
         ::core::ptr::null::<::core::ffi::c_char>(),
-        0i32,
+        0,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -11251,7 +11251,7 @@ unsafe extern "C" fn test_empty_parse() {
     if  XML_Parse(
         g_parser,
         ::core::ptr::null::<::core::ffi::c_char>(),
-        0i32,
+        0,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -11271,11 +11271,11 @@ unsafe extern "C" fn test_negative_len_parse() {
         b"test_negative_len_parse\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2939i32,
+        2939,
     );
     let doc: *const ::core::ffi::c_char = b"<root/>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut isFinal: ::core::ffi::c_int = 0i32;
-    while isFinal < 2i32 {
+    let mut isFinal: ::core::ffi::c_int = 0;
+    while isFinal < 2 {
         set_subtest(
             b"isFinal=%d\0".as_ptr() as *const ::core::ffi::c_char,
             isFinal,
@@ -11297,7 +11297,7 @@ unsafe extern "C" fn test_negative_len_parse() {
         }
         let status: XML_Status =
             
-            XML_Parse(parser, doc, -1i32, isFinal);
+            XML_Parse(parser, doc, -1, isFinal);
         if  status
             !=  XML_STATUS_ERROR
         {
@@ -11330,11 +11330,11 @@ unsafe extern "C" fn test_negative_len_parse_buffer() {
         b"test_negative_len_parse_buffer\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        2963i32,
+        2963,
     );
     let doc: *const ::core::ffi::c_char = b"<root/>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut isFinal: ::core::ffi::c_int = 0i32;
-    while isFinal < 2i32 {
+    let mut isFinal: ::core::ffi::c_int = 0;
+    while isFinal < 2 {
         set_subtest(
             b"isFinal=%d\0".as_ptr() as *const ::core::ffi::c_char,
             isFinal,
@@ -11373,7 +11373,7 @@ unsafe extern "C" fn test_negative_len_parse_buffer() {
         );
         let status: XML_Status =
             
-            XML_ParseBuffer(parser, -1i32, isFinal);
+            XML_ParseBuffer(parser, -1, isFinal);
         if  status
             !=  XML_STATUS_ERROR
         {
@@ -11428,14 +11428,14 @@ unsafe extern "C" fn test_get_buffer_1() {
         b"test_get_buffer_1\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3010i32,
+        3010,
     );
     let mut text: *const ::core::ffi::c_char = get_buffer_test_text;
     let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
     let mut context_bytes: ::core::ffi::c_long = 0;
     if !XML_GetBuffer(
         g_parser,
-        -12i32,
+        -12,
     )
     .is_null()
     {
@@ -11448,7 +11448,7 @@ unsafe extern "C" fn test_get_buffer_1() {
     }
     buffer = XML_GetBuffer(
         g_parser,
-        1536i32,
+        1536,
     );
     if buffer.is_null() {
         _fail(
@@ -11511,7 +11511,7 @@ unsafe extern "C" fn test_get_buffer_1() {
     if !XML_GetBuffer(
         g_parser,
         (INT_MAX as ::core::ffi::c_long
-            - (context_bytes + 1025i64)) as ::core::ffi::c_int,
+            - (context_bytes + 1025)) as ::core::ffi::c_int,
     )
     .is_null()
     {
@@ -11524,7 +11524,7 @@ unsafe extern "C" fn test_get_buffer_1() {
     }
     if XML_GetBuffer(
         g_parser,
-        1000i32,
+        1000,
     )
     .is_null()
     {
@@ -11542,13 +11542,13 @@ unsafe extern "C" fn test_get_buffer_2() {
         b"test_get_buffer_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3053i32,
+        3053,
     );
     let mut text: *const ::core::ffi::c_char = get_buffer_test_text;
     let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
     buffer = XML_GetBuffer(
         g_parser,
-        1536i32,
+        1536,
     );
     if buffer.is_null() {
         _fail(
@@ -11589,7 +11589,7 @@ unsafe extern "C" fn test_get_buffer_2() {
     }
     if XML_GetBuffer(
         g_parser,
-        1024i32,
+        1024,
     )
     .is_null()
     {
@@ -11607,7 +11607,7 @@ unsafe extern "C" fn test_get_buffer_3_overflow() {
         b"test_get_buffer_3_overflow\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3075i32,
+        3075,
     );
     let mut parser: XML_Parser =
         XML_ParserCreate(::core::ptr::null::<
@@ -11640,7 +11640,7 @@ unsafe extern "C" fn test_get_buffer_3_overflow() {
             3087i32,
         );
     }
-    if expectedKeepValue > 0i32 {
+    if expectedKeepValue > 0 {
     } else {
         __assert_fail(
             b"expectedKeepValue > 0\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11652,7 +11652,7 @@ unsafe extern "C" fn test_get_buffer_3_overflow() {
     };
     if !XML_GetBuffer(
         parser,
-        INT_MAX - expectedKeepValue + 1i32,
+        INT_MAX - expectedKeepValue + 1,
     )
     .is_null()
     {
@@ -11671,7 +11671,7 @@ unsafe extern "C" fn test_buffer_can_grow_to_max() {
         b"test_buffer_can_grow_to_max\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3098i32,
+        3098,
     );
     let prefixes: [*const ::core::ffi::c_char; 6] = [
         b"\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11686,9 +11686,9 @@ unsafe extern "C" fn test_buffer_can_grow_to_max() {
         (::core::mem::size_of::<[*const ::core::ffi::c_char; 6]>())
             .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>())
             as ::core::ffi::c_int;
-    let mut maxbuf: ::core::ffi::c_int = INT_MAX / 2i32
-        + (INT_MAX & 1i32);
-    let mut i: ::core::ffi::c_int = 0i32;
+    let mut maxbuf: ::core::ffi::c_int = INT_MAX / 2
+        + (INT_MAX & 1);
+    let mut i: ::core::ffi::c_int = 0;
     while i < num_prefixes {
         set_subtest(
             b"\"%s\"\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11703,7 +11703,7 @@ unsafe extern "C" fn test_buffer_can_grow_to_max() {
             -1i32 as size_t
                 as ::core::ffi::c_ulonglong,
         ) as ::core::ffi::c_int
-            == 1i32)
+            == 1)
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
@@ -11740,7 +11740,7 @@ unsafe extern "C" fn test_buffer_can_grow_to_max() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if !XML_GetBuffer(parser, maxbuf + 1i32)
+        if !XML_GetBuffer(parser, maxbuf + 1)
             .is_null()
         {
             _fail(
@@ -11761,10 +11761,10 @@ unsafe extern "C" fn test_getbuffer_allocates_on_zero_len() {
         b"test_getbuffer_allocates_on_zero_len\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3147i32,
+        3147,
     );
-    let mut first_len: ::core::ffi::c_int = 1i32;
-    while first_len >= 0i32 {
+    let mut first_len: ::core::ffi::c_int = 1;
+    while first_len >= 0 {
         set_subtest(
             b"with len=%d first\0".as_ptr() as *const ::core::ffi::c_char,
             first_len,
@@ -11790,7 +11790,7 @@ unsafe extern "C" fn test_getbuffer_allocates_on_zero_len() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if XML_GetBuffer(parser, 0i32).is_null() {
+        if XML_GetBuffer(parser, 0).is_null() {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -11801,7 +11801,7 @@ unsafe extern "C" fn test_getbuffer_allocates_on_zero_len() {
         }
         if  XML_ParseBuffer(
             parser,
-            0i32,
+            0,
             XML_FALSE as ::core::ffi::c_int,
         )
             !=  XML_STATUS_OK
@@ -11823,14 +11823,14 @@ unsafe extern "C" fn test_byte_info_at_end() {
         b"test_byte_info_at_end\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3162i32,
+        3162,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc></doc>\0".as_ptr() as *const ::core::ffi::c_char;
     if XML_GetCurrentByteIndex(g_parser)
-        != -1i64
+        != -1
         || XML_GetCurrentByteCount(g_parser)
-            != 0i32
+            != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -11856,7 +11856,7 @@ unsafe extern "C" fn test_byte_info_at_end() {
         );
     }
     if XML_GetCurrentByteCount(g_parser)
-        != 0i32
+        != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -11885,7 +11885,7 @@ unsafe extern "C" fn test_byte_info_at_error() {
         b"test_byte_info_at_error\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3182i32,
+        3182,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc></wombat></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -11905,7 +11905,7 @@ unsafe extern "C" fn test_byte_info_at_error() {
         );
     }
     if XML_GetCurrentByteCount(g_parser)
-        != 0i32
+        != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -11938,7 +11938,7 @@ unsafe extern "C" fn test_byte_info_at_cdata() {
         b"test_byte_info_at_cdata\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3201i32,
+        3201,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<e>Hello</e>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -12000,7 +12000,7 @@ unsafe extern "C" fn test_predefined_entities() {
         b"test_predefined_entities\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3224i32,
+        3224,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc>&lt;&gt;&amp;&quot;&apos;</doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -12059,7 +12059,7 @@ unsafe extern "C" fn test_predefined_entities() {
         result,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3244i32,
+        3244,
     );
 }
 
@@ -12068,7 +12068,7 @@ unsafe extern "C" fn test_invalid_tag_in_dtd() {
         b"test_invalid_tag_in_dtd\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3256i32,
+        3256,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM '004-1.ent'>\n<doc></doc>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -12095,7 +12095,7 @@ unsafe extern "C" fn test_invalid_tag_in_dtd() {
         b"Invalid tag IN DTD external param not rejected\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3263i32,
+        3263,
     );
 }
 
@@ -12104,7 +12104,7 @@ unsafe extern "C" fn test_not_predefined_entities() {
         b"test_not_predefined_entities\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3268i32,
+        3268,
     );
     let mut text: [*const ::core::ffi::c_char; 5] = [
         b"<doc>&pt;</doc>\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12113,7 +12113,7 @@ unsafe extern "C" fn test_not_predefined_entities() {
         b"<doc>&apod;</doc>\0".as_ptr() as *const ::core::ffi::c_char,
         ::core::ptr::null::<::core::ffi::c_char>(),
     ];
-    let mut i: ::core::ffi::c_int = 0i32;
+    let mut i: ::core::ffi::c_int = 0;
     while !text[i as usize].is_null() {
         _expect_failure(
             text[i as usize],
@@ -12121,7 +12121,7 @@ unsafe extern "C" fn test_not_predefined_entities() {
             b"Undefined entity not rejected\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            3275i32,
+            3275,
         );
         XML_ParserReset(
             g_parser,
@@ -12136,7 +12136,7 @@ unsafe extern "C" fn test_ignore_section() {
         b"test_ignore_section\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3283i32,
+        3283,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc><e>&entity;</e></doc>\0".as_ptr()
@@ -12261,7 +12261,7 @@ unsafe extern "C" fn test_ignore_section_utf16() {
         b"test_ignore_section_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3307i32,
+        3307,
     );
     let text: [::core::ffi::c_char; 85] = ::core::mem::transmute::<
         [u8; 85],
@@ -12366,7 +12366,7 @@ unsafe extern "C" fn test_ignore_section_utf16() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 85]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -12390,7 +12390,7 @@ unsafe extern "C" fn test_ignore_section_utf16_be() {
         b"test_ignore_section_utf16_be\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3334i32,
+        3334,
     );
     let text: [::core::ffi::c_char; 85] = ::core::mem::transmute::<
         [u8; 85],
@@ -12495,7 +12495,7 @@ unsafe extern "C" fn test_ignore_section_utf16_be() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 85]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -12519,7 +12519,7 @@ unsafe extern "C" fn test_bad_ignore_section() {
         b"test_bad_ignore_section\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3363i32,
+        3363,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc><e>&entity;</e></doc>\0".as_ptr()
@@ -12556,7 +12556,7 @@ unsafe extern "C" fn test_bad_ignore_section() {
     let mut fault: *mut ExtFaults =
         ::core::ptr::null_mut::<ExtFaults>();
     fault =  (&raw mut faults as *mut ExtFaults)
-        .offset(0isize);
+        .offset(0);
     while !(*fault).parse_text.is_null() {
         set_subtest(
             b"%s\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12589,7 +12589,7 @@ unsafe extern "C" fn test_bad_ignore_section() {
             b"Incomplete IGNORE section not failed\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            3383i32,
+            3383,
         );
         XML_ParserReset(
             g_parser,
@@ -12688,14 +12688,14 @@ unsafe extern "C" fn test_external_bom_consumed() {
         b"test_external_bom_consumed\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3437i32,
+        3437,
     );
     let text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM '004-1.ent'>\n<doc></doc>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let external: *const ::core::ffi::c_char =
         b"\xEF\xBB\xBF<!ATTLIST doc a1 CDATA 'value'>\0".as_ptr() as *const ::core::ffi::c_char;
     let len: ::core::ffi::c_int = strlen(external) as ::core::ffi::c_int;
-    let mut split: ::core::ffi::c_int = 0i32;
+    let mut split: ::core::ffi::c_int = 0;
     while split <= len {
         set_subtest(
             b"split at byte %d\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12775,7 +12775,7 @@ unsafe extern "C" fn test_external_entity_values() {
         b"test_external_entity_values\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3469i32,
+        3469,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM '004-1.ent'>\n<doc></doc>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -12866,7 +12866,7 @@ unsafe extern "C" fn test_external_entity_values() {
 },
     ];
     let mut i: ::core::ffi::c_int = 0;
-    i = 0i32;
+    i = 0;
     while !data_004_2[i as usize].parse_text.is_null() {
         set_subtest(
             b"%s\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12923,7 +12923,7 @@ unsafe extern "C" fn test_ext_entity_not_standalone() {
         b"test_ext_entity_not_standalone\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3514i32,
+        3514,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -12950,7 +12950,7 @@ unsafe extern "C" fn test_ext_entity_not_standalone() {
         b"Standalone rejection not caught\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3521i32,
+        3521,
     );
 }
 
@@ -12959,7 +12959,7 @@ unsafe extern "C" fn test_ext_entity_value_abort() {
         b"test_ext_entity_value_abort\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3525i32,
+        3525,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM '004-1.ent'>\n<doc></doc>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -13003,7 +13003,7 @@ unsafe extern "C" fn test_bad_public_doctype() {
         b"test_bad_public_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3538i32,
+        3538,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC '{BadName}' 'test'>\n<doc></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -13030,7 +13030,7 @@ unsafe extern "C" fn test_bad_public_doctype() {
         b"Bad Public ID not failed\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3546i32,
+        3546,
     );
 }
 
@@ -13039,7 +13039,7 @@ unsafe extern "C" fn test_attribute_enum_value() {
         b"test_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3551i32,
+        3551,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='no'?>\n<!DOCTYPE animal SYSTEM 'test.dtd'>\n<animal>This is a \n    <a/>  \n\nyellow tiger</animal>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -13094,7 +13094,7 @@ unsafe extern "C" fn test_attribute_enum_value() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3567i32,
+        3567,
     );
 }
 
@@ -13103,7 +13103,7 @@ unsafe extern "C" fn test_predefined_entity_redefinition() {
         b"test_predefined_entity_redefinition\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3576i32,
+        3576,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n<!ENTITY apos 'foo'>\n]>\n<doc>&apos;</doc>\0".as_ptr()
@@ -13113,7 +13113,7 @@ unsafe extern "C" fn test_predefined_entity_redefinition() {
         b"'\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3581i32,
+        3581,
     );
 }
 
@@ -13122,7 +13122,7 @@ unsafe extern "C" fn test_dtd_stop_processing() {
         b"test_dtd_stop_processing\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3588i32,
+        3588,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n%foo;\n<!ENTITY bar 'bas'>\n]><doc/>\0".as_ptr()
@@ -13160,7 +13160,7 @@ unsafe extern "C" fn test_dtd_stop_processing() {
             3598i32,
         );
     }
-    if get_dummy_handler_flags() != 0u64 {
+    if get_dummy_handler_flags() != 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -13176,7 +13176,7 @@ unsafe extern "C" fn test_public_notation_no_sysid() {
         b"test_public_notation_no_sysid\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3605i32,
+        3605,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n<!NOTATION note PUBLIC 'foo'>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0"
@@ -13227,7 +13227,7 @@ unsafe extern "C" fn test_nested_groups() {
         b"test_nested_groups\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3621i32,
+        3621,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>\n<!ELEMENT e EMPTY>]>\n<doc><e/></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -13301,7 +13301,7 @@ unsafe extern "C" fn test_group_choice() {
         b"test_group_choice\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3648i32,
+        3648,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (a|b|c)+>\n<!ELEMENT a EMPTY>\n<!ELEMENT b (#PCDATA)>\n<!ELEMENT c ANY>\n]>\n<doc>\n<a/>\n<b attr='foo'>This is a foo</b>\n<c></c>\n</doc>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -13349,7 +13349,7 @@ unsafe extern "C" fn test_standalone_parameter_entity() {
         b"test_standalone_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3671i32,
+        3671,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='yes'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/' [\n<!ENTITY % entity '<!ELEMENT doc (#PCDATA)>'>\n%entity;\n]>\n<doc></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -13399,7 +13399,7 @@ unsafe extern "C" fn test_skipped_parameter_entity() {
         b"test_skipped_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3691i32,
+        3691,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE root SYSTEM 'http://example.org/dtd.ent' [\n<!ELEMENT root (#PCDATA|a)* >\n]>\n<root></root>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -13473,7 +13473,7 @@ unsafe extern "C" fn test_recursive_external_parameter_entity() {
         b"test_recursive_external_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3713i32,
+        3713,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE root SYSTEM 'http://example.org/dtd.ent' [\n<!ELEMENT root (#PCDATA|a)* >\n]>\n<root></root>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -13513,7 +13513,7 @@ unsafe extern "C" fn test_recursive_external_parameter_entity() {
         b"Recursive external parameter not spotted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3727i32,
+        3727,
     );
 }
 
@@ -13522,7 +13522,7 @@ unsafe extern "C" fn test_undefined_ext_entity_in_external_dtd() {
         b"test_undefined_ext_entity_in_external_dtd\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3732i32,
+        3732,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc></doc>\n\0".as_ptr() as *const ::core::ffi::c_char;
@@ -13609,7 +13609,7 @@ unsafe extern "C" fn test_suspend_xdecl() {
         b"test_suspend_xdecl\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3757i32,
+        3757,
     );
     let mut text: *const ::core::ffi::c_char = long_character_data_text;
     XML_SetXmlDeclHandler(
@@ -13688,7 +13688,7 @@ unsafe extern "C" fn test_abort_epilog() {
         b"test_abort_epilog\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3780i32,
+        3780,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc></doc>\n\r\n\0".as_ptr() as *const ::core::ffi::c_char;
@@ -13743,7 +13743,7 @@ unsafe extern "C" fn test_abort_epilog_2() {
         b"test_abort_epilog_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3796i32,
+        3796,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc></doc>\n\0".as_ptr() as *const ::core::ffi::c_char;
@@ -13772,7 +13772,7 @@ unsafe extern "C" fn test_abort_epilog_2() {
         b"Abort not triggered\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3803i32,
+        3803,
     );
 }
 
@@ -13781,7 +13781,7 @@ unsafe extern "C" fn test_suspend_epilog() {
         b"test_suspend_epilog\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3808i32,
+        3808,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc></doc>\n\0".as_ptr() as *const ::core::ffi::c_char;
@@ -13826,7 +13826,7 @@ unsafe extern "C" fn test_suspend_in_sole_empty_tag() {
         b"test_suspend_in_sole_empty_tag\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3821i32,
+        3821,
     );
     let mut text: *const ::core::ffi::c_char = b"<doc/>\0".as_ptr() as *const ::core::ffi::c_char;
     let mut rc: XML_Status = XML_STATUS_ERROR;
@@ -13896,7 +13896,7 @@ unsafe extern "C" fn test_unfinished_epilog() {
         b"test_unfinished_epilog\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3840i32,
+        3840,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc></doc><\0".as_ptr() as *const ::core::ffi::c_char;
@@ -13906,7 +13906,7 @@ unsafe extern "C" fn test_unfinished_epilog() {
         b"Incomplete epilog entry not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3844i32,
+        3844,
     );
 }
 
@@ -13915,7 +13915,7 @@ unsafe extern "C" fn test_partial_char_in_epilog() {
         b"test_partial_char_in_epilog\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3848i32,
+        3848,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc></doc>\xE2\x82\0".as_ptr() as *const ::core::ffi::c_char;
@@ -13936,7 +13936,7 @@ unsafe extern "C" fn test_partial_char_in_epilog() {
     }
     if  XML_ParseBuffer(
         g_parser,
-        0i32,
+        0,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -13965,7 +13965,7 @@ unsafe extern "C" fn test_suspend_resume_internal_entity() {
         b"test_suspend_resume_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3864i32,
+        3864,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY foo '<suspend>Hi<suspend>Ho</suspend></suspend>'>\n]>\n<doc>&foo;</doc>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -14062,12 +14062,12 @@ unsafe extern "C" fn test_suspend_resume_internal_entity_issue_629() {
         b"test_suspend_resume_internal_entity_issue_629\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3893i32,
+        3893,
     );
     let text: *const ::core::ffi::c_char = b"<!DOCTYPE a [<!ENTITY e '<!--COMMENT-->a'>]><a>&e;<b>\n<aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/></b></a>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let firstChunkSizeBytes: size_t =
-        54usize;
+        54;
     let mut parser: XML_Parser =
         XML_ParserCreate(::core::ptr::null::<
             XML_Char,
@@ -14131,9 +14131,9 @@ unsafe extern "C" fn test_resume_entity_with_syntax_error() {
         b"test_resume_entity_with_syntax_error\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3960i32,
+        3960,
     );
-    if g_chunkSize != 0i32 {
+    if g_chunkSize != 0 {
         return;
     }
     let mut text: *const ::core::ffi::c_char =
@@ -14192,7 +14192,7 @@ unsafe extern "C" fn test_suspend_resume_parameter_entity() {
         b"test_suspend_resume_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        3985i32,
+        3985,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY % foo '<!ELEMENT doc (#PCDATA)*>'>\n%foo;\n]>\n<doc>Hello, world</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -14276,7 +14276,7 @@ unsafe extern "C" fn test_restart_on_error() {
         b"test_restart_on_error\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4010i32,
+        4010,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<$doc><doc></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -14308,7 +14308,7 @@ unsafe extern "C" fn test_restart_on_error() {
     if  XML_Parse(
         g_parser,
         ::core::ptr::null::<::core::ffi::c_char>(),
-        0i32,
+        0,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -14337,7 +14337,7 @@ unsafe extern "C" fn test_reject_lt_in_attribute_value() {
         b"test_reject_lt_in_attribute_value\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4026i32,
+        4026,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [<!ATTLIST doc a CDATA '<bar>'>]>\n<doc></doc>\0".as_ptr()
@@ -14348,7 +14348,7 @@ unsafe extern "C" fn test_reject_lt_in_attribute_value() {
         b"Bad attribute default not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4031i32,
+        4031,
     );
 }
 
@@ -14357,7 +14357,7 @@ unsafe extern "C" fn test_reject_unfinished_param_in_att_value() {
         b"test_reject_unfinished_param_in_att_value\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4035i32,
+        4035,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [<!ATTLIST doc a CDATA '&foo'>]>\n<doc></doc>\0".as_ptr()
@@ -14368,7 +14368,7 @@ unsafe extern "C" fn test_reject_unfinished_param_in_att_value() {
         b"Bad attribute default not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4040i32,
+        4040,
     );
 }
 
@@ -14377,7 +14377,7 @@ unsafe extern "C" fn test_trailing_cr_in_att_value() {
         b"test_trailing_cr_in_att_value\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4044i32,
+        4044,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc a='value\r'/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -14403,7 +14403,7 @@ unsafe extern "C" fn test_standalone_internal_entity() {
         b"test_standalone_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4056i32,
+        4056,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='yes' ?>\n<!DOCTYPE doc [\n  <!ELEMENT doc (#PCDATA)>\n  <!ENTITY % pe '<!ATTLIST doc att2 CDATA \"&ge;\">'>\n  <!ENTITY ge 'AttDefaultValue'>\n  %pe;\n]>\n<doc att2='any'/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -14433,7 +14433,7 @@ unsafe extern "C" fn test_skipped_external_entity() {
         b"test_skipped_external_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4074i32,
+        4074,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc></doc>\n\0".as_ptr()
@@ -14487,7 +14487,7 @@ unsafe extern "C" fn test_skipped_null_loaded_ext_entity() {
         b"test_skipped_null_loaded_ext_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4091i32,
+        4091,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>\n<doc />\0".as_ptr()
@@ -14550,7 +14550,7 @@ unsafe extern "C" fn test_skipped_unloaded_ext_entity() {
         b"test_skipped_unloaded_ext_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4109i32,
+        4109,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>\n<doc />\0".as_ptr()
@@ -14604,7 +14604,7 @@ unsafe extern "C" fn test_param_entity_with_trailing_cr() {
         b"test_param_entity_with_trailing_cr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4130i32,
+        4130,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc/>\0".as_ptr()
@@ -14698,7 +14698,7 @@ unsafe extern "C" fn test_invalid_character_entity() {
         b"test_invalid_character_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4159i32,
+        4159,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ENTITY entity '&#x110000;'>\n]>\n<doc>&entity;</doc>\0".as_ptr()
@@ -14709,7 +14709,7 @@ unsafe extern "C" fn test_invalid_character_entity() {
         b"Out of range character reference not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4166i32,
+        4166,
     );
 }
 
@@ -14718,7 +14718,7 @@ unsafe extern "C" fn test_invalid_character_entity_2() {
         b"test_invalid_character_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4170i32,
+        4170,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ENTITY entity '&#xg0;'>\n]>\n<doc>&entity;</doc>\0".as_ptr()
@@ -14729,7 +14729,7 @@ unsafe extern "C" fn test_invalid_character_entity_2() {
         b"Out of range character reference not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4177i32,
+        4177,
     );
 }
 
@@ -14738,7 +14738,7 @@ unsafe extern "C" fn test_invalid_character_entity_3() {
         b"test_invalid_character_entity_3\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4181i32,
+        4181,
     );
     let text: [::core::ffi::c_char; 125] = ::core::mem::transmute::<
         [u8; 125],
@@ -14750,7 +14750,7 @@ unsafe extern "C" fn test_invalid_character_entity_3() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 125]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -14779,7 +14779,7 @@ unsafe extern "C" fn test_invalid_character_entity_4() {
         b"test_invalid_character_entity_4\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4203i32,
+        4203,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ENTITY entity '&#1114112;'>\n]>\n<doc>&entity;</doc>\0".as_ptr()
@@ -14790,7 +14790,7 @@ unsafe extern "C" fn test_invalid_character_entity_4() {
         b"Out of range character reference not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4210i32,
+        4210,
     );
 }
 
@@ -14799,7 +14799,7 @@ unsafe extern "C" fn test_pi_handled_in_default() {
         b"test_pi_handled_in_default\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4215i32,
+        4215,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?test processing instruction?>\n<doc/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -14854,7 +14854,7 @@ unsafe extern "C" fn test_comment_handled_in_default() {
         b"test_comment_handled_in_default\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4231i32,
+        4231,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!-- This is a comment -->\n<doc/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -14909,7 +14909,7 @@ unsafe extern "C" fn test_pi_yml() {
         b"test_pi_yml\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4247i32,
+        4247,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?yml something like data?><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -14963,7 +14963,7 @@ unsafe extern "C" fn test_pi_xnl() {
         b"test_pi_xnl\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4262i32,
+        4262,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xnl nothing like data?><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -15017,7 +15017,7 @@ unsafe extern "C" fn test_pi_xmm() {
         b"test_pi_xmm\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4277i32,
+        4277,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xmm everything like data?><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -15071,7 +15071,7 @@ unsafe extern "C" fn test_utf16_pi() {
         b"test_utf16_pi\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4292i32,
+        4292,
     );
     let text: [::core::ffi::c_char; 21] = ::core::mem::transmute::<
         [u8; 21],
@@ -15104,7 +15104,7 @@ unsafe extern "C" fn test_utf16_pi() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 21]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -15128,7 +15128,7 @@ unsafe extern "C" fn test_utf16_be_pi() {
         b"test_utf16_be_pi\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4318i32,
+        4318,
     );
     let text: [::core::ffi::c_char; 21] = ::core::mem::transmute::<
         [u8; 21],
@@ -15161,7 +15161,7 @@ unsafe extern "C" fn test_utf16_be_pi() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 21]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -15185,7 +15185,7 @@ unsafe extern "C" fn test_utf16_be_comment() {
         b"test_utf16_be_comment\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4345i32,
+        4345,
     );
     let text: [::core::ffi::c_char; 51] =
         ::core::mem::transmute::<[u8; 51], [::core::ffi::c_char; 51]>(
@@ -15217,7 +15217,7 @@ unsafe extern "C" fn test_utf16_be_comment() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 51]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -15241,7 +15241,7 @@ unsafe extern "C" fn test_utf16_le_comment() {
         b"test_utf16_le_comment\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4364i32,
+        4364,
     );
     let text: [::core::ffi::c_char; 51] =
         ::core::mem::transmute::<[u8; 51], [::core::ffi::c_char; 51]>(
@@ -15273,7 +15273,7 @@ unsafe extern "C" fn test_utf16_le_comment() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 51]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -15297,7 +15297,7 @@ unsafe extern "C" fn test_missing_encoding_conversion_fn() {
         b"test_missing_encoding_conversion_fn\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4386i32,
+        4386,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='no-conv'?>\n<doc>\x81</doc>\0".as_ptr()
@@ -15320,7 +15320,7 @@ unsafe extern "C" fn test_missing_encoding_conversion_fn() {
         b"Encoding with missing convert() not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4398i32,
+        4398,
     );
 }
 
@@ -15329,7 +15329,7 @@ unsafe extern "C" fn test_failing_encoding_conversion_fn() {
         b"test_failing_encoding_conversion_fn\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4402i32,
+        4402,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='failing-conv'?>\n<doc>\x81</doc>\0".as_ptr()
@@ -15352,7 +15352,7 @@ unsafe extern "C" fn test_failing_encoding_conversion_fn() {
         b"Encoding with failing convert() not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4413i32,
+        4413,
     );
 }
 
@@ -15361,7 +15361,7 @@ unsafe extern "C" fn test_unknown_encoding_success() {
         b"test_unknown_encoding_success\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4418i32,
+        4418,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='prefix-conv'?>\n<\x81d\x80oc>Hello, world</\x81d\x80oc>\0"
@@ -15383,7 +15383,7 @@ unsafe extern "C" fn test_unknown_encoding_success() {
         b"Hello, world\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4424i32,
+        4424,
     );
 }
 
@@ -15392,7 +15392,7 @@ unsafe extern "C" fn test_unknown_encoding_bad_name() {
         b"test_unknown_encoding_bad_name\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4429i32,
+        4429,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='prefix-conv'?>\n<\xFFdoc>Hello, world</\xFFdoc>\0".as_ptr()
@@ -15415,7 +15415,7 @@ unsafe extern "C" fn test_unknown_encoding_bad_name() {
         b"Bad name start in unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4435i32,
+        4435,
     );
 }
 
@@ -15424,7 +15424,7 @@ unsafe extern "C" fn test_unknown_encoding_bad_name_2() {
         b"test_unknown_encoding_bad_name_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4440i32,
+        4440,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='prefix-conv'?>\n<d\xFFoc>Hello, world</d\xFFoc>\0".as_ptr()
@@ -15447,7 +15447,7 @@ unsafe extern "C" fn test_unknown_encoding_bad_name_2() {
         b"Bad name in unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4446i32,
+        4446,
     );
 }
 
@@ -15456,7 +15456,7 @@ unsafe extern "C" fn test_unknown_encoding_long_name_1() {
         b"test_unknown_encoding_long_name_1\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4453i32,
+        4453,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?>\n<abcdefghabcdefghabcdefghijkl\x80m\x80n\x80o\x80p>Hi</abcdefghabcdefghabcdefghijkl\x80m\x80n\x80o\x80p>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -15522,7 +15522,7 @@ unsafe extern "C" fn test_unknown_encoding_long_name_2() {
         b"test_unknown_encoding_long_name_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4475i32,
+        4475,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?>\n<abcdefghabcdefghabcdefghijklmnop>Hi</abcdefghabcdefghabcdefghijklmnop>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -15588,7 +15588,7 @@ unsafe extern "C" fn test_invalid_unknown_encoding() {
         b"test_invalid_unknown_encoding\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4494i32,
+        4494,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='invalid-9'?>\n<doc>Hello world</doc>\0".as_ptr()
@@ -15611,7 +15611,7 @@ unsafe extern "C" fn test_invalid_unknown_encoding() {
         b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4500i32,
+        4500,
     );
 }
 
@@ -15620,7 +15620,7 @@ unsafe extern "C" fn test_unknown_ascii_encoding_ok() {
         b"test_unknown_ascii_encoding_ok\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4504i32,
+        4504,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='ascii-like'?>\n<doc>Hello, world</doc>\0".as_ptr()
@@ -15642,7 +15642,7 @@ unsafe extern "C" fn test_unknown_ascii_encoding_ok() {
         b"Hello, world\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4509i32,
+        4509,
     );
 }
 
@@ -15651,7 +15651,7 @@ unsafe extern "C" fn test_unknown_ascii_encoding_fail() {
         b"test_unknown_ascii_encoding_fail\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4513i32,
+        4513,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='ascii-like'?>\n<doc>Hello, \x80 world</doc>\0".as_ptr()
@@ -15674,7 +15674,7 @@ unsafe extern "C" fn test_unknown_ascii_encoding_fail() {
         b"Invalid character not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4519i32,
+        4519,
     );
 }
 
@@ -15683,7 +15683,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_length() {
         b"test_unknown_encoding_invalid_length\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4523i32,
+        4523,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='invalid-len'?>\n<doc>Hello, world</doc>\0".as_ptr()
@@ -15706,7 +15706,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_length() {
         b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4529i32,
+        4529,
     );
 }
 
@@ -15715,7 +15715,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_topbit() {
         b"test_unknown_encoding_invalid_topbit\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4533i32,
+        4533,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='invalid-a'?>\n<doc>Hello, world</doc>\0".as_ptr()
@@ -15738,7 +15738,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_topbit() {
         b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4539i32,
+        4539,
     );
 }
 
@@ -15747,7 +15747,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_surrogate() {
         b"test_unknown_encoding_invalid_surrogate\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4543i32,
+        4543,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='invalid-surrogate'?>\n<doc>Hello, \x82 world</doc>\0"
@@ -15770,7 +15770,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_surrogate() {
         b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4549i32,
+        4549,
     );
 }
 
@@ -15779,7 +15779,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_high() {
         b"test_unknown_encoding_invalid_high\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4553i32,
+        4553,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='invalid-high'?>\n<doc>Hello, world</doc>\0".as_ptr()
@@ -15802,7 +15802,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_high() {
         b"Invalid unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4559i32,
+        4559,
     );
 }
 
@@ -15811,7 +15811,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_attr_value() {
         b"test_unknown_encoding_invalid_attr_value\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4563i32,
+        4563,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='prefix-conv'?>\n<doc attr='\xFF0'/>\0".as_ptr()
@@ -15834,7 +15834,7 @@ unsafe extern "C" fn test_unknown_encoding_invalid_attr_value() {
         b"Invalid attribute valid not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4569i32,
+        4569,
     );
 }
 
@@ -15843,7 +15843,7 @@ unsafe extern "C" fn test_unknown_encoding_user_data_primary() {
         b"test_unknown_encoding_user_data_primary\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4573i32,
+        4573,
     );
     let text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='x-unk'?>\n<root />\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -15868,7 +15868,7 @@ unsafe extern "C" fn test_unknown_encoding_user_data_primary() {
         parser,
         text,
         strlen(text) as ::core::ffi::c_int,
-        1i32,
+        1,
     )
         ==  XML_STATUS_OK)
     {
@@ -15888,7 +15888,7 @@ unsafe extern "C" fn test_unknown_encoding_user_data_secondary() {
         b"test_unknown_encoding_user_data_secondary\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4589i32,
+        4589,
     );
     let text_main: *const ::core::ffi::c_char =
         b"<!DOCTYPE r [\n  <!ENTITY ext SYSTEM 'ext.ent'>\n]>\n<r>&ext;</r>\n\0".as_ptr()
@@ -15941,7 +15941,7 @@ unsafe extern "C" fn test_unknown_encoding_user_data_secondary() {
         parser,
         text_main,
         strlen(text_main) as ::core::ffi::c_int,
-        1i32,
+        1,
     )
         ==  XML_STATUS_OK)
     {
@@ -15961,14 +15961,14 @@ unsafe extern "C" fn test_ext_entity_latin1_utf16le_bom() {
         b"test_ext_entity_latin1_utf16le_bom\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4617i32,
+        4617,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: ExtTest2 =
         ExtTest2 {
     parse_text:  b"\xFF\xFEL \0".as_ptr() as *const ::core::ffi::c_char,
-    parse_len:  4i32,
+    parse_len:  4,
     encoding:  b"iso-8859-1\0".as_ptr() as *const XML_Char,
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -16036,14 +16036,14 @@ unsafe extern "C" fn test_ext_entity_latin1_utf16be_bom() {
         b"test_ext_entity_latin1_utf16be_bom\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4648i32,
+        4648,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: ExtTest2 =
         ExtTest2 {
     parse_text:  b"\xFE\xFF L\0".as_ptr() as *const ::core::ffi::c_char,
-    parse_len:  4i32,
+    parse_len:  4,
     encoding:  b"iso-8859-1\0".as_ptr() as *const XML_Char,
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -16111,14 +16111,14 @@ unsafe extern "C" fn test_ext_entity_latin1_utf16le_bom2() {
         b"test_ext_entity_latin1_utf16le_bom2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4683i32,
+        4683,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: ExtTest2 =
         ExtTest2 {
     parse_text:  b"\xFF\xFEL \0".as_ptr() as *const ::core::ffi::c_char,
-    parse_len:  4i32,
+    parse_len:  4,
     encoding:  b"iso-8859-1\0".as_ptr() as *const XML_Char,
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -16186,14 +16186,14 @@ unsafe extern "C" fn test_ext_entity_latin1_utf16be_bom2() {
         b"test_ext_entity_latin1_utf16be_bom2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4714i32,
+        4714,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: ExtTest2 =
         ExtTest2 {
     parse_text:  b"\xFE\xFF L\0".as_ptr() as *const ::core::ffi::c_char,
-    parse_len:  4i32,
+    parse_len:  4,
     encoding:  b"iso-8859-1\0".as_ptr() as *const XML_Char,
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -16261,14 +16261,14 @@ unsafe extern "C" fn test_ext_entity_utf16_be() {
         b"test_ext_entity_utf16_be\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4746i32,
+        4746,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: ExtTest2 =
         ExtTest2 {
     parse_text:  b"<\0e\0/\0>\0\0".as_ptr() as *const ::core::ffi::c_char,
-    parse_len:  8i32,
+    parse_len:  8,
     encoding:  b"utf-16be\0".as_ptr() as *const XML_Char,
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -16337,14 +16337,14 @@ unsafe extern "C" fn test_ext_entity_utf16_le() {
         b"test_ext_entity_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4775i32,
+        4775,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: ExtTest2 =
         ExtTest2 {
     parse_text:  b"\0<\0e\0/\0>\0".as_ptr() as *const ::core::ffi::c_char,
-    parse_len:  8i32,
+    parse_len:  8,
     encoding:  b"utf-16le\0".as_ptr() as *const XML_Char,
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -16413,14 +16413,14 @@ unsafe extern "C" fn test_ext_entity_utf16_unknown() {
         b"test_ext_entity_utf16_unknown\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4810i32,
+        4810,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: ExtFaults2 =
         ExtFaults2 {
     parse_text:  b"a\0b\0c\0\0".as_ptr() as *const ::core::ffi::c_char,
-    parse_len:  6i32,
+    parse_len:  6,
     fail_text:  b"Invalid character in entity not faulted\0".as_ptr()
                 as *const ::core::ffi::c_char,
     encoding:  ::core::ptr::null::<XML_Char>(),
@@ -16449,7 +16449,7 @@ unsafe extern "C" fn test_ext_entity_utf16_unknown() {
         b"Invalid character should not have been accepted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4822i32,
+        4822,
     );
 }
 
@@ -16458,14 +16458,14 @@ unsafe extern "C" fn test_ext_entity_utf8_non_bom() {
         b"test_ext_entity_utf8_non_bom\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4827i32,
+        4827,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: ExtTest2 =
         ExtTest2 {
     parse_text:  b"\xEF\xBB\x80\0".as_ptr() as *const ::core::ffi::c_char,
-    parse_len:  3i32,
+    parse_len:  3,
     encoding:  ::core::ptr::null::<XML_Char>(),
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -16533,7 +16533,7 @@ unsafe extern "C" fn test_utf8_in_cdata_section() {
         b"test_utf8_in_cdata_section\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4855i32,
+        4855,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc><![CDATA[one \xC3\xA9 two]]></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -16544,7 +16544,7 @@ unsafe extern "C" fn test_utf8_in_cdata_section() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4863i32,
+        4863,
     );
 }
 
@@ -16553,7 +16553,7 @@ unsafe extern "C" fn test_utf8_in_cdata_section_2() {
         b"test_utf8_in_cdata_section_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4868i32,
+        4868,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc><![CDATA[\xC3\xA9]\xC3\xA9two]]></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -16564,7 +16564,7 @@ unsafe extern "C" fn test_utf8_in_cdata_section_2() {
         expected,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4876i32,
+        4876,
     );
 }
 
@@ -16573,7 +16573,7 @@ unsafe extern "C" fn test_utf8_in_start_tags() {
         b"test_utf8_in_start_tags\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4880i32,
+        4880,
     );
     let mut cases: [test_case; 24] = [
         test_case {
@@ -16701,9 +16701,9 @@ unsafe extern "C" fn test_utf8_in_start_tags() {
         true_0 != 0,
         false_0 != 0,
     ];
-    let mut i: size_t = 0usize;
+    let mut i: size_t = 0;
     let mut doc: [::core::ffi::c_char; 1024] = [0; 1024];
-    let mut failCount: size_t = 0usize;
+    let mut failCount: size_t = 0;
     if g_reparseDeferralEnabledDefault != 0 {
         return;
     }
@@ -16711,7 +16711,7 @@ unsafe extern "C" fn test_utf8_in_start_tags() {
         < (::core::mem::size_of::<[test_case; 24]>())
             .wrapping_div(::core::mem::size_of::<test_case>())
     {
-        let mut j: size_t = 0usize;
+        let mut j: size_t = 0;
         while j
             < (::core::mem::size_of::<[bool; 2]>())
                 .wrapping_div(::core::mem::size_of::<bool>())
@@ -16783,7 +16783,7 @@ unsafe extern "C" fn test_utf8_in_start_tags() {
         }
         i = i.wrapping_add(1);
     }
-    if failCount > 0usize {
+    if failCount > 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -16798,7 +16798,7 @@ unsafe extern "C" fn test_trailing_spaces_in_elements() {
         b"test_trailing_spaces_in_elements\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        4987i32,
+        4987,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc   >Hi</doc >\0".as_ptr() as *const ::core::ffi::c_char;
@@ -16859,7 +16859,7 @@ unsafe extern "C" fn test_utf16_attribute() {
         b"test_utf16_attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5003i32,
+        5003,
     );
     let text: [::core::ffi::c_char; 23] = ::core::mem::transmute::<
         [u8; 23],
@@ -16892,7 +16892,7 @@ unsafe extern "C" fn test_utf16_attribute() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 23]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -16916,7 +16916,7 @@ unsafe extern "C" fn test_utf16_second_attr() {
         b"test_utf16_second_attr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5023i32,
+        5023,
     );
     let text: [::core::ffi::c_char; 35] =
         ::core::mem::transmute::<[u8; 35], [::core::ffi::c_char; 35]>(
@@ -16949,7 +16949,7 @@ unsafe extern "C" fn test_utf16_second_attr() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 35]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -16973,7 +16973,7 @@ unsafe extern "C" fn test_attr_after_solidus() {
         b"test_attr_after_solidus\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5043i32,
+        5043,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc attr1='a' / attr2='b'>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -16983,7 +16983,7 @@ unsafe extern "C" fn test_attr_after_solidus() {
         b"Misplaced / not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5046i32,
+        5046,
     );
 }
 
@@ -16992,7 +16992,7 @@ unsafe extern "C" fn test_utf16_pe() {
         b"test_utf16_pe\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5050i32,
+        5050,
     );
     let text: [::core::ffi::c_char; 155] = ::core::mem::transmute::<
         [u8; 155],
@@ -17034,7 +17034,7 @@ unsafe extern "C" fn test_utf16_pe() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 155]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -17058,7 +17058,7 @@ unsafe extern "C" fn test_bad_attr_desc_keyword() {
         b"test_bad_attr_desc_keyword\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5086i32,
+        5086,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ATTLIST doc attr CDATA #!IMPLIED>\n]>\n<doc />\0".as_ptr()
@@ -17069,7 +17069,7 @@ unsafe extern "C" fn test_bad_attr_desc_keyword() {
         b"Bad keyword !IMPLIED not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5093i32,
+        5093,
     );
 }
 
@@ -17078,7 +17078,7 @@ unsafe extern "C" fn test_bad_attr_desc_keyword_utf16() {
         b"test_bad_attr_desc_keyword_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5101i32,
+        5101,
     );
     let text: [::core::ffi::c_char; 91] = ::core::mem::transmute::<
         [u8; 91],
@@ -17090,7 +17090,7 @@ unsafe extern "C" fn test_bad_attr_desc_keyword_utf16() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 91]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -17119,7 +17119,7 @@ unsafe extern "C" fn test_bad_doctype() {
         b"test_bad_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5126i32,
+        5126,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='prefix-conv'?>\n<!DOCTYPE doc [ \x80D ]><doc/>\0".as_ptr()
@@ -17142,7 +17142,7 @@ unsafe extern "C" fn test_bad_doctype() {
         b"Invalid bytes in DOCTYPE not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5132i32,
+        5132,
     );
 }
 
@@ -17151,7 +17151,7 @@ unsafe extern "C" fn test_bad_doctype_utf8() {
         b"test_bad_doctype_utf8\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5136i32,
+        5136,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE \xDB%doc><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -17161,7 +17161,7 @@ unsafe extern "C" fn test_bad_doctype_utf8() {
         b"Invalid UTF-8 in DOCTYPE not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5140i32,
+        5140,
     );
 }
 
@@ -17170,7 +17170,7 @@ unsafe extern "C" fn test_bad_doctype_utf16() {
         b"test_bad_doctype_utf16\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5144i32,
+        5144,
     );
     let text: [::core::ffi::c_char; 53] = ::core::mem::transmute::<
         [u8; 53],
@@ -17182,7 +17182,7 @@ unsafe extern "C" fn test_bad_doctype_utf16() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 53]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -17211,7 +17211,7 @@ unsafe extern "C" fn test_bad_doctype_plus() {
         b"test_bad_doctype_plus\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5163i32,
+        5163,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE 1+ [ <!ENTITY foo 'bar'> ]>\n<1+>&foo;</1+>\0".as_ptr()
@@ -17222,7 +17222,7 @@ unsafe extern "C" fn test_bad_doctype_plus() {
         b"'+' in document name not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5168i32,
+        5168,
     );
 }
 
@@ -17231,7 +17231,7 @@ unsafe extern "C" fn test_bad_doctype_star() {
         b"test_bad_doctype_star\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5172i32,
+        5172,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE 1* [ <!ENTITY foo 'bar'> ]>\n<1*>&foo;</1*>\0".as_ptr()
@@ -17242,7 +17242,7 @@ unsafe extern "C" fn test_bad_doctype_star() {
         b"'*' in document name not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5177i32,
+        5177,
     );
 }
 
@@ -17251,7 +17251,7 @@ unsafe extern "C" fn test_bad_doctype_query() {
         b"test_bad_doctype_query\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5181i32,
+        5181,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE 1? [ <!ENTITY foo 'bar'> ]>\n<1?>&foo;</1?>\0".as_ptr()
@@ -17262,7 +17262,7 @@ unsafe extern "C" fn test_bad_doctype_query() {
         b"'?' in document name not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5186i32,
+        5186,
     );
 }
 
@@ -17271,7 +17271,7 @@ unsafe extern "C" fn test_unknown_encoding_bad_ignore() {
         b"test_unknown_encoding_bad_ignore\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5190i32,
+        5190,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?><!DOCTYPE doc SYSTEM 'foo'><doc><e>&entity;</e></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -17323,7 +17323,7 @@ unsafe extern "C" fn test_unknown_encoding_bad_ignore() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5203i32,
+        5203,
     );
 }
 
@@ -17332,7 +17332,7 @@ unsafe extern "C" fn test_entity_in_utf16_be_attr() {
         b"test_entity_in_utf16_be_attr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5207i32,
+        5207,
     );
     let text: [::core::ffi::c_char; 55] = ::core::mem::transmute::<
         [u8; 55],
@@ -17367,7 +17367,7 @@ unsafe extern "C" fn test_entity_in_utf16_be_attr() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 55]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -17391,7 +17391,7 @@ unsafe extern "C" fn test_entity_in_utf16_le_attr() {
         b"test_entity_in_utf16_le_attr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5229i32,
+        5229,
     );
     let text: [::core::ffi::c_char; 55] = ::core::mem::transmute::<
         [u8; 55],
@@ -17426,7 +17426,7 @@ unsafe extern "C" fn test_entity_in_utf16_le_attr() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 55]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -17450,7 +17450,7 @@ unsafe extern "C" fn test_entity_public_utf16_be() {
         b"test_entity_public_utf16_be\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5251i32,
+        5251,
     );
     let text: [::core::ffi::c_char; 137] = ::core::mem::transmute::<
         [u8; 137],
@@ -17462,7 +17462,7 @@ unsafe extern "C" fn test_entity_public_utf16_be() {
         ExtTest2 {
     parse_text:  b"\0<\0!\0E\0N\0T\0I\0T\0Y\0 \0j\0 \0'\0b\0a\0z\0'\0>\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    parse_len:  34i32,
+    parse_len:  34,
     encoding:  ::core::ptr::null::<XML_Char>(),
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -17511,7 +17511,7 @@ unsafe extern "C" fn test_entity_public_utf16_be() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 137]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -17535,7 +17535,7 @@ unsafe extern "C" fn test_entity_public_utf16_le() {
         b"test_entity_public_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5283i32,
+        5283,
     );
     let text: [::core::ffi::c_char; 137] = ::core::mem::transmute::<
         [u8; 137],
@@ -17547,7 +17547,7 @@ unsafe extern "C" fn test_entity_public_utf16_le() {
         ExtTest2 {
     parse_text:  b"<\0!\0E\0N\0T\0I\0T\0Y\0 \0j\0 \0'\0b\0a\0z\0'\0>\0\0".as_ptr()
                 as *const ::core::ffi::c_char,
-    parse_len:  34i32,
+    parse_len:  34,
     encoding:  ::core::ptr::null::<XML_Char>(),
     storage:  ::core::ptr::null_mut::<CharData>(),
 };
@@ -17596,7 +17596,7 @@ unsafe extern "C" fn test_entity_public_utf16_le() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 137]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -17620,7 +17620,7 @@ unsafe extern "C" fn test_short_doctype() {
         b"test_short_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5318i32,
+        5318,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -17630,7 +17630,7 @@ unsafe extern "C" fn test_short_doctype() {
         b"DOCTYPE without subset not rejected\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5321i32,
+        5321,
     );
 }
 
@@ -17639,7 +17639,7 @@ unsafe extern "C" fn test_short_doctype_2() {
         b"test_short_doctype_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5325i32,
+        5325,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc PUBLIC></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -17649,7 +17649,7 @@ unsafe extern "C" fn test_short_doctype_2() {
         b"DOCTYPE without Public ID not rejected\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5328i32,
+        5328,
     );
 }
 
@@ -17658,7 +17658,7 @@ unsafe extern "C" fn test_short_doctype_3() {
         b"test_short_doctype_3\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5332i32,
+        5332,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc SYSTEM></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -17668,7 +17668,7 @@ unsafe extern "C" fn test_short_doctype_3() {
         b"DOCTYPE without System ID not rejected\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5335i32,
+        5335,
     );
 }
 
@@ -17677,7 +17677,7 @@ unsafe extern "C" fn test_long_doctype() {
         b"test_long_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5339i32,
+        5339,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc PUBLIC 'foo' 'bar' 'baz'></doc>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -17687,7 +17687,7 @@ unsafe extern "C" fn test_long_doctype() {
         b"DOCTYPE with extra ID not rejected\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5341i32,
+        5341,
     );
 }
 
@@ -17696,7 +17696,7 @@ unsafe extern "C" fn test_bad_entity() {
         b"test_bad_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5345i32,
+        5345,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ENTITY foo PUBLIC>\n]>\n<doc/>\0".as_ptr()
@@ -17707,7 +17707,7 @@ unsafe extern "C" fn test_bad_entity() {
         b"ENTITY without Public ID is not rejected\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5351i32,
+        5351,
     );
 }
 
@@ -17716,7 +17716,7 @@ unsafe extern "C" fn test_bad_entity_2() {
         b"test_bad_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5356i32,
+        5356,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ENTITY % foo bar>\n]>\n<doc/>\0".as_ptr()
@@ -17727,7 +17727,7 @@ unsafe extern "C" fn test_bad_entity_2() {
         b"ENTITY without Public ID is not rejected\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5362i32,
+        5362,
     );
 }
 
@@ -17736,7 +17736,7 @@ unsafe extern "C" fn test_bad_entity_3() {
         b"test_bad_entity_3\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5366i32,
+        5366,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ENTITY % foo PUBLIC>\n]>\n<doc/>\0".as_ptr()
@@ -17748,7 +17748,7 @@ unsafe extern "C" fn test_bad_entity_3() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5372i32,
+        5372,
     );
 }
 
@@ -17757,7 +17757,7 @@ unsafe extern "C" fn test_bad_entity_4() {
         b"test_bad_entity_4\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5376i32,
+        5376,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!ENTITY % foo SYSTEM>\n]>\n<doc/>\0".as_ptr()
@@ -17769,7 +17769,7 @@ unsafe extern "C" fn test_bad_entity_4() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5382i32,
+        5382,
     );
 }
 
@@ -17778,7 +17778,7 @@ unsafe extern "C" fn test_bad_notation() {
         b"test_bad_notation\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5386i32,
+        5386,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE doc [\n  <!NOTATION n SYSTEM>\n]>\n<doc/>\0".as_ptr()
@@ -17789,7 +17789,7 @@ unsafe extern "C" fn test_bad_notation() {
         b"Notation without System ID is not rejected\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5392i32,
+        5392,
     );
 }
 
@@ -17798,24 +17798,24 @@ unsafe extern "C" fn test_default_doctype_handler() {
         b"test_default_doctype_handler\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5397i32,
+        5397,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc PUBLIC 'pubname' 'test.dtd' [\n  <!ENTITY foo 'bar'>\n]>\n<doc>&foo;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut test_data: [DefaultCheck; 3] = [
         default_check {
     expected:  b"'pubname'\0".as_ptr() as *const XML_Char,
-    expectedLen:  9i32,
+    expectedLen:  9,
     seen:  XML_FALSE,
 },
         default_check {
     expected:  b"'test.dtd'\0".as_ptr() as *const XML_Char,
-    expectedLen:  10i32,
+    expectedLen:  10,
     seen:  XML_FALSE,
 },
         default_check {
     expected:  ::core::ptr::null::<XML_Char>(),
-    expectedLen:  0i32,
+    expectedLen:  0,
     seen:  XML_FALSE,
 },
     ];
@@ -17867,7 +17867,7 @@ unsafe extern "C" fn test_default_doctype_handler() {
             5412i32,
         );
     }
-    i = 0i32;
+    i = 0;
     while !test_data[i as usize].expected.is_null() {
         if test_data[i as usize].seen == 0 {
             _fail(
@@ -17887,7 +17887,7 @@ unsafe extern "C" fn test_empty_element_abort() {
         b"test_empty_element_abort\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5419i32,
+        5419,
     );
     let mut text: *const ::core::ffi::c_char = b"<abort/>\0".as_ptr() as *const ::core::ffi::c_char;
     XML_SetStartElementHandler(
@@ -17923,7 +17923,7 @@ unsafe extern "C" fn test_pool_integrity_with_unfinished_attr() {
         b"test_pool_integrity_with_unfinished_attr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5432i32,
+        5432,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='UTF-8'?>\n<!DOCTYPE foo [\n<!ELEMENT foo ANY>\n<!ENTITY % entp SYSTEM \"external.dtd\">\n%entp;\n]>\n<a></a>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -18007,7 +18007,7 @@ unsafe extern "C" fn test_entity_ref_no_elements() {
         b"test_entity_ref_no_elements\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5457i32,
+        5457,
     );
     let text: *const ::core::ffi::c_char = b"<!DOCTYPE foo [\n<!ENTITY e1 \"test\">\n]> <foo>&e1;\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -18019,7 +18019,7 @@ unsafe extern "C" fn test_entity_ref_no_elements() {
         parser,
         text,
         strlen(text) as ::core::ffi::c_int,
-        1i32,
+        1,
     )
         ==  XML_STATUS_ERROR)
     {
@@ -18050,10 +18050,10 @@ unsafe extern "C" fn test_deep_nested_entity() {
         b"test_deep_nested_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5471i32,
+        5471,
     );
-    let N_LINES: size_t = 60000usize;
-    let SIZE_PER_LINE: size_t = 50usize;
+    let N_LINES: size_t = 60000;
+    let SIZE_PER_LINE: size_t = 50;
     let text: *mut ::core::ffi::c_char = malloc(
         N_LINES
             .wrapping_add(4usize)
@@ -18073,7 +18073,7 @@ unsafe extern "C" fn test_deep_nested_entity() {
         SIZE_PER_LINE,
         b"<!DOCTYPE foo [\n\t<!ENTITY s0 'deepText'>\n\0".as_ptr() as *const ::core::ffi::c_char,
     ) as isize);
-    let mut i: size_t = 1usize;
+    let mut i: size_t = 1;
     while i < N_LINES {
         textPtr = textPtr.offset(snprintf(
             textPtr,
@@ -18146,10 +18146,10 @@ unsafe extern "C" fn test_deep_nested_attribute_entity() {
         b"test_deep_nested_attribute_entity\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5517i32,
+        5517,
     );
-    let N_LINES: size_t = 60000usize;
-    let SIZE_PER_LINE: size_t = 100usize;
+    let N_LINES: size_t = 60000;
+    let SIZE_PER_LINE: size_t = 100;
     let text: *mut ::core::ffi::c_char = malloc(
         N_LINES
             .wrapping_add(4usize)
@@ -18169,7 +18169,7 @@ unsafe extern "C" fn test_deep_nested_attribute_entity() {
         SIZE_PER_LINE,
         b"<!DOCTYPE foo [\n\t<!ENTITY s0 'deepText'>\n\0".as_ptr() as *const ::core::ffi::c_char,
     ) as isize);
-    let mut i: size_t = 1usize;
+    let mut i: size_t = 1;
     while i < N_LINES {
         textPtr = textPtr.offset(snprintf(
             textPtr,
@@ -18199,18 +18199,18 @@ unsafe extern "C" fn test_deep_nested_attribute_entity() {
     let mut info: [ElementInfo; 2] = [
         elementInfo {
     name:  b"foo\0".as_ptr() as *const XML_Char,
-    attr_count:  1i32,
+    attr_count:  1,
     id_name:  ::core::ptr::null::<XML_Char>(),
     attributes:  ::core::ptr::null_mut::<AttrInfo>(),
 },
         elementInfo {
     name:  ::core::ptr::null::<XML_Char>(),
-    attr_count:  0i32,
+    attr_count:  0,
     id_name:  ::core::ptr::null::<XML_Char>(),
     attributes:  ::core::ptr::null_mut::<AttrInfo>(),
 },
     ];
-    info[0usize].attributes =
+    info[0].attributes =
         &raw mut doc_info as *mut AttrInfo;
     let mut parser: XML_Parser =
         XML_ParserCreate(::core::ptr::null::<
@@ -18260,11 +18260,11 @@ unsafe extern "C" fn test_deep_nested_entity_delayed_interpretation() {
         b"test_deep_nested_entity_delayed_interpretation\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5560i32,
+        5560,
     );
     let N_LINES: size_t =
         70000i32 as size_t;
-    let SIZE_PER_LINE: size_t = 100usize;
+    let SIZE_PER_LINE: size_t = 100;
     let text: *mut ::core::ffi::c_char = malloc(
         N_LINES
             .wrapping_add(4usize)
@@ -18284,7 +18284,7 @@ unsafe extern "C" fn test_deep_nested_entity_delayed_interpretation() {
         SIZE_PER_LINE,
         b"<!DOCTYPE foo [\n\t<!ENTITY %% s0 'deepText'>\n\0".as_ptr() as *const ::core::ffi::c_char,
     ) as isize);
-    let mut i: size_t = 1usize;
+    let mut i: size_t = 1;
     while i < N_LINES {
         textPtr = textPtr.offset(snprintf(
             textPtr,
@@ -18334,7 +18334,7 @@ unsafe extern "C" fn test_nested_entity_suspend() {
         b"test_nested_entity_suspend\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5601i32,
+        5601,
     );
     let text: *const ::core::ffi::c_char = b"<!DOCTYPE a [\n  <!ENTITY e1 '<!--e1-->'>\n  <!ENTITY e2 '<!--e2 head-->&e1;<!--e2 tail-->'>\n  <!ENTITY e3 '<!--e3 head-->&e2;<!--e3 tail-->'>\n]>\n<a><!--start-->&e3;<!--end--></a>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -18405,7 +18405,7 @@ unsafe extern "C" fn test_nested_entity_suspend_2() {
         b"test_nested_entity_suspend_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5631i32,
+        5631,
     );
     let text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY ge1 'head1Ztail1'>\n  <!ENTITY ge2 'head2&ge1;tail2'>\n  <!ENTITY ge3 'head3&ge2;tail3'>\n]>\n<doc>&ge3;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -18472,7 +18472,7 @@ unsafe extern "C" fn test_big_tokens_scale_linearly() {
         b"test_big_tokens_scale_linearly\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5661i32,
+        5661,
     );
     let text: [C2Rust_Unnamed_10; 5] = [
         C2Rust_Unnamed_10 {
@@ -18502,9 +18502,9 @@ unsafe extern "C" fn test_big_tokens_scale_linearly() {
     let mut aaaaaa: [::core::ffi::c_char; 4096] = [0; 4096];
     let fillsize: ::core::ffi::c_int =
         ::core::mem::size_of::<[::core::ffi::c_char; 4096]>() as ::core::ffi::c_int;
-    let fillcount: ::core::ffi::c_int = 100i32;
+    let fillcount: ::core::ffi::c_int = 100;
     let approx_bytes: ::core::ffi::c_uint = (fillsize * fillcount) as ::core::ffi::c_uint;
-    let max_factor: ::core::ffi::c_uint = 4u32;
+    let max_factor: ::core::ffi::c_uint = 4;
     let max_scanned: ::core::ffi::c_uint = max_factor.wrapping_mul(approx_bytes);
     memset(
         
@@ -18515,7 +18515,7 @@ unsafe extern "C" fn test_big_tokens_scale_linearly() {
     if g_reparseDeferralEnabledDefault == 0 {
         return;
     }
-    let mut i: ::core::ffi::c_int = 0i32;
+    let mut i: ::core::ffi::c_int = 0;
     while i < num_cases {
         let mut parser: XML_Parser =
             XML_ParserCreate(::core::ptr::null::<
@@ -18535,7 +18535,7 @@ unsafe extern "C" fn test_big_tokens_scale_linearly() {
             text[i as usize].pre,
             text[i as usize].post,
         );
-        g_bytesScanned = 0u32;
+        g_bytesScanned = 0;
         status = _XML_Parse_SINGLE_BYTES(
             parser,
             text[i as usize].pre,
@@ -18552,8 +18552,8 @@ unsafe extern "C" fn test_big_tokens_scale_linearly() {
                 5697i32,
             );
         }
-        let mut past_max_count: ::core::ffi::c_uint = 0u32;
-        let mut f: ::core::ffi::c_int = 0i32;
+        let mut past_max_count: ::core::ffi::c_uint = 0;
+        let mut f: ::core::ffi::c_int = 0;
         while f < fillcount {
             status = _XML_Parse_SINGLE_BYTES(
                 parser,
@@ -18575,7 +18575,7 @@ unsafe extern "C" fn test_big_tokens_scale_linearly() {
                 let pushed: ::core::ffi::c_uint = (strlen(text[i as usize].pre)
                     as ::core::ffi::c_uint)
                     .wrapping_add(
-                        ((f + 1i32) * fillsize) as ::core::ffi::c_uint,
+                        ((f + 1) * fillsize) as ::core::ffi::c_uint,
                     );
                 fprintf(
                     stderr,
@@ -18591,7 +18591,7 @@ unsafe extern "C" fn test_big_tokens_scale_linearly() {
                     max_factor,
                 );
                 past_max_count = past_max_count.wrapping_add(1);
-                if !(past_max_count < 5u32) {
+                if !(past_max_count < 5) {
                     _fail(
                         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                             .as_ptr() as *const ::core::ffi::c_char,
@@ -18656,7 +18656,7 @@ unsafe extern "C" fn test_set_reparse_deferral() {
         b"test_set_reparse_deferral\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5746i32,
+        5746,
     );
     let pre: *const ::core::ffi::c_char = b"<d>\0".as_ptr() as *const ::core::ffi::c_char;
     let start: *const ::core::ffi::c_char = b"<x attr='\0".as_ptr() as *const ::core::ffi::c_char;
@@ -18670,8 +18670,8 @@ unsafe extern "C" fn test_set_reparse_deferral() {
         'e' as i32,
         fillsize as size_t,
     );
-    let mut enabled: ::core::ffi::c_int = 0i32;
-    while enabled <= 1i32 {
+    let mut enabled: ::core::ffi::c_int = 0;
+    while enabled <= 1 {
         set_subtest(
             b"deferral=%d\0".as_ptr() as *const ::core::ffi::c_char,
             enabled,
@@ -18701,7 +18701,7 @@ unsafe extern "C" fn test_set_reparse_deferral() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if XML_GetBuffer(parser, fillsize * 10103i32)
+        if XML_GetBuffer(parser, fillsize * 10103)
             .is_null()
         {
             _fail(
@@ -18776,8 +18776,8 @@ unsafe extern "C" fn test_set_reparse_deferral() {
             &raw mut storage,
             b"d\0".as_ptr() as *const XML_Char,
         );
-        let mut c: ::core::ffi::c_int = 0i32;
-        while c < 100i32 {
+        let mut c: ::core::ffi::c_int = 0;
+        while c < 100 {
             status = XML_Parse(
                 parser,
                 &raw mut eeeeee as *mut ::core::ffi::c_char,
@@ -18823,8 +18823,8 @@ unsafe extern "C" fn test_set_reparse_deferral() {
                 &raw mut storage,
                 b"d\0".as_ptr() as *const XML_Char,
             );
-            let mut c_0: ::core::ffi::c_int = 0i32;
-            while c_0 < 101i32 {
+            let mut c_0: ::core::ffi::c_int = 0;
+            while c_0 < 101 {
                 status = XML_Parse(
                     parser,
                     &raw mut eeeeee as *mut ::core::ffi::c_char,
@@ -18850,7 +18850,7 @@ unsafe extern "C" fn test_set_reparse_deferral() {
             b"dx\0".as_ptr() as *const XML_Char,
         );
         XML_ParserFree(parser);
-        enabled += 1i32;
+        enabled += 1;
     }
 }
 
@@ -18860,7 +18860,7 @@ unsafe extern "C" fn element_decl_counter(
     mut model: *mut XML_Content,
 ) {
     let mut testdata: *mut element_decl_data = userData as *mut element_decl_data;
-    (*testdata).count += 1i32;
+    (*testdata).count += 1;
     XML_FreeContentModel(
         (*testdata).parser,
         
@@ -18922,7 +18922,7 @@ unsafe extern "C" fn external_inherited_parser(
             b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_GetBuffer(parser, fillsize * 10103i32)
+    if XML_GetBuffer(parser, fillsize * 10103)
         .is_null()
     {
         _fail(
@@ -18938,7 +18938,7 @@ unsafe extern "C" fn external_inherited_parser(
         count: 0,
     };
     testdata.parser = parser;
-    testdata.count = 0i32;
+    testdata.count = 0;
     XML_SetUserData(
         parser,
         &raw mut testdata as *mut ::core::ffi::c_void,
@@ -18971,7 +18971,7 @@ unsafe extern "C" fn external_inherited_parser(
             5864i32,
         );
     }
-    if !(testdata.count == 1i32) {
+    if !(testdata.count == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -18995,7 +18995,7 @@ unsafe extern "C" fn external_inherited_parser(
             5871i32,
         );
     }
-    if !(testdata.count == 1i32) {
+    if !(testdata.count == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -19003,8 +19003,8 @@ unsafe extern "C" fn external_inherited_parser(
             b"check failed: testdata.count == 1\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    let mut c: ::core::ffi::c_int = 0i32;
-    while c < 100i32 {
+    let mut c: ::core::ffi::c_int = 0;
+    while c < 100 {
         status = XML_Parse(
             parser,
             &raw mut eeeeee as *mut ::core::ffi::c_char,
@@ -19023,7 +19023,7 @@ unsafe extern "C" fn external_inherited_parser(
         }
         c += 1;
     }
-    if !(testdata.count == 1i32) {
+    if !(testdata.count == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -19048,7 +19048,7 @@ unsafe extern "C" fn external_inherited_parser(
         );
     }
     if enabled != 0 {
-        if !(testdata.count == 1i32) {
+        if !(testdata.count == 1) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -19056,8 +19056,8 @@ unsafe extern "C" fn external_inherited_parser(
                 b"check failed: testdata.count == 1\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        let mut c_0: ::core::ffi::c_int = 0i32;
-        while c_0 < 101i32 {
+        let mut c_0: ::core::ffi::c_int = 0;
+        while c_0 < 101 {
             status = XML_Parse(
                 parser,
                 &raw mut spaces as *mut ::core::ffi::c_char,
@@ -19077,7 +19077,7 @@ unsafe extern "C" fn external_inherited_parser(
             c_0 += 1;
         }
     }
-    if !(testdata.count == 2i32) {
+    if !(testdata.count == 2) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -19101,7 +19101,7 @@ unsafe extern "C" fn external_inherited_parser(
             5907i32,
         );
     }
-    if !(testdata.count == 3i32) {
+    if !(testdata.count == 3) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -19118,13 +19118,13 @@ unsafe extern "C" fn test_reparse_deferral_is_inherited() {
         b"test_reparse_deferral_is_inherited\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5915i32,
+        5915,
     );
     let text: *const ::core::ffi::c_char =
         b"<!DOCTYPE document SYSTEM 'something.ext'><document/>\0".as_ptr()
             as *const ::core::ffi::c_char;
-    let mut enabled: ::core::ffi::c_int = 0i32;
-    while enabled <= 1i32 {
+    let mut enabled: ::core::ffi::c_int = 0;
+    while enabled <= 1 {
         set_subtest(
             b"deferral=%d\0".as_ptr() as *const ::core::ffi::c_char,
             enabled,
@@ -19200,13 +19200,13 @@ unsafe extern "C" fn test_set_reparse_deferral_on_null_parser() {
         b"test_set_reparse_deferral_on_null_parser\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5937i32,
+        5937,
     );
     if !(XML_SetReparseDeferralEnabled(
         ::core::ptr::null_mut::<XML_ParserStruct>(),
-        0u8,
+        0,
     ) as ::core::ffi::c_int
-        == 0i32)
+        == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -19218,9 +19218,9 @@ unsafe extern "C" fn test_set_reparse_deferral_on_null_parser() {
     }
     if !(XML_SetReparseDeferralEnabled(
         ::core::ptr::null_mut::<XML_ParserStruct>(),
-        1u8,
+        1,
     ) as ::core::ffi::c_int
-        == 0i32)
+        == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -19232,9 +19232,9 @@ unsafe extern "C" fn test_set_reparse_deferral_on_null_parser() {
     }
     if !(XML_SetReparseDeferralEnabled(
         ::core::ptr::null_mut::<XML_ParserStruct>(),
-        10u8,
+        10,
     ) as ::core::ffi::c_int
-        == 0i32)
+        == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -19246,9 +19246,9 @@ unsafe extern "C" fn test_set_reparse_deferral_on_null_parser() {
     }
     if !(XML_SetReparseDeferralEnabled(
         ::core::ptr::null_mut::<XML_ParserStruct>(),
-        100u8,
+        100,
     ) as ::core::ffi::c_int
-        == 0i32)
+        == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -19260,9 +19260,9 @@ unsafe extern "C" fn test_set_reparse_deferral_on_null_parser() {
     }
     if !(XML_SetReparseDeferralEnabled(
         ::core::ptr::null_mut::<XML_ParserStruct>(),
-        (-2147483647i32 - 1i32) as XML_Bool,
+        (-2147483647i32 - 1) as XML_Bool,
     ) as ::core::ffi::c_int
-        == 0i32)
+        == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -19276,7 +19276,7 @@ unsafe extern "C" fn test_set_reparse_deferral_on_null_parser() {
         ::core::ptr::null_mut::<XML_ParserStruct>(),
         2147483647i32 as XML_Bool,
     ) as ::core::ffi::c_int
-        == 0i32)
+        == 0)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
@@ -19293,7 +19293,7 @@ unsafe extern "C" fn test_set_reparse_deferral_on_the_fly() {
         b"test_set_reparse_deferral_on_the_fly\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        5949i32,
+        5949,
     );
     let pre: *const ::core::ffi::c_char = b"<d><x attr='\0".as_ptr() as *const ::core::ffi::c_char;
     let end: *const ::core::ffi::c_char = b"'></x>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -19320,7 +19320,7 @@ unsafe extern "C" fn test_set_reparse_deferral_on_the_fly() {
     }
     if XML_SetReparseDeferralEnabled(
         parser,
-        1u8,
+        1,
     ) == 0
     {
         _fail(
@@ -19418,7 +19418,7 @@ unsafe extern "C" fn test_set_reparse_deferral_on_the_fly() {
     );
     if XML_SetReparseDeferralEnabled(
         parser,
-        0u8,
+        0,
     ) == 0
     {
         _fail(
@@ -19432,7 +19432,7 @@ unsafe extern "C" fn test_set_reparse_deferral_on_the_fly() {
     status = XML_Parse(
         parser,
         b"\0".as_ptr() as *const ::core::ffi::c_char,
-        0i32,
+        0,
         XML_FALSE as ::core::ffi::c_int,
     );
     if  status
@@ -19458,16 +19458,16 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
         b"test_set_bad_reparse_option\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        6000i32,
+        6000,
     );
     let mut parser: XML_Parser =
         XML_ParserCreate(::core::ptr::null::<
             XML_Char,
         >());
-    if !(0i32
+    if !(0
         == XML_SetReparseDeferralEnabled(
             parser,
-            2u8,
+            2,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19478,10 +19478,10 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(0i32
+    if !(0
         == XML_SetReparseDeferralEnabled(
             parser,
-            3u8,
+            3,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19492,10 +19492,10 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(0i32
+    if !(0
         == XML_SetReparseDeferralEnabled(
             parser,
-            99u8,
+            99,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19506,10 +19506,10 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(0i32
+    if !(0
         == XML_SetReparseDeferralEnabled(
             parser,
-            127u8,
+            127,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19520,10 +19520,10 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(0i32
+    if !(0
         == XML_SetReparseDeferralEnabled(
             parser,
-            128u8,
+            128,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19534,10 +19534,10 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(0i32
+    if !(0
         == XML_SetReparseDeferralEnabled(
             parser,
-            129u8,
+            129,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19548,10 +19548,10 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(0i32
+    if !(0
         == XML_SetReparseDeferralEnabled(
             parser,
-            255u8,
+            255,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19562,10 +19562,10 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(1i32
+    if !(1
         == XML_SetReparseDeferralEnabled(
             parser,
-            0u8,
+            0,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19576,10 +19576,10 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(1i32
+    if !(1
         == XML_SetReparseDeferralEnabled(
             parser,
-            1u8,
+            1,
         ) as ::core::ffi::c_int)
     {
         _fail(
@@ -19593,9 +19593,9 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
     XML_ParserFree(parser);
 }
 
-static mut g_totalAlloc: size_t = 0usize;
+static mut g_totalAlloc: size_t = 0;
 
-static mut g_biggestAlloc: size_t = 0usize;
+static mut g_biggestAlloc: size_t = 0;
 
 unsafe extern "C" fn counting_realloc(
     mut ptr: *mut ::core::ffi::c_void,
@@ -19619,15 +19619,15 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
         b"test_bypass_heuristic_when_close_to_bufsize\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        6032i32,
+        6032,
     );
-    if g_chunkSize != 0i32 {
+    if g_chunkSize != 0 {
         return;
     }
     if g_reparseDeferralEnabledDefault == 0 {
         return;
     }
-    let document_length: ::core::ffi::c_int = 65536i32;
+    let document_length: ::core::ffi::c_int = 65536;
     let document: *mut ::core::ffi::c_char =
         malloc(document_length as size_t)
             as *mut ::core::ffi::c_char;
@@ -19651,47 +19651,47 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
             ),
 };
     let leading_list: [::core::ffi::c_int; 10] = [
-        0i32,
-        3i32,
-        61i32,
-        96i32,
-        400i32,
-        401i32,
-        4000i32,
-        4010i32,
-        4099i32,
-        -1i32,
+        0,
+        3,
+        61,
+        96,
+        400,
+        401,
+        4000,
+        4010,
+        4099,
+        -1,
     ];
     let bigtoken_list: [::core::ffi::c_int; 8] = [
-        3000i32,
-        4000i32,
-        4001i32,
-        4096i32,
-        4099i32,
-        5000i32,
-        20000i32,
-        -1i32,
+        3000,
+        4000,
+        4001,
+        4096,
+        4099,
+        5000,
+        20000,
+        -1,
     ];
     let fillsize_list: [::core::ffi::c_int; 9] = [
-        131i32,
-        256i32,
-        399i32,
-        400i32,
-        401i32,
-        1025i32,
-        4099i32,
-        4321i32,
-        -1i32,
+        131,
+        256,
+        399,
+        400,
+        401,
+        1025,
+        4099,
+        4321,
+        -1,
     ];
     let mut leading: *const ::core::ffi::c_int =
         &raw const leading_list as *const ::core::ffi::c_int;
-    while *leading >= 0i32 {
+    while *leading >= 0 {
         let mut bigtoken: *const ::core::ffi::c_int =
             &raw const bigtoken_list as *const ::core::ffi::c_int;
-        while *bigtoken >= 0i32 {
+        while *bigtoken >= 0 {
             let mut fillsize: *const ::core::ffi::c_int =
                 &raw const fillsize_list as *const ::core::ffi::c_int;
-            while *fillsize >= 0i32 {
+            while *fillsize >= 0 {
                 set_subtest(
                     b"leading=%d bigtoken=%d fillsize=%d\0".as_ptr() as *const ::core::ffi::c_char,
                     *leading,
@@ -19713,7 +19713,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                     document_length as size_t,
                 );
                 if *leading != 0 {
-                    if !(*leading >= 3i32) {
+                    if !(*leading >= 3) {
                         _fail(
                             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                                 .as_ptr() as *const ::core::ffi::c_char,
@@ -19730,26 +19730,26 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                         3usize,
                     );
                 }
-                *document.offset((*leading + 0i32) as isize) =
+                *document.offset((*leading + 0) as isize) =
                     
                     '<' as ::core::ffi::c_char;
-                *document.offset((*leading + 1i32) as isize) =
+                *document.offset((*leading + 1) as isize) =
                     
                     'b' as ::core::ffi::c_char;
                 memset(
                     
-                    document.offset((*leading + 2i32) as isize) as *mut ::core::ffi::c_void,
+                    document.offset((*leading + 2) as isize) as *mut ::core::ffi::c_void,
                     ' ' as i32,
-                    (*bigtoken - 2i32) as size_t,
+                    (*bigtoken - 2) as size_t,
                 );
-                *document.offset((*leading + *bigtoken - 1i32) as isize) =
+                *document.offset((*leading + *bigtoken - 1) as isize) =
                     
                     '>' as ::core::ffi::c_char;
-                let expected_elem_total: ::core::ffi::c_int = 1i32
+                let expected_elem_total: ::core::ffi::c_int = 1
                     + (if *leading != 0 {
-                        1i32
+                        1
                     } else {
-                        0i32
+                        0
                     });
                 let mut parser: XML_Parser =
                     XML_ParserCreate_MM(
@@ -19788,9 +19788,9 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                             ) -> (),
                     ),
                 );
-                g_biggestAlloc = 0usize;
-                g_totalAlloc = 0usize;
-                let mut offset: ::core::ffi::c_int = 0i32;
+                g_biggestAlloc = 0;
+                g_totalAlloc = 0;
+                let mut offset: ::core::ffi::c_int = 0;
                 while offset < *leading + *bigtoken {
                     if !(offset + *fillsize <= document_length) {
                         _fail(
@@ -19822,7 +19822,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                 }
                 let bigtok_first_chunk_bytes: ::core::ffi::c_int = *fillsize - *leading % *fillsize;
                 if !(bigtok_first_chunk_bytes >= *bigtoken
-                    && XML_CONTEXT_BYTES == 0i32)
+                    && XML_CONTEXT_BYTES == 0)
                 {
                     if *leading < XML_CONTEXT_BYTES {
                         if !(g_biggestAlloc
@@ -19891,7 +19891,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                         );
                     }
                 }
-                if !(g_totalAlloc > 0usize) {
+                if !(g_totalAlloc > 0) {
                     _fail(
                         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                             .as_ptr() as *const ::core::ffi::c_char,
@@ -19924,13 +19924,13 @@ unsafe extern "C" fn test_varying_buffer_fills() {
         b"test_varying_buffer_fills\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        6143i32,
+        6143,
     );
-    let KiB: ::core::ffi::c_int = 1024i32;
-    let MiB: ::core::ffi::c_int = 1024i32 * KiB;
-    let document_length: ::core::ffi::c_int = 16i32 * MiB;
-    let big: ::core::ffi::c_int = 7654321i32;
-    if g_chunkSize != 0i32 {
+    let KiB: ::core::ffi::c_int = 1024;
+    let MiB: ::core::ffi::c_int = 1024 * KiB;
+    let document_length: ::core::ffi::c_int = 16 * MiB;
+    let big: ::core::ffi::c_int = 7654321;
+    if g_chunkSize != 0 {
         return;
     }
     let document: *mut ::core::ffi::c_char =
@@ -19949,20 +19949,20 @@ unsafe extern "C" fn test_varying_buffer_fills() {
         'x' as i32,
         document_length as size_t,
     );
-    *document.offset(0isize) =  '<' as ::core::ffi::c_char;
-    *document.offset(1isize) =  't' as ::core::ffi::c_char;
+    *document.offset(0) =  '<' as ::core::ffi::c_char;
+    *document.offset(1) =  't' as ::core::ffi::c_char;
     memset(
         
-        document.offset(2isize)
+        document.offset(2)
             as *mut ::core::ffi::c_void,
         ' ' as i32,
-        (big - 2i32) as size_t,
+        (big - 2) as size_t,
     );
-    *document.offset((big - 1i32) as isize) =  '>' as ::core::ffi::c_char;
+    *document.offset((big - 1) as isize) =  '>' as ::core::ffi::c_char;
     let testcases: [[::core::ffi::c_int; 30]; 11] = [
         [
-            8i32 * MiB,
-            -8i32 * MiB,
+            8 * MiB,
+            -8 * MiB,
             0,
             0,
             0,
@@ -19993,9 +19993,9 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            4i32 * MiB,
-            4i32 * MiB,
-            -12i32 * MiB,
+            4 * MiB,
+            4 * MiB,
+            -12 * MiB,
             0,
             0,
             0,
@@ -20025,10 +20025,10 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            4i32 * MiB,
-            0i32,
-            4i32 * MiB,
-            -12i32 * MiB,
+            4 * MiB,
+            0,
+            4 * MiB,
+            -12 * MiB,
             0,
             0,
             0,
@@ -20057,11 +20057,11 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            4i32 * MiB,
-            0i32,
-            0i32,
-            4i32 * MiB,
-            -12i32 * MiB,
+            4 * MiB,
+            0,
+            0,
+            4 * MiB,
+            -12 * MiB,
             0,
             0,
             0,
@@ -20089,12 +20089,12 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            4i32 * MiB,
-            0i32,
-            1i32 * MiB,
-            0i32,
-            3i32 * MiB,
-            -12i32 * MiB,
+            4 * MiB,
+            0,
+            1 * MiB,
+            0,
+            3 * MiB,
+            -12 * MiB,
             0,
             0,
             0,
@@ -20121,13 +20121,13 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            4i32 * MiB,
-            2i32 * MiB,
-            1i32 * MiB,
-            512i32 * KiB,
-            256i32 * KiB,
-            256i32 * KiB,
-            -12i32 * MiB,
+            4 * MiB,
+            2 * MiB,
+            1 * MiB,
+            512 * KiB,
+            256 * KiB,
+            256 * KiB,
+            -12 * MiB,
             0,
             0,
             0,
@@ -20153,11 +20153,11 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            4i32 * MiB + 1i32,
-            2i32 * MiB,
-            1i32 * MiB,
-            512i32 * KiB,
-            -25i32 * MiB,
+            4 * MiB + 1,
+            2 * MiB,
+            1 * MiB,
+            512 * KiB,
+            -25 * MiB,
             0,
             0,
             0,
@@ -20185,20 +20185,20 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            1i32 * KiB,
-            2i32 * KiB,
-            4i32 * KiB,
-            8i32 * KiB,
-            16i32 * KiB,
-            32i32 * KiB,
-            64i32 * KiB,
-            128i32 * KiB,
-            256i32 * KiB,
-            512i32 * KiB,
-            1i32 * MiB,
-            2i32 * MiB,
-            4i32 * MiB,
-            -16i32 * MiB,
+            1 * KiB,
+            2 * KiB,
+            4 * KiB,
+            8 * KiB,
+            16 * KiB,
+            32 * KiB,
+            64 * KiB,
+            128 * KiB,
+            256 * KiB,
+            512 * KiB,
+            1 * MiB,
+            2 * MiB,
+            4 * MiB,
+            -16 * MiB,
             0,
             0,
             0,
@@ -20217,22 +20217,22 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            2i32 * KiB + 1i32,
-            2i32 * KiB,
-            4i32 * KiB,
-            8i32 * KiB,
-            16i32 * KiB,
-            32i32 * KiB,
-            64i32 * KiB,
-            128i32 * KiB,
-            256i32 * KiB,
-            512i32 * KiB,
-            1i32 * MiB,
-            2i32 * MiB,
-            4i32 * MiB,
-            -(10i32 * MiB
-                + 682i32 * KiB
-                + 7i32),
+            2 * KiB + 1,
+            2 * KiB,
+            4 * KiB,
+            8 * KiB,
+            16 * KiB,
+            32 * KiB,
+            64 * KiB,
+            128 * KiB,
+            256 * KiB,
+            512 * KiB,
+            1 * MiB,
+            2 * MiB,
+            4 * MiB,
+            -(10 * MiB
+                + 682 * KiB
+                + 7),
             0,
             0,
             0,
@@ -20251,22 +20251,22 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            2i32 * KiB + 1i32,
-            2i32 * KiB,
-            4i32 * KiB,
-            8i32 * KiB,
-            16i32 * KiB,
-            32i32 * KiB,
-            64i32 * KiB,
-            128i32 * KiB,
-            256i32 * KiB,
-            512i32 * KiB,
-            1i32 * MiB,
-            2i32 * MiB,
-            4i32 * MiB - 1i32,
-            -(10i32 * MiB
-                + 682i32 * KiB
-                + 6i32),
+            2 * KiB + 1,
+            2 * KiB,
+            4 * KiB,
+            8 * KiB,
+            16 * KiB,
+            32 * KiB,
+            64 * KiB,
+            128 * KiB,
+            256 * KiB,
+            512 * KiB,
+            1 * MiB,
+            2 * MiB,
+            4 * MiB - 1,
+            -(10 * MiB
+                + 682 * KiB
+                + 6),
             0,
             0,
             0,
@@ -20285,22 +20285,22 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             0,
         ],
         [
-            512i32 * KiB + 1i32,
-            256i32 * KiB,
-            128i32 * KiB,
-            128i32 * KiB - 1i32,
-            512i32 * KiB + 1i32,
-            256i32 * KiB,
-            128i32 * KiB,
-            128i32 * KiB - 1i32,
-            1i32 * MiB + 1i32,
-            512i32 * KiB,
-            256i32 * KiB,
-            256i32 * KiB - 1i32,
-            2i32 * MiB + 1i32,
-            1i32 * MiB,
-            512i32 * KiB,
-            -(45i32 * MiB + 12i32),
+            512 * KiB + 1,
+            256 * KiB,
+            128 * KiB,
+            128 * KiB - 1,
+            512 * KiB + 1,
+            256 * KiB,
+            128 * KiB,
+            128 * KiB - 1,
+            1 * MiB + 1,
+            512 * KiB,
+            256 * KiB,
+            256 * KiB - 1,
+            2 * MiB + 1,
+            1 * MiB,
+            512 * KiB,
+            -(45 * MiB + 12),
             0,
             0,
             0,
@@ -20320,7 +20320,7 @@ unsafe extern "C" fn test_varying_buffer_fills() {
     let testcount: ::core::ffi::c_int = (::core::mem::size_of::<[[::core::ffi::c_int; 30]; 11]>())
         .wrapping_div(::core::mem::size_of::<[::core::ffi::c_int; 30]>())
         as ::core::ffi::c_int;
-    let mut test_i: ::core::ffi::c_int = 0i32;
+    let mut test_i: ::core::ffi::c_int = 0;
     while test_i < testcount {
         let mut fillsize: *const ::core::ffi::c_int =
             &raw const *(&raw const testcases as *const [::core::ffi::c_int; 30])
@@ -20366,10 +20366,10 @@ unsafe extern "C" fn test_varying_buffer_fills() {
                     ) -> (),
             ),
         );
-        g_bytesScanned = 0u32;
-        let mut worstcase_bytes: ::core::ffi::c_int = 0i32;
-        let mut offset: ::core::ffi::c_int = 0i32;
-        while *fillsize >= 0i32 {
+        g_bytesScanned = 0;
+        let mut worstcase_bytes: ::core::ffi::c_int = 0;
+        let mut offset: ::core::ffi::c_int = 0;
+        while *fillsize >= 0 {
             if !(offset + *fillsize <= document_length) {
                 _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
@@ -20398,7 +20398,7 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             }
             offset += *fillsize;
             fillsize = fillsize.offset(1);
-            if !(offset <= 2147483647i32 - worstcase_bytes) {
+            if !(offset <= 2147483647 - worstcase_bytes) {
                 _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
@@ -20409,7 +20409,7 @@ unsafe extern "C" fn test_varying_buffer_fills() {
             }
             worstcase_bytes += offset;
         }
-        if !(storage.count == 1i32) {
+        if !(storage.count == 1) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -20417,7 +20417,7 @@ unsafe extern "C" fn test_varying_buffer_fills() {
                 b"check failed: storage.count == 1\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if !(g_bytesScanned > 0u32) {
+        if !(g_bytesScanned > 0) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/basic_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,

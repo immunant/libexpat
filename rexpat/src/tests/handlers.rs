@@ -1,7 +1,7 @@
 // =============== BEGIN handlers_h ================
-pub const STRUCT_START_TAG: ::core::ffi::c_int = 0i32;
+pub const STRUCT_START_TAG: ::core::ffi::c_int = 0;
 
-pub const STRUCT_END_TAG: ::core::ffi::c_int = 1i32;
+pub const STRUCT_END_TAG: ::core::ffi::c_int = 1;
 
 pub type AttrInfo = crate::src::tests::handlers::attrInfo;
 #[derive(Copy, Clone)]
@@ -128,11 +128,11 @@ pub struct handler_record_list {
     pub entries: [crate::src::tests::handlers::handler_record_entry; 50],
 }
 
-pub const ENTITY_MATCH_FAIL: ::core::ffi::c_int = -1i32;
+pub const ENTITY_MATCH_FAIL: ::core::ffi::c_int = -1;
 
-pub const ENTITY_MATCH_NOT_FOUND: ::core::ffi::c_int = 0i32;
+pub const ENTITY_MATCH_NOT_FOUND: ::core::ffi::c_int = 0;
 
-pub const ENTITY_MATCH_SUCCESS: ::core::ffi::c_int = 1i32;
+pub const ENTITY_MATCH_SUCCESS: ::core::ffi::c_int = 1;
 
 pub type DefaultCheck = crate::src::tests::handlers::default_check;
 #[derive(Copy, Clone)]
@@ -299,13 +299,13 @@ pub static mut g_handler_data: *const ::core::ffi::c_void =
     ::core::ptr::null::<::core::ffi::c_void>();
 #[no_mangle]
 
-pub static mut g_comment_count: ::core::ffi::c_int = 0i32;
+pub static mut g_comment_count: ::core::ffi::c_int = 0;
 #[no_mangle]
 
-pub static mut g_skip_count: ::core::ffi::c_int = 0i32;
+pub static mut g_skip_count: ::core::ffi::c_int = 0;
 #[no_mangle]
 
-pub static mut g_xdecl_count: ::core::ffi::c_int = 0i32;
+pub static mut g_xdecl_count: ::core::ffi::c_int = 0;
 #[no_mangle]
 
 pub unsafe extern "C" fn start_element_event_handler(
@@ -318,7 +318,7 @@ pub unsafe extern "C" fn start_element_event_handler(
         userData
             as *mut CharData,
         name,
-        -1i32,
+        -1,
     );
 }
 #[no_mangle]
@@ -333,13 +333,13 @@ pub unsafe extern "C" fn end_element_event_handler(
         
         storage,
         b"/\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     );
     CharData_AppendXMLChars(
         
         storage,
         name,
-        -1i32,
+        -1,
     );
 }
 #[no_mangle]
@@ -418,7 +418,7 @@ pub unsafe extern "C" fn counting_start_element_handler(
     }
     count =
         XML_GetSpecifiedAttributeCount((*parserAndElementInfos).parser);
-    if (*info).attr_count * 2i32 != count {
+    if (*info).attr_count * 2 != count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -427,7 +427,7 @@ pub unsafe extern "C" fn counting_start_element_handler(
         );
     }
     id = XML_GetIdAttributeIndex((*parserAndElementInfos).parser);
-    if id == -1i32 && !(*info).id_name.is_null() {
+    if id == -1 && !(*info).id_name.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -435,13 +435,13 @@ pub unsafe extern "C" fn counting_start_element_handler(
             b"ID not present\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if id != -1i32
+    if id != -1
         && strcmp(
             
             *atts.offset(id as isize),
             
             (*info).id_name,
-        ) != 0i32
+        ) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -450,13 +450,13 @@ pub unsafe extern "C" fn counting_start_element_handler(
             b"ID does not have the correct name\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    i = 0i32;
+    i = 0;
     while i < (*info).attr_count {
         attr = (*info).attributes;
         while !(*attr).name.is_null() {
             if strcmp(
                 
-                *atts.offset(0isize),
+                *atts.offset(0),
                 
                 (*attr).name,
             ) == 0
@@ -475,10 +475,10 @@ pub unsafe extern "C" fn counting_start_element_handler(
         }
         if strcmp(
             
-            *atts.offset(1isize),
+            *atts.offset(1),
             
             (*attr).value,
-        ) != 0i32
+        ) != 0
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -487,7 +487,7 @@ pub unsafe extern "C" fn counting_start_element_handler(
                 b"Attribute has wrong value\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        atts = atts.offset(2isize);
+        atts = atts.offset(2);
         i += 1;
     }
 }
@@ -499,7 +499,7 @@ pub unsafe extern "C" fn suspending_end_handler(
 ) {
     XML_StopParser(
         userData as XML_Parser,
-        1u8,
+        1,
     );
 }
 #[no_mangle]
@@ -551,10 +551,10 @@ pub unsafe extern "C" fn triplet_start_checker(
         userData as *mut *mut XML_Char;
     let mut buffer: [::core::ffi::c_char; 1024] = [0; 1024];
     if strcmp(
-        *elemstr.offset(0isize),
+        *elemstr.offset(0),
         
         name,
-    ) != 0i32
+    ) != 0
     {
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
@@ -571,10 +571,10 @@ pub unsafe extern "C" fn triplet_start_checker(
         );
     }
     if strcmp(
-        *elemstr.offset(1isize),
+        *elemstr.offset(1),
         
-        *atts.offset(0isize),
-    ) != 0i32
+        *atts.offset(0),
+    ) != 0
     {
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
@@ -601,10 +601,10 @@ pub unsafe extern "C" fn triplet_end_checker(
     let mut elemstr: *mut *mut XML_Char =
         userData as *mut *mut XML_Char;
     if strcmp(
-        *elemstr.offset(0isize),
+        *elemstr.offset(0),
         
         name,
-    ) != 0i32
+    ) != 0
     {
         let mut buffer: [::core::ffi::c_char; 1024] = [0; 1024];
         snprintf(
@@ -636,34 +636,34 @@ pub unsafe extern "C" fn overwrite_start_checker(
         
         storage,
         b"start \0".as_ptr() as *const XML_Char,
-        6i32,
+        6,
     );
     CharData_AppendXMLChars(
         
         storage,
         name,
-        -1i32,
+        -1,
     );
     while !(*atts).is_null() {
         CharData_AppendXMLChars(
             
             storage,
             b"\nattribute \0".as_ptr() as *const XML_Char,
-            11i32,
+            11,
         );
         CharData_AppendXMLChars(
             
             storage,
             *atts,
-            -1i32,
+            -1,
         );
-        atts = atts.offset(2isize);
+        atts = atts.offset(2);
     }
     CharData_AppendXMLChars(
         
         storage,
         b"\n\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     );
 }
 #[no_mangle]
@@ -678,19 +678,19 @@ pub unsafe extern "C" fn overwrite_end_checker(
         
         storage,
         b"end \0".as_ptr() as *const XML_Char,
-        4i32,
+        4,
     );
     CharData_AppendXMLChars(
         
         storage,
         name,
-        -1i32,
+        -1,
     );
     CharData_AppendXMLChars(
         
         storage,
         b"\n\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     );
 }
 #[no_mangle]
@@ -703,7 +703,7 @@ pub unsafe extern "C" fn start_element_fail(
     _fail(
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        249i32,
+        249,
         b"should never reach start_element_fail()\0".as_ptr() as *const ::core::ffi::c_char,
     );
 }
@@ -739,7 +739,7 @@ pub unsafe extern "C" fn end_element_issue_240(
     let mut mydata: *mut crate::src::tests::handlers::DataIssue240 =
         userData as *mut crate::src::tests::handlers::DataIssue240;
     (*mydata).deep -= 1;
-    if (*mydata).deep == 0i32 {
+    if (*mydata).deep == 0 {
         XML_StopParser((*mydata).parser, 0u8);
     }
 }
@@ -754,11 +754,11 @@ pub unsafe extern "C" fn UnknownEncodingHandler(
         
         encoding,
         b"unsupported-encoding\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32
+    ) == 0
     {
         let mut i: ::core::ffi::c_int = 0;
-        i = 0i32;
-        while i < 256i32 {
+        i = 0;
+        while i < 256 {
             (*info).map[i as usize] = i;
             i += 1;
         }
@@ -797,8 +797,8 @@ pub unsafe extern "C" fn unknown_released_encoding_handler(
     ) == 0
     {
         let mut i: ::core::ffi::c_int = 0;
-        i = 0i32;
-        while i < 256i32 {
+        i = 0;
+        while i < 256 {
             (*info).map[i as usize] = i;
             i += 1;
         }
@@ -816,22 +816,22 @@ unsafe extern "C" fn failing_converter(
     mut data: *mut ::core::ffi::c_void,
     mut s: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return -1i32;
+    return -1;
 }
 
 unsafe extern "C" fn prefix_converter(
     mut data: *mut ::core::ffi::c_void,
     mut s: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    if *s.offset(0isize) as ::core::ffi::c_int
-        == -1i32
+    if *s.offset(0) as ::core::ffi::c_int
+        == -1
     {
         return -1i32;
     }
-    return *s.offset(1isize) as ::core::ffi::c_int
-        + (*s.offset(0isize) as ::core::ffi::c_int
-            & 0x7fi32)
-        & 0x1ffi32;
+    return *s.offset(1) as ::core::ffi::c_int
+        + (*s.offset(0) as ::core::ffi::c_int
+            & 0x7f)
+        & 0x1ff;
 }
 #[no_mangle]
 
@@ -841,7 +841,7 @@ pub unsafe extern "C" fn MiscEncodingHandler(
     mut info: *mut XML_Encoding,
 ) -> ::core::ffi::c_int {
     let mut i: ::core::ffi::c_int = 0;
-    let mut high_map: ::core::ffi::c_int = -2i32;
+    let mut high_map: ::core::ffi::c_int = -2;
     if strcmp(
         
         encoding,
@@ -875,12 +875,12 @@ pub unsafe extern "C" fn MiscEncodingHandler(
     {
         high_map = -1i32;
     }
-    i = 0i32;
-    while i < 128i32 {
+    i = 0;
+    while i < 128 {
         (*info).map[i as usize] = i;
         i += 1;
     }
-    while i < 256i32 {
+    while i < 256 {
         (*info).map[i as usize] = high_map;
         i += 1;
     }
@@ -965,8 +965,8 @@ pub unsafe extern "C" fn long_encoding_handler(
     mut info: *mut XML_Encoding,
 ) -> ::core::ffi::c_int {
     let mut i: ::core::ffi::c_int = 0;
-    i = 0i32;
-    while i < 256i32 {
+    i = 0;
+    while i < 256 {
         (*info).map[i as usize] = i;
         i += 1;
     }
@@ -1037,7 +1037,7 @@ pub unsafe extern "C" fn external_entity_optioner(
     _fail(
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        444i32,
+        444,
         b"No suitable option found\0".as_ptr() as *const ::core::ffi::c_char,
     );
 }
@@ -1091,7 +1091,7 @@ pub unsafe extern "C" fn external_entity_loader(
             extparser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            468i32,
+            468,
         );
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
@@ -1227,7 +1227,7 @@ pub unsafe extern "C" fn external_entity_resetter(
             parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            536i32,
+            536,
         );
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
@@ -1385,7 +1385,7 @@ pub unsafe extern "C" fn external_entity_suspender(
             ext_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            591i32,
+            591,
         );
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
@@ -1606,7 +1606,7 @@ pub unsafe extern "C" fn external_entity_suspending_faulter(
     }
     if  XML_ParseBuffer(
         ext_parser,
-        0i32,
+        0,
         XML_TRUE as ::core::ffi::c_int,
     )
         !=  XML_STATUS_ERROR
@@ -1938,7 +1938,7 @@ pub unsafe extern "C" fn external_entity_param_checker(
             parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            814i32,
+            814,
         );
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
@@ -2183,7 +2183,7 @@ pub unsafe extern "C" fn external_entity_load_ignore_utf16(
         ext_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 73]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -2232,7 +2232,7 @@ pub unsafe extern "C" fn external_entity_load_ignore_utf16_be(
         ext_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 73]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -2660,7 +2660,7 @@ pub unsafe extern "C" fn external_entity_devaluer(
         
         systemId,
         b"foo\0".as_ptr() as *const ::core::ffi::c_char,
-    ) != 0i32
+    ) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2955,7 +2955,7 @@ pub unsafe extern "C" fn external_entity_handler(
             p2,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            1269i32,
+            1269,
         );
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
@@ -2974,8 +2974,8 @@ pub unsafe extern "C" fn external_entity_duff_loader(
     let mut new_parser: XML_Parser =
         ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut i: ::core::ffi::c_uint = 0;
-    let max_alloc_count: ::core::ffi::c_uint = 10u32;
-    i = 0u32;
+    let max_alloc_count: ::core::ffi::c_uint = 10;
+    i = 0;
     while i < max_alloc_count {
         g_allocation_count = i as ::core::ffi::c_int;
         new_parser = XML_ExternalEntityParserCreate(
@@ -2990,7 +2990,7 @@ pub unsafe extern "C" fn external_entity_duff_loader(
             i = i.wrapping_add(1);
         }
     }
-    if i == 0u32 {
+    if i == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -3026,11 +3026,11 @@ pub unsafe extern "C" fn external_entity_dbl_handler(
     let mut new_parser: XML_Parser =
         ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 20i32;
-    if callno == 0i32 {
+    let max_alloc_count: ::core::ffi::c_int = 20;
+    if callno == 0 {
         text = b"<!ELEMENT doc (e+)>\n<!ATTLIST doc xmlns CDATA #IMPLIED>\n<!ELEMENT e EMPTY>\n\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        g_allocation_count = 10000i32;
+        g_allocation_count = 10000;
         new_parser = XML_ExternalEntityParserCreate(
             parser,
             context,
@@ -3049,7 +3049,7 @@ pub unsafe extern "C" fn external_entity_dbl_handler(
     } else {
         text = b"<?xml version='1.0' encoding='us-ascii'?><e/>\0".as_ptr()
             as *const ::core::ffi::c_char;
-        i = 0i32;
+        i = 0;
         while i < max_alloc_count {
             g_allocation_count = callno + i;
             new_parser = XML_ExternalEntityParserCreate(
@@ -3062,7 +3062,7 @@ pub unsafe extern "C" fn external_entity_dbl_handler(
             }
             i += 1;
         }
-        if i == 0i32 {
+        if i == 0 {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -3092,7 +3092,7 @@ pub unsafe extern "C" fn external_entity_dbl_handler(
             new_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            1358i32,
+            1358,
         );
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
@@ -3115,10 +3115,10 @@ pub unsafe extern "C" fn external_entity_dbl_handler_2(
     let mut new_parser: XML_Parser =
         ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut rv: XML_Status = XML_STATUS_ERROR;
-    if callno == 0i32 {
+    if callno == 0 {
         text = b"<!ELEMENT doc (e+)>\n<!ATTLIST doc xmlns CDATA #IMPLIED>\n<!ELEMENT e EMPTY>\n\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        *pcallno = 1i32;
+        *pcallno = 1;
         new_parser = XML_ExternalEntityParserCreate(
             parser,
             context,
@@ -3233,7 +3233,7 @@ pub unsafe extern "C" fn external_entity_reallocator(
     }
     g_reallocation_count =
         *(*(parser as *mut *mut ::core::ffi::c_void) as *mut ::core::ffi::c_int);
-    buffer = XML_GetBuffer(ext_parser, 1536i32);
+    buffer = XML_GetBuffer(ext_parser, 1536);
     if buffer.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3263,7 +3263,7 @@ pub unsafe extern "C" fn external_entity_reallocator(
         strlen(text) as ::core::ffi::c_int,
         XML_FALSE as ::core::ffi::c_int,
     );
-    g_reallocation_count = -1i32;
+    g_reallocation_count = -1;
     XML_ParserFree(ext_parser);
     return if  status
         ==  XML_STATUS_OK
@@ -3321,7 +3321,7 @@ pub unsafe extern "C" fn external_entity_parser_create_alloc_fail_handler(
             b"Unexpected non-NULL context\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    g_allocation_count = 3i32;
+    g_allocation_count = 3;
     let encodingName: *const XML_Char =
         b"UTF-8\0".as_ptr() as *const XML_Char;
     let ext_parser: XML_Parser =
@@ -3356,14 +3356,14 @@ pub unsafe extern "C" fn accounting_external_entity_ref_handler(
         
         systemId,
         b"first.ent\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32
+    ) == 0
     {
         externalText = (*testCase).firstExternalText;
     } else if strcmp(
         
         systemId,
         b"second.ent\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0i32
+    ) == 0
     {
         externalText = (*testCase).secondExternalText;
     } else {
@@ -3451,7 +3451,7 @@ pub unsafe extern "C" fn verify_attlist_decl_handler(
         element_name,
         
         (*at).element_name,
-    ) != 0i32
+    ) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3466,7 +3466,7 @@ pub unsafe extern "C" fn verify_attlist_decl_handler(
         attr_name,
         
         (*at).attr_name,
-    ) != 0i32
+    ) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3481,7 +3481,7 @@ pub unsafe extern "C" fn verify_attlist_decl_handler(
         attr_type,
         
         (*at).attr_type,
-    ) != 0i32
+    ) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3499,7 +3499,7 @@ pub unsafe extern "C" fn verify_attlist_decl_handler(
                 default_value,
                 
                 (*at).default_value,
-            ) != 0i32
+            ) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3633,7 +3633,7 @@ pub unsafe extern "C" fn cr_cdata_handler(
     mut len: ::core::ffi::c_int,
 ) {
     let mut pfound: *mut ::core::ffi::c_int = userData as *mut ::core::ffi::c_int;
-    if len == 1i32
+    if len == 1
         && (*s as ::core::ffi::c_int == '\n' as i32 || *s as ::core::ffi::c_int == '\r' as i32)
     {
         *pfound = 1i32;
@@ -3647,7 +3647,7 @@ pub unsafe extern "C" fn rsqb_handler(
     mut len: ::core::ffi::c_int,
 ) {
     let mut pfound: *mut ::core::ffi::c_int = userData as *mut ::core::ffi::c_int;
-    if len == 1i32 && *s as ::core::ffi::c_int == ']' as i32 {
+    if len == 1 && *s as ::core::ffi::c_int == ']' as i32 {
         *pfound = 1i32;
     }
 }
@@ -3841,13 +3841,13 @@ pub unsafe extern "C" fn record_element_end_handler(
         
         storage,
         b"/\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     );
     CharData_AppendXMLChars(
         
         storage,
         name,
-        -1i32,
+        -1,
     );
 }
 #[no_mangle]
@@ -3911,7 +3911,7 @@ pub unsafe extern "C" fn param_entity_match_handler(
                 
                 entity_value_to_match,
                 value_length as size_t,
-            ) != 0i32
+            ) != 0
         {
             entity_match_flag = crate::src::tests::handlers::ENTITY_MATCH_FAIL;
         } else {
@@ -3950,7 +3950,7 @@ pub unsafe extern "C" fn xml_decl_handler(
             b"User data (xml decl) not correctly set\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if standalone != -1i32 {
+    if standalone != -1 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4013,11 +4013,11 @@ pub unsafe extern "C" fn selective_aborting_default_handler(
 ) {
     let trigger_char: XML_Char =
         *(userData as *const XML_Char);
-    let mut found: ::core::ffi::c_int = 0i32;
-    let mut i: ::core::ffi::c_int = 0i32;
+    let mut found: ::core::ffi::c_int = 0;
+    let mut i: ::core::ffi::c_int = 0;
     while i < len {
         if *s.offset(i as isize) as ::core::ffi::c_int == trigger_char as ::core::ffi::c_int {
-            found = 1i32;
+            found = 1;
             break;
         } else {
             i += 1;
@@ -4067,7 +4067,7 @@ pub unsafe extern "C" fn suspend_after_element_declaration(
     let mut parser: XML_Parser = userData as XML_Parser;
     if !(XML_StopParser(
         parser,
-        1u8,
+        1,
     )
         ==  XML_STATUS_OK)
     {
@@ -4094,25 +4094,25 @@ pub unsafe extern "C" fn accumulate_pi_characters(
         
         storage,
         target,
-        -1i32,
+        -1,
     );
     CharData_AppendXMLChars(
         
         storage,
         b": \0".as_ptr() as *const XML_Char,
-        2i32,
+        2,
     );
     CharData_AppendXMLChars(
         
         storage,
         data,
-        -1i32,
+        -1,
     );
     CharData_AppendXMLChars(
         
         storage,
         b"\n\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     );
 }
 #[no_mangle]
@@ -4127,7 +4127,7 @@ pub unsafe extern "C" fn accumulate_comment(
         
         storage,
         data,
-        -1i32,
+        -1,
     );
 }
 #[no_mangle]
@@ -4149,13 +4149,13 @@ pub unsafe extern "C" fn accumulate_entity_decl(
         
         storage,
         entityName,
-        -1i32,
+        -1,
     );
     CharData_AppendXMLChars(
         
         storage,
         b"=\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     );
     if value.is_null() {
         CharData_AppendXMLChars(
@@ -4176,7 +4176,7 @@ pub unsafe extern "C" fn accumulate_entity_decl(
         
         storage,
         b"\n\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     );
 }
 #[no_mangle]
@@ -4194,7 +4194,7 @@ pub unsafe extern "C" fn accumulate_char_data_and_suspend(
         s,
         len,
     );
-    let mut i: ::core::ffi::c_int = 0i32;
+    let mut i: ::core::ffi::c_int = 0;
     while i < len {
         if *s.offset(i as isize) as ::core::ffi::c_int == 'Z' as i32 {
             XML_StopParser(
@@ -4220,42 +4220,42 @@ pub unsafe extern "C" fn accumulate_start_element(
         
         storage,
         b"(\0".as_ptr() as *const XML_Char,
-        1i32,
+        1,
     );
     CharData_AppendXMLChars(
         
         storage,
         name,
-        -1i32,
+        -1,
     );
-    if !atts.is_null() && !(*atts.offset(0isize)).is_null() {
+    if !atts.is_null() && !(*atts.offset(0)).is_null() {
         CharData_AppendXMLChars(
             
             storage,
             b"(\0".as_ptr() as *const XML_Char,
-            1i32,
+            1,
         );
-        while !(*atts.offset(0isize)).is_null() {
+        while !(*atts.offset(0)).is_null() {
             CharData_AppendXMLChars(
                 
                 storage,
-                *atts.offset(0isize),
-                -1i32,
+                *atts.offset(0),
+                -1,
             );
             CharData_AppendXMLChars(
                 
                 storage,
                 b"=\0".as_ptr() as *const XML_Char,
-                1i32,
+                1,
             );
             CharData_AppendXMLChars(
                 
                 storage,
-                *atts.offset(1isize),
-                -1i32,
+                *atts.offset(1),
+                -1,
             );
-            atts = atts.offset(2isize);
-            if !(*atts.offset(0isize)).is_null() {
+            atts = atts.offset(2);
+            if !(*atts.offset(0)).is_null() {
                 CharData_AppendXMLChars(
                     
                     storage,
@@ -4275,7 +4275,7 @@ pub unsafe extern "C" fn accumulate_start_element(
         
         storage,
         b")\n\0".as_ptr() as *const XML_Char,
-        2i32,
+        2,
     );
 }
 #[no_mangle]
@@ -4306,16 +4306,16 @@ pub unsafe extern "C" fn accumulate_attribute(
     if atts.is_null() {
         return;
     }
-    while (*storage).count < 0i32
-        && !(*atts.offset(0isize)).is_null()
+    while (*storage).count < 0
+        && !(*atts.offset(0)).is_null()
     {
         CharData_AppendXMLChars(
             
             storage,
-            *atts.offset(1isize),
-            -1i32,
+            *atts.offset(1),
+            -1,
         );
-        atts = atts.offset(2isize);
+        atts = atts.offset(2);
     }
 }
 #[no_mangle]
@@ -4339,7 +4339,7 @@ pub unsafe extern "C" fn checking_default_handler(
     let mut data: *mut crate::src::tests::handlers::DefaultCheck =
         userData as *mut crate::src::tests::handlers::DefaultCheck;
     let mut i: ::core::ffi::c_int = 0;
-    i = 0i32;
+    i = 0;
     while !(*data.offset(i as isize)).expected.is_null() {
         if (*data.offset(i as isize)).expectedLen == len
             && memcmp(

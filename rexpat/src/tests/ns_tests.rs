@@ -170,7 +170,7 @@ unsafe extern "C" fn test_return_ns_triplet() {
         b"test_return_ns_triplet\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        68i32,
+        68,
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:e xmlns:foo='http://example.org/' bar:a='12'\n       xmlns:bar='http://example.org/'>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -299,7 +299,7 @@ unsafe extern "C" fn test_ns_parser_reset() {
         b"test_ns_parser_reset\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        104i32,
+        104,
     );
     let mut status: XML_ParsingStatus = XML_ParsingStatus { parsing:  XML_INITIALIZED, finalBuffer:  0 };
     XML_GetParsingStatus(
@@ -413,7 +413,7 @@ unsafe extern "C" fn test_ns_tagname_overwrite() {
         b"test_ns_tagname_overwrite\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        135i32,
+        135,
     );
     let mut text: *const ::core::ffi::c_char = b"<n:e xmlns:n='http://example.org/'>\n  <n:f n:attr='foo'/>\n  <n:g n:attr2='bar'/>\n</n:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -427,7 +427,7 @@ unsafe extern "C" fn test_ns_tagname_overwrite_triplet() {
         b"test_ns_tagname_overwrite_triplet\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        153i32,
+        153,
     );
     let mut text: *const ::core::ffi::c_char = b"<n:e xmlns:n='http://example.org/'>\n  <n:f n:attr='foo'/>\n  <n:g n:attr2='bar'/>\n</n:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -445,7 +445,7 @@ unsafe extern "C" fn test_start_ns_clears_start_element() {
         b"test_start_ns_clears_start_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        172i32,
+        172,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<e xmlns='http://example.org/'></e>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -504,7 +504,7 @@ unsafe extern "C" fn test_default_ns_from_ext_subset_and_ext_ge() {
         b"test_default_ns_from_ext_subset_and_ext_ge\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        190i32,
+        190,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -562,7 +562,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_1() {
         b"test_ns_prefix_with_empty_uri_1\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        211i32,
+        211,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns:prefix='http://example.org/'>\n  <e xmlns:prefix=''/>\n</doc>\0".as_ptr()
@@ -574,7 +574,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_1() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        218i32,
+        218,
     );
 }
 
@@ -583,7 +583,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_2() {
         b"test_ns_prefix_with_empty_uri_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        223i32,
+        223,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0'?>\n<docelem xmlns:pre=''/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -594,7 +594,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_2() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        228i32,
+        228,
     );
 }
 
@@ -603,7 +603,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_3() {
         b"test_ns_prefix_with_empty_uri_3\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        233i32,
+        233,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ELEMENT doc EMPTY>\n  <!ATTLIST doc\n    xmlns:prefix CDATA ''>\n]>\n<doc/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -614,7 +614,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_3() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        242i32,
+        242,
     );
 }
 
@@ -623,7 +623,7 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_4() {
         b"test_ns_prefix_with_empty_uri_4\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        247i32,
+        247,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ELEMENT prefix:doc EMPTY>\n  <!ATTLIST prefix:doc\n    xmlns:prefix CDATA 'http://example.org/'>\n]>\n<prefix:doc/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -671,7 +671,7 @@ unsafe extern "C" fn test_ns_unbound_prefix() {
         b"test_ns_unbound_prefix\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        268i32,
+        268,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ELEMENT prefix:doc EMPTY>\n  <!ATTLIST prefix:doc\n    notxmlns:prefix CDATA 'http://example.org/'>\n]>\n<prefix:doc/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -707,7 +707,7 @@ unsafe extern "C" fn test_ns_default_with_empty_uri() {
         b"test_ns_default_with_empty_uri\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        284i32,
+        284,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns='http://example.org/'>\n  <e xmlns=''/>\n</doc>\0".as_ptr()
@@ -755,7 +755,7 @@ unsafe extern "C" fn test_ns_duplicate_attrs_diff_prefixes() {
         b"test_ns_duplicate_attrs_diff_prefixes\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        299i32,
+        299,
     );
     let mut text: *const ::core::ffi::c_char = b"<doc xmlns:a='http://example.org/a'\n     xmlns:b='http://example.org/a'\n     a:a='v' b:a='v' />\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -766,7 +766,7 @@ unsafe extern "C" fn test_ns_duplicate_attrs_diff_prefixes() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        304i32,
+        304,
     );
 }
 
@@ -775,7 +775,7 @@ unsafe extern "C" fn test_ns_duplicate_hashes() {
         b"test_ns_duplicate_hashes\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        308i32,
+        308,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns:a='http://example.org/a'\n     a:a='v' a:i='w' />\0".as_ptr()
@@ -802,7 +802,7 @@ unsafe extern "C" fn test_ns_unbound_prefix_on_attribute() {
         b"test_ns_unbound_prefix_on_attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        334i32,
+        334,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc a:attr=''/>\0".as_ptr() as *const ::core::ffi::c_char;
@@ -812,7 +812,7 @@ unsafe extern "C" fn test_ns_unbound_prefix_on_attribute() {
         b"did not report unbound prefix on attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        337i32,
+        337,
     );
 }
 
@@ -821,7 +821,7 @@ unsafe extern "C" fn test_ns_unbound_prefix_on_element() {
         b"test_ns_unbound_prefix_on_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        342i32,
+        342,
     );
     let mut text: *const ::core::ffi::c_char = b"<a:doc/>\0".as_ptr() as *const ::core::ffi::c_char;
     _expect_failure(
@@ -830,7 +830,7 @@ unsafe extern "C" fn test_ns_unbound_prefix_on_element() {
         b"did not report unbound prefix on element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        345i32,
+        345,
     );
 }
 
@@ -839,7 +839,7 @@ unsafe extern "C" fn test_ns_long_element() {
         b"test_ns_long_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        350i32,
+        350,
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:thisisalongenoughelementnametotriggerareallocation\n xmlns:foo='http://example.org/' bar:a='12'\n xmlns:bar='http://example.org/'></foo:thisisalongenoughelementnametotriggerareallocation>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -898,7 +898,7 @@ unsafe extern "C" fn test_ns_mixed_prefix_atts() {
         b"test_ns_mixed_prefix_atts\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        371i32,
+        371,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<e a='12' bar:b='13'\n xmlns:bar='http://example.org/'></e>\0".as_ptr()
@@ -925,7 +925,7 @@ unsafe extern "C" fn test_ns_extend_uri_buffer() {
         b"test_ns_extend_uri_buffer\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        386i32,
+        386,
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:e xmlns:foo='http://example.org/'> <foo:thisisalongenoughnametotriggerallocationaction   foo:a='12' /></foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -951,7 +951,7 @@ unsafe extern "C" fn test_ns_reserved_attributes() {
         b"test_ns_reserved_attributes\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        400i32,
+        400,
     );
     let mut text1: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://example.org/' xmlns:xmlns='12' />\0".as_ptr()
@@ -965,7 +965,7 @@ unsafe extern "C" fn test_ns_reserved_attributes() {
         b"xmlns not rejected as an attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        406i32,
+        406,
     );
     XML_ParserReset(
         g_parser,
@@ -993,7 +993,7 @@ unsafe extern "C" fn test_ns_reserved_attributes_2() {
         b"test_ns_reserved_attributes_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        415i32,
+        415,
     );
     let mut text1: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://example.org/'  xmlns:xml='http://example.org/' />\0".as_ptr()
@@ -1010,7 +1010,7 @@ unsafe extern "C" fn test_ns_reserved_attributes_2() {
         b"xml not rejected as an attribute\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        423i32,
+        423,
     );
     XML_ParserReset(
         g_parser,
@@ -1022,7 +1022,7 @@ unsafe extern "C" fn test_ns_reserved_attributes_2() {
         b"Use of w3.org URL not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        426i32,
+        426,
     );
     XML_ParserReset(
         g_parser,
@@ -1034,7 +1034,7 @@ unsafe extern "C" fn test_ns_reserved_attributes_2() {
         b"Use of w3.org xmlns URL not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        429i32,
+        429,
     );
 }
 
@@ -1043,7 +1043,7 @@ unsafe extern "C" fn test_ns_extremely_long_prefix() {
         b"test_ns_extremely_long_prefix\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        435i32,
+        435,
     );
     let mut text1: *const ::core::ffi::c_char = b"<doc ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP:a='12'\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1086,7 +1086,7 @@ unsafe extern "C" fn test_ns_unknown_encoding_success() {
         b"test_ns_unknown_encoding_success\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        524i32,
+        524,
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='prefix-conv'?>\n<foo:e xmlns:foo='http://example.org/'>Hi</foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1107,7 +1107,7 @@ unsafe extern "C" fn test_ns_unknown_encoding_success() {
         b"Hi\0".as_ptr() as *const XML_Char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        529i32,
+        529,
     );
 }
 
@@ -1116,7 +1116,7 @@ unsafe extern "C" fn test_ns_double_colon() {
         b"test_ns_double_colon\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        534i32,
+        534,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://example.org/' foo:a:b='bar' />\0".as_ptr()
@@ -1147,7 +1147,7 @@ unsafe extern "C" fn test_ns_double_colon_element() {
         b"test_ns_double_colon_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        553i32,
+        553,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<foo:bar:e xmlns:foo='http://example.org/' />\0".as_ptr() as *const ::core::ffi::c_char;
@@ -1177,7 +1177,7 @@ unsafe extern "C" fn test_ns_bad_attr_leafname() {
         b"test_ns_bad_attr_leafname\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        573i32,
+        573,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://example.org/' foo:?ar='baz' />\0".as_ptr()
@@ -1188,7 +1188,7 @@ unsafe extern "C" fn test_ns_bad_attr_leafname() {
         b"Invalid character in leafname not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        577i32,
+        577,
     );
 }
 
@@ -1197,7 +1197,7 @@ unsafe extern "C" fn test_ns_bad_element_leafname() {
         b"test_ns_bad_element_leafname\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        581i32,
+        581,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<foo:?oc xmlns:foo='http://example.org/' />\0".as_ptr() as *const ::core::ffi::c_char;
@@ -1208,7 +1208,7 @@ unsafe extern "C" fn test_ns_bad_element_leafname() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        585i32,
+        585,
     );
 }
 
@@ -1217,7 +1217,7 @@ unsafe extern "C" fn test_ns_utf16_leafname() {
         b"test_ns_utf16_leafname\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        590i32,
+        590,
     );
     let text: [::core::ffi::c_char; 59] = ::core::mem::transmute::<
         [u8; 59],
@@ -1252,7 +1252,7 @@ unsafe extern "C" fn test_ns_utf16_leafname() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 59]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -1276,7 +1276,7 @@ unsafe extern "C" fn test_ns_utf16_element_leafname() {
         b"test_ns_utf16_element_leafname\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        610i32,
+        610,
     );
     let text: [::core::ffi::c_char; 41] =
         ::core::mem::transmute::<[u8; 41], [::core::ffi::c_char; 41]>(
@@ -1309,7 +1309,7 @@ unsafe extern "C" fn test_ns_utf16_element_leafname() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 41]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -1333,7 +1333,7 @@ unsafe extern "C" fn test_ns_utf16_doctype() {
         b"test_ns_utf16_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        633i32,
+        633,
     );
     let text: [::core::ffi::c_char; 155] = ::core::mem::transmute::<
         [u8; 155],
@@ -1380,7 +1380,7 @@ unsafe extern "C" fn test_ns_utf16_doctype() {
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
         ::core::mem::size_of::<[::core::ffi::c_char; 155]>() as ::core::ffi::c_int
-            - 1i32,
+            - 1,
         XML_TRUE as ::core::ffi::c_int,
     )
         ==  XML_STATUS_ERROR
@@ -1404,7 +1404,7 @@ unsafe extern "C" fn test_ns_invalid_doctype() {
         b"test_ns_invalid_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        664i32,
+        664,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE foo:!bad [ <!ENTITY bar 'baz' ]>\n<foo:!bad>&bar;</foo:!bad>\0".as_ptr()
@@ -1416,7 +1416,7 @@ unsafe extern "C" fn test_ns_invalid_doctype() {
             as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        669i32,
+        669,
     );
 }
 
@@ -1425,7 +1425,7 @@ unsafe extern "C" fn test_ns_double_colon_doctype() {
         b"test_ns_double_colon_doctype\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        673i32,
+        673,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<!DOCTYPE foo:a:doc [ <!ENTITY bar 'baz' ]>\n<foo:a:doc>&bar;</foo:a:doc>\0".as_ptr()
@@ -1436,7 +1436,7 @@ unsafe extern "C" fn test_ns_double_colon_doctype() {
         b"Double colon in document name not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        678i32,
+        678,
     );
 }
 
@@ -1445,7 +1445,7 @@ unsafe extern "C" fn test_ns_separator_in_uri() {
         b"test_ns_separator_in_uri\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        682i32,
+        682,
     );
     let mut cases: [test_case; 3] = [
         test_case {
@@ -1464,8 +1464,8 @@ unsafe extern "C" fn test_ns_separator_in_uri() {
             namesep:  ':' as XML_Char,
         },
     ];
-    let mut i: size_t = 0usize;
-    let mut failCount: size_t = 0usize;
+    let mut i: size_t = 0;
+    let mut failCount: size_t = 0;
     while i
         < (::core::mem::size_of::<[test_case; 3]>())
             .wrapping_div(::core::mem::size_of::<test_case>())

@@ -17,7 +17,7 @@ use crate::stdlib::snprintf;
 unsafe extern "C" fn xmlstrlen(
     mut s: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    let mut len: ::core::ffi::c_int = 0i32;
+    let mut len: ::core::ffi::c_int = 0;
     if !s.is_null() {
     } else {
         __assert_fail(
@@ -28,7 +28,7 @@ unsafe extern "C" fn xmlstrlen(
             b"int xmlstrlen(const XML_Char *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    while *s.offset(len as isize) as ::core::ffi::c_int != 0i32 {
+    while *s.offset(len as isize) as ::core::ffi::c_int != 0 {
         len += 1;
     }
     return len;
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn CharData_Init(mut storage: *mut crate::src::tests::char
             b"void CharData_Init(CharData *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    (*storage).count = -1i32;
+    (*storage).count = -1;
 }
 #[no_mangle]
 
@@ -81,10 +81,10 @@ pub unsafe extern "C" fn CharData_AppendXMLChars(
     maxchars = (::core::mem::size_of::<[XML_Char; 2048]>())
         .wrapping_div(::core::mem::size_of::<XML_Char>())
         as ::core::ffi::c_int;
-    if (*storage).count < 0i32 {
+    if (*storage).count < 0 {
         (*storage).count = 0i32;
     }
-    if len < 0i32 {
+    if len < 0 {
         len = xmlstrlen(s);
     }
     if len + (*storage).count > maxchars {
@@ -122,8 +122,8 @@ pub unsafe extern "C" fn CharData_CheckXMLChars(
                 as *const ::core::ffi::c_char,
         );
     };
-    count = if (*storage).count < 0i32 {
-        0i32
+    count = if (*storage).count < 0 {
+        0
     } else {
         (*storage).count
     };
@@ -152,7 +152,7 @@ pub unsafe extern "C" fn CharData_CheckXMLChars(
             as *const ::core::ffi::c_void,
         (len as size_t)
             .wrapping_mul(::core::mem::size_of::<XML_Char>()),
-    ) != 0i32
+    ) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/chardata.c\0".as_ptr()
@@ -161,5 +161,5 @@ pub unsafe extern "C" fn CharData_CheckXMLChars(
             b"got bad data bytes\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    return 1i32;
+    return 1;
 }

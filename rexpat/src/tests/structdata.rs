@@ -29,7 +29,7 @@ use crate::stdlib::realloc;
 use crate::stdlib::strcmp;
 use crate::stdlib::strlen;
 
-pub const STRUCT_EXTENSION_COUNT: ::core::ffi::c_int = 8i32;
+pub const STRUCT_EXTENSION_COUNT: ::core::ffi::c_int = 8;
 
 unsafe extern "C" fn xmlstrdup(
     mut s: *const XML_Char,
@@ -72,8 +72,8 @@ pub unsafe extern "C" fn StructData_Init(
             b"void StructData_Init(StructData *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    (*storage).count = 0i32;
-    (*storage).max_count = 0i32;
+    (*storage).count = 0;
+    (*storage).max_count = 0;
     (*storage).entries = ::core::ptr::null_mut::<crate::src::tests::structdata::StructDataEntry>();
 }
 #[no_mangle]
@@ -188,7 +188,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
             &raw mut buffer as *mut ::core::ffi::c_char,
         );
     } else {
-        let mut i: ::core::ffi::c_int = 0i32;
+        let mut i: ::core::ffi::c_int = 0;
         while i < count {
             let mut got: *const crate::src::tests::structdata::StructDataEntry =
                 
@@ -222,7 +222,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
                 (*got).str,
                 
                 (*want).str,
-            ) != 0i32
+            ) != 0
             {
                 StructData_Dispose(storage);
                 _fail(
@@ -277,7 +277,7 @@ pub unsafe extern "C" fn StructData_Dispose(
             b"void StructData_Dispose(StructData *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    i = 0i32;
+    i = 0;
     while i < (*storage).count {
         free(
             (*(*storage).entries.offset(i as isize)).str as *mut ::core::ffi::c_void,
@@ -285,6 +285,6 @@ pub unsafe extern "C" fn StructData_Dispose(
         i += 1;
     }
     free((*storage).entries as *mut ::core::ffi::c_void);
-    (*storage).count = 0i32;
+    (*storage).count = 0;
     (*storage).entries = ::core::ptr::null_mut::<crate::src::tests::structdata::StructDataEntry>();
 }

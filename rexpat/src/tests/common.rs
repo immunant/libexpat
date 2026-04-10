@@ -128,7 +128,7 @@ pub static mut g_resumable: XML_Bool = XML_FALSE;
 pub static mut g_abortable: XML_Bool = XML_FALSE;
 #[no_mangle]
 
-pub static mut g_chunkSize: ::core::ffi::c_int = 1i32;
+pub static mut g_chunkSize: ::core::ffi::c_int = 1;
 #[no_mangle]
 
 pub unsafe extern "C" fn tcase_add_test__ifdef_xml_dtd(
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn _XML_Parse_SINGLE_BYTES(
     mut len: ::core::ffi::c_int,
     mut isFinal: ::core::ffi::c_int,
 ) -> XML_Status {
-    if !parser.is_null() && !s.is_null() && len >= 0i32 {
+    if !parser.is_null() && !s.is_null() && len >= 0 {
     } else {
         __assert_fail(
             b"(parser != NULL) && (s != NULL) && (len >= 0)\0".as_ptr()
@@ -207,7 +207,7 @@ pub unsafe extern "C" fn _XML_Parse_SINGLE_BYTES(
         );
     };
     let chunksize: ::core::ffi::c_int = g_chunkSize;
-    if chunksize > 0i32 {
+    if chunksize > 0 {
         while len > chunksize {
             let mut res: XML_Status = XML_Parse(
                 parser,
@@ -405,9 +405,9 @@ pub unsafe extern "C" fn _run_ext_character_check(
     free(storage as *mut ::core::ffi::c_void);
 }
 
-pub const ALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1i32;
+pub const ALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1;
 
-pub const REALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1i32;
+pub const REALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1;
 #[no_mangle]
 
 pub static mut g_allocation_count: ::core::ffi::c_int = ALLOC_ALWAYS_SUCCEED;
@@ -419,7 +419,7 @@ pub static mut g_reallocation_count: ::core::ffi::c_int = REALLOC_ALWAYS_SUCCEED
 pub unsafe extern "C" fn duff_allocator(
     mut size: size_t,
 ) -> *mut ::core::ffi::c_void {
-    if g_allocation_count == 0i32 {
+    if g_allocation_count == 0 {
         return NULL;
     }
     if g_allocation_count != ALLOC_ALWAYS_SUCCEED {
@@ -433,7 +433,7 @@ pub unsafe extern "C" fn duff_reallocator(
     mut ptr: *mut ::core::ffi::c_void,
     mut size: size_t,
 ) -> *mut ::core::ffi::c_void {
-    if g_reallocation_count == 0i32 {
+    if g_reallocation_count == 0 {
         return NULL;
     }
     if g_reallocation_count != REALLOC_ALWAYS_SUCCEED {
@@ -474,7 +474,7 @@ pub unsafe extern "C" fn portable_strndup(
         *__errno_location() = ENOMEM;
         return ::core::ptr::null_mut::<::core::ffi::c_char>();
     }
-    *__errno_location() = 0i32;
+    *__errno_location() = 0;
     memcpy(
         buffer as *mut ::core::ffi::c_void,
         s as *const ::core::ffi::c_void,

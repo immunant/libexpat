@@ -30,7 +30,7 @@ pub mod internal_h {
     }
 }
 pub mod minicheck_h {
-    pub const CK_NORMAL: ::core::ffi::c_int = 1i32;
+    pub const CK_NORMAL: ::core::ffi::c_int = 1;
 
     pub type tcase_setup_function = Option<unsafe extern "C" fn() -> ()>;
 
@@ -48,9 +48,9 @@ pub mod stdlib {
         pub type _IO_wide_data;
     }
     pub type FILE = ::rexpat::stdlib::_IO_FILE;
-    pub const EXIT_FAILURE: ::core::ffi::c_int = 1i32;
+    pub const EXIT_FAILURE: ::core::ffi::c_int = 1;
 
-    pub const EXIT_SUCCESS: ::core::ffi::c_int = 0i32;
+    pub const EXIT_SUCCESS: ::core::ffi::c_int = 0;
     pub type _IO_lock_t = ();
     pub type __uint64_t = u64;
 
@@ -164,19 +164,19 @@ unsafe fn main_0(
             
             s,
         );
-    i = 1i32;
+    i = 1;
     while i < argc {
         let mut opt: *mut ::core::ffi::c_char = *argv.offset(i as isize);
         if strcmp(opt, b"-v\0".as_ptr() as *const ::core::ffi::c_char)
-            == 0i32
+            == 0
             || strcmp(opt, b"--verbose\0".as_ptr() as *const ::core::ffi::c_char)
-                == 0i32
+                == 0
         {
             verbosity = CK_VERBOSE;
         } else if strcmp(opt, b"-q\0".as_ptr() as *const ::core::ffi::c_char)
-            == 0i32
+            == 0
             || strcmp(opt, b"--quiet\0".as_ptr() as *const ::core::ffi::c_char)
-                == 0i32
+                == 0
         {
             verbosity = CK_SILENT;
         } else {
@@ -196,10 +196,10 @@ unsafe fn main_0(
             XML_ExpatVersion(),
         );
     }
-    g_chunkSize = 0i32;
-    while g_chunkSize <= 5i32 {
-        let mut enabled: ::core::ffi::c_int = 0i32;
-        while enabled <= 1i32 {
+    g_chunkSize = 0;
+    while g_chunkSize <= 5 {
+        let mut enabled: ::core::ffi::c_int = 0;
+        while enabled <= 1 {
             let mut context: [::core::ffi::c_char; 100] = [0; 100];
             g_reparseDeferralEnabledDefault =
                 enabled as XML_Bool;
@@ -236,7 +236,7 @@ unsafe fn main_0(
         
         sr,
     );
-    return if nf == 0i32 {
+    return if nf == 0 {
         EXIT_SUCCESS
     } else {
         EXIT_FAILURE
