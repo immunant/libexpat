@@ -30,7 +30,7 @@ pub mod internal_h {
     }
 }
 pub mod minicheck_h {
-    pub const CK_NORMAL: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
+    pub const CK_NORMAL: ::core::ffi::c_int = 1i32;
 
     pub type tcase_setup_function = Option<unsafe extern "C" fn() -> ()>;
 
@@ -48,9 +48,9 @@ pub mod stdlib {
         pub type _IO_wide_data;
     }
     pub type FILE = ::rexpat::stdlib::_IO_FILE;
-    pub const EXIT_FAILURE: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
+    pub const EXIT_FAILURE: ::core::ffi::c_int = 1i32;
 
-    pub const EXIT_SUCCESS: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    pub const EXIT_SUCCESS: ::core::ffi::c_int = 0i32;
     pub type _IO_lock_t = ();
     pub type __uint64_t = u64;
 
@@ -119,26 +119,33 @@ pub static mut g_parser: XML_Parser =
 
 unsafe extern "C" fn make_suite() -> *mut Suite {
     let mut s: *mut Suite =
+        
         suite_create(
             b"basic\0".as_ptr() as *const ::core::ffi::c_char
-        ) as *mut Suite;
+        );
     make_basic_test_case(
-        s as *mut Suite,
+        
+        s,
     );
     make_namespace_test_case(
-        s as *mut Suite,
+        
+        s,
     );
     make_miscellaneous_test_case(
-        s as *mut Suite,
+        
+        s,
     );
     make_alloc_test_case(
-        s as *mut Suite,
+        
+        s,
     );
     make_nsalloc_test_case(
-        s as *mut Suite,
+        
+        s,
     );
     make_accounting_test_case(
-        s as *mut Suite,
+        
+        s,
     );
     return s;
 }
@@ -152,31 +159,34 @@ unsafe fn main_0(
     let mut verbosity: ::core::ffi::c_int = CK_NORMAL;
     let mut s: *mut Suite = make_suite();
     let mut sr: *mut SRunner =
+        
         srunner_create(
-            s as *mut Suite,
-        ) as *mut SRunner;
-    i = 1 as ::core::ffi::c_int;
+            
+            s,
+        );
+    i = 1i32;
     while i < argc {
         let mut opt: *mut ::core::ffi::c_char = *argv.offset(i as isize);
         if strcmp(opt, b"-v\0".as_ptr() as *const ::core::ffi::c_char)
-            == 0 as ::core::ffi::c_int
+            == 0i32
             || strcmp(opt, b"--verbose\0".as_ptr() as *const ::core::ffi::c_char)
-                == 0 as ::core::ffi::c_int
+                == 0i32
         {
             verbosity = CK_VERBOSE;
         } else if strcmp(opt, b"-q\0".as_ptr() as *const ::core::ffi::c_char)
-            == 0 as ::core::ffi::c_int
+            == 0i32
             || strcmp(opt, b"--quiet\0".as_ptr() as *const ::core::ffi::c_char)
-                == 0 as ::core::ffi::c_int
+                == 0i32
         {
             verbosity = CK_SILENT;
         } else {
             fprintf(
-                stderr as *mut _IO_FILE,
+                
+                stderr,
                 b"runtests: unknown option '%s'\n\0".as_ptr() as *const ::core::ffi::c_char,
                 opt,
             );
-            return 2 as ::core::ffi::c_int;
+            return 2i32;
         }
         i += 1;
     }
@@ -186,25 +196,26 @@ unsafe fn main_0(
             XML_ExpatVersion(),
         );
     }
-    g_chunkSize = 0 as ::core::ffi::c_int;
-    while g_chunkSize <= 5 as ::core::ffi::c_int {
-        let mut enabled: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while enabled <= 1 as ::core::ffi::c_int {
+    g_chunkSize = 0i32;
+    while g_chunkSize <= 5i32 {
+        let mut enabled: ::core::ffi::c_int = 0i32;
+        while enabled <= 1i32 {
             let mut context: [::core::ffi::c_char; 100] = [0; 100];
             g_reparseDeferralEnabledDefault =
                 enabled as XML_Bool;
             snprintf(
                 &raw mut context as *mut ::core::ffi::c_char,
-                ::core::mem::size_of::<[::core::ffi::c_char; 100]>()
-                    as size_t,
+                
+                ::core::mem::size_of::<[::core::ffi::c_char; 100]>(),
                 b"chunksize=%d deferral=%d\0".as_ptr() as *const ::core::ffi::c_char,
                 g_chunkSize,
                 enabled,
             );
-            context[(::core::mem::size_of::<[::core::ffi::c_char; 100]>() as usize)
-                .wrapping_sub(1 as usize) as usize] = '\0' as i32 as ::core::ffi::c_char;
+            context[(::core::mem::size_of::<[::core::ffi::c_char; 100]>())
+                .wrapping_sub(1usize)] =  '\0' as ::core::ffi::c_char;
             srunner_run_all(
-                sr as *mut SRunner,
+                
+                sr,
                 &raw mut context as *mut ::core::ffi::c_char,
                 verbosity,
             );
@@ -213,16 +224,19 @@ unsafe fn main_0(
         g_chunkSize += 1;
     }
     srunner_summarize(
-        sr as *mut SRunner,
+        
+        sr,
         verbosity,
     );
     nf = srunner_ntests_failed(
-        sr as *mut SRunner,
+        
+        sr,
     );
     srunner_free(
-        sr as *mut SRunner,
+        
+        sr,
     );
-    return if nf == 0 as ::core::ffi::c_int {
+    return if nf == 0i32 {
         EXIT_SUCCESS
     } else {
         EXIT_FAILURE
@@ -244,7 +258,8 @@ pub fn main() {
     unsafe {
         ::std::process::exit(main_0(
             (args_ptrs.len() - 1) as ::core::ffi::c_int,
-            args_ptrs.as_mut_ptr() as *mut *mut ::core::ffi::c_char,
-        ) as i32)
+            
+            args_ptrs.as_mut_ptr(),
+        ))
     }
 }

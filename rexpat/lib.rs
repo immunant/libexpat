@@ -50,9 +50,9 @@ pub mod __stddef_ptrdiff_t_h {
     pub type ptrdiff_t = isize;
 }
 pub mod common_h {
-    pub const ALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
+    pub const ALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1i32;
 
-    pub const REALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
+    pub const REALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1i32;
 }
 pub mod xmltok_impl_c {
     pub const other: crate::xmltok_impl_h::C2Rust_Unnamed_3 = 0;
@@ -163,141 +163,141 @@ pub mod internal {
         pub reg_save_area: *mut ::core::ffi::c_void,
     }
 
-    pub const __INT_MAX__: ::core::ffi::c_int = 2147483647 as ::core::ffi::c_int;
+    pub const __INT_MAX__: ::core::ffi::c_int = 2147483647i32;
 }
 pub mod stdbool_h {
-    pub const true_0: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
+    pub const true_0: ::core::ffi::c_int = 1i32;
 
-    pub const false_0: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    pub const false_0: ::core::ffi::c_int = 0i32;
 }
 pub mod ascii_h {
-    pub const ASCII_A: ::core::ffi::c_int = 0x41 as ::core::ffi::c_int;
+    pub const ASCII_A: ::core::ffi::c_int = 0x41i32;
 
-    pub const ASCII_B: ::core::ffi::c_int = 0x42 as ::core::ffi::c_int;
+    pub const ASCII_B: ::core::ffi::c_int = 0x42i32;
 
     pub const ASCII_B_1: ::core::ffi::c_int = 66;
 
-    pub const ASCII_C: ::core::ffi::c_int = 0x43 as ::core::ffi::c_int;
+    pub const ASCII_C: ::core::ffi::c_int = 0x43i32;
 
-    pub const ASCII_D: ::core::ffi::c_int = 0x44 as ::core::ffi::c_int;
+    pub const ASCII_D: ::core::ffi::c_int = 0x44i32;
 
-    pub const ASCII_E: ::core::ffi::c_int = 0x45 as ::core::ffi::c_int;
+    pub const ASCII_E: ::core::ffi::c_int = 0x45i32;
 
     pub const ASCII_E_1: ::core::ffi::c_int = 69;
 
-    pub const ASCII_F: ::core::ffi::c_int = 0x46 as ::core::ffi::c_int;
+    pub const ASCII_F: ::core::ffi::c_int = 0x46i32;
 
     pub const ASCII_F_1: ::core::ffi::c_int = 70;
 
-    pub const ASCII_G: ::core::ffi::c_int = 0x47 as ::core::ffi::c_int;
+    pub const ASCII_G: ::core::ffi::c_int = 0x47i32;
 
-    pub const ASCII_I: ::core::ffi::c_int = 0x49 as ::core::ffi::c_int;
+    pub const ASCII_I: ::core::ffi::c_int = 0x49i32;
 
-    pub const ASCII_K: ::core::ffi::c_int = 0x4b as ::core::ffi::c_int;
+    pub const ASCII_K: ::core::ffi::c_int = 0x4bi32;
 
-    pub const ASCII_L: ::core::ffi::c_int = 0x4c as ::core::ffi::c_int;
+    pub const ASCII_L: ::core::ffi::c_int = 0x4ci32;
 
     pub const ASCII_L_1: ::core::ffi::c_int = 76;
 
-    pub const ASCII_M: ::core::ffi::c_int = 0x4d as ::core::ffi::c_int;
+    pub const ASCII_M: ::core::ffi::c_int = 0x4di32;
 
     pub const ASCII_M_1: ::core::ffi::c_int = 77;
 
-    pub const ASCII_N: ::core::ffi::c_int = 0x4e as ::core::ffi::c_int;
+    pub const ASCII_N: ::core::ffi::c_int = 0x4ei32;
 
-    pub const ASCII_O: ::core::ffi::c_int = 0x4f as ::core::ffi::c_int;
+    pub const ASCII_O: ::core::ffi::c_int = 0x4fi32;
 
-    pub const ASCII_P: ::core::ffi::c_int = 0x50 as ::core::ffi::c_int;
+    pub const ASCII_P: ::core::ffi::c_int = 0x50i32;
 
-    pub const ASCII_Q: ::core::ffi::c_int = 0x51 as ::core::ffi::c_int;
+    pub const ASCII_Q: ::core::ffi::c_int = 0x51i32;
 
-    pub const ASCII_R: ::core::ffi::c_int = 0x52 as ::core::ffi::c_int;
+    pub const ASCII_R: ::core::ffi::c_int = 0x52i32;
 
-    pub const ASCII_S: ::core::ffi::c_int = 0x53 as ::core::ffi::c_int;
+    pub const ASCII_S: ::core::ffi::c_int = 0x53i32;
 
-    pub const ASCII_T: ::core::ffi::c_int = 0x54 as ::core::ffi::c_int;
+    pub const ASCII_T: ::core::ffi::c_int = 0x54i32;
 
-    pub const ASCII_U: ::core::ffi::c_int = 0x55 as ::core::ffi::c_int;
+    pub const ASCII_U: ::core::ffi::c_int = 0x55i32;
 
-    pub const ASCII_X: ::core::ffi::c_int = 0x58 as ::core::ffi::c_int;
+    pub const ASCII_X: ::core::ffi::c_int = 0x58i32;
 
     pub const ASCII_X_1: ::core::ffi::c_int = 88;
 
-    pub const ASCII_Y: ::core::ffi::c_int = 0x59 as ::core::ffi::c_int;
+    pub const ASCII_Y: ::core::ffi::c_int = 0x59i32;
 
-    pub const ASCII_Z: ::core::ffi::c_int = 0x5a as ::core::ffi::c_int;
+    pub const ASCII_Z: ::core::ffi::c_int = 0x5ai32;
 
-    pub const ASCII_a: ::core::ffi::c_int = 0x61 as ::core::ffi::c_int;
+    pub const ASCII_a: ::core::ffi::c_int = 0x61i32;
 
     pub const ASCII_a_1: ::core::ffi::c_int = 97;
 
     pub const ASCII_b: ::core::ffi::c_int = 98;
 
-    pub const ASCII_c: ::core::ffi::c_int = 0x63 as ::core::ffi::c_int;
+    pub const ASCII_c: ::core::ffi::c_int = 0x63i32;
 
     pub const ASCII_c_1: ::core::ffi::c_int = 99;
 
     pub const ASCII_d: ::core::ffi::c_int = 100;
 
-    pub const ASCII_e: ::core::ffi::c_int = 0x65 as ::core::ffi::c_int;
+    pub const ASCII_e: ::core::ffi::c_int = 0x65i32;
 
     pub const ASCII_e_1: ::core::ffi::c_int = 101;
 
     pub const ASCII_f: ::core::ffi::c_int = 102;
 
-    pub const ASCII_g: ::core::ffi::c_int = 0x67 as ::core::ffi::c_int;
+    pub const ASCII_g: ::core::ffi::c_int = 0x67i32;
 
     pub const ASCII_g_1: ::core::ffi::c_int = 103;
 
-    pub const ASCII_h: ::core::ffi::c_int = 0x68 as ::core::ffi::c_int;
+    pub const ASCII_h: ::core::ffi::c_int = 0x68i32;
 
-    pub const ASCII_i: ::core::ffi::c_int = 0x69 as ::core::ffi::c_int;
+    pub const ASCII_i: ::core::ffi::c_int = 0x69i32;
 
-    pub const ASCII_l: ::core::ffi::c_int = 0x6c as ::core::ffi::c_int;
+    pub const ASCII_l: ::core::ffi::c_int = 0x6ci32;
 
     pub const ASCII_l_1: ::core::ffi::c_int = 108;
 
-    pub const ASCII_m: ::core::ffi::c_int = 0x6d as ::core::ffi::c_int;
+    pub const ASCII_m: ::core::ffi::c_int = 0x6di32;
 
     pub const ASCII_m_1: ::core::ffi::c_int = 109;
 
-    pub const ASCII_n: ::core::ffi::c_int = 0x6e as ::core::ffi::c_int;
+    pub const ASCII_n: ::core::ffi::c_int = 0x6ei32;
 
-    pub const ASCII_o: ::core::ffi::c_int = 0x6f as ::core::ffi::c_int;
+    pub const ASCII_o: ::core::ffi::c_int = 0x6fi32;
 
-    pub const ASCII_p: ::core::ffi::c_int = 0x70 as ::core::ffi::c_int;
+    pub const ASCII_p: ::core::ffi::c_int = 0x70i32;
 
     pub const ASCII_q: ::core::ffi::c_int = 113;
 
-    pub const ASCII_r: ::core::ffi::c_int = 0x72 as ::core::ffi::c_int;
+    pub const ASCII_r: ::core::ffi::c_int = 0x72i32;
 
-    pub const ASCII_s: ::core::ffi::c_int = 0x73 as ::core::ffi::c_int;
+    pub const ASCII_s: ::core::ffi::c_int = 0x73i32;
 
-    pub const ASCII_t: ::core::ffi::c_int = 0x74 as ::core::ffi::c_int;
+    pub const ASCII_t: ::core::ffi::c_int = 0x74i32;
 
-    pub const ASCII_v: ::core::ffi::c_int = 0x76 as ::core::ffi::c_int;
+    pub const ASCII_v: ::core::ffi::c_int = 0x76i32;
 
-    pub const ASCII_w: ::core::ffi::c_int = 0x77 as ::core::ffi::c_int;
+    pub const ASCII_w: ::core::ffi::c_int = 0x77i32;
 
-    pub const ASCII_x: ::core::ffi::c_int = 0x78 as ::core::ffi::c_int;
+    pub const ASCII_x: ::core::ffi::c_int = 0x78i32;
 
     pub const ASCII_x_1: ::core::ffi::c_int = 120;
 
-    pub const ASCII_y: ::core::ffi::c_int = 0x79 as ::core::ffi::c_int;
+    pub const ASCII_y: ::core::ffi::c_int = 0x79i32;
 
-    pub const ASCII_z: ::core::ffi::c_int = 0x7a as ::core::ffi::c_int;
+    pub const ASCII_z: ::core::ffi::c_int = 0x7ai32;
 
-    pub const ASCII_0: ::core::ffi::c_int = 0x30 as ::core::ffi::c_int;
+    pub const ASCII_0: ::core::ffi::c_int = 0x30i32;
 
-    pub const ASCII_1: ::core::ffi::c_int = 0x31 as ::core::ffi::c_int;
+    pub const ASCII_1: ::core::ffi::c_int = 0x31i32;
 
     pub const ASCII_1_1: ::core::ffi::c_int = 49;
 
-    pub const ASCII_2: ::core::ffi::c_int = 0x32 as ::core::ffi::c_int;
+    pub const ASCII_2: ::core::ffi::c_int = 0x32i32;
 
     pub const ASCII_2_1: ::core::ffi::c_int = 50;
 
-    pub const ASCII_3: ::core::ffi::c_int = 0x33 as ::core::ffi::c_int;
+    pub const ASCII_3: ::core::ffi::c_int = 0x33i32;
 
     pub const ASCII_3_1: ::core::ffi::c_int = 51;
 
@@ -309,81 +309,80 @@ pub mod ascii_h {
 
     pub const ASCII_7: ::core::ffi::c_int = 55;
 
-    pub const ASCII_8: ::core::ffi::c_int = 0x38 as ::core::ffi::c_int;
+    pub const ASCII_8: ::core::ffi::c_int = 0x38i32;
 
     pub const ASCII_8_1: ::core::ffi::c_int = 56;
 
-    pub const ASCII_9: ::core::ffi::c_int = 0x39 as ::core::ffi::c_int;
+    pub const ASCII_9: ::core::ffi::c_int = 0x39i32;
 
     pub const ASCII_9_1: ::core::ffi::c_int = 57;
 
-    pub const ASCII_SPACE: ::core::ffi::c_int = 0x20 as ::core::ffi::c_int;
+    pub const ASCII_SPACE: ::core::ffi::c_int = 0x20i32;
 
-    pub const ASCII_EXCL: ::core::ffi::c_int = 0x21 as ::core::ffi::c_int;
+    pub const ASCII_EXCL: ::core::ffi::c_int = 0x21i32;
 
-    pub const ASCII_QUOT: ::core::ffi::c_int = 0x22 as ::core::ffi::c_int;
+    pub const ASCII_QUOT: ::core::ffi::c_int = 0x22i32;
 
-    pub const ASCII_AMP: ::core::ffi::c_int = 0x26 as ::core::ffi::c_int;
+    pub const ASCII_AMP: ::core::ffi::c_int = 0x26i32;
 
-    pub const ASCII_APOS: ::core::ffi::c_int = 0x27 as ::core::ffi::c_int;
+    pub const ASCII_APOS: ::core::ffi::c_int = 0x27i32;
 
-    pub const ASCII_MINUS: ::core::ffi::c_int = 0x2d as ::core::ffi::c_int;
+    pub const ASCII_MINUS: ::core::ffi::c_int = 0x2di32;
 
-    pub const ASCII_PERIOD: ::core::ffi::c_int = 0x2e as ::core::ffi::c_int;
+    pub const ASCII_PERIOD: ::core::ffi::c_int = 0x2ei32;
 
-    pub const ASCII_COLON: ::core::ffi::c_int = 0x3a as ::core::ffi::c_int;
+    pub const ASCII_COLON: ::core::ffi::c_int = 0x3ai32;
 
-    pub const ASCII_LT: ::core::ffi::c_int = 0x3c as ::core::ffi::c_int;
+    pub const ASCII_LT: ::core::ffi::c_int = 0x3ci32;
 
-    pub const ASCII_EQUALS: ::core::ffi::c_int = 0x3d as ::core::ffi::c_int;
+    pub const ASCII_EQUALS: ::core::ffi::c_int = 0x3di32;
 
-    pub const ASCII_GT: ::core::ffi::c_int = 0x3e as ::core::ffi::c_int;
+    pub const ASCII_GT: ::core::ffi::c_int = 0x3ei32;
 
-    pub const ASCII_LSQB: ::core::ffi::c_int = 0x5b as ::core::ffi::c_int;
+    pub const ASCII_LSQB: ::core::ffi::c_int = 0x5bi32;
 
-    pub const ASCII_UNDERSCORE: ::core::ffi::c_int = 0x5f as ::core::ffi::c_int;
+    pub const ASCII_UNDERSCORE: ::core::ffi::c_int = 0x5fi32;
 
-    pub const ASCII_LPAREN: ::core::ffi::c_int = 0x28 as ::core::ffi::c_int;
+    pub const ASCII_LPAREN: ::core::ffi::c_int = 0x28i32;
 
-    pub const ASCII_SLASH: ::core::ffi::c_int = 0x2f as ::core::ffi::c_int;
+    pub const ASCII_SLASH: ::core::ffi::c_int = 0x2fi32;
 
-    pub const ASCII_HASH: ::core::ffi::c_int = 0x23 as ::core::ffi::c_int;
+    pub const ASCII_HASH: ::core::ffi::c_int = 0x23i32;
 
-    pub const ASCII_PIPE: ::core::ffi::c_int = 0x7c as ::core::ffi::c_int;
+    pub const ASCII_PIPE: ::core::ffi::c_int = 0x7ci32;
 
-    pub const ASCII_COMMA: ::core::ffi::c_int = 0x2c as ::core::ffi::c_int;
+    pub const ASCII_COMMA: ::core::ffi::c_int = 0x2ci32;
 }
 pub mod __stddef_null_h {
     pub const NULL: *mut ::core::ffi::c_void =
         ::core::ptr::null::<::core::ffi::c_void>() as *mut ::core::ffi::c_void;
 }
 pub mod expat_config_h {
-    pub const XML_CONTEXT_BYTES: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
+    pub const XML_CONTEXT_BYTES: ::core::ffi::c_int = 1024i32;
 }
 pub mod limits_h {
     pub const INT_MAX: ::core::ffi::c_int = crate::internal::__INT_MAX__;
 
     pub const UINT_MAX: ::core::ffi::c_uint = (crate::internal::__INT_MAX__ as ::core::ffi::c_uint)
-        .wrapping_mul(2 as ::core::ffi::c_uint)
-        .wrapping_add(1 as ::core::ffi::c_uint);
+        .wrapping_mul(2u32)
+        .wrapping_add(1u32);
 }
 pub mod internal_h {
     pub const EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT:
         ::core::ffi::c_float = 100.0f32;
 
     pub const EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT:
-        ::core::ffi::c_int = 8388608 as ::core::ffi::c_int;
+        ::core::ffi::c_int = 8388608i32;
 
     pub const EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT: ::core::ffi::c_float = 100.0f32;
 
     pub const EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT: ::core::ffi::c_int =
-        67108864 as ::core::ffi::c_int;
+        67108864i32;
 
     pub const EXPAT_MALLOC_ALIGNMENT: usize = ::core::mem::size_of::<::core::ffi::c_longlong>();
 
-    pub const EXPAT_MALLOC_PADDING: usize = (::core::mem::size_of::<::core::ffi::c_longlong>()
-        as usize)
-        .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as usize);
+    pub const EXPAT_MALLOC_PADDING: usize = (::core::mem::size_of::<::core::ffi::c_longlong>())
+        .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>());
 }
 pub mod expat_h {
     pub use crate::src::lib::xmlparse::XML_ParserStruct;
@@ -393,10 +392,10 @@ pub mod expat_h {
     pub type XML_Bool = ::core::ffi::c_uchar;
 
     pub const XML_TRUE: crate::expat_h::XML_Bool =
-        1 as ::core::ffi::c_int as crate::expat_h::XML_Bool;
+        1u8;
 
     pub const XML_FALSE: crate::expat_h::XML_Bool =
-        0 as ::core::ffi::c_int as crate::expat_h::XML_Bool;
+        0u8;
 
     pub type XML_Status = ::core::ffi::c_uint;
 
@@ -821,11 +820,11 @@ pub mod expat_h {
         pub value: ::core::ffi::c_long,
     }
 
-    pub const XML_MAJOR_VERSION: ::core::ffi::c_int = 2 as ::core::ffi::c_int;
+    pub const XML_MAJOR_VERSION: ::core::ffi::c_int = 2i32;
 
-    pub const XML_MINOR_VERSION: ::core::ffi::c_int = 7 as ::core::ffi::c_int;
+    pub const XML_MINOR_VERSION: ::core::ffi::c_int = 7i32;
 
-    pub const XML_MICRO_VERSION: ::core::ffi::c_int = 4 as ::core::ffi::c_int;
+    pub const XML_MICRO_VERSION: ::core::ffi::c_int = 4i32;
 }
 pub mod stdlib {
     extern "C" {
@@ -985,20 +984,20 @@ pub mod stdlib {
             *b"void test_nsalloc_parse_buffer(void)\0",
         )
     };
-    pub const EINTR: ::core::ffi::c_int = 4 as ::core::ffi::c_int;
+    pub const EINTR: ::core::ffi::c_int = 4i32;
 
-    pub const ENOMEM: ::core::ffi::c_int = 12 as ::core::ffi::c_int;
+    pub const ENOMEM: ::core::ffi::c_int = 12i32;
 
-    pub const EINVAL: ::core::ffi::c_int = 22 as ::core::ffi::c_int;
-    pub const O_RDONLY: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    pub const EINVAL: ::core::ffi::c_int = 22i32;
+    pub const O_RDONLY: ::core::ffi::c_int = 0i32;
     pub type jmp_buf = [crate::stdlib::__jmp_buf_tag; 1];
-    pub const GRND_NONBLOCK: ::core::ffi::c_int = 0x1 as ::core::ffi::c_int;
+    pub const GRND_NONBLOCK: ::core::ffi::c_int = 0x1i32;
     pub type __jmp_buf = [::core::ffi::c_long; 8];
     pub type intptr_t = isize;
 
     pub type uintptr_t = usize;
 
-    pub const SIZE_MAX: ::core::ffi::c_ulong = 18446744073709551615 as ::core::ffi::c_ulong;
+    pub const SIZE_MAX: ::core::ffi::c_ulong = 18446744073709551615u64;
     pub type uint32_t = crate::stdlib::__uint32_t;
 
     pub type uint64_t = crate::stdlib::__uint64_t;

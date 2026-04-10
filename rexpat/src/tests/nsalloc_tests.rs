@@ -137,21 +137,24 @@ unsafe extern "C" fn nsalloc_setup() {
             ),
 };
     let mut ns_sep: [XML_Char; 2] = [
-        ' ' as i32 as XML_Char,
-        '\0' as i32 as XML_Char,
+        
+        ' ' as XML_Char,
+        
+        '\0' as XML_Char,
     ];
     g_allocation_count = ALLOC_ALWAYS_SUCCEED;
     g_reallocation_count = REALLOC_ALWAYS_SUCCEED;
     g_parser = XML_ParserCreate_MM(
         ::core::ptr::null::<XML_Char>(),
-        &raw mut memsuite as *mut _ as *const XML_Memory_Handling_Suite,
+        
+        &raw mut memsuite as *const XML_Memory_Handling_Suite,
         &raw mut ns_sep as *mut XML_Char,
     );
     if g_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            67 as ::core::ffi::c_int,
+            67i32,
             b"Parser not created\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -166,14 +169,14 @@ unsafe extern "C" fn test_nsalloc_xmlns() {
         b"test_nsalloc_xmlns\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        78 as ::core::ffi::c_int,
+        78i32,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns='http://example.org/'>\n  <e xmlns=''/>\n</doc>\0".as_ptr()
             as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_uint = 0;
-    let max_alloc_count: ::core::ffi::c_uint = 30 as ::core::ffi::c_uint;
-    i = 0 as ::core::ffi::c_uint;
+    let max_alloc_count: ::core::ffi::c_uint = 30u32;
+    i = 0u32;
     while i < max_alloc_count {
         g_allocation_count = i as ::core::ffi::c_int;
         XML_SetDefaultHandler(
@@ -187,13 +190,13 @@ unsafe extern "C" fn test_nsalloc_xmlns() {
                     ) -> (),
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -201,18 +204,18 @@ unsafe extern "C" fn test_nsalloc_xmlns() {
         nsalloc_setup();
         i = i.wrapping_add(1);
     }
-    if i == 0 as ::core::ffi::c_uint {
+    if i == 0u32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            101 as ::core::ffi::c_int,
+            101i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            103 as ::core::ffi::c_int,
+            103i32,
             b"Parsing failed even at maximum allocation count\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -224,111 +227,107 @@ unsafe extern "C" fn test_nsalloc_parse_buffer() {
         b"test_nsalloc_parse_buffer\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        108 as ::core::ffi::c_int,
+        108i32,
     );
     let mut text: *const ::core::ffi::c_char =
         b"<doc>Hello</doc>\0".as_ptr() as *const ::core::ffi::c_char;
     let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-    if XML_ParseBuffer(
+    if  XML_ParseBuffer(
         g_parser,
-        0 as ::core::ffi::c_int,
+        0i32,
         XML_FALSE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        !=  XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            115 as ::core::ffi::c_int,
+            115i32,
             b"Pre-init XML_ParseBuffer not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_GetErrorCode(g_parser)
-        as ::core::ffi::c_uint
-        != XML_ERROR_NO_BUFFER as ::core::ffi::c_int as ::core::ffi::c_uint
+    if  XML_GetErrorCode(g_parser)
+        !=  XML_ERROR_NO_BUFFER
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            117 as ::core::ffi::c_int,
+            117i32,
             b"Pre-init XML_ParseBuffer faulted for wrong reason\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
     }
     buffer = XML_GetBuffer(
         g_parser,
-        1 as ::core::ffi::c_int,
+        1i32,
     );
     if buffer.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            121 as ::core::ffi::c_int,
+            121i32,
             b"Could not acquire parse buffer\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    g_allocation_count = 0 as ::core::ffi::c_int;
-    if XML_ParseBuffer(
+    g_allocation_count = 0i32;
+    if  XML_ParseBuffer(
         g_parser,
-        0 as ::core::ffi::c_int,
+        0i32,
         XML_FALSE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        !=  XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            125 as ::core::ffi::c_int,
+            125i32,
             b"Pre-init XML_ParseBuffer not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_GetErrorCode(g_parser)
-        as ::core::ffi::c_uint
-        != XML_ERROR_NO_MEMORY as ::core::ffi::c_int as ::core::ffi::c_uint
+    if  XML_GetErrorCode(g_parser)
+        !=  XML_ERROR_NO_MEMORY
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            127 as ::core::ffi::c_int,
+            127i32,
             b"Pre-init XML_ParseBuffer faulted for wrong reason\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
     }
     g_allocation_count = ALLOC_ALWAYS_SUCCEED;
-    if XML_ParseBuffer(
+    if  XML_ParseBuffer(
         g_parser,
-        0 as ::core::ffi::c_int,
+        0i32,
         XML_FALSE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        !=  XML_STATUS_OK
     {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            132 as ::core::ffi::c_int,
+            132i32,
         );
     }
-    if XML_ResumeParser(g_parser)
-        as ::core::ffi::c_uint
-        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    if  XML_ResumeParser(g_parser)
+        !=  XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            136 as ::core::ffi::c_int,
+            136i32,
             b"Resuming unsuspended parser not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_GetErrorCode(g_parser)
-        as ::core::ffi::c_uint
-        != XML_ERROR_NOT_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+    if  XML_GetErrorCode(g_parser)
+        !=  XML_ERROR_NOT_SUSPENDED
     {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            138 as ::core::ffi::c_int,
+            138i32,
         );
     }
     XML_SetCharacterDataHandler(
@@ -351,7 +350,7 @@ unsafe extern "C" fn test_nsalloc_parse_buffer() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            145 as ::core::ffi::c_int,
+            145i32,
             b"Could not acquire parse buffer\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -361,7 +360,7 @@ unsafe extern "C" fn test_nsalloc_parse_buffer() {
             b"buffer != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            146 as ::core::ffi::c_uint,
+            146u32,
             __ASSERT_FUNCTION_3.as_ptr(),
         );
     };
@@ -370,54 +369,52 @@ unsafe extern "C" fn test_nsalloc_parse_buffer() {
         text as *const ::core::ffi::c_void,
         strlen(text),
     );
-    if XML_ParseBuffer(
+    if  XML_ParseBuffer(
         g_parser,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        != XML_STATUS_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        !=  XML_STATUS_SUSPENDED
     {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            150 as ::core::ffi::c_int,
+            150i32,
         );
     }
-    if XML_GetErrorCode(g_parser)
-        as ::core::ffi::c_uint
-        != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    if  XML_GetErrorCode(g_parser)
+        !=  XML_ERROR_NONE
     {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            152 as ::core::ffi::c_int,
+            152i32,
         );
     }
-    if XML_ParseBuffer(
+    if  XML_ParseBuffer(
         g_parser,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        !=  XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            155 as ::core::ffi::c_int,
+            155i32,
             b"Suspended XML_ParseBuffer not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_GetErrorCode(g_parser)
-        as ::core::ffi::c_uint
-        != XML_ERROR_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+    if  XML_GetErrorCode(g_parser)
+        !=  XML_ERROR_SUSPENDED
     {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            157 as ::core::ffi::c_int,
+            157i32,
         );
     }
     if !XML_GetBuffer(
@@ -429,7 +426,7 @@ unsafe extern "C" fn test_nsalloc_parse_buffer() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            159 as ::core::ffi::c_int,
+            159i32,
             b"Suspended XML_GetBuffer not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -437,40 +434,38 @@ unsafe extern "C" fn test_nsalloc_parse_buffer() {
         g_parser,
         None,
     );
-    if XML_ResumeParser(g_parser)
-        as ::core::ffi::c_uint
-        != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+    if  XML_ResumeParser(g_parser)
+        !=  XML_STATUS_OK
     {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            164 as ::core::ffi::c_int,
+            164i32,
         );
     }
-    if XML_ParseBuffer(
+    if  XML_ParseBuffer(
         g_parser,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        !=  XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            167 as ::core::ffi::c_int,
+            167i32,
             b"Post-finishing XML_ParseBuffer not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_GetErrorCode(g_parser)
-        as ::core::ffi::c_uint
-        != XML_ERROR_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+    if  XML_GetErrorCode(g_parser)
+        !=  XML_ERROR_FINISHED
     {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            169 as ::core::ffi::c_int,
+            169i32,
         );
     }
     if !XML_GetBuffer(
@@ -482,7 +477,7 @@ unsafe extern "C" fn test_nsalloc_parse_buffer() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            171 as ::core::ffi::c_int,
+            171i32,
             b"Post-finishing XML_GetBuffer not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -493,22 +488,22 @@ unsafe extern "C" fn test_nsalloc_long_prefix() {
         b"test_nsalloc_long_prefix\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        176 as ::core::ffi::c_int,
+        176i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:foo xmlns:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ='http://example.org/'></ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:foo>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 40i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -516,18 +511,18 @@ unsafe extern "C" fn test_nsalloc_long_prefix() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            245 as ::core::ffi::c_int,
+            245i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            247 as ::core::ffi::c_int,
+            247i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -538,22 +533,22 @@ unsafe extern "C" fn test_nsalloc_long_uri() {
         b"test_nsalloc_long_uri\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        252 as ::core::ffi::c_int,
+        252i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:e xmlns:foo='http://example.org/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/' bar:a='12'\nxmlns:bar='http://example.org/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/'></foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 40i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -561,18 +556,18 @@ unsafe extern "C" fn test_nsalloc_long_uri() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            305 as ::core::ffi::c_int,
+            305i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            307 as ::core::ffi::c_int,
+            307i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -583,22 +578,22 @@ unsafe extern "C" fn test_nsalloc_long_attr() {
         b"test_nsalloc_long_attr\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        312 as ::core::ffi::c_int,
+        312i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:e xmlns:foo='http://example.org/' bar:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ='12'\nxmlns:bar='http://example.org/'></foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 40i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -606,18 +601,18 @@ unsafe extern "C" fn test_nsalloc_long_attr() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            348 as ::core::ffi::c_int,
+            348i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            350 as ::core::ffi::c_int,
+            350i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -628,7 +623,7 @@ unsafe extern "C" fn test_nsalloc_long_attr_prefix() {
         b"test_nsalloc_long_attr_prefix\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        355 as ::core::ffi::c_int,
+        355i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:e xmlns:foo='http://example.org/' ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:a='12'\nxmlns:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ='http://example.org/'></foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -638,8 +633,8 @@ unsafe extern "C" fn test_nsalloc_long_attr_prefix() {
             .as_ptr() as *const ::core::ffi::c_char,
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 40i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
         XML_SetReturnNSTriplet(
@@ -648,7 +643,8 @@ unsafe extern "C" fn test_nsalloc_long_attr_prefix() {
         );
         XML_SetUserData(
             g_parser,
-            &raw mut elemstr as *mut *const XML_Char
+            
+            &raw mut elemstr
                 as *mut ::core::ffi::c_void,
         );
         XML_SetElementHandler(
@@ -669,13 +665,13 @@ unsafe extern "C" fn test_nsalloc_long_attr_prefix() {
                     ) -> (),
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -683,18 +679,18 @@ unsafe extern "C" fn test_nsalloc_long_attr_prefix() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            434 as ::core::ffi::c_int,
+            434i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            436 as ::core::ffi::c_int,
+            436i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -705,22 +701,22 @@ unsafe extern "C" fn test_nsalloc_realloc_attributes() {
         b"test_nsalloc_realloc_attributes\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        441 as ::core::ffi::c_int,
+        441i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:e xmlns:foo='http://example.org/' bar:a='12'\n       xmlns:bar='http://example.org/'></foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_int = 0;
-    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_realloc_count: ::core::ffi::c_int = 10i32;
+    i = 0i32;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -728,11 +724,11 @@ unsafe extern "C" fn test_nsalloc_realloc_attributes() {
         nsalloc_setup();
         i += 1;
     }
-    if !(i == 0 as ::core::ffi::c_int) {
+    if !(i == 0i32) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            459 as ::core::ffi::c_int,
+            459i32,
             b"check failed: i == 0\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -743,7 +739,7 @@ unsafe extern "C" fn test_nsalloc_long_element() {
         b"test_nsalloc_long_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        470 as ::core::ffi::c_int,
+        470i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:thisisalongenoughelementnametotriggerareallocation\n xmlns:foo='http://example.org/' bar:a='12'\n xmlns:bar='http://example.org/'></foo:thisisalongenoughelementnametotriggerareallocation>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -753,8 +749,8 @@ unsafe extern "C" fn test_nsalloc_long_element() {
         b"http://example.org/ a bar\0".as_ptr() as *const ::core::ffi::c_char,
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 30i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
         XML_SetReturnNSTriplet(
@@ -763,7 +759,8 @@ unsafe extern "C" fn test_nsalloc_long_element() {
         );
         XML_SetUserData(
             g_parser,
-            &raw mut elemstr as *mut *const XML_Char
+            
+            &raw mut elemstr
                 as *mut ::core::ffi::c_void,
         );
         XML_SetElementHandler(
@@ -784,13 +781,13 @@ unsafe extern "C" fn test_nsalloc_long_element() {
                     ) -> (),
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -798,11 +795,11 @@ unsafe extern "C" fn test_nsalloc_long_element() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            496 as ::core::ffi::c_int,
+            496i32,
             b"Parsing worked despite failing reallocations\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -810,7 +807,7 @@ unsafe extern "C" fn test_nsalloc_long_element() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            498 as ::core::ffi::c_int,
+            498i32,
             b"Parsing failed at max reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -821,7 +818,7 @@ unsafe extern "C" fn test_nsalloc_realloc_binding_uri() {
         b"test_nsalloc_realloc_binding_uri\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        512 as ::core::ffi::c_int,
+        512i32,
     );
     let mut first: *const ::core::ffi::c_char =
         b"<doc xmlns='http://example.org/'>\n  <e xmlns='' />\n</doc>\0".as_ptr()
@@ -829,53 +826,53 @@ unsafe extern "C" fn test_nsalloc_realloc_binding_uri() {
     let mut second: *const ::core::ffi::c_char = b"<doc xmlns='http://example.org/long/enough/URI/to/reallocate/'>\n  <e xmlns='' />\n</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_uint = 0;
-    let max_realloc_count: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
-    if _XML_Parse_SINGLE_BYTES(
+    let max_realloc_count: ::core::ffi::c_uint = 10u32;
+    if  _XML_Parse_SINGLE_BYTES(
         g_parser,
         first,
         strlen(first) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        ==  XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            526 as ::core::ffi::c_int,
+            526i32,
         );
     }
-    i = 0 as ::core::ffi::c_uint;
+    i = 0u32;
     while i < max_realloc_count {
         XML_ParserReset(
             g_parser,
             ::core::ptr::null::<XML_Char>(),
         );
         g_reallocation_count = i as ::core::ffi::c_int;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             second,
             strlen(second) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
         i = i.wrapping_add(1);
     }
-    if i == 0 as ::core::ffi::c_uint {
+    if i == 0u32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            537 as ::core::ffi::c_int,
+            537i32,
             b"Parsing worked despite failing reallocation\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_realloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            539 as ::core::ffi::c_int,
+            539i32,
             b"Parsing failed at max reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -886,22 +883,22 @@ unsafe extern "C" fn test_nsalloc_realloc_long_prefix() {
         b"test_nsalloc_realloc_long_prefix\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        544 as ::core::ffi::c_int,
+        544i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:foo xmlns:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ='http://example.org/'></ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:foo>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_int = 0;
-    let max_realloc_count: ::core::ffi::c_int = 12 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_realloc_count: ::core::ffi::c_int = 12i32;
+    i = 0i32;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -909,11 +906,11 @@ unsafe extern "C" fn test_nsalloc_realloc_long_prefix() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            613 as ::core::ffi::c_int,
+            613i32,
             b"Parsing worked despite failing reallocations\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -921,7 +918,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_prefix() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            615 as ::core::ffi::c_int,
+            615i32,
             b"Parsing failed even at max reallocation count\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -933,22 +930,22 @@ unsafe extern "C" fn test_nsalloc_realloc_longer_prefix() {
         b"test_nsalloc_realloc_longer_prefix\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        620 as ::core::ffi::c_int,
+        620i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZQ:foo xmlns:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZQ='http://example.org/'></ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZQ:foo>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_int = 0;
-    let max_realloc_count: ::core::ffi::c_int = 12 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_realloc_count: ::core::ffi::c_int = 12i32;
+    i = 0i32;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -956,11 +953,11 @@ unsafe extern "C" fn test_nsalloc_realloc_longer_prefix() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            689 as ::core::ffi::c_int,
+            689i32,
             b"Parsing worked despite failing reallocations\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -968,7 +965,7 @@ unsafe extern "C" fn test_nsalloc_realloc_longer_prefix() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            691 as ::core::ffi::c_int,
+            691i32,
             b"Parsing failed even at max reallocation count\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -980,31 +977,31 @@ unsafe extern "C" fn test_nsalloc_long_namespace() {
         b"test_nsalloc_long_namespace\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        695 as ::core::ffi::c_int,
+        695i32,
     );
     let mut text1: *const ::core::ffi::c_char = b"<ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:e xmlns:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ='http://example.org/'>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut text2: *const ::core::ffi::c_char = b"<ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:f ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:attr='foo'/>\n</ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 40i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text1,
             strlen(text1) as ::core::ffi::c_int,
             XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            && _XML_Parse_SINGLE_BYTES(
+        )
+            !=  XML_STATUS_ERROR
+            &&  _XML_Parse_SINGLE_BYTES(
                 g_parser,
                 text2,
                 strlen(text2) as ::core::ffi::c_int,
                 XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+            )
+                !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1012,18 +1009,18 @@ unsafe extern "C" fn test_nsalloc_long_namespace() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            803 as ::core::ffi::c_int,
+            803i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            805 as ::core::ffi::c_int,
+            805i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -1034,22 +1031,22 @@ unsafe extern "C" fn test_nsalloc_less_long_namespace() {
         b"test_nsalloc_less_long_namespace\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        812 as ::core::ffi::c_int,
+        812i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678:e xmlns:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678='http://example.org/'>\n<ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678:f ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678:att='foo'/>\n</ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 40i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1057,18 +1054,18 @@ unsafe extern "C" fn test_nsalloc_less_long_namespace() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            876 as ::core::ffi::c_int,
+            876i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            878 as ::core::ffi::c_int,
+            878i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -1079,7 +1076,7 @@ unsafe extern "C" fn test_nsalloc_long_context() {
         b"test_nsalloc_long_context\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        882 as ::core::ffi::c_int,
+        882i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ATTLIST doc baz ID #REQUIRED>\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKL' baz='2'>\n&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1098,13 +1095,14 @@ unsafe extern "C" fn test_nsalloc_long_context() {
 },
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 70 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 70i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
         XML_SetUserData(
             g_parser,
-            &raw mut options as *mut ExtOption
+            
+            &raw mut options
                 as *mut ::core::ffi::c_void,
         );
         XML_SetParamEntityParsing(
@@ -1124,13 +1122,13 @@ unsafe extern "C" fn test_nsalloc_long_context() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1138,18 +1136,18 @@ unsafe extern "C" fn test_nsalloc_long_context() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            928 as ::core::ffi::c_int,
+            928i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            930 as ::core::ffi::c_int,
+            930i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -1171,13 +1169,14 @@ unsafe extern "C" fn context_realloc_test(mut text: *const ::core::ffi::c_char) 
 },
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_realloc_count: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_realloc_count: ::core::ffi::c_int = 6i32;
+    i = 0i32;
     while i < max_realloc_count {
         g_reallocation_count = i;
         XML_SetUserData(
             g_parser,
-            &raw mut options as *mut ExtOption
+            
+            &raw mut options
                 as *mut ::core::ffi::c_void,
         );
         XML_SetParamEntityParsing(
@@ -1197,13 +1196,13 @@ unsafe extern "C" fn context_realloc_test(mut text: *const ::core::ffi::c_char) 
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1211,11 +1210,11 @@ unsafe extern "C" fn context_realloc_test(mut text: *const ::core::ffi::c_char) 
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            957 as ::core::ffi::c_int,
+            957i32,
             b"Parsing worked despite failing reallocations\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -1223,7 +1222,7 @@ unsafe extern "C" fn context_realloc_test(mut text: *const ::core::ffi::c_char) 
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            959 as ::core::ffi::c_int,
+            959i32,
             b"Parsing failed even at max reallocation count\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -1235,7 +1234,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context() {
         b"test_nsalloc_realloc_long_context\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        962 as ::core::ffi::c_int,
+        962i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKL'>\n&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1247,7 +1246,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_2() {
         b"test_nsalloc_realloc_long_context_2\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        993 as ::core::ffi::c_int,
+        993i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJK'>\n&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1259,7 +1258,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_3() {
         b"test_nsalloc_realloc_long_context_3\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1024 as ::core::ffi::c_int,
+        1024i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGH'>\n&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1271,7 +1270,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_4() {
         b"test_nsalloc_realloc_long_context_4\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1055 as ::core::ffi::c_int,
+        1055i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO'>\n&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1283,7 +1282,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_5() {
         b"test_nsalloc_realloc_long_context_5\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1086 as ::core::ffi::c_int,
+        1086i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABC'>\n&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1295,7 +1294,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_6() {
         b"test_nsalloc_realloc_long_context_6\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1117 as ::core::ffi::c_int,
+        1117i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOP'>\n&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1307,7 +1306,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_7() {
         b"test_nsalloc_realloc_long_context_7\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1147 as ::core::ffi::c_int,
+        1147i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLM'>\n&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1319,7 +1318,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_ge_name() {
         b"test_nsalloc_realloc_long_ge_name\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1178 as ::core::ffi::c_int,
+        1178i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/baz'>\n&ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1338,13 +1337,14 @@ unsafe extern "C" fn test_nsalloc_realloc_long_ge_name() {
 },
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_realloc_count: ::core::ffi::c_int = 10i32;
+    i = 0i32;
     while i < max_realloc_count {
         g_reallocation_count = i;
         XML_SetUserData(
             g_parser,
-            &raw mut options as *mut ExtOption
+            
+            &raw mut options
                 as *mut ::core::ffi::c_void,
         );
         XML_SetParamEntityParsing(
@@ -1364,13 +1364,13 @@ unsafe extern "C" fn test_nsalloc_realloc_long_ge_name() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1378,11 +1378,11 @@ unsafe extern "C" fn test_nsalloc_realloc_long_ge_name() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1240 as ::core::ffi::c_int,
+            1240i32,
             b"Parsing worked despite failing reallocations\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -1390,7 +1390,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_ge_name() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1242 as ::core::ffi::c_int,
+            1242i32,
             b"Parsing failed even at max reallocation count\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -1402,7 +1402,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_in_dtd() {
         b"test_nsalloc_realloc_long_context_in_dtd\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1251 as ::core::ffi::c_int,
+        1251i32,
     );
     let mut text1: *const ::core::ffi::c_char = b"<!DOCTYPE ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP:doc [\n  <!ENTITY First SYSTEM 'foo/First'>\n]>\n<ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP:doc xmlns:ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP='foo/Second'>&First;\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1419,13 +1419,14 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_in_dtd() {
 },
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_realloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_realloc_count: ::core::ffi::c_int = 20i32;
+    i = 0i32;
     while i < max_realloc_count {
         g_reallocation_count = i;
         XML_SetUserData(
             g_parser,
-            &raw mut options as *mut ExtOption
+            
+            &raw mut options
                 as *mut ::core::ffi::c_void,
         );
         XML_SetParamEntityParsing(
@@ -1445,20 +1446,20 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_in_dtd() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text1,
             strlen(text1) as ::core::ffi::c_int,
             XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            && _XML_Parse_SINGLE_BYTES(
+        )
+            !=  XML_STATUS_ERROR
+            &&  _XML_Parse_SINGLE_BYTES(
                 g_parser,
                 text2,
                 strlen(text2) as ::core::ffi::c_int,
                 XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+            )
+                !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1466,11 +1467,11 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_in_dtd() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1348 as ::core::ffi::c_int,
+            1348i32,
             b"Parsing worked despite failing reallocations\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -1478,7 +1479,7 @@ unsafe extern "C" fn test_nsalloc_realloc_long_context_in_dtd() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1350 as ::core::ffi::c_int,
+            1350i32,
             b"Parsing failed even at max reallocation count\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -1490,7 +1491,7 @@ unsafe extern "C" fn test_nsalloc_long_default_in_ext() {
         b"test_nsalloc_long_default_in_ext\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1354 as ::core::ffi::c_int,
+        1354i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ATTLIST e a1 CDATA 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>\n  <!ENTITY x SYSTEM 'foo'>\n]>\n<doc>&x;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1505,13 +1506,14 @@ unsafe extern "C" fn test_nsalloc_long_default_in_ext() {
 },
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 50i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
         XML_SetUserData(
             g_parser,
-            &raw mut options as *mut ExtOption
+            
+            &raw mut options
                 as *mut ::core::ffi::c_void,
         );
         XML_SetParamEntityParsing(
@@ -1531,13 +1533,13 @@ unsafe extern "C" fn test_nsalloc_long_default_in_ext() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1545,18 +1547,18 @@ unsafe extern "C" fn test_nsalloc_long_default_in_ext() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1397 as ::core::ffi::c_int,
+            1397i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1399 as ::core::ffi::c_int,
+            1399i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -1567,7 +1569,7 @@ unsafe extern "C" fn test_nsalloc_long_systemid_in_ext() {
         b"test_nsalloc_long_systemid_in_ext\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1403 as ::core::ffi::c_int,
+        1403i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/'>\n]>\n<doc>&en;</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1587,13 +1589,14 @@ unsafe extern "C" fn test_nsalloc_long_systemid_in_ext() {
 },
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 55 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 55i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
         XML_SetUserData(
             g_parser,
-            &raw mut options as *mut ExtOption
+            
+            &raw mut options
                 as *mut ::core::ffi::c_void,
         );
         XML_SetParamEntityParsing(
@@ -1613,13 +1616,13 @@ unsafe extern "C" fn test_nsalloc_long_systemid_in_ext() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1627,18 +1630,18 @@ unsafe extern "C" fn test_nsalloc_long_systemid_in_ext() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1466 as ::core::ffi::c_int,
+            1466i32,
             b"Parsing worked despite failing allocations\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1468 as ::core::ffi::c_int,
+            1468i32,
             b"Parsing failed even at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -1649,7 +1652,7 @@ unsafe extern "C" fn test_nsalloc_prefixed_element() {
         b"test_nsalloc_prefixed_element\0".as_ptr() as *const ::core::ffi::c_char,
         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0".as_ptr()
             as *const ::core::ffi::c_char,
-        1475 as ::core::ffi::c_int,
+        1475i32,
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE pfx:element SYSTEM 'foo' [\n  <!ATTLIST pfx:element baz ID #REQUIRED>\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<pfx:element xmlns:pfx='http://example.org/' baz='2'>\n&en;</pfx:element>\0"
         .as_ptr() as *const ::core::ffi::c_char;
@@ -1668,13 +1671,14 @@ unsafe extern "C" fn test_nsalloc_prefixed_element() {
 },
     ];
     let mut i: ::core::ffi::c_int = 0;
-    let max_alloc_count: ::core::ffi::c_int = 70 as ::core::ffi::c_int;
-    i = 0 as ::core::ffi::c_int;
+    let max_alloc_count: ::core::ffi::c_int = 70i32;
+    i = 0i32;
     while i < max_alloc_count {
         g_allocation_count = i;
         XML_SetUserData(
             g_parser,
-            &raw mut options as *mut ExtOption
+            
+            &raw mut options
                 as *mut ::core::ffi::c_void,
         );
         XML_SetParamEntityParsing(
@@ -1694,13 +1698,13 @@ unsafe extern "C" fn test_nsalloc_prefixed_element() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if _XML_Parse_SINGLE_BYTES(
+        if  _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        )
+            !=  XML_STATUS_ERROR
         {
             break;
         }
@@ -1708,18 +1712,18 @@ unsafe extern "C" fn test_nsalloc_prefixed_element() {
         nsalloc_setup();
         i += 1;
     }
-    if i == 0 as ::core::ffi::c_int {
+    if i == 0i32 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1502 as ::core::ffi::c_int,
+            1502i32,
             b"Success despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else if i == max_alloc_count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/nsalloc_tests.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            1504 as ::core::ffi::c_int,
+            1504i32,
             b"Failed even at full allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
@@ -1728,120 +1732,150 @@ unsafe extern "C" fn test_nsalloc_prefixed_element() {
 
 pub unsafe extern "C" fn make_nsalloc_test_case(mut s: *mut Suite) {
     let mut tc_nsalloc: *mut TCase =
+        
         tcase_create(
             b"namespace allocation tests\0".as_ptr() as *const ::core::ffi::c_char
-        ) as *mut TCase;
+        );
     suite_add_tcase(
-        s as *mut Suite,
-        tc_nsalloc as *mut TCase,
+        
+        s,
+        
+        tc_nsalloc,
     );
     tcase_add_checked_fixture(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(nsalloc_setup as unsafe extern "C" fn() -> ()),
         Some(nsalloc_teardown as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_xmlns as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_parse_buffer as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_prefix as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_uri as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_attr as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_attr_prefix as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_attributes as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_element as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_binding_uri as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_prefix as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_longer_prefix as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_namespace as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_less_long_namespace as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_context as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_context as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_context_2 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_context_3 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_context_4 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_context_5 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_context_6 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_context_7 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_ge_name as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_realloc_long_context_in_dtd as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_default_in_ext as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_long_systemid_in_ext as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        tc_nsalloc as *mut TCase,
+        
+        tc_nsalloc,
         Some(test_nsalloc_prefixed_element as unsafe extern "C" fn() -> ()),
     );
 }

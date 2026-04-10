@@ -128,7 +128,7 @@ pub static mut g_resumable: XML_Bool = XML_FALSE;
 pub static mut g_abortable: XML_Bool = XML_FALSE;
 #[no_mangle]
 
-pub static mut g_chunkSize: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
+pub static mut g_chunkSize: ::core::ffi::c_int = 1i32;
 #[no_mangle]
 
 pub unsafe extern "C" fn tcase_add_test__ifdef_xml_dtd(
@@ -136,7 +136,8 @@ pub unsafe extern "C" fn tcase_add_test__ifdef_xml_dtd(
     mut test: tcase_test_function,
 ) {
     tcase_add_test(
-        tc as *mut TCase,
+        
+        tc,
         test,
     );
 }
@@ -147,7 +148,8 @@ pub unsafe extern "C" fn tcase_add_test__if_xml_ge(
     mut test: tcase_test_function,
 ) {
     tcase_add_test(
-        tc as *mut TCase,
+        
+        tc,
         test,
     );
 }
@@ -171,10 +173,12 @@ pub unsafe extern "C" fn _xml_failure(
     let mut err: XML_Error = XML_GetErrorCode(parser);
     snprintf(
         &raw mut buffer as *mut ::core::ffi::c_char,
-        ::core::mem::size_of::<[::core::ffi::c_char; 1024]>() as size_t,
+        
+        ::core::mem::size_of::<[::core::ffi::c_char; 1024]>(),
         b"    %d: %s (line %lu, offset %lu)\n    reported from %s, line %d\n\0".as_ptr()
             as *const ::core::ffi::c_char,
-        err as ::core::ffi::c_uint,
+        
+        err,
         XML_ErrorString(err),
         XML_GetCurrentLineNumber(parser),
         XML_GetCurrentColumnNumber(parser),
@@ -191,19 +195,19 @@ pub unsafe extern "C" fn _XML_Parse_SINGLE_BYTES(
     mut len: ::core::ffi::c_int,
     mut isFinal: ::core::ffi::c_int,
 ) -> XML_Status {
-    if !parser.is_null() && !s.is_null() && len >= 0 as ::core::ffi::c_int {
+    if !parser.is_null() && !s.is_null() && len >= 0i32 {
     } else {
         __assert_fail(
             b"(parser != NULL) && (s != NULL) && (len >= 0)\0".as_ptr()
                 as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/common.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            200 as ::core::ffi::c_uint,
+            200u32,
             __ASSERT_FUNCTION_1.as_ptr(),
         );
     };
     let chunksize: ::core::ffi::c_int = g_chunkSize;
-    if chunksize > 0 as ::core::ffi::c_int {
+    if chunksize > 0i32 {
         while len > chunksize {
             let mut res: XML_Status = XML_Parse(
                 parser,
@@ -211,18 +215,17 @@ pub unsafe extern "C" fn _XML_Parse_SINGLE_BYTES(
                 chunksize,
                 XML_FALSE as ::core::ffi::c_int,
             );
-            if res as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+            if  res
+                !=  XML_STATUS_OK
             {
-                if res as ::core::ffi::c_uint
-                    == XML_STATUS_SUSPENDED as ::core::ffi::c_int
-                        as ::core::ffi::c_uint
+                if  res
+                    ==  XML_STATUS_SUSPENDED
                     && len > chunksize
                 {
                     _fail(
                         b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/common.c\0"
                             .as_ptr() as *const ::core::ffi::c_char,
-                        211 as ::core::ffi::c_int,
+                        211i32,
                         b"Use of function _XML_Parse_SINGLE_BYTES with a chunk size greater than 0 (from g_chunkSize) does not work well with suspension. Please consider use of plain XML_Parse at this place in your test, instead.\0"
                             .as_ptr() as *const ::core::ffi::c_char,
                     );
@@ -244,19 +247,18 @@ pub unsafe extern "C" fn _expect_failure(
     mut file: *const ::core::ffi::c_char,
     mut lineno: ::core::ffi::c_int,
 ) {
-    if _XML_Parse_SINGLE_BYTES(
+    if  _XML_Parse_SINGLE_BYTES(
         crate::src::tests::common::g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        ==  XML_STATUS_OK
     {
         _fail(file, lineno, errorMessage);
     }
-    if XML_GetErrorCode(crate::src::tests::common::g_parser)
-        as ::core::ffi::c_uint
-        != errorCode as ::core::ffi::c_uint
+    if  XML_GetErrorCode(crate::src::tests::common::g_parser)
+        !=  errorCode
     {
         _xml_failure(crate::src::tests::common::g_parser, file, lineno);
     }
@@ -272,7 +274,8 @@ pub unsafe extern "C" fn _run_character_check(
     let mut storage: CharData =
         CharData { count:  0, data:  [0; 2048] };
     CharData_Init(
-        &raw mut storage as *mut _ as *mut CharData,
+        
+        &raw mut storage,
     );
     XML_SetUserData(
         crate::src::tests::common::g_parser,
@@ -289,18 +292,19 @@ pub unsafe extern "C" fn _run_character_check(
                 ) -> (),
         ),
     );
-    if _XML_Parse_SINGLE_BYTES(
+    if  _XML_Parse_SINGLE_BYTES(
         crate::src::tests::common::g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        ==  XML_STATUS_ERROR
     {
         _xml_failure(crate::src::tests::common::g_parser, file, line);
     }
     CharData_CheckXMLChars(
-        &raw mut storage as *mut _ as *mut CharData,
+        
+        &raw mut storage,
         expected,
     );
 }
@@ -315,7 +319,8 @@ pub unsafe extern "C" fn _run_attribute_check(
     let mut storage: CharData =
         CharData { count:  0, data:  [0; 2048] };
     CharData_Init(
-        &raw mut storage as *mut _ as *mut CharData,
+        
+        &raw mut storage,
     );
     XML_SetUserData(
         crate::src::tests::common::g_parser,
@@ -332,18 +337,19 @@ pub unsafe extern "C" fn _run_attribute_check(
                 ) -> (),
         ),
     );
-    if _XML_Parse_SINGLE_BYTES(
+    if  _XML_Parse_SINGLE_BYTES(
         crate::src::tests::common::g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        ==  XML_STATUS_ERROR
     {
         _xml_failure(crate::src::tests::common::g_parser, file, line);
     }
     CharData_CheckXMLChars(
-        &raw mut storage as *mut _ as *mut CharData,
+        
+        &raw mut storage,
         expected,
     );
 }
@@ -357,12 +363,13 @@ pub unsafe extern "C" fn _run_ext_character_check(
     mut line: ::core::ffi::c_int,
 ) {
     let storage: *mut CharData = malloc(
-        ::core::mem::size_of::<CharData>()
-            as size_t,
+        
+        ::core::mem::size_of::<CharData>(),
     )
         as *mut CharData;
     CharData_Init(
-        storage as *mut CharData,
+        
+        storage,
     );
     (*test_data).storage = storage;
     XML_SetUserData(
@@ -380,26 +387,27 @@ pub unsafe extern "C" fn _run_ext_character_check(
                 ) -> (),
         ),
     );
-    if _XML_Parse_SINGLE_BYTES(
+    if  _XML_Parse_SINGLE_BYTES(
         crate::src::tests::common::g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    ) as ::core::ffi::c_uint
-        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    )
+        ==  XML_STATUS_ERROR
     {
         _xml_failure(crate::src::tests::common::g_parser, file, line);
     }
     CharData_CheckXMLChars(
-        storage as *mut CharData,
+        
+        storage,
         expected,
     );
     free(storage as *mut ::core::ffi::c_void);
 }
 
-pub const ALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
+pub const ALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1i32;
 
-pub const REALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
+pub const REALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -1i32;
 #[no_mangle]
 
 pub static mut g_allocation_count: ::core::ffi::c_int = ALLOC_ALWAYS_SUCCEED;
@@ -411,7 +419,7 @@ pub static mut g_reallocation_count: ::core::ffi::c_int = REALLOC_ALWAYS_SUCCEED
 pub unsafe extern "C" fn duff_allocator(
     mut size: size_t,
 ) -> *mut ::core::ffi::c_void {
-    if g_allocation_count == 0 as ::core::ffi::c_int {
+    if g_allocation_count == 0i32 {
         return NULL;
     }
     if g_allocation_count != ALLOC_ALWAYS_SUCCEED {
@@ -425,7 +433,7 @@ pub unsafe extern "C" fn duff_reallocator(
     mut ptr: *mut ::core::ffi::c_void,
     mut size: size_t,
 ) -> *mut ::core::ffi::c_void {
-    if g_reallocation_count == 0 as ::core::ffi::c_int {
+    if g_reallocation_count == 0i32 {
         return NULL;
     }
     if g_reallocation_count != REALLOC_ALWAYS_SUCCEED {
@@ -444,7 +452,8 @@ unsafe extern "C" fn portable_strnlen(
     return if end.is_null() {
         maxlen
     } else {
-        end.offset_from(s) as ::core::ffi::c_long as size_t
+        
+        end.offset_from(s) as size_t
     };
 }
 #[no_mangle]
@@ -459,18 +468,18 @@ pub unsafe extern "C" fn portable_strndup(
     }
     n = portable_strnlen(s, n);
     let buffer: *mut ::core::ffi::c_char =
-        malloc(n.wrapping_add(1 as size_t))
+        malloc(n.wrapping_add(1usize))
             as *mut ::core::ffi::c_char;
     if buffer.is_null() {
         *__errno_location() = ENOMEM;
         return ::core::ptr::null_mut::<::core::ffi::c_char>();
     }
-    *__errno_location() = 0 as ::core::ffi::c_int;
+    *__errno_location() = 0i32;
     memcpy(
         buffer as *mut ::core::ffi::c_void,
         s as *const ::core::ffi::c_void,
         n,
     );
-    *buffer.offset(n as isize) = '\0' as i32 as ::core::ffi::c_char;
+    *buffer.offset(n as isize) =  '\0' as ::core::ffi::c_char;
     return buffer;
 }

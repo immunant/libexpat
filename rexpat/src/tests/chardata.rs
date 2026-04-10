@@ -17,18 +17,18 @@ use crate::stdlib::snprintf;
 unsafe extern "C" fn xmlstrlen(
     mut s: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    let mut len: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    let mut len: ::core::ffi::c_int = 0i32;
     if !s.is_null() {
     } else {
         __assert_fail(
             b"s != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/chardata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            54 as ::core::ffi::c_uint,
+            54u32,
             b"int xmlstrlen(const XML_Char *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    while *s.offset(len as isize) as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
+    while *s.offset(len as isize) as ::core::ffi::c_int != 0i32 {
         len += 1;
     }
     return len;
@@ -42,11 +42,11 @@ pub unsafe extern "C" fn CharData_Init(mut storage: *mut crate::src::tests::char
             b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/chardata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            62 as ::core::ffi::c_uint,
+            62u32,
             b"void CharData_Init(CharData *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    (*storage).count = -1 as ::core::ffi::c_int;
+    (*storage).count = -1i32;
 }
 #[no_mangle]
 
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn CharData_AppendXMLChars(
             b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/chardata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            70 as ::core::ffi::c_uint,
+            70u32,
             b"void CharData_AppendXMLChars(CharData *, const XML_Char *, int)\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -73,18 +73,18 @@ pub unsafe extern "C" fn CharData_AppendXMLChars(
             b"s != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/chardata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            71 as ::core::ffi::c_uint,
+            71u32,
             b"void CharData_AppendXMLChars(CharData *, const XML_Char *, int)\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
     };
-    maxchars = (::core::mem::size_of::<[XML_Char; 2048]>() as usize)
-        .wrapping_div(::core::mem::size_of::<XML_Char>() as usize)
+    maxchars = (::core::mem::size_of::<[XML_Char; 2048]>())
+        .wrapping_div(::core::mem::size_of::<XML_Char>())
         as ::core::ffi::c_int;
-    if (*storage).count < 0 as ::core::ffi::c_int {
-        (*storage).count = 0 as ::core::ffi::c_int;
+    if (*storage).count < 0i32 {
+        (*storage).count = 0i32;
     }
-    if len < 0 as ::core::ffi::c_int {
+    if len < 0i32 {
         len = xmlstrlen(s);
     }
     if len + (*storage).count > maxchars {
@@ -98,8 +98,7 @@ pub unsafe extern "C" fn CharData_AppendXMLChars(
                 .offset((*storage).count as isize) as *mut ::core::ffi::c_void,
             s as *const ::core::ffi::c_void,
             (len as size_t)
-                .wrapping_mul(::core::mem::size_of::<XML_Char>()
-                    as size_t),
+                .wrapping_mul(::core::mem::size_of::<XML_Char>()),
         );
         (*storage).count += len;
     }
@@ -118,13 +117,13 @@ pub unsafe extern "C" fn CharData_CheckXMLChars(
             b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/chardata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            91 as ::core::ffi::c_uint,
+            91u32,
             b"int CharData_CheckXMLChars(CharData *, const XML_Char *)\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
     };
-    count = if (*storage).count < 0 as ::core::ffi::c_int {
-        0 as ::core::ffi::c_int
+    count = if (*storage).count < 0i32 {
+        0i32
     } else {
         (*storage).count
     };
@@ -132,8 +131,8 @@ pub unsafe extern "C" fn CharData_CheckXMLChars(
         let mut buffer: [::core::ffi::c_char; 1024] = [0; 1024];
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
-            ::core::mem::size_of::<[::core::ffi::c_char; 1024]>()
-                as size_t,
+            
+            ::core::mem::size_of::<[::core::ffi::c_char; 1024]>(),
             b"wrong number of data characters: got %d, expected %d\0".as_ptr()
                 as *const ::core::ffi::c_char,
             count,
@@ -142,25 +141,25 @@ pub unsafe extern "C" fn CharData_CheckXMLChars(
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/chardata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            98 as ::core::ffi::c_int,
+            98i32,
             &raw mut buffer as *mut ::core::ffi::c_char,
         );
     }
     if memcmp(
         expected as *const ::core::ffi::c_void,
-        &raw mut (*storage).data as *mut XML_Char
+        
+        &raw mut (*storage).data
             as *const ::core::ffi::c_void,
         (len as size_t)
-            .wrapping_mul(::core::mem::size_of::<XML_Char>()
-                as size_t),
-    ) != 0 as ::core::ffi::c_int
+            .wrapping_mul(::core::mem::size_of::<XML_Char>()),
+    ) != 0i32
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/chardata.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            102 as ::core::ffi::c_int,
+            102i32,
             b"got bad data bytes\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    return 1 as ::core::ffi::c_int;
+    return 1i32;
 }

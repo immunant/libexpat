@@ -27,7 +27,8 @@ pub unsafe extern "C" fn tracking_malloc(
     mut size: size_t,
 ) -> *mut ::core::ffi::c_void {
     let entry: *mut AllocationEntry = malloc(
-        ::core::mem::size_of::<AllocationEntry>() as size_t,
+        
+        ::core::mem::size_of::<AllocationEntry>(),
     ) as *mut AllocationEntry;
     if entry.is_null() {
         printf(b"Allocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
@@ -45,8 +46,8 @@ pub unsafe extern "C" fn tracking_malloc(
         alloc_tail = entry;
         alloc_head = alloc_tail;
     } else {
-        (*entry).prev = alloc_tail as *mut allocation_entry;
-        (*alloc_tail).next = entry as *mut allocation_entry;
+        (*entry).prev =  alloc_tail;
+        (*alloc_tail).next =  entry;
         alloc_tail = entry;
     }
     return (*entry).allocation;
@@ -59,7 +60,7 @@ unsafe extern "C" fn find_allocation(mut ptr: *const ::core::ffi::c_void) -> *mu
         if (*entry).allocation == ptr as *mut ::core::ffi::c_void {
             return entry;
         }
-        entry = (*entry).next as *mut AllocationEntry;
+        entry =  (*entry).next;
     }
     return ::core::ptr::null_mut::<AllocationEntry>();
 }
@@ -75,12 +76,12 @@ pub unsafe extern "C" fn tracking_free(mut ptr: *mut ::core::ffi::c_void) {
         if !(*entry).prev.is_null() {
             (*(*entry).prev).next = (*entry).next;
         } else {
-            alloc_head = (*entry).next as *mut AllocationEntry;
+            alloc_head =  (*entry).next;
         }
         if !(*entry).next.is_null() {
             (*(*entry).next).prev = (*entry).prev;
         } else {
-            alloc_tail = (*entry).next as *mut AllocationEntry;
+            alloc_tail =  (*entry).next;
         }
         free(entry as *mut ::core::ffi::c_void);
     } else {
@@ -102,7 +103,7 @@ pub unsafe extern "C" fn tracking_realloc(
     if ptr.is_null() {
         return tracking_malloc(size);
     }
-    if size == 0 as size_t {
+    if size == 0usize {
         tracking_free(ptr);
         return NULL;
     }
@@ -114,7 +115,8 @@ pub unsafe extern "C" fn tracking_realloc(
             ptr,
         );
         entry = malloc(
-            ::core::mem::size_of::<AllocationEntry>() as size_t
+            
+            ::core::mem::size_of::<AllocationEntry>()
         ) as *mut AllocationEntry;
         if entry.is_null() {
             printf(b"Reallocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
@@ -131,13 +133,14 @@ pub unsafe extern "C" fn tracking_realloc(
             alloc_tail = entry;
             alloc_head = alloc_tail;
         } else {
-            (*entry).prev = alloc_tail as *mut allocation_entry;
-            (*alloc_tail).next = entry as *mut allocation_entry;
+            (*entry).prev =  alloc_tail;
+            (*alloc_tail).next =  entry;
             alloc_tail = entry;
         }
     } else {
         let reallocated: *mut ::core::ffi::c_void =
-            realloc(ptr, size) as *mut ::core::ffi::c_void;
+            
+            realloc(ptr, size);
         if reallocated.is_null() {
             return NULL;
         }
@@ -151,7 +154,7 @@ pub unsafe extern "C" fn tracking_realloc(
 pub unsafe extern "C" fn tracking_report() -> ::core::ffi::c_int {
     let mut entry: *mut AllocationEntry = ::core::ptr::null_mut::<AllocationEntry>();
     if alloc_head.is_null() {
-        return 1 as ::core::ffi::c_int;
+        return 1i32;
     }
     entry = alloc_head;
     while !entry.is_null() {
@@ -160,7 +163,7 @@ pub unsafe extern "C" fn tracking_report() -> ::core::ffi::c_int {
             (*entry).num_bytes as ::core::ffi::c_ulong,
             (*entry).allocation,
         );
-        entry = (*entry).next as *mut AllocationEntry;
+        entry =  (*entry).next;
     }
-    return 0 as ::core::ffi::c_int;
+    return 0i32;
 }

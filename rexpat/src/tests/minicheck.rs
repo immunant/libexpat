@@ -1,7 +1,7 @@
 // =============== BEGIN minicheck_h ================
-pub const CK_SILENT: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+pub const CK_SILENT: ::core::ffi::c_int = 0i32;
 
-pub const CK_VERBOSE: ::core::ffi::c_int = 2 as ::core::ffi::c_int;
+pub const CK_VERBOSE: ::core::ffi::c_int = 2i32;
 
 pub type tcase_setup_function = Option<unsafe extern "C" fn() -> ()>;
 
@@ -74,9 +74,9 @@ pub unsafe extern "C" fn suite_create(
     mut name: *const ::core::ffi::c_char,
 ) -> *mut crate::src::tests::minicheck::Suite {
     let mut suite: *mut crate::src::tests::minicheck::Suite = calloc(
-        1 as size_t,
-        ::core::mem::size_of::<crate::src::tests::minicheck::Suite>()
-            as size_t,
+        1usize,
+        
+        ::core::mem::size_of::<crate::src::tests::minicheck::Suite>(),
     )
         as *mut crate::src::tests::minicheck::Suite;
     if !suite.is_null() {
@@ -90,9 +90,9 @@ pub unsafe extern "C" fn tcase_create(
     mut name: *const ::core::ffi::c_char,
 ) -> *mut crate::src::tests::minicheck::TCase {
     let mut tc: *mut crate::src::tests::minicheck::TCase = calloc(
-        1 as size_t,
-        ::core::mem::size_of::<crate::src::tests::minicheck::TCase>()
-            as size_t,
+        1usize,
+        
+        ::core::mem::size_of::<crate::src::tests::minicheck::TCase>(),
     )
         as *mut crate::src::tests::minicheck::TCase;
     if !tc.is_null() {
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn suite_add_tcase(
             b"suite != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            75 as ::core::ffi::c_uint,
+            75u32,
             b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
@@ -122,7 +122,7 @@ pub unsafe extern "C" fn suite_add_tcase(
             b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            76 as ::core::ffi::c_uint,
+            76u32,
             b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn suite_add_tcase(
             b"tc->next_tcase == NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            77 as ::core::ffi::c_uint,
+            77u32,
             b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };
@@ -152,7 +152,7 @@ pub unsafe extern "C" fn tcase_add_checked_fixture(
             b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            86 as ::core::ffi::c_uint,
+            86u32,
             b"void tcase_add_checked_fixture(TCase *, tcase_setup_function, tcase_teardown_function)\0"
                 .as_ptr() as *const ::core::ffi::c_char,
         );
@@ -172,16 +172,15 @@ pub unsafe extern "C" fn tcase_add_test(
             b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            93 as ::core::ffi::c_uint,
+            93u32,
             b"void tcase_add_test(TCase *, tcase_test_function)\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
     };
     if (*tc).allocated == (*tc).ntests {
-        let mut nalloc: ::core::ffi::c_int = (*tc).allocated + 100 as ::core::ffi::c_int;
+        let mut nalloc: ::core::ffi::c_int = (*tc).allocated + 100i32;
         let mut new_size: size_t =
-            (::core::mem::size_of::<crate::src::tests::minicheck::tcase_test_function>()
-                as size_t)
+            (::core::mem::size_of::<crate::src::tests::minicheck::tcase_test_function>())
                 .wrapping_mul(nalloc as size_t);
         let new_tests: *mut crate::src::tests::minicheck::tcase_test_function =
             realloc((*tc).tests as *mut ::core::ffi::c_void, new_size)
@@ -192,7 +191,7 @@ pub unsafe extern "C" fn tcase_add_test(
                 b"new_tests != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                99 as ::core::ffi::c_uint,
+                99u32,
                 b"void tcase_add_test(TCase *, tcase_test_function)\0".as_ptr()
                     as *const ::core::ffi::c_char,
             );
@@ -230,9 +229,9 @@ pub unsafe extern "C" fn srunner_create(
     mut suite: *mut crate::src::tests::minicheck::Suite,
 ) -> *mut crate::src::tests::minicheck::SRunner {
     let runner: *mut crate::src::tests::minicheck::SRunner = calloc(
-        1 as size_t,
-        ::core::mem::size_of::<crate::src::tests::minicheck::SRunner>()
-            as size_t,
+        1usize,
+        
+        ::core::mem::size_of::<crate::src::tests::minicheck::SRunner>(),
     )
         as *mut crate::src::tests::minicheck::SRunner;
     if !runner.is_null() {
@@ -247,14 +246,14 @@ static mut env: jmp_buf = [__jmp_buf_tag {
     __saved_mask:  __sigset_t { __val:  [0; 16] },
 }; 1];
 
-pub const SUBTEST_LEN: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
+pub const SUBTEST_LEN: ::core::ffi::c_int = 50i32;
 
 static mut _check_current_function: *const ::core::ffi::c_char =
     ::core::ptr::null::<::core::ffi::c_char>();
 
 static mut _check_current_subtest: [::core::ffi::c_char; 50] = [0; 50];
 
-static mut _check_current_lineno: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
+static mut _check_current_lineno: ::core::ffi::c_int = -1i32;
 
 static mut _check_current_filename: *const ::core::ffi::c_char =
     ::core::ptr::null::<::core::ffi::c_char>();
@@ -284,15 +283,16 @@ pub unsafe extern "C" fn set_subtest(mut fmt: *const ::core::ffi::c_char, mut c2
         fmt,
         ap.as_va_list(),
     );
-    let mut i: size_t = 0 as size_t;
+    let mut i: size_t = 0usize;
     while i < SUBTEST_LEN as size_t {
-        if _check_current_subtest[i as usize] as ::core::ffi::c_int == '\n' as i32 {
-            _check_current_subtest[i as usize] = ' ' as i32 as ::core::ffi::c_char;
+        if _check_current_subtest[i] as ::core::ffi::c_int == '\n' as i32 {
+            _check_current_subtest[i] =  ' ' as ::core::ffi::c_char;
         }
         i = i.wrapping_add(1);
     }
-    _check_current_subtest[(SUBTEST_LEN - 1 as ::core::ffi::c_int) as usize] =
-        '\0' as i32 as ::core::ffi::c_char;
+    _check_current_subtest[(SUBTEST_LEN - 1i32) as usize] =
+        
+        '\0' as ::core::ffi::c_char;
 }
 
 unsafe extern "C" fn handle_success(mut verbosity: ::core::ffi::c_int) {
@@ -313,7 +313,7 @@ unsafe extern "C" fn handle_failure(
     (*runner).nfailures += 1;
     if verbosity != crate::src::tests::minicheck::CK_SILENT {
         if strlen(&raw mut _check_current_subtest as *mut ::core::ffi::c_char)
-            != 0 as size_t
+            != 0usize
         {
             phase_info = &raw mut _check_current_subtest as *mut ::core::ffi::c_char;
         }
@@ -344,7 +344,7 @@ pub unsafe extern "C" fn srunner_run_all(
             b"runner != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            195 as ::core::ffi::c_uint,
+            195u32,
             b"void srunner_run_all(SRunner *, const char *, int)\0".as_ptr()
                 as *const ::core::ffi::c_char,
         );
@@ -356,7 +356,7 @@ pub unsafe extern "C" fn srunner_run_all(
     {
         let mut i: ::core::ffi::c_int = 0;
         let mut c2rust_current_block_13: u64;
-        ::core::ptr::write_volatile(&raw mut i, 0 as ::core::ffi::c_int);
+        ::core::ptr::write_volatile(&raw mut i, 0i32);
         while ::core::ptr::read_volatile::<::core::ffi::c_int>(&raw const i)
             < (*::core::ptr::read_volatile::<*mut crate::src::tests::minicheck::TCase>(
                 &raw const tc,
@@ -480,7 +480,7 @@ pub unsafe extern "C" fn srunner_summarize(
         let mut percentage: ::core::ffi::c_double =
             passed as ::core::ffi::c_double / (*runner).nchecks as ::core::ffi::c_double;
         let mut display: ::core::ffi::c_int =
-            (percentage * 100 as ::core::ffi::c_int as ::core::ffi::c_double) as ::core::ffi::c_int;
+            (percentage * 100f64) as ::core::ffi::c_int;
         printf(
             b"%d%%: Checks: %d, Failed: %d\n\0".as_ptr() as *const ::core::ffi::c_char,
             display,
@@ -500,7 +500,7 @@ pub unsafe extern "C" fn _fail(
     _check_current_lineno = line;
     if !msg.is_null() {
         let has_newline: ::core::ffi::c_int = (*msg.offset(
-            strlen(msg).wrapping_sub(1 as size_t) as isize,
+            strlen(msg).wrapping_sub(1usize) as isize,
         ) as ::core::ffi::c_int
             == '\n' as i32) as ::core::ffi::c_int;
         fprintf(
@@ -516,7 +516,7 @@ pub unsafe extern "C" fn _fail(
     }
     longjmp(
         &raw mut env as *mut __jmp_buf_tag,
-        1 as ::core::ffi::c_int,
+        1i32,
     );
 }
 #[no_mangle]
@@ -530,7 +530,7 @@ pub unsafe extern "C" fn srunner_ntests_failed(
             b"runner != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/minicheck.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
-            263 as ::core::ffi::c_uint,
+            263u32,
             b"int srunner_ntests_failed(SRunner *)\0".as_ptr() as *const ::core::ffi::c_char,
         );
     };

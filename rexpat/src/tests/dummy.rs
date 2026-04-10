@@ -1,54 +1,54 @@
 // =============== BEGIN dummy_h ================
 pub const DUMMY_START_DOCTYPE_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 0 as ::core::ffi::c_int;
+    (1u64) << 0i32;
 
 pub const DUMMY_END_DOCTYPE_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 1 as ::core::ffi::c_int;
+    (1u64) << 1i32;
 
 pub const DUMMY_ENTITY_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 2 as ::core::ffi::c_int;
+    (1u64) << 2i32;
 
 pub const DUMMY_NOTATION_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 3 as ::core::ffi::c_int;
+    (1u64) << 3i32;
 
 pub const DUMMY_ELEMENT_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 4 as ::core::ffi::c_int;
+    (1u64) << 4i32;
 
 pub const DUMMY_ATTLIST_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 5 as ::core::ffi::c_int;
+    (1u64) << 5i32;
 
 pub const DUMMY_COMMENT_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 6 as ::core::ffi::c_int;
+    (1u64) << 6i32;
 
 pub const DUMMY_PI_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 7 as ::core::ffi::c_int;
+    (1u64) << 7i32;
 
 pub const DUMMY_START_ELEMENT_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 8 as ::core::ffi::c_int;
+    (1u64) << 8i32;
 
 pub const DUMMY_START_CDATA_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 9 as ::core::ffi::c_int;
+    (1u64) << 9i32;
 
 pub const DUMMY_END_CDATA_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 10 as ::core::ffi::c_int;
+    (1u64) << 10i32;
 
 pub const DUMMY_UNPARSED_ENTITY_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 11 as ::core::ffi::c_int;
+    (1u64) << 11i32;
 
 pub const DUMMY_START_NS_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 12 as ::core::ffi::c_int;
+    (1u64) << 12i32;
 
 pub const DUMMY_END_NS_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 13 as ::core::ffi::c_int;
+    (1u64) << 13i32;
 
 pub const DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 14 as ::core::ffi::c_int;
+    (1u64) << 14i32;
 
 pub const DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 15 as ::core::ffi::c_int;
+    (1u64) << 15i32;
 
 pub const DUMMY_SKIP_HANDLER_FLAG: ::core::ffi::c_ulong =
-    (1 as ::core::ffi::c_ulong) << 16 as ::core::ffi::c_int;
+    (1u64) << 16i32;
 use crate::src::tests::common::g_parser;
 
 pub use crate::expat_external_h::XML_Char;
@@ -70,11 +70,11 @@ pub use crate::expat_h::XML_CTYPE_NAME;
 pub use crate::expat_h::XML_CTYPE_SEQ;
 pub use crate::src::lib::xmlparse::XML_FreeContentModel;
 
-static mut dummy_handler_flags: ::core::ffi::c_ulong = 0 as ::core::ffi::c_ulong;
+static mut dummy_handler_flags: ::core::ffi::c_ulong = 0u64;
 #[no_mangle]
 
 pub unsafe extern "C" fn init_dummy_handlers() {
-    dummy_handler_flags = 0 as ::core::ffi::c_ulong;
+    dummy_handler_flags = 0u64;
 }
 #[no_mangle]
 
@@ -141,7 +141,8 @@ pub unsafe extern "C" fn dummy_element_decl_handler(
 ) {
     XML_FreeContentModel(
         g_parser,
-        model as *mut XML_cp,
+        
+        model,
     );
     dummy_handler_flags |= crate::src::tests::dummy::DUMMY_ELEMENT_DECL_HANDLER_FLAG;
 }
