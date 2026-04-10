@@ -222,30 +222,23 @@ use crate::stdlib::realloc;
 use crate::stdlib::strlen;
 
 unsafe extern "C" fn alloc_setup() {
-    let mut memsuite: XML_Memory_Handling_Suite =
-        XML_Memory_Handling_Suite {
-    malloc_fcn:  Some(
-                duff_allocator
-                    as unsafe extern "C" fn(
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    realloc_fcn:  Some(
-                duff_reallocator
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    free_fcn:  Some(
-                free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-            ),
-};
+    let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
+        malloc_fcn: Some(
+            duff_allocator as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void,
+        ),
+        realloc_fcn: Some(
+            duff_reallocator
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    size_t,
+                ) -> *mut ::core::ffi::c_void,
+        ),
+        free_fcn: Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
+    };
     g_allocation_count = ALLOC_ALWAYS_SUCCEED;
     g_reallocation_count = REALLOC_ALWAYS_SUCCEED;
     g_parser = XML_ParserCreate_MM(
         ::core::ptr::null::<XML_Char>(),
-        
         &raw mut memsuite as *const XML_Memory_Handling_Suite,
         ::core::ptr::null::<XML_Char>(),
     );
@@ -290,13 +283,12 @@ unsafe extern "C" fn test_alloc_parse_xdecl() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -360,13 +352,12 @@ unsafe extern "C" fn test_alloc_parse_xdecl_2() {
             )),
             NULL,
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -418,13 +409,12 @@ unsafe extern "C" fn test_alloc_parse_pi() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -476,13 +466,12 @@ unsafe extern "C" fn test_alloc_parse_pi_2() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -533,13 +522,12 @@ unsafe extern "C" fn test_alloc_parse_pi_3() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -584,19 +572,15 @@ unsafe extern "C" fn test_alloc_parse_comment() {
             g_parser,
             Some(
                 dummy_comment_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                    ) -> (),
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -640,19 +624,15 @@ unsafe extern "C" fn test_alloc_parse_comment_2() {
             g_parser,
             Some(
                 dummy_comment_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                    ) -> (),
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -691,15 +671,8 @@ unsafe extern "C" fn test_alloc_create_external_parser() {
         [u8; 26],
         [::core::ffi::c_char; 26],
     >(*b"<!ELEMENT doc (#PCDATA)*>\0");
-    XML_SetParamEntityParsing(
-        g_parser,
-        XML_PARAM_ENTITY_PARSING_ALWAYS,
-    );
-    XML_SetUserData(
-        g_parser,
-        
-        &raw mut foo_text as *mut ::core::ffi::c_void,
-    );
+    XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+    XML_SetUserData(g_parser, &raw mut foo_text as *mut ::core::ffi::c_void);
     XML_SetExternalEntityRefHandler(
         g_parser,
         Some(
@@ -713,13 +686,12 @@ unsafe extern "C" fn test_alloc_create_external_parser() {
                 ) -> ::core::ffi::c_int,
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -748,15 +720,8 @@ unsafe extern "C" fn test_alloc_run_external_parser() {
     let max_alloc_count: ::core::ffi::c_uint = 15;
     i = 0;
     while i < max_alloc_count {
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut foo_text as *mut ::core::ffi::c_void,
-        );
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+        XML_SetUserData(g_parser, &raw mut foo_text as *mut ::core::ffi::c_void);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -771,13 +736,12 @@ unsafe extern "C" fn test_alloc_run_external_parser() {
             ),
         );
         g_allocation_count = i as ::core::ffi::c_int;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -812,10 +776,7 @@ unsafe extern "C" fn test_alloc_dtd_copy_default_atts() {
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut callno: ::core::ffi::c_int = 0;
-    XML_SetParamEntityParsing(
-        g_parser,
-        XML_PARAM_ENTITY_PARSING_ALWAYS,
-    );
+    XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
     XML_SetExternalEntityRefHandler(
         g_parser,
         Some(
@@ -829,17 +790,13 @@ unsafe extern "C" fn test_alloc_dtd_copy_default_atts() {
                 ) -> ::core::ffi::c_int,
         ),
     );
-    XML_SetUserData(
-        g_parser,
-        &raw mut callno as *mut ::core::ffi::c_void,
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    XML_SetUserData(g_parser, &raw mut callno as *mut ::core::ffi::c_void);
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -865,10 +822,7 @@ unsafe extern "C" fn test_alloc_external_entity() {
     i = 0;
     while i < alloc_test_max_repeats {
         g_allocation_count = -1;
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -883,18 +837,14 @@ unsafe extern "C" fn test_alloc_external_entity() {
             ),
         );
         callno = 0;
-        XML_SetUserData(
-            g_parser,
-            &raw mut callno as *mut ::core::ffi::c_void,
-        );
+        XML_SetUserData(g_parser, &raw mut callno as *mut ::core::ffi::c_void);
         g_allocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            ==  XML_STATUS_OK
+        ) == XML_STATUS_OK
         {
             break;
         }
@@ -950,13 +900,12 @@ unsafe extern "C" fn test_alloc_ext_entity_set_encoding() {
             ),
         );
         g_allocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            ==  XML_STATUS_OK
+        ) == XML_STATUS_OK
         {
             break;
         }
@@ -1010,13 +959,12 @@ unsafe extern "C" fn test_alloc_internal_entity() {
             )),
             NULL,
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -1057,17 +1005,13 @@ unsafe extern "C" fn test_alloc_parameter_entity() {
     i = 0;
     while i < alloc_test_max_repeats {
         g_allocation_count = i;
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
-        if  _XML_Parse_SINGLE_BYTES(
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -1106,10 +1050,11 @@ unsafe extern "C" fn test_alloc_dtd_default_handling() {
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY e SYSTEM 'http://example.org/e'>\n<!NOTATION n SYSTEM 'http://example.org/n'>\n<!ENTITY e1 SYSTEM 'http://example.org/e' NDATA n>\n<!ELEMENT doc (#PCDATA)>\n<!ATTLIST doc a CDATA #IMPLIED>\n<?pi in dtd?>\n<!--comment in dtd-->\n]>\n<doc><![CDATA[text in doc]]></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let mut expected: *const XML_Char =
-        b"\n\n\n\n\n\n\n\n\n<doc>text in doc</doc>\0".as_ptr()
-            as *const XML_Char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
+        b"\n\n\n\n\n\n\n\n\n<doc>text in doc</doc>\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
     let mut i: ::core::ffi::c_int = 0;
     let max_alloc_count: ::core::ffi::c_int = 25;
     i = 0;
@@ -1139,10 +1084,7 @@ unsafe extern "C" fn test_alloc_dtd_default_handling() {
                         ::core::ffi::c_int,
                     ) -> (),
             ),
-            Some(
-                dummy_end_doctype_handler
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-            ),
+            Some(dummy_end_doctype_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
         );
         XML_SetEntityDeclHandler(
             g_parser,
@@ -1214,22 +1156,13 @@ unsafe extern "C" fn test_alloc_dtd_default_handling() {
             g_parser,
             Some(
                 dummy_comment_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                    ) -> (),
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
             ),
         );
         XML_SetCdataSectionHandler(
             g_parser,
-            Some(
-                dummy_start_cdata_handler
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-            ),
-            Some(
-                dummy_end_cdata_handler
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-            ),
+            Some(dummy_start_cdata_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
+            Some(dummy_end_cdata_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
         );
         XML_SetUnparsedEntityDeclHandler(
             g_parser,
@@ -1245,14 +1178,8 @@ unsafe extern "C" fn test_alloc_dtd_default_handling() {
                     ) -> (),
             ),
         );
-        CharData_Init(
-            
-            &raw mut storage,
-        );
-        XML_SetUserData(
-            g_parser,
-            &raw mut storage as *mut ::core::ffi::c_void,
-        );
+        CharData_Init(&raw mut storage);
+        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -1264,13 +1191,12 @@ unsafe extern "C" fn test_alloc_dtd_default_handling() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -1296,11 +1222,7 @@ unsafe extern "C" fn test_alloc_dtd_default_handling() {
                 as *const ::core::ffi::c_char,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        expected,
-    );
+    CharData_CheckXMLChars(&raw mut storage, expected);
     if get_dummy_handler_flags()
         != DUMMY_START_DOCTYPE_HANDLER_FLAG
             | DUMMY_END_DOCTYPE_HANDLER_FLAG
@@ -1335,12 +1257,7 @@ unsafe extern "C" fn test_alloc_explicit_encoding() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if  XML_SetEncoding(
-            g_parser,
-            b"us-ascii\0".as_ptr() as *const XML_Char,
-        )
-            ==  XML_STATUS_OK
-        {
+        if XML_SetEncoding(g_parser, b"us-ascii\0".as_ptr() as *const XML_Char) == XML_STATUS_OK {
             break;
         }
         i += 1;
@@ -1369,16 +1286,13 @@ unsafe extern "C" fn test_alloc_set_base() {
             as *const ::core::ffi::c_char,
         564,
     );
-    let mut new_base: *const XML_Char =
-        b"/local/file/name.xml\0".as_ptr() as *const XML_Char;
+    let mut new_base: *const XML_Char = b"/local/file/name.xml\0".as_ptr() as *const XML_Char;
     let mut i: ::core::ffi::c_int = 0;
     let max_alloc_count: ::core::ffi::c_int = 5;
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if  XML_SetBase(g_parser, new_base)
-            ==  XML_STATUS_OK
-        {
+        if XML_SetBase(g_parser, new_base) == XML_STATUS_OK {
             break;
         }
         i += 1;
@@ -1414,10 +1328,7 @@ unsafe extern "C" fn test_alloc_realloc_buffer() {
     i = 0;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        buffer = XML_GetBuffer(
-            g_parser,
-            1536,
-        );
+        buffer = XML_GetBuffer(g_parser, 1536);
         if buffer.is_null() {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
@@ -1436,17 +1347,12 @@ unsafe extern "C" fn test_alloc_realloc_buffer() {
                 __ASSERT_FUNCTION.as_ptr(),
             );
         };
-        memcpy(
-            buffer,
-            text as *const ::core::ffi::c_void,
-            strlen(text),
-        );
-        if  XML_ParseBuffer(
+        memcpy(buffer, text as *const ::core::ffi::c_void, strlen(text));
+        if XML_ParseBuffer(
             g_parser,
             strlen(text) as ::core::ffi::c_int,
             XML_FALSE as ::core::ffi::c_int,
-        )
-            ==  XML_STATUS_OK
+        ) == XML_STATUS_OK
         {
             break;
         }
@@ -1498,17 +1404,13 @@ unsafe extern "C" fn test_alloc_ext_entity_realloc_buffer() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(
-            g_parser,
-            &raw mut i as *mut ::core::ffi::c_void,
-        );
-        if  _XML_Parse_SINGLE_BYTES(
+        XML_SetUserData(g_parser, &raw mut i as *mut ::core::ffi::c_void);
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            ==  XML_STATUS_OK
+        ) == XML_STATUS_OK
         {
             break;
         }
@@ -1548,13 +1450,12 @@ unsafe extern "C" fn test_alloc_realloc_many_attributes() {
     i = 0;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -1602,15 +1503,8 @@ unsafe extern "C" fn test_alloc_public_entity_value() {
     while i < max_alloc_count {
         g_allocation_count = i;
         init_dummy_handlers();
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut dtd_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut dtd_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -1641,13 +1535,12 @@ unsafe extern "C" fn test_alloc_public_entity_value() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -1671,9 +1564,7 @@ unsafe extern "C" fn test_alloc_public_entity_value() {
             b"Parsing failed at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if get_dummy_handler_flags()
-        != DUMMY_ENTITY_DECL_HANDLER_FLAG
-    {
+    if get_dummy_handler_flags() != DUMMY_ENTITY_DECL_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1704,15 +1595,8 @@ unsafe extern "C" fn test_alloc_realloc_subst_public_entity_value() {
     i = 0;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut dtd_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut dtd_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -1726,13 +1610,12 @@ unsafe extern "C" fn test_alloc_realloc_subst_public_entity_value() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -1790,13 +1673,12 @@ unsafe extern "C" fn test_alloc_parse_public_doctype() {
                     as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -1821,8 +1703,7 @@ unsafe extern "C" fn test_alloc_parse_public_doctype() {
         );
     }
     if get_dummy_handler_flags()
-        != DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG
-            | DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG
+        != DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG | DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -1864,13 +1745,12 @@ unsafe extern "C" fn test_alloc_parse_public_doctype_long_name() {
                     as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -1915,14 +1795,8 @@ unsafe extern "C" fn test_alloc_set_foreign_dtd() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
-        XML_SetUserData(
-            g_parser,
-            &raw mut text2 as *mut ::core::ffi::c_void,
-        );
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+        XML_SetUserData(g_parser, &raw mut text2 as *mut ::core::ffi::c_void);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -1936,12 +1810,7 @@ unsafe extern "C" fn test_alloc_set_foreign_dtd() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if  XML_UseForeignDTD(
-            g_parser,
-            XML_TRUE,
-        )
-            !=  XML_ERROR_NONE
-        {
+        if XML_UseForeignDTD(g_parser, XML_TRUE) != XML_ERROR_NONE {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1949,13 +1818,12 @@ unsafe extern "C" fn test_alloc_set_foreign_dtd() {
                 b"Could not set foreign DTD\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text1,
             strlen(text1) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2014,15 +1882,8 @@ unsafe extern "C" fn test_alloc_attribute_enum_value() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut dtd_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut dtd_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetAttlistDeclHandler(
             g_parser,
             Some(
@@ -2037,13 +1898,12 @@ unsafe extern "C" fn test_alloc_attribute_enum_value() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2102,15 +1962,8 @@ unsafe extern "C" fn test_alloc_realloc_attribute_enum_value() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut dtd_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut dtd_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetAttlistDeclHandler(
             g_parser,
             Some(
@@ -2125,13 +1978,12 @@ unsafe extern "C" fn test_alloc_realloc_attribute_enum_value() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2185,13 +2037,12 @@ unsafe extern "C" fn test_alloc_realloc_implied_attribute() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2245,13 +2096,12 @@ unsafe extern "C" fn test_alloc_realloc_default_attribute() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2322,13 +2172,12 @@ unsafe extern "C" fn test_alloc_notation() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2353,8 +2202,7 @@ unsafe extern "C" fn test_alloc_notation() {
         );
     }
     if get_dummy_handler_flags()
-        != DUMMY_ENTITY_DECL_HANDLER_FLAG
-            | DUMMY_NOTATION_DECL_HANDLER_FLAG
+        != DUMMY_ENTITY_DECL_HANDLER_FLAG | DUMMY_NOTATION_DECL_HANDLER_FLAG
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -2393,13 +2241,12 @@ unsafe extern "C" fn test_alloc_public_notation() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2423,9 +2270,7 @@ unsafe extern "C" fn test_alloc_public_notation() {
             b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if get_dummy_handler_flags()
-        != DUMMY_NOTATION_DECL_HANDLER_FLAG
-    {
+    if get_dummy_handler_flags() != DUMMY_NOTATION_DECL_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2463,13 +2308,12 @@ unsafe extern "C" fn test_alloc_system_notation() {
                     ) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2493,9 +2337,7 @@ unsafe extern "C" fn test_alloc_system_notation() {
             b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if get_dummy_handler_flags()
-        != DUMMY_NOTATION_DECL_HANDLER_FLAG
-    {
+    if get_dummy_handler_flags() != DUMMY_NOTATION_DECL_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2514,17 +2356,16 @@ unsafe extern "C" fn test_alloc_nested_groups() {
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>\n<!ELEMENT e EMPTY>]>\n<doc><e/></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
     let mut i: ::core::ffi::c_int = 0;
     let max_alloc_count: ::core::ffi::c_int = 20;
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        CharData_Init(
-            
-            &raw mut storage,
-        );
+        CharData_Init(&raw mut storage);
         XML_SetElementDeclHandler(
             g_parser,
             ::core::mem::transmute(Some(
@@ -2547,18 +2388,14 @@ unsafe extern "C" fn test_alloc_nested_groups() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(
-            g_parser,
-            &raw mut storage as *mut ::core::ffi::c_void,
-        );
+        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
         init_dummy_handlers();
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2582,14 +2419,8 @@ unsafe extern "C" fn test_alloc_nested_groups() {
             b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        b"doce\0".as_ptr() as *const XML_Char,
-    );
-    if get_dummy_handler_flags()
-        != DUMMY_ELEMENT_DECL_HANDLER_FLAG
-    {
+    CharData_CheckXMLChars(&raw mut storage, b"doce\0".as_ptr() as *const XML_Char);
+    if get_dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2608,17 +2439,16 @@ unsafe extern "C" fn test_alloc_realloc_nested_groups() {
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>\n<!ELEMENT e EMPTY>]>\n<doc><e/></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
     let mut i: ::core::ffi::c_int = 0;
     let max_realloc_count: ::core::ffi::c_int = 10;
     i = 0;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        CharData_Init(
-            
-            &raw mut storage,
-        );
+        CharData_Init(&raw mut storage);
         XML_SetElementDeclHandler(
             g_parser,
             ::core::mem::transmute(Some(
@@ -2641,18 +2471,14 @@ unsafe extern "C" fn test_alloc_realloc_nested_groups() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(
-            g_parser,
-            &raw mut storage as *mut ::core::ffi::c_void,
-        );
+        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
         init_dummy_handlers();
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2676,14 +2502,8 @@ unsafe extern "C" fn test_alloc_realloc_nested_groups() {
             b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        b"doce\0".as_ptr() as *const XML_Char,
-    );
-    if get_dummy_handler_flags()
-        != DUMMY_ELEMENT_DECL_HANDLER_FLAG
-    {
+    CharData_CheckXMLChars(&raw mut storage, b"doce\0".as_ptr() as *const XML_Char);
+    if get_dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2719,13 +2539,12 @@ unsafe extern "C" fn test_alloc_large_group() {
             )),
         );
         init_dummy_handlers();
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2749,9 +2568,7 @@ unsafe extern "C" fn test_alloc_large_group() {
             b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if get_dummy_handler_flags()
-        != DUMMY_ELEMENT_DECL_HANDLER_FLAG
-    {
+    if get_dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2787,13 +2604,12 @@ unsafe extern "C" fn test_alloc_realloc_group_choice() {
             )),
         );
         init_dummy_handlers();
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2817,9 +2633,7 @@ unsafe extern "C" fn test_alloc_realloc_group_choice() {
             b"Parse failed at maximum reallocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if get_dummy_handler_flags()
-        != DUMMY_ELEMENT_DECL_HANDLER_FLAG
-    {
+    if get_dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2855,13 +2669,12 @@ unsafe extern "C" fn test_alloc_pi_in_epilog() {
             ),
         );
         init_dummy_handlers();
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2885,9 +2698,7 @@ unsafe extern "C" fn test_alloc_pi_in_epilog() {
             b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if get_dummy_handler_flags()
-        != DUMMY_PI_HANDLER_FLAG
-    {
+    if get_dummy_handler_flags() != DUMMY_PI_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2915,20 +2726,16 @@ unsafe extern "C" fn test_alloc_comment_in_epilog() {
             g_parser,
             Some(
                 dummy_comment_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                    ) -> (),
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
             ),
         );
         init_dummy_handlers();
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -2952,9 +2759,7 @@ unsafe extern "C" fn test_alloc_comment_in_epilog() {
             b"Parse failed at maximum allocation count\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if get_dummy_handler_flags()
-        != DUMMY_COMMENT_HANDLER_FLAG
-    {
+    if get_dummy_handler_flags() != DUMMY_COMMENT_HANDLER_FLAG {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2978,13 +2783,12 @@ unsafe extern "C" fn test_alloc_realloc_long_attribute_value() {
     i = 0;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3024,13 +2828,12 @@ unsafe extern "C" fn test_alloc_attribute_whitespace() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3070,13 +2873,12 @@ unsafe extern "C" fn test_alloc_attribute_predefined_entity() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3116,13 +2918,12 @@ unsafe extern "C" fn test_alloc_long_attr_default_with_char_ref() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3162,13 +2963,12 @@ unsafe extern "C" fn test_alloc_long_attr_value() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3212,14 +3012,8 @@ unsafe extern "C" fn test_alloc_nested_entities() {
     error:   XML_ERROR_NO_MEMORY,
 };
     g_allocation_count = 12;
-    XML_SetUserData(
-        g_parser,
-        &raw mut test_data as *mut ::core::ffi::c_void,
-    );
-    XML_SetParamEntityParsing(
-        g_parser,
-        XML_PARAM_ENTITY_PARSING_ALWAYS,
-    );
+    XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+    XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
     XML_SetExternalEntityRefHandler(
         g_parser,
         Some(
@@ -3264,15 +3058,8 @@ unsafe extern "C" fn test_alloc_realloc_param_entity_newline() {
     i = 0;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut dtd_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut dtd_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -3286,13 +3073,12 @@ unsafe extern "C" fn test_alloc_realloc_param_entity_newline() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3339,15 +3125,8 @@ unsafe extern "C" fn test_alloc_realloc_ce_extends_pe() {
     i = 0;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut dtd_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut dtd_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -3361,13 +3140,12 @@ unsafe extern "C" fn test_alloc_realloc_ce_extends_pe() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3407,13 +3185,12 @@ unsafe extern "C" fn test_alloc_realloc_attributes() {
     i = 0;
     while i < max_realloc_count {
         g_reallocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3453,13 +3230,12 @@ unsafe extern "C" fn test_alloc_long_doc_name() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3505,15 +3281,8 @@ unsafe extern "C" fn test_alloc_long_base() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut entity_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut entity_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -3527,21 +3296,15 @@ unsafe extern "C" fn test_alloc_long_base() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if  XML_SetBase(g_parser, base)
-            ==  XML_STATUS_ERROR
-        {
-            XML_ParserReset(
-                g_parser,
-                ::core::ptr::null::<XML_Char>(),
-            );
+        if XML_SetBase(g_parser, base) == XML_STATUS_ERROR {
+            XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
         } else {
-            if  _XML_Parse_SINGLE_BYTES(
+            if _XML_Parse_SINGLE_BYTES(
                 g_parser,
                 text,
                 strlen(text) as ::core::ffi::c_int,
                 XML_TRUE as ::core::ffi::c_int,
-            )
-                !=  XML_STATUS_ERROR
+            ) != XML_STATUS_ERROR
             {
                 break;
             }
@@ -3583,15 +3346,8 @@ unsafe extern "C" fn test_alloc_long_public_id() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut entity_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut entity_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -3605,13 +3361,12 @@ unsafe extern "C" fn test_alloc_long_public_id() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3652,15 +3407,8 @@ unsafe extern "C" fn test_alloc_long_entity_value() {
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut entity_text as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut entity_text as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -3674,13 +3422,12 @@ unsafe extern "C" fn test_alloc_long_entity_value() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3716,33 +3463,25 @@ unsafe extern "C" fn test_alloc_long_notation() {
         .as_ptr() as *const ::core::ffi::c_char;
     let mut options: [ExtOption; 3] = [
         ExtOption {
-    system_id:  b"foo\0".as_ptr() as *const XML_Char,
-    parse_text:  b"Entity Foo\0".as_ptr() as *const ::core::ffi::c_char,
-},
+            system_id: b"foo\0".as_ptr() as *const XML_Char,
+            parse_text: b"Entity Foo\0".as_ptr() as *const ::core::ffi::c_char,
+        },
         ExtOption {
-    system_id:  b"bar\0".as_ptr() as *const XML_Char,
-    parse_text:  b"Entity Bar\0".as_ptr() as *const ::core::ffi::c_char,
-},
+            system_id: b"bar\0".as_ptr() as *const XML_Char,
+            parse_text: b"Entity Bar\0".as_ptr() as *const ::core::ffi::c_char,
+        },
         ExtOption {
-    system_id:  ::core::ptr::null::<XML_Char>(),
-    parse_text:  ::core::ptr::null::<::core::ffi::c_char>(),
-},
+            system_id: ::core::ptr::null::<XML_Char>(),
+            parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
+        },
     ];
     let mut i: ::core::ffi::c_int = 0;
     let max_alloc_count: ::core::ffi::c_int = 40;
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i;
-        XML_SetUserData(
-            g_parser,
-            
-            &raw mut options
-                as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(
-            g_parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        XML_SetUserData(g_parser, &raw mut options as *mut ::core::ffi::c_void);
+        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -3756,13 +3495,12 @@ unsafe extern "C" fn test_alloc_long_notation() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
             strlen(text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             break;
         }
@@ -3810,17 +3548,13 @@ unsafe extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail()
                 ) -> ::core::ffi::c_int,
         ),
     );
-    XML_SetParamEntityParsing(
-        g_parser,
-        XML_PARAM_ENTITY_PARSING_ALWAYS,
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -3829,9 +3563,7 @@ unsafe extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail()
             b"Call to parse was expected to fail\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  XML_GetErrorCode(g_parser)
-        !=  XML_ERROR_EXTERNAL_ENTITY_HANDLING
-    {
+    if XML_GetErrorCode(g_parser) != XML_ERROR_EXTERNAL_ENTITY_HANDLING {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -3840,19 +3572,13 @@ unsafe extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail()
                 as *const ::core::ffi::c_char,
         );
     }
-    XML_ParserReset(
-        g_parser,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
 }
 
-unsafe extern "C" fn sizeRecordedFor(
-    mut ptr: *mut ::core::ffi::c_void,
-) -> size_t {
+unsafe extern "C" fn sizeRecordedFor(mut ptr: *mut ::core::ffi::c_void) -> size_t {
     return *((ptr as *mut ::core::ffi::c_char)
         .offset(-(EXPAT_MALLOC_PADDING as isize))
-        .offset(-(::core::mem::size_of::<size_t>() as isize))
-        as *mut size_t);
+        .offset(-(::core::mem::size_of::<size_t>() as isize)) as *mut size_t);
 }
 
 unsafe extern "C" fn test_alloc_tracker_size_recorded() {
@@ -3862,34 +3588,20 @@ unsafe extern "C" fn test_alloc_tracker_size_recorded() {
             as *const ::core::ffi::c_char,
         2101,
     );
-    let mut memsuite: XML_Memory_Handling_Suite =
-        XML_Memory_Handling_Suite {
-    malloc_fcn:  Some(
-                malloc
-                    as unsafe extern "C" fn(
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    realloc_fcn:  Some(
-                realloc
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    free_fcn:  Some(
-                free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-            ),
-};
-    let mut values: [bool; 2] = [
-        true_0 != 0,
-        false_0 != 0,
-    ];
+    let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
+        malloc_fcn: Some(malloc as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void),
+        realloc_fcn: Some(
+            realloc
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    size_t,
+                ) -> *mut ::core::ffi::c_void,
+        ),
+        free_fcn: Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
+    };
+    let mut values: [bool; 2] = [true_0 != 0, false_0 != 0];
     let mut i: size_t = 0;
-    while i
-        < (::core::mem::size_of::<[bool; 2]>())
-            .wrapping_div(::core::mem::size_of::<bool>())
-    {
+    while i < (::core::mem::size_of::<[bool; 2]>()).wrapping_div(::core::mem::size_of::<bool>()) {
         let useMemSuite: bool = values[i];
         set_subtest(
             b"useMemSuite=%d\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3898,20 +3610,13 @@ unsafe extern "C" fn test_alloc_tracker_size_recorded() {
         let mut parser: XML_Parser = if useMemSuite as ::core::ffi::c_int != 0 {
             XML_ParserCreate_MM(
                 ::core::ptr::null::<XML_Char>(),
-                
                 &raw mut memsuite as *const XML_Memory_Handling_Suite,
                 b"|\0".as_ptr() as *const XML_Char,
             )
         } else {
-            XML_ParserCreate(::core::ptr::null::<
-                XML_Char,
-            >())
+            XML_ParserCreate(::core::ptr::null::<XML_Char>())
         };
-        let mut ptr: *mut ::core::ffi::c_void = expat_malloc(
-            parser,
-            10,
-            -1,
-        );
+        let mut ptr: *mut ::core::ffi::c_void = expat_malloc(parser, 10, -1);
         if ptr.is_null() {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
@@ -3932,8 +3637,7 @@ unsafe extern "C" fn test_alloc_tracker_size_recorded() {
         if !expat_realloc(
             parser,
             ptr,
-            (18446744073709551615 as size_t)
-                .wrapping_div(2usize),
+            (18446744073709551615 as size_t).wrapping_div(2usize),
             -1,
         )
         .is_null()
@@ -3955,12 +3659,7 @@ unsafe extern "C" fn test_alloc_tracker_size_recorded() {
                     as *const ::core::ffi::c_char,
             );
         }
-        ptr = expat_realloc(
-            parser,
-            ptr,
-            20,
-            -1,
-        );
+        ptr = expat_realloc(parser, ptr, 20, -1);
         if ptr.is_null() {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
@@ -3991,13 +3690,8 @@ unsafe extern "C" fn test_alloc_tracker_pointer_alignment() {
             as *const ::core::ffi::c_char,
         2135,
     );
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    if !(::core::mem::size_of::<::core::ffi::c_longlong>()
-        >=  ::core::mem::size_of::<size_t>())
-    {
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    if !(::core::mem::size_of::<::core::ffi::c_longlong>() >= ::core::mem::size_of::<size_t>()) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4008,19 +3702,14 @@ unsafe extern "C" fn test_alloc_tracker_pointer_alignment() {
     }
     let ptr: *mut ::core::ffi::c_longlong = expat_malloc(
         parser,
-        (4usize)
-            .wrapping_mul(::core::mem::size_of::<::core::ffi::c_longlong>()),
+        (4usize).wrapping_mul(::core::mem::size_of::<::core::ffi::c_longlong>()),
         -1,
     ) as *mut ::core::ffi::c_longlong;
     *ptr.offset(0) = 0i64;
     *ptr.offset(1) = 1i64;
     *ptr.offset(2) = 2i64;
     *ptr.offset(3) = 3i64;
-    expat_free(
-        parser,
-        ptr as *mut ::core::ffi::c_void,
-        -1,
-    );
+    expat_free(parser, ptr as *mut ::core::ffi::c_void, -1);
     XML_ParserFree(parser);
 }
 
@@ -4031,23 +3720,13 @@ unsafe extern "C" fn test_alloc_tracker_maximum_amplification() {
             as *const ::core::ffi::c_char,
         2151,
     );
-    if g_reparseDeferralEnabledDefault as ::core::ffi::c_int
-        == XML_TRUE as ::core::ffi::c_int
-    {
+    if g_reparseDeferralEnabledDefault as ::core::ffi::c_int == XML_TRUE as ::core::ffi::c_int {
         return;
     }
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
     let chunk: *const ::core::ffi::c_char = b"<e>\0".as_ptr() as *const ::core::ffi::c_char;
-    if !(_XML_Parse_SINGLE_BYTES(
-        parser,
-        chunk,
-        strlen(chunk) as ::core::ffi::c_int,
-        0,
-    )
-        ==  XML_STATUS_OK)
+    if !(_XML_Parse_SINGLE_BYTES(parser, chunk, strlen(chunk) as ::core::ffi::c_int, 0)
+        == XML_STATUS_OK)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0"
@@ -4057,12 +3736,7 @@ unsafe extern "C" fn test_alloc_tracker_maximum_amplification() {
                 .as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if !(XML_SetAllocTrackerActivationThreshold(
-        parser,
-        0,
-    ) as ::core::ffi::c_int
-        == 1)
-    {
+    if !(XML_SetAllocTrackerActivationThreshold(parser, 0) as ::core::ffi::c_int == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4071,13 +3745,7 @@ unsafe extern "C" fn test_alloc_tracker_maximum_amplification() {
                 .as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if !expat_malloc(
-        parser,
-        1000,
-        -1,
-    )
-    .is_null()
-    {
+    if !expat_malloc(parser, 1000, -1).is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4086,10 +3754,7 @@ unsafe extern "C" fn test_alloc_tracker_maximum_amplification() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if !(XML_SetAllocTrackerMaximumAmplification(parser, 3000.0)
-        as ::core::ffi::c_int
-        == 1)
-    {
+    if !(XML_SetAllocTrackerMaximumAmplification(parser, 3000.0) as ::core::ffi::c_int == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4098,11 +3763,7 @@ unsafe extern "C" fn test_alloc_tracker_maximum_amplification() {
                 .as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    let ptr: *mut ::core::ffi::c_void =  expat_malloc(
-        parser,
-        1000,
-        -1,
-    );
+    let ptr: *mut ::core::ffi::c_void = expat_malloc(parser, 1000, -1);
     if ptr.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -4122,15 +3783,8 @@ unsafe extern "C" fn test_alloc_tracker_threshold() {
             as *const ::core::ffi::c_char,
         2185,
     );
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    let ptr: *mut ::core::ffi::c_void =  expat_malloc(
-        parser,
-        1000,
-        -1,
-    );
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    let ptr: *mut ::core::ffi::c_void = expat_malloc(parser, 1000, -1);
     if ptr.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -4140,12 +3794,7 @@ unsafe extern "C" fn test_alloc_tracker_threshold() {
         );
     }
     expat_free(parser, ptr, -1);
-    if !(XML_SetAllocTrackerActivationThreshold(
-        parser,
-        999,
-    ) as ::core::ffi::c_int
-        == 1)
-    {
+    if !(XML_SetAllocTrackerActivationThreshold(parser, 999) as ::core::ffi::c_int == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4154,13 +3803,7 @@ unsafe extern "C" fn test_alloc_tracker_threshold() {
                 .as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if !expat_malloc(
-        parser,
-        1000,
-        -1,
-    )
-    .is_null()
-    {
+    if !expat_malloc(parser, 1000, -1).is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4179,16 +3822,8 @@ unsafe extern "C" fn test_alloc_tracker_getbuffer_unlimited() {
             as *const ::core::ffi::c_char,
         2203,
     );
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    if !(XML_SetAllocTrackerActivationThreshold(
-        parser,
-        0,
-    ) as ::core::ffi::c_int
-        == 1)
-    {
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    if !(XML_SetAllocTrackerActivationThreshold(parser, 0) as ::core::ffi::c_int == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4197,13 +3832,7 @@ unsafe extern "C" fn test_alloc_tracker_getbuffer_unlimited() {
                 .as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if !expat_malloc(
-        parser,
-        1000,
-        -1,
-    )
-    .is_null()
-    {
+    if !expat_malloc(parser, 1000, -1).is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4231,16 +3860,12 @@ unsafe extern "C" fn test_alloc_tracker_api() {
             as *const ::core::ffi::c_char,
         2220,
     );
-    let mut parserWithoutParent: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    let mut parserWithParent: XML_Parser =
-        XML_ExternalEntityParserCreate(
-            parserWithoutParent,
-            b"entity123\0".as_ptr() as *const XML_Char,
-            ::core::ptr::null::<XML_Char>(),
-        );
+    let mut parserWithoutParent: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    let mut parserWithParent: XML_Parser = XML_ExternalEntityParserCreate(
+        parserWithoutParent,
+        b"entity123\0".as_ptr() as *const XML_Char,
+        ::core::ptr::null::<XML_Char>(),
+    );
     if parserWithoutParent.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -4257,10 +3882,8 @@ unsafe extern "C" fn test_alloc_tracker_api() {
             b"parserWithParent is NULL\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerMaximumAmplification(
-        ::core::ptr::null_mut::<XML_ParserStruct>(),
-        123.0,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerMaximumAmplification(::core::ptr::null_mut::<XML_ParserStruct>(), 123.0)
+        as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -4271,10 +3894,7 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerMaximumAmplification(
-        parserWithParent,
-        123.0,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerMaximumAmplification(parserWithParent, 123.0) as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -4285,10 +3905,8 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerMaximumAmplification(
-        parserWithoutParent,
-        ::core::f32::NAN,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, ::core::f32::NAN)
+        as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -4299,10 +3917,7 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerMaximumAmplification(
-        parserWithoutParent,
-        -1.0,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, -1.0) as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -4313,10 +3928,7 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerMaximumAmplification(
-        parserWithoutParent,
-        0.9,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, 0.9) as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -4327,10 +3939,7 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerMaximumAmplification(
-        parserWithoutParent,
-        1.0,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, 1.0) as ::core::ffi::c_int
         == XML_FALSE as ::core::ffi::c_int
     {
         _fail(
@@ -4341,10 +3950,8 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerMaximumAmplification(
-        parserWithoutParent,
-        123456.789,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, 123456.789)
+        as ::core::ffi::c_int
         == XML_FALSE as ::core::ffi::c_int
     {
         _fail(
@@ -4355,10 +3962,8 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerMaximumAmplification(
-        parserWithoutParent,
-        ::core::f32::INFINITY,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, ::core::f32::INFINITY)
+        as ::core::ffi::c_int
         == XML_FALSE as ::core::ffi::c_int
     {
         _fail(
@@ -4369,10 +3974,8 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerActivationThreshold(
-        ::core::ptr::null_mut::<XML_ParserStruct>(),
-        123,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerActivationThreshold(::core::ptr::null_mut::<XML_ParserStruct>(), 123)
+        as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -4383,10 +3986,7 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerActivationThreshold(
-        parserWithParent,
-        123,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerActivationThreshold(parserWithParent, 123) as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -4397,10 +3997,7 @@ unsafe extern "C" fn test_alloc_tracker_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetAllocTrackerActivationThreshold(
-        parserWithoutParent,
-        123,
-    ) as ::core::ffi::c_int
+    if XML_SetAllocTrackerActivationThreshold(parserWithoutParent, 123) as ::core::ffi::c_int
         == XML_FALSE as ::core::ffi::c_int
     {
         _fail(
@@ -4422,12 +4019,8 @@ unsafe extern "C" fn test_mem_api_cycle() {
             as *const ::core::ffi::c_char,
         2274,
     );
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    let mut ptr: *mut ::core::ffi::c_void =
-        XML_MemMalloc(parser, 10);
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    let mut ptr: *mut ::core::ffi::c_void = XML_MemMalloc(parser, 10);
     if ptr.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -4437,11 +4030,7 @@ unsafe extern "C" fn test_mem_api_cycle() {
         );
     }
     memset(ptr, 'x' as i32, 10);
-    ptr = XML_MemRealloc(
-        parser,
-        ptr,
-        20,
-    );
+    ptr = XML_MemRealloc(parser, ptr, 20);
     if ptr.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -4462,16 +4051,8 @@ unsafe extern "C" fn test_mem_api_unlimited() {
             as *const ::core::ffi::c_char,
         2293,
     );
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    if !(XML_SetAllocTrackerActivationThreshold(
-        parser,
-        0,
-    ) as ::core::ffi::c_int
-        == 1)
-    {
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    if !(XML_SetAllocTrackerActivationThreshold(parser, 0) as ::core::ffi::c_int == 1) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4480,8 +4061,7 @@ unsafe extern "C" fn test_mem_api_unlimited() {
                 .as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    let mut ptr: *mut ::core::ffi::c_void =
-        XML_MemMalloc(parser, 1000);
+    let mut ptr: *mut ::core::ffi::c_void = XML_MemMalloc(parser, 1000);
     if ptr.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -4490,11 +4070,7 @@ unsafe extern "C" fn test_mem_api_unlimited() {
             b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    ptr = XML_MemRealloc(
-        parser,
-        ptr,
-        2000,
-    );
+    ptr = XML_MemRealloc(parser, ptr, 2000);
     if ptr.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/alloc_tests.c\0".as_ptr()
@@ -4510,284 +4086,222 @@ unsafe extern "C" fn test_mem_api_unlimited() {
 
 pub unsafe extern "C" fn make_alloc_test_case(mut s: *mut Suite) {
     let mut tc_alloc: *mut TCase =
-        
-        tcase_create(
-            b"allocation tests\0".as_ptr() as *const ::core::ffi::c_char
-        );
-    suite_add_tcase(
-        
-        s,
-        
-        tc_alloc,
-    );
+        tcase_create(b"allocation tests\0".as_ptr() as *const ::core::ffi::c_char);
+    suite_add_tcase(s, tc_alloc);
     tcase_add_checked_fixture(
-        
         tc_alloc,
         Some(alloc_setup as unsafe extern "C" fn() -> ()),
         Some(alloc_teardown as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_xdecl as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_xdecl_2 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_pi as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_pi_2 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_pi_3 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_comment as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_comment_2 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_create_external_parser as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_run_external_parser as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_dtd_copy_default_atts as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_external_entity as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_ext_entity_set_encoding as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_internal_entity as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_parameter_entity as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_dtd_default_handling as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_explicit_encoding as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_set_base as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_realloc_buffer as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_ext_entity_realloc_buffer as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_realloc_many_attributes as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_public_entity_value as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_subst_public_entity_value as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_public_doctype as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_parse_public_doctype_long_name as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_set_foreign_dtd as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_attribute_enum_value as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_attribute_enum_value as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_implied_attribute as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_default_attribute as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_notation as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_public_notation as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_system_notation as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_nested_groups as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_nested_groups as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_large_group as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_group_choice as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_pi_in_epilog as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_comment_in_epilog as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_long_attribute_value as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_attribute_whitespace as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_attribute_predefined_entity as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_long_attr_default_with_char_ref as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_long_attr_value as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_nested_entities as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_param_entity_newline as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_ce_extends_pe as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(test_alloc_realloc_attributes as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_alloc_long_doc_name as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_long_base as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_long_public_id as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_long_entity_value as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_long_notation as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_alloc,
         Some(
             test_alloc_reset_after_external_entity_parser_create_fail
@@ -4795,42 +4309,34 @@ pub unsafe extern "C" fn make_alloc_test_case(mut s: *mut Suite) {
         ),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_tracker_size_recorded as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_tracker_pointer_alignment as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_tracker_maximum_amplification as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_tracker_threshold as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_tracker_getbuffer_unlimited as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_alloc_tracker_api as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_alloc,
         Some(test_mem_api_cycle as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_alloc,
         Some(test_mem_api_unlimited as unsafe extern "C" fn() -> ()),
     );

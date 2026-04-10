@@ -75,7 +75,6 @@ pub unsafe extern "C" fn suite_create(
 ) -> *mut crate::src::tests::minicheck::Suite {
     let mut suite: *mut crate::src::tests::minicheck::Suite = calloc(
         1,
-        
         ::core::mem::size_of::<crate::src::tests::minicheck::Suite>(),
     )
         as *mut crate::src::tests::minicheck::Suite;
@@ -91,7 +90,6 @@ pub unsafe extern "C" fn tcase_create(
 ) -> *mut crate::src::tests::minicheck::TCase {
     let mut tc: *mut crate::src::tests::minicheck::TCase = calloc(
         1,
-        
         ::core::mem::size_of::<crate::src::tests::minicheck::TCase>(),
     )
         as *mut crate::src::tests::minicheck::TCase;
@@ -230,7 +228,6 @@ pub unsafe extern "C" fn srunner_create(
 ) -> *mut crate::src::tests::minicheck::SRunner {
     let runner: *mut crate::src::tests::minicheck::SRunner = calloc(
         1,
-        
         ::core::mem::size_of::<crate::src::tests::minicheck::SRunner>(),
     )
         as *mut crate::src::tests::minicheck::SRunner;
@@ -241,9 +238,9 @@ pub unsafe extern "C" fn srunner_create(
 }
 
 static mut env: jmp_buf = [__jmp_buf_tag {
-    __jmpbuf:  [0; 8],
-    __mask_was_saved:  0,
-    __saved_mask:  __sigset_t { __val:  [0; 16] },
+    __jmpbuf: [0; 8],
+    __mask_was_saved: 0,
+    __saved_mask: __sigset_t { __val: [0; 16] },
 }; 1];
 
 pub const SUBTEST_LEN: ::core::ffi::c_int = 50;
@@ -286,13 +283,11 @@ pub unsafe extern "C" fn set_subtest(mut fmt: *const ::core::ffi::c_char, mut c2
     let mut i: size_t = 0;
     while i < SUBTEST_LEN as size_t {
         if _check_current_subtest[i] as ::core::ffi::c_int == '\n' as i32 {
-            _check_current_subtest[i] =  ' ' as ::core::ffi::c_char;
+            _check_current_subtest[i] = ' ' as ::core::ffi::c_char;
         }
         i = i.wrapping_add(1);
     }
-    _check_current_subtest[(SUBTEST_LEN - 1) as usize] =
-        
-        '\0' as ::core::ffi::c_char;
+    _check_current_subtest[(SUBTEST_LEN - 1) as usize] = '\0' as ::core::ffi::c_char;
 }
 
 unsafe extern "C" fn handle_success(mut verbosity: ::core::ffi::c_int) {
@@ -312,9 +307,7 @@ unsafe extern "C" fn handle_failure(
 ) {
     (*runner).nfailures += 1;
     if verbosity != crate::src::tests::minicheck::CK_SILENT {
-        if strlen(&raw mut _check_current_subtest as *mut ::core::ffi::c_char)
-            != 0
-        {
+        if strlen(&raw mut _check_current_subtest as *mut ::core::ffi::c_char) != 0 {
             phase_info = &raw mut _check_current_subtest as *mut ::core::ffi::c_char;
         }
         printf(
@@ -395,9 +388,7 @@ pub unsafe extern "C" fn srunner_run_all(
             }
             match c2rust_current_block_13 {
                 2868539653012386629 => {
-                    if _setjmp(&raw mut env as *mut __jmp_buf_tag)
-                        != 0
-                    {
+                    if _setjmp(&raw mut env as *mut __jmp_buf_tag) != 0 {
                         handle_failure(
                             runner,
                             verbosity,
@@ -422,10 +413,7 @@ pub unsafe extern "C" fn srunner_run_all(
                         .teardown
                         .is_some()
                         {
-                            if _setjmp(
-                                &raw mut env as *mut __jmp_buf_tag,
-                            ) != 0
-                            {
+                            if _setjmp(&raw mut env as *mut __jmp_buf_tag) != 0 {
                                 handle_failure(
                                     runner,
                                     verbosity,
@@ -479,8 +467,7 @@ pub unsafe extern "C" fn srunner_summarize(
         let mut passed: ::core::ffi::c_int = (*runner).nchecks - (*runner).nfailures;
         let mut percentage: ::core::ffi::c_double =
             passed as ::core::ffi::c_double / (*runner).nchecks as ::core::ffi::c_double;
-        let mut display: ::core::ffi::c_int =
-            (percentage * 100f64) as ::core::ffi::c_int;
+        let mut display: ::core::ffi::c_int = (percentage * 100f64) as ::core::ffi::c_int;
         printf(
             b"%d%%: Checks: %d, Failed: %d\n\0".as_ptr() as *const ::core::ffi::c_char,
             display,
@@ -499,10 +486,9 @@ pub unsafe extern "C" fn _fail(
     _check_current_filename = file;
     _check_current_lineno = line;
     if !msg.is_null() {
-        let has_newline: ::core::ffi::c_int = (*msg.offset(
-            strlen(msg).wrapping_sub(1usize) as isize,
-        ) as ::core::ffi::c_int
-            == '\n' as i32) as ::core::ffi::c_int;
+        let has_newline: ::core::ffi::c_int =
+            (*msg.offset(strlen(msg).wrapping_sub(1usize) as isize) as ::core::ffi::c_int
+                == '\n' as i32) as ::core::ffi::c_int;
         fprintf(
             stderr,
             b"ERROR: %s%s\0".as_ptr() as *const ::core::ffi::c_char,
@@ -514,10 +500,7 @@ pub unsafe extern "C" fn _fail(
             },
         );
     }
-    longjmp(
-        &raw mut env as *mut __jmp_buf_tag,
-        1,
-    );
+    longjmp(&raw mut env as *mut __jmp_buf_tag, 1);
 }
 #[no_mangle]
 

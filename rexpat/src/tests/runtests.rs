@@ -114,39 +114,16 @@ pub use ::rexpat::stdlib::_IO_FILE;
 #[no_mangle]
 
 pub static mut g_parser: XML_Parser =
-    ::core::ptr::null::<XML_ParserStruct>()
-        as *mut XML_ParserStruct;
+    ::core::ptr::null::<XML_ParserStruct>() as *mut XML_ParserStruct;
 
 unsafe extern "C" fn make_suite() -> *mut Suite {
-    let mut s: *mut Suite =
-        
-        suite_create(
-            b"basic\0".as_ptr() as *const ::core::ffi::c_char
-        );
-    make_basic_test_case(
-        
-        s,
-    );
-    make_namespace_test_case(
-        
-        s,
-    );
-    make_miscellaneous_test_case(
-        
-        s,
-    );
-    make_alloc_test_case(
-        
-        s,
-    );
-    make_nsalloc_test_case(
-        
-        s,
-    );
-    make_accounting_test_case(
-        
-        s,
-    );
+    let mut s: *mut Suite = suite_create(b"basic\0".as_ptr() as *const ::core::ffi::c_char);
+    make_basic_test_case(s);
+    make_namespace_test_case(s);
+    make_miscellaneous_test_case(s);
+    make_alloc_test_case(s);
+    make_nsalloc_test_case(s);
+    make_accounting_test_case(s);
     return s;
 }
 
@@ -158,30 +135,20 @@ unsafe fn main_0(
     let mut nf: ::core::ffi::c_int = 0;
     let mut verbosity: ::core::ffi::c_int = CK_NORMAL;
     let mut s: *mut Suite = make_suite();
-    let mut sr: *mut SRunner =
-        
-        srunner_create(
-            
-            s,
-        );
+    let mut sr: *mut SRunner = srunner_create(s);
     i = 1;
     while i < argc {
         let mut opt: *mut ::core::ffi::c_char = *argv.offset(i as isize);
-        if strcmp(opt, b"-v\0".as_ptr() as *const ::core::ffi::c_char)
-            == 0
-            || strcmp(opt, b"--verbose\0".as_ptr() as *const ::core::ffi::c_char)
-                == 0
+        if strcmp(opt, b"-v\0".as_ptr() as *const ::core::ffi::c_char) == 0
+            || strcmp(opt, b"--verbose\0".as_ptr() as *const ::core::ffi::c_char) == 0
         {
             verbosity = CK_VERBOSE;
-        } else if strcmp(opt, b"-q\0".as_ptr() as *const ::core::ffi::c_char)
-            == 0
-            || strcmp(opt, b"--quiet\0".as_ptr() as *const ::core::ffi::c_char)
-                == 0
+        } else if strcmp(opt, b"-q\0".as_ptr() as *const ::core::ffi::c_char) == 0
+            || strcmp(opt, b"--quiet\0".as_ptr() as *const ::core::ffi::c_char) == 0
         {
             verbosity = CK_SILENT;
         } else {
             fprintf(
-                
                 stderr,
                 b"runtests: unknown option '%s'\n\0".as_ptr() as *const ::core::ffi::c_char,
                 opt,
@@ -201,46 +168,25 @@ unsafe fn main_0(
         let mut enabled: ::core::ffi::c_int = 0;
         while enabled <= 1 {
             let mut context: [::core::ffi::c_char; 100] = [0; 100];
-            g_reparseDeferralEnabledDefault =
-                enabled as XML_Bool;
+            g_reparseDeferralEnabledDefault = enabled as XML_Bool;
             snprintf(
                 &raw mut context as *mut ::core::ffi::c_char,
-                
                 ::core::mem::size_of::<[::core::ffi::c_char; 100]>(),
                 b"chunksize=%d deferral=%d\0".as_ptr() as *const ::core::ffi::c_char,
                 g_chunkSize,
                 enabled,
             );
-            context[(::core::mem::size_of::<[::core::ffi::c_char; 100]>())
-                .wrapping_sub(1usize)] =  '\0' as ::core::ffi::c_char;
-            srunner_run_all(
-                
-                sr,
-                &raw mut context as *mut ::core::ffi::c_char,
-                verbosity,
-            );
+            context[(::core::mem::size_of::<[::core::ffi::c_char; 100]>()).wrapping_sub(1usize)] =
+                '\0' as ::core::ffi::c_char;
+            srunner_run_all(sr, &raw mut context as *mut ::core::ffi::c_char, verbosity);
             enabled += 1;
         }
         g_chunkSize += 1;
     }
-    srunner_summarize(
-        
-        sr,
-        verbosity,
-    );
-    nf = srunner_ntests_failed(
-        
-        sr,
-    );
-    srunner_free(
-        
-        sr,
-    );
-    return if nf == 0 {
-        EXIT_SUCCESS
-    } else {
-        EXIT_FAILURE
-    };
+    srunner_summarize(sr, verbosity);
+    nf = srunner_ntests_failed(sr);
+    srunner_free(sr);
+    return if nf == 0 { EXIT_SUCCESS } else { EXIT_FAILURE };
 }
 pub fn main() {
     let mut args_strings: Vec<Vec<u8>> = ::std::env::args()
@@ -258,7 +204,6 @@ pub fn main() {
     unsafe {
         ::std::process::exit(main_0(
             (args_ptrs.len() - 1) as ::core::ffi::c_int,
-            
             args_ptrs.as_mut_ptr(),
         ))
     }

@@ -313,13 +313,7 @@ pub unsafe extern "C" fn start_element_event_handler(
     mut name: *const XML_Char,
     mut atts: *mut *const XML_Char,
 ) {
-    CharData_AppendXMLChars(
-        
-        userData
-            as *mut CharData,
-        name,
-        -1,
-    );
+    CharData_AppendXMLChars(userData as *mut CharData, name, -1);
 }
 #[no_mangle]
 
@@ -327,20 +321,9 @@ pub unsafe extern "C" fn end_element_event_handler(
     mut userData: *mut ::core::ffi::c_void,
     mut name: *const XML_Char,
 ) {
-    let mut storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"/\0".as_ptr() as *const XML_Char,
-        1,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        name,
-        -1,
-    );
+    let mut storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, b"/\0".as_ptr() as *const XML_Char, 1);
+    CharData_AppendXMLChars(storage, name, -1);
 }
 #[no_mangle]
 
@@ -349,16 +332,12 @@ pub unsafe extern "C" fn start_element_event_handler2(
     mut name: *const XML_Char,
     mut attr: *mut *const XML_Char,
 ) {
-    let mut storage: *mut StructData =
-        userData as *mut StructData;
+    let mut storage: *mut StructData = userData as *mut StructData;
     StructData_AddItem(
-        
         storage,
         name,
-        XML_GetCurrentColumnNumber(g_parser)
-            as ::core::ffi::c_int,
-        XML_GetCurrentLineNumber(g_parser)
-            as ::core::ffi::c_int,
+        XML_GetCurrentColumnNumber(g_parser) as ::core::ffi::c_int,
+        XML_GetCurrentLineNumber(g_parser) as ::core::ffi::c_int,
         crate::src::tests::handlers::STRUCT_START_TAG,
     );
 }
@@ -368,16 +347,12 @@ pub unsafe extern "C" fn end_element_event_handler2(
     mut userData: *mut ::core::ffi::c_void,
     mut name: *const XML_Char,
 ) {
-    let mut storage: *mut StructData =
-        userData as *mut StructData;
+    let mut storage: *mut StructData = userData as *mut StructData;
     StructData_AddItem(
-        
         storage,
         name,
-        XML_GetCurrentColumnNumber(g_parser)
-            as ::core::ffi::c_int,
-        XML_GetCurrentLineNumber(g_parser)
-            as ::core::ffi::c_int,
+        XML_GetCurrentColumnNumber(g_parser) as ::core::ffi::c_int,
+        XML_GetCurrentLineNumber(g_parser) as ::core::ffi::c_int,
         crate::src::tests::handlers::STRUCT_END_TAG,
     );
 }
@@ -397,13 +372,7 @@ pub unsafe extern "C" fn counting_start_element_handler(
     let mut id: ::core::ffi::c_int = 0;
     let mut i: ::core::ffi::c_int = 0;
     while !(*info).name.is_null() {
-        if strcmp(
-            
-            name,
-            
-            (*info).name,
-        ) == 0
-        {
+        if strcmp(name, (*info).name) == 0 {
             break;
         }
         info = info.offset(1);
@@ -416,8 +385,7 @@ pub unsafe extern "C" fn counting_start_element_handler(
             b"Element not recognised\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    count =
-        XML_GetSpecifiedAttributeCount((*parserAndElementInfos).parser);
+    count = XML_GetSpecifiedAttributeCount((*parserAndElementInfos).parser);
     if (*info).attr_count * 2 != count {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -435,14 +403,7 @@ pub unsafe extern "C" fn counting_start_element_handler(
             b"ID not present\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if id != -1
-        && strcmp(
-            
-            *atts.offset(id as isize),
-            
-            (*info).id_name,
-        ) != 0
-    {
+    if id != -1 && strcmp(*atts.offset(id as isize), (*info).id_name) != 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -454,13 +415,7 @@ pub unsafe extern "C" fn counting_start_element_handler(
     while i < (*info).attr_count {
         attr = (*info).attributes;
         while !(*attr).name.is_null() {
-            if strcmp(
-                
-                *atts.offset(0),
-                
-                (*attr).name,
-            ) == 0
-            {
+            if strcmp(*atts.offset(0), (*attr).name) == 0 {
                 break;
             }
             attr = attr.offset(1);
@@ -473,13 +428,7 @@ pub unsafe extern "C" fn counting_start_element_handler(
                 b"Attribute not recognised\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if strcmp(
-            
-            *atts.offset(1),
-            
-            (*attr).value,
-        ) != 0
-        {
+        if strcmp(*atts.offset(1), (*attr).value) != 0 {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -497,10 +446,7 @@ pub unsafe extern "C" fn suspending_end_handler(
     mut userData: *mut ::core::ffi::c_void,
     mut s: *const XML_Char,
 ) {
-    XML_StopParser(
-        userData as XML_Parser,
-        1,
-    );
+    XML_StopParser(userData as XML_Parser, 1);
 }
 #[no_mangle]
 
@@ -509,37 +455,19 @@ pub unsafe extern "C" fn start_element_suspender(
     mut name: *const XML_Char,
     mut atts: *mut *const XML_Char,
 ) {
-    if strcmp(
-        
-        name,
-        b"suspend\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0
-    {
-        XML_StopParser(
-            g_parser,
-            XML_TRUE,
-        );
+    if strcmp(name, b"suspend\0".as_ptr() as *const ::core::ffi::c_char) == 0 {
+        XML_StopParser(g_parser, XML_TRUE);
     }
-    if strcmp(
-        
-        name,
-        b"abort\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0
-    {
-        XML_StopParser(
-            g_parser,
-            XML_FALSE,
-        );
+    if strcmp(name, b"abort\0".as_ptr() as *const ::core::ffi::c_char) == 0 {
+        XML_StopParser(g_parser, XML_FALSE);
     }
 }
 #[no_mangle]
 
-pub static mut g_triplet_start_flag: ::core::ffi::c_int =
-    XML_FALSE as ::core::ffi::c_int;
+pub static mut g_triplet_start_flag: ::core::ffi::c_int = XML_FALSE as ::core::ffi::c_int;
 #[no_mangle]
 
-pub static mut g_triplet_end_flag: ::core::ffi::c_int =
-    XML_FALSE as ::core::ffi::c_int;
+pub static mut g_triplet_end_flag: ::core::ffi::c_int = XML_FALSE as ::core::ffi::c_int;
 #[no_mangle]
 
 pub unsafe extern "C" fn triplet_start_checker(
@@ -547,18 +475,11 @@ pub unsafe extern "C" fn triplet_start_checker(
     mut name: *const XML_Char,
     mut atts: *mut *const XML_Char,
 ) {
-    let mut elemstr: *mut *mut XML_Char =
-        userData as *mut *mut XML_Char;
+    let mut elemstr: *mut *mut XML_Char = userData as *mut *mut XML_Char;
     let mut buffer: [::core::ffi::c_char; 1024] = [0; 1024];
-    if strcmp(
-        *elemstr.offset(0),
-        
-        name,
-    ) != 0
-    {
+    if strcmp(*elemstr.offset(0), name) != 0 {
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
-            
             ::core::mem::size_of::<[::core::ffi::c_char; 1024]>(),
             b"unexpected start string: '%s'\0".as_ptr() as *const ::core::ffi::c_char,
             name,
@@ -570,15 +491,9 @@ pub unsafe extern "C" fn triplet_start_checker(
             &raw mut buffer as *mut ::core::ffi::c_char,
         );
     }
-    if strcmp(
-        *elemstr.offset(1),
-        
-        *atts.offset(0),
-    ) != 0
-    {
+    if strcmp(*elemstr.offset(1), *atts.offset(0)) != 0 {
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
-            
             ::core::mem::size_of::<[::core::ffi::c_char; 1024]>(),
             b"unexpected attribute string: '%s'\0".as_ptr() as *const ::core::ffi::c_char,
             *atts.offset(0isize),
@@ -598,18 +513,11 @@ pub unsafe extern "C" fn triplet_end_checker(
     mut userData: *mut ::core::ffi::c_void,
     mut name: *const XML_Char,
 ) {
-    let mut elemstr: *mut *mut XML_Char =
-        userData as *mut *mut XML_Char;
-    if strcmp(
-        *elemstr.offset(0),
-        
-        name,
-    ) != 0
-    {
+    let mut elemstr: *mut *mut XML_Char = userData as *mut *mut XML_Char;
+    if strcmp(*elemstr.offset(0), name) != 0 {
         let mut buffer: [::core::ffi::c_char; 1024] = [0; 1024];
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
-            
             ::core::mem::size_of::<[::core::ffi::c_char; 1024]>(),
             b"unexpected end string: '%s'\0".as_ptr() as *const ::core::ffi::c_char,
             name,
@@ -630,41 +538,15 @@ pub unsafe extern "C" fn overwrite_start_checker(
     mut name: *const XML_Char,
     mut atts: *mut *const XML_Char,
 ) {
-    let mut storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"start \0".as_ptr() as *const XML_Char,
-        6,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        name,
-        -1,
-    );
+    let mut storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, b"start \0".as_ptr() as *const XML_Char, 6);
+    CharData_AppendXMLChars(storage, name, -1);
     while !(*atts).is_null() {
-        CharData_AppendXMLChars(
-            
-            storage,
-            b"\nattribute \0".as_ptr() as *const XML_Char,
-            11,
-        );
-        CharData_AppendXMLChars(
-            
-            storage,
-            *atts,
-            -1,
-        );
+        CharData_AppendXMLChars(storage, b"\nattribute \0".as_ptr() as *const XML_Char, 11);
+        CharData_AppendXMLChars(storage, *atts, -1);
         atts = atts.offset(2);
     }
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"\n\0".as_ptr() as *const XML_Char,
-        1,
-    );
+    CharData_AppendXMLChars(storage, b"\n\0".as_ptr() as *const XML_Char, 1);
 }
 #[no_mangle]
 
@@ -672,26 +554,10 @@ pub unsafe extern "C" fn overwrite_end_checker(
     mut userData: *mut ::core::ffi::c_void,
     mut name: *const XML_Char,
 ) {
-    let mut storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"end \0".as_ptr() as *const XML_Char,
-        4,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        name,
-        -1,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"\n\0".as_ptr() as *const XML_Char,
-        1,
-    );
+    let mut storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, b"end \0".as_ptr() as *const XML_Char, 4);
+    CharData_AppendXMLChars(storage, name, -1);
+    CharData_AppendXMLChars(storage, b"\n\0".as_ptr() as *const XML_Char, 1);
 }
 #[no_mangle]
 
@@ -714,10 +580,7 @@ pub unsafe extern "C" fn start_ns_clearing_start_element(
     mut prefix: *const XML_Char,
     mut uri: *const XML_Char,
 ) {
-    XML_SetStartElementHandler(
-        userData as XML_Parser,
-        None,
-    );
+    XML_SetStartElementHandler(userData as XML_Parser, None);
 }
 #[no_mangle]
 
@@ -751,7 +614,6 @@ pub unsafe extern "C" fn UnknownEncodingHandler(
     mut info: *mut XML_Encoding,
 ) -> ::core::ffi::c_int {
     if strcmp(
-        
         encoding,
         b"unsupported-encoding\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -780,7 +642,7 @@ pub unsafe extern "C" fn UnrecognisedEncodingHandler(
 ) -> ::core::ffi::c_int {
     (*info).data = NULL;
     (*info).convert = None;
-    (*info).release =  Some(dummy_release as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ());
+    (*info).release = Some(dummy_release as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ());
     return XML_STATUS_ERROR as ::core::ffi::c_int;
 }
 #[no_mangle]
@@ -791,7 +653,6 @@ pub unsafe extern "C" fn unknown_released_encoding_handler(
     mut info: *mut XML_Encoding,
 ) -> ::core::ffi::c_int {
     if strcmp(
-        
         encoding,
         b"unsupported-encoding\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -805,7 +666,6 @@ pub unsafe extern "C" fn unknown_released_encoding_handler(
         (*info).data = NULL;
         (*info).convert = None;
         (*info).release =
-            
             Some(dummy_release as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ());
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
@@ -823,14 +683,10 @@ unsafe extern "C" fn prefix_converter(
     mut data: *mut ::core::ffi::c_void,
     mut s: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    if *s.offset(0) as ::core::ffi::c_int
-        == -1
-    {
+    if *s.offset(0) as ::core::ffi::c_int == -1 {
         return -1i32;
     }
-    return *s.offset(1) as ::core::ffi::c_int
-        + (*s.offset(0) as ::core::ffi::c_int
-            & 0x7f)
+    return *s.offset(1) as ::core::ffi::c_int + (*s.offset(0) as ::core::ffi::c_int & 0x7f)
         & 0x1ff;
 }
 #[no_mangle]
@@ -843,32 +699,26 @@ pub unsafe extern "C" fn MiscEncodingHandler(
     let mut i: ::core::ffi::c_int = 0;
     let mut high_map: ::core::ffi::c_int = -2;
     if strcmp(
-        
         encoding,
         b"invalid-9\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
         || strcmp(
-            
             encoding,
             b"ascii-like\0".as_ptr() as *const ::core::ffi::c_char,
         ) == 0
         || strcmp(
-            
             encoding,
             b"invalid-len\0".as_ptr() as *const ::core::ffi::c_char,
         ) == 0
         || strcmp(
-            
             encoding,
             b"invalid-a\0".as_ptr() as *const ::core::ffi::c_char,
         ) == 0
         || strcmp(
-            
             encoding,
             b"invalid-surrogate\0".as_ptr() as *const ::core::ffi::c_char,
         ) == 0
         || strcmp(
-            
             encoding,
             b"invalid-high\0".as_ptr() as *const ::core::ffi::c_char,
         ) == 0
@@ -885,7 +735,6 @@ pub unsafe extern "C" fn MiscEncodingHandler(
         i += 1;
     }
     if strcmp(
-        
         encoding,
         b"invalid-9\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -893,7 +742,6 @@ pub unsafe extern "C" fn MiscEncodingHandler(
         (*info).map[9usize] = 5i32;
     }
     if strcmp(
-        
         encoding,
         b"invalid-len\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -901,7 +749,6 @@ pub unsafe extern "C" fn MiscEncodingHandler(
         (*info).map[0x81usize] = -5i32;
     }
     if strcmp(
-        
         encoding,
         b"invalid-a\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -909,7 +756,6 @@ pub unsafe extern "C" fn MiscEncodingHandler(
         (*info).map[0x82usize] = 'a' as i32;
     }
     if strcmp(
-        
         encoding,
         b"invalid-surrogate\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -917,7 +763,6 @@ pub unsafe extern "C" fn MiscEncodingHandler(
         (*info).map[0x83usize] = 0xd801i32;
     }
     if strcmp(
-        
         encoding,
         b"invalid-high\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -927,12 +772,11 @@ pub unsafe extern "C" fn MiscEncodingHandler(
     (*info).data = data;
     (*info).release = None;
     if strcmp(
-        
         encoding,
         b"failing-conv\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
     {
-        (*info).convert =  Some(
+        (*info).convert = Some(
             failing_converter
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
@@ -940,12 +784,11 @@ pub unsafe extern "C" fn MiscEncodingHandler(
                 ) -> ::core::ffi::c_int,
         );
     } else if strcmp(
-        
         encoding,
         b"prefix-conv\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
     {
-        (*info).convert =  Some(
+        (*info).convert = Some(
             prefix_converter
                 as unsafe extern "C" fn(
                     *mut ::core::ffi::c_void,
@@ -1004,22 +847,12 @@ pub unsafe extern "C" fn external_entity_optioner(
 ) -> ::core::ffi::c_int {
     let mut options: *mut crate::src::tests::handlers::ExtOption =
         *(parser as *mut *mut ::core::ffi::c_void) as *mut crate::src::tests::handlers::ExtOption;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     while !(*options).parse_text.is_null() {
-        if strcmp(
-            
-            systemId,
-            
-            (*options).system_id,
-        ) == 0
-        {
+        if strcmp(systemId, (*options).system_id) == 0 {
             let mut rc: XML_Status = XML_STATUS_ERROR;
-            ext_parser = XML_ExternalEntityParserCreate(
-                parser,
-                context,
-                ::core::ptr::null::<XML_Char>(),
-            );
+            ext_parser =
+                XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
             if ext_parser.is_null() {
                 return XML_STATUS_ERROR as ::core::ffi::c_int;
             }
@@ -1050,15 +883,9 @@ pub unsafe extern "C" fn external_entity_loader(
     mut systemId: *const XML_Char,
     mut publicId: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    let mut test_data: *mut ExtTest =
-        *(parser as *mut *mut ::core::ffi::c_void) as *mut ExtTest;
-    let mut extparser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    extparser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut test_data: *mut ExtTest = *(parser as *mut *mut ::core::ffi::c_void) as *mut ExtTest;
+    let mut extparser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    extparser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if extparser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1068,8 +895,7 @@ pub unsafe extern "C" fn external_entity_loader(
         );
     }
     if !(*test_data).encoding.is_null() {
-        if XML_SetEncoding(extparser, (*test_data).encoding) as u64 == 0
-        {
+        if XML_SetEncoding(extparser, (*test_data).encoding) as u64 == 0 {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1079,13 +905,12 @@ pub unsafe extern "C" fn external_entity_loader(
             );
         }
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         extparser,
         (*test_data).parse_text,
         strlen((*test_data).parse_text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             extparser,
@@ -1107,15 +932,10 @@ pub unsafe extern "C" fn external_entity_faulter(
     mut systemId: *const XML_Char,
     mut publicId: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut fault: *mut crate::src::tests::handlers::ExtFaults =
         *(parser as *mut *mut ::core::ffi::c_void) as *mut crate::src::tests::handlers::ExtFaults;
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1134,13 +954,12 @@ pub unsafe extern "C" fn external_entity_faulter(
             );
         }
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         (*fault).parse_text,
         strlen((*fault).parse_text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1149,9 +968,7 @@ pub unsafe extern "C" fn external_entity_faulter(
             (*fault).fail_text,
         );
     }
-    if  XML_GetErrorCode(ext_parser)
-        !=  (*fault).error
-    {
+    if XML_GetErrorCode(ext_parser) != (*fault).error {
         _xml_failure(
             ext_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1184,14 +1001,12 @@ pub unsafe extern "C" fn external_entity_resetter(
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char =
         b"<!ELEMENT doc (#PCDATA)*>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    let mut status: XML_ParsingStatus = XML_ParsingStatus { parsing:  XML_INITIALIZED, finalBuffer:  0 };
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut status: XML_ParsingStatus = XML_ParsingStatus {
+        parsing: XML_INITIALIZED,
+        finalBuffer: 0,
+    };
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1200,14 +1015,8 @@ pub unsafe extern "C" fn external_entity_resetter(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    XML_GetParsingStatus(
-        ext_parser,
-        
-        &raw mut status,
-    );
-    if  status.parsing
-        !=  XML_INITIALIZED
-    {
+    XML_GetParsingStatus(ext_parser, &raw mut status);
+    if status.parsing != XML_INITIALIZED {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1215,13 +1024,12 @@ pub unsafe extern "C" fn external_entity_resetter(
             b"Parsing status is not INITIALIZED\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             parser,
@@ -1231,14 +1039,8 @@ pub unsafe extern "C" fn external_entity_resetter(
         );
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
-    XML_GetParsingStatus(
-        ext_parser,
-        
-        &raw mut status,
-    );
-    if  status.parsing
-        !=  XML_FINISHED
-    {
+    XML_GetParsingStatus(ext_parser, &raw mut status);
+    if status.parsing != XML_FINISHED {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1246,13 +1048,12 @@ pub unsafe extern "C" fn external_entity_resetter(
             b"Parsing status is not FINISHED\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1261,9 +1062,7 @@ pub unsafe extern "C" fn external_entity_resetter(
             b"Parsing when finished not faulted\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  XML_GetErrorCode(ext_parser)
-        !=  XML_ERROR_FINISHED
-    {
+    if XML_GetErrorCode(ext_parser) != XML_ERROR_FINISHED {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1272,18 +1071,9 @@ pub unsafe extern "C" fn external_entity_resetter(
                 as *const ::core::ffi::c_char,
         );
     }
-    XML_ParserReset(
-        ext_parser,
-        ::core::ptr::null::<XML_Char>(),
-    );
-    XML_GetParsingStatus(
-        ext_parser,
-        
-        &raw mut status,
-    );
-    if  status.parsing
-        !=  XML_FINISHED
-    {
+    XML_ParserReset(ext_parser, ::core::ptr::null::<XML_Char>());
+    XML_GetParsingStatus(ext_parser, &raw mut status);
+    if status.parsing != XML_FINISHED {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1302,9 +1092,7 @@ pub unsafe extern "C" fn entity_suspending_decl_handler(
     mut model: *mut XML_Content,
 ) {
     let mut ext_parser: XML_Parser = userData as XML_Parser;
-    if  XML_StopParser(ext_parser, XML_TRUE)
-        !=  XML_STATUS_ERROR
-    {
+    if XML_StopParser(ext_parser, XML_TRUE) != XML_STATUS_ERROR {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1313,9 +1101,7 @@ pub unsafe extern "C" fn entity_suspending_decl_handler(
                 as *const ::core::ffi::c_char,
         );
     }
-    if  XML_GetErrorCode(ext_parser)
-        !=  XML_ERROR_SUSPEND_PE
-    {
+    if XML_GetErrorCode(ext_parser) != XML_ERROR_SUSPEND_PE {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1324,16 +1110,8 @@ pub unsafe extern "C" fn entity_suspending_decl_handler(
                 as *const ::core::ffi::c_char,
         );
     }
-    XML_SetElementDeclHandler(
-        ext_parser,
-        
-        None,
-    );
-    XML_FreeContentModel(
-        g_parser,
-        
-        model,
-    );
+    XML_SetElementDeclHandler(ext_parser, None);
+    XML_FreeContentModel(g_parser, model);
 }
 #[no_mangle]
 
@@ -1346,13 +1124,8 @@ pub unsafe extern "C" fn external_entity_suspender(
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char =
         b"<!ELEMENT doc (#PCDATA)*>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1373,13 +1146,12 @@ pub unsafe extern "C" fn external_entity_suspender(
         )),
     );
     XML_SetUserData(ext_parser, ext_parser as *mut ::core::ffi::c_void);
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             ext_parser,
@@ -1415,15 +1187,13 @@ pub unsafe extern "C" fn external_entity_suspend_xmldecl(
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='us-ascii'?>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    let mut status: XML_ParsingStatus = XML_ParsingStatus { parsing:  XML_INITIALIZED, finalBuffer:  0 };
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut status: XML_ParsingStatus = XML_ParsingStatus {
+        parsing: XML_INITIALIZED,
+        finalBuffer: 0,
+    };
     let mut rc: XML_Status = XML_STATUS_ERROR;
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1451,15 +1221,9 @@ pub unsafe extern "C" fn external_entity_suspend_xmldecl(
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
     );
-    XML_GetParsingStatus(
-        ext_parser,
-        
-        &raw mut status,
-    );
+    XML_GetParsingStatus(ext_parser, &raw mut status);
     if g_resumable != 0 {
-        if  rc
-            ==  XML_STATUS_ERROR
-        {
+        if rc == XML_STATUS_ERROR {
             _xml_failure(
                 ext_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -1467,9 +1231,7 @@ pub unsafe extern "C" fn external_entity_suspend_xmldecl(
                 631i32,
             );
         }
-        if  status.parsing
-            !=  XML_SUSPENDED
-        {
+        if status.parsing != XML_SUSPENDED {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1478,9 +1240,7 @@ pub unsafe extern "C" fn external_entity_suspend_xmldecl(
             );
         }
     } else {
-        if  rc
-            !=  XML_STATUS_ERROR
-        {
+        if rc != XML_STATUS_ERROR {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1488,9 +1248,7 @@ pub unsafe extern "C" fn external_entity_suspend_xmldecl(
                 b"Ext parsing not aborted\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if  XML_GetErrorCode(ext_parser)
-            !=  XML_ERROR_ABORTED
-        {
+        if XML_GetErrorCode(ext_parser) != XML_ERROR_ABORTED {
             _xml_failure(
                 ext_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -1498,9 +1256,7 @@ pub unsafe extern "C" fn external_entity_suspend_xmldecl(
                 638i32,
             );
         }
-        if  status.parsing
-            !=  XML_FINISHED
-        {
+        if status.parsing != XML_FINISHED {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1521,18 +1277,12 @@ pub unsafe extern "C" fn external_entity_suspending_faulter(
     mut systemId: *const XML_Char,
     mut publicId: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut fault: *mut crate::src::tests::handlers::ExtFaults =
         *(parser as *mut *mut ::core::ffi::c_void) as *mut crate::src::tests::handlers::ExtFaults;
     let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-    let mut parse_len: ::core::ffi::c_int =
-        strlen((*fault).parse_text) as ::core::ffi::c_int;
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut parse_len: ::core::ffi::c_int = strlen((*fault).parse_text) as ::core::ffi::c_int;
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1580,12 +1330,8 @@ pub unsafe extern "C" fn external_entity_suspending_faulter(
         (*fault).parse_text as *const ::core::ffi::c_void,
         parse_len as size_t,
     );
-    if  XML_ParseBuffer(
-        ext_parser,
-        parse_len,
-        XML_FALSE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_SUSPENDED
+    if XML_ParseBuffer(ext_parser, parse_len, XML_FALSE as ::core::ffi::c_int)
+        != XML_STATUS_SUSPENDED
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1594,9 +1340,7 @@ pub unsafe extern "C" fn external_entity_suspending_faulter(
             b"XML declaration did not suspend\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  XML_ResumeParser(ext_parser)
-        !=  XML_STATUS_OK
-    {
+    if XML_ResumeParser(ext_parser) != XML_STATUS_OK {
         _xml_failure(
             ext_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1604,13 +1348,7 @@ pub unsafe extern "C" fn external_entity_suspending_faulter(
             674i32,
         );
     }
-    if  XML_ParseBuffer(
-        ext_parser,
-        0,
-        XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
-    {
+    if XML_ParseBuffer(ext_parser, 0, XML_TRUE as ::core::ffi::c_int) != XML_STATUS_ERROR {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1618,9 +1356,7 @@ pub unsafe extern "C" fn external_entity_suspending_faulter(
             (*fault).fail_text,
         );
     }
-    if  XML_GetErrorCode(ext_parser)
-        !=  (*fault).error
-    {
+    if XML_GetErrorCode(ext_parser) != (*fault).error {
         _xml_failure(
             ext_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1652,13 +1388,8 @@ pub unsafe extern "C" fn external_entity_cr_catcher(
     mut publicId: *const XML_Char,
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char = b"\r\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1678,13 +1409,12 @@ pub unsafe extern "C" fn external_entity_cr_catcher(
                 ) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             ext_parser,
@@ -1706,13 +1436,8 @@ pub unsafe extern "C" fn external_entity_bad_cr_catcher(
     mut publicId: *const XML_Char,
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char = b"<tag>\r\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1732,13 +1457,12 @@ pub unsafe extern "C" fn external_entity_bad_cr_catcher(
                 ) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_OK
+    ) == XML_STATUS_OK
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1747,9 +1471,7 @@ pub unsafe extern "C" fn external_entity_bad_cr_catcher(
             b"Async entity error not caught\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  XML_GetErrorCode(ext_parser)
-        !=  XML_ERROR_ASYNC_ENTITY
-    {
+    if XML_GetErrorCode(ext_parser) != XML_ERROR_ASYNC_ENTITY {
         _xml_failure(
             ext_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1770,13 +1492,8 @@ pub unsafe extern "C" fn external_entity_rsqb_catcher(
     mut publicId: *const XML_Char,
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char = b"<tag>]\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1796,13 +1513,12 @@ pub unsafe extern "C" fn external_entity_rsqb_catcher(
                 ) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1811,9 +1527,7 @@ pub unsafe extern "C" fn external_entity_rsqb_catcher(
             b"Async entity error not caught\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  XML_GetErrorCode(ext_parser)
-        !=  XML_ERROR_ASYNC_ENTITY
-    {
+    if XML_GetErrorCode(ext_parser) != XML_ERROR_ASYNC_ENTITY {
         _xml_failure(
             ext_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1837,21 +1551,14 @@ pub unsafe extern "C" fn external_entity_good_cdata_ascii(
         b"<a><![CDATA[<greeting>Hello, world!</greeting>]]></a>\0".as_ptr()
             as *const ::core::ffi::c_char;
     let mut expected: *const XML_Char =
-        b"<greeting>Hello, world!</greeting>\0".as_ptr()
-            as *const XML_Char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    CharData_Init(
-        
-        &raw mut storage,
-    );
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+        b"<greeting>Hello, world!</greeting>\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    CharData_Init(&raw mut storage);
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1860,10 +1567,7 @@ pub unsafe extern "C" fn external_entity_good_cdata_ascii(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    XML_SetUserData(
-        ext_parser,
-        &raw mut storage as *mut ::core::ffi::c_void,
-    );
+    XML_SetUserData(ext_parser, &raw mut storage as *mut ::core::ffi::c_void);
     XML_SetCharacterDataHandler(
         ext_parser,
         Some(
@@ -1875,13 +1579,12 @@ pub unsafe extern "C" fn external_entity_good_cdata_ascii(
                 ) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             ext_parser,
@@ -1890,11 +1593,7 @@ pub unsafe extern "C" fn external_entity_good_cdata_ascii(
             790i32,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        expected,
-    );
+    CharData_CheckXMLChars(&raw mut storage, expected);
     XML_ParserFree(ext_parser);
     return XML_STATUS_OK as ::core::ffi::c_int;
 }
@@ -1910,13 +1609,8 @@ pub unsafe extern "C" fn external_entity_param_checker(
     let mut text: *const ::core::ffi::c_char =
         b"<!-- Subordinate parser -->\n<!ELEMENT doc (#PCDATA)*>\0".as_ptr()
             as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1926,13 +1620,12 @@ pub unsafe extern "C" fn external_entity_param_checker(
         );
     }
     g_handler_data = ext_parser as *const ::core::ffi::c_void;
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             parser,
@@ -1957,8 +1650,7 @@ pub unsafe extern "C" fn external_entity_ref_param_checker(
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char =
         b"<!ELEMENT doc (#PCDATA)*>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if parameter as *mut ::core::ffi::c_void != g_handler_data as *mut ::core::ffi::c_void {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1968,11 +1660,7 @@ pub unsafe extern "C" fn external_entity_ref_param_checker(
                 as *const ::core::ffi::c_char,
         );
     }
-    ext_parser = XML_ExternalEntityParserCreate(
-        g_parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(g_parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -1981,13 +1669,12 @@ pub unsafe extern "C" fn external_entity_ref_param_checker(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             ext_parser,
@@ -2013,16 +1700,11 @@ pub unsafe extern "C" fn external_entity_param(
             .as_ptr() as *const ::core::ffi::c_char;
     let mut text2: *const ::core::ffi::c_char =
         b"<!ELEMENT el EMPTY>\n<el/>\n\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if systemId.is_null() {
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2032,18 +1714,16 @@ pub unsafe extern "C" fn external_entity_param(
         );
     }
     if strcmp(
-        
         systemId,
         b"004-1.ent\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
     {
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             ext_parser,
             text1,
             strlen(text1) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2052,9 +1732,7 @@ pub unsafe extern "C" fn external_entity_param(
                 b"Inner DTD with invalid tag not rejected\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if  XML_GetErrorCode(ext_parser)
-            !=  XML_ERROR_EXTERNAL_ENTITY_HANDLING
-        {
+        if XML_GetErrorCode(ext_parser) != XML_ERROR_EXTERNAL_ENTITY_HANDLING {
             _xml_failure(
                 ext_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2063,18 +1741,16 @@ pub unsafe extern "C" fn external_entity_param(
             );
         }
     } else if strcmp(
-        
         systemId,
         b"004-2.ent\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
     {
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             ext_parser,
             text2,
             strlen(text2) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2084,9 +1760,7 @@ pub unsafe extern "C" fn external_entity_param(
                     as *const ::core::ffi::c_char,
             );
         }
-        if  XML_GetErrorCode(ext_parser)
-            !=  XML_ERROR_SYNTAX
-        {
+        if XML_GetErrorCode(ext_parser) != XML_ERROR_SYNTAX {
             _xml_failure(
                 ext_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2116,13 +1790,8 @@ pub unsafe extern "C" fn external_entity_load_ignore(
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char =
         b"<![IGNORE[<!ELEMENT e (#PCDATA)*>]]>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2131,13 +1800,12 @@ pub unsafe extern "C" fn external_entity_load_ignore(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             parser,
@@ -2164,13 +1832,8 @@ pub unsafe extern "C" fn external_entity_load_ignore_utf16(
     >(
         *b"<\0!\0[\0I\0G\0N\0O\0R\0E\0[\0<\0!\0E\0L\0E\0M\0E\0N\0T\0 \0e\0 \0(\0#\0P\0C\0D\0A\0T\0A\0)\0*\0>\0]\0]\0>\0\0",
     );
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2179,14 +1842,12 @@ pub unsafe extern "C" fn external_entity_load_ignore_utf16(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         &raw const text as *const ::core::ffi::c_char,
-        ::core::mem::size_of::<[::core::ffi::c_char; 73]>() as ::core::ffi::c_int
-            - 1,
+        ::core::mem::size_of::<[::core::ffi::c_char; 73]>() as ::core::ffi::c_int - 1,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             parser,
@@ -2213,13 +1874,8 @@ pub unsafe extern "C" fn external_entity_load_ignore_utf16_be(
     >(
         *b"\0<\0!\0[\0I\0G\0N\0O\0R\0E\0[\0<\0!\0E\0L\0E\0M\0E\0N\0T\0 \0e\0 \0(\0#\0P\0C\0D\0A\0T\0A\0)\0*\0>\0]\0]\0>\0",
     );
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2228,14 +1884,12 @@ pub unsafe extern "C" fn external_entity_load_ignore_utf16_be(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         &raw const text as *const ::core::ffi::c_char,
-        ::core::mem::size_of::<[::core::ffi::c_char; 73]>() as ::core::ffi::c_int
-            - 1,
+        ::core::mem::size_of::<[::core::ffi::c_char; 73]>() as ::core::ffi::c_int - 1,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             parser,
@@ -2259,16 +1913,11 @@ pub unsafe extern "C" fn external_entity_valuer(
     let mut text1: *const ::core::ffi::c_char =
         b"<!ELEMENT doc EMPTY>\n<!ENTITY % e1 SYSTEM '004-2.ent'>\n<!ENTITY % e2 '%e1;'>\n%e1;\n\0"
             .as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if systemId.is_null() {
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2278,18 +1927,16 @@ pub unsafe extern "C" fn external_entity_valuer(
         );
     }
     if strcmp(
-        
         systemId,
         b"004-1.ent\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
     {
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             ext_parser,
             text1,
             strlen(text1) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            ==  XML_STATUS_ERROR
+        ) == XML_STATUS_ERROR
         {
             _xml_failure(
                 ext_parser,
@@ -2299,7 +1946,6 @@ pub unsafe extern "C" fn external_entity_valuer(
             );
         }
     } else if strcmp(
-        
         systemId,
         b"004-2.ent\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -2315,12 +1961,8 @@ pub unsafe extern "C" fn external_entity_valuer(
             strlen((*fault).parse_text) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
         );
-        if  (*fault).error
-            ==  XML_ERROR_NONE
-        {
-            if  status
-                ==  XML_STATUS_ERROR
-            {
+        if (*fault).error == XML_ERROR_NONE {
+            if status == XML_STATUS_ERROR {
                 _xml_failure(
                     ext_parser,
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2329,9 +1971,7 @@ pub unsafe extern "C" fn external_entity_valuer(
                 );
             }
         } else {
-            if  status
-                !=  XML_STATUS_ERROR
-            {
+            if status != XML_STATUS_ERROR {
                 _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
@@ -2340,11 +1980,8 @@ pub unsafe extern "C" fn external_entity_valuer(
                 );
             }
             error = XML_GetErrorCode(ext_parser);
-            if  error !=  (*fault).error
-                && ((*fault).error
-                    !=  XML_ERROR_XML_DECL
-                    ||  error
-                        !=  XML_ERROR_TEXT_DECL)
+            if error != (*fault).error
+                && ((*fault).error != XML_ERROR_XML_DECL || error != XML_ERROR_TEXT_DECL)
             {
                 _xml_failure(
                     ext_parser,
@@ -2372,16 +2009,11 @@ pub unsafe extern "C" fn external_entity_not_standalone(
             as *const ::core::ffi::c_char;
     let mut text2: *const ::core::ffi::c_char =
         b"<!ATTLIST doc a1 CDATA 'value'>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if systemId.is_null() {
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2390,12 +2022,7 @@ pub unsafe extern "C" fn external_entity_not_standalone(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if strcmp(
-        
-        systemId,
-        b"foo\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0
-    {
+    if strcmp(systemId, b"foo\0".as_ptr() as *const ::core::ffi::c_char) == 0 {
         XML_SetNotStandaloneHandler(
             ext_parser,
             Some(
@@ -2403,13 +2030,12 @@ pub unsafe extern "C" fn external_entity_not_standalone(
                     as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int,
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             ext_parser,
             text1,
             strlen(text1) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2418,9 +2044,7 @@ pub unsafe extern "C" fn external_entity_not_standalone(
                 b"Expected not standalone rejection\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if  XML_GetErrorCode(ext_parser)
-            !=  XML_ERROR_NOT_STANDALONE
-        {
+        if XML_GetErrorCode(ext_parser) != XML_ERROR_NOT_STANDALONE {
             _xml_failure(
                 ext_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2431,19 +2055,13 @@ pub unsafe extern "C" fn external_entity_not_standalone(
         XML_SetNotStandaloneHandler(ext_parser, None);
         XML_ParserFree(ext_parser);
         return XML_STATUS_ERROR as ::core::ffi::c_int;
-    } else if strcmp(
-        
-        systemId,
-        b"bar\0".as_ptr() as *const ::core::ffi::c_char,
-    ) == 0
-    {
-        if  _XML_Parse_SINGLE_BYTES(
+    } else if strcmp(systemId, b"bar\0".as_ptr() as *const ::core::ffi::c_char) == 0 {
+        if _XML_Parse_SINGLE_BYTES(
             ext_parser,
             text2,
             strlen(text2) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            ==  XML_STATUS_ERROR
+        ) == XML_STATUS_ERROR
         {
             _xml_failure(
                 ext_parser,
@@ -2470,16 +2088,11 @@ pub unsafe extern "C" fn external_entity_value_aborter(
             .as_ptr() as *const ::core::ffi::c_char;
     let mut text2: *const ::core::ffi::c_char =
         b"<?xml version='1.0' encoding='utf-8'?>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if systemId.is_null() {
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2489,18 +2102,16 @@ pub unsafe extern "C" fn external_entity_value_aborter(
         );
     }
     if strcmp(
-        
         systemId,
         b"004-1.ent\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
     {
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             ext_parser,
             text1,
             strlen(text1) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            ==  XML_STATUS_ERROR
+        ) == XML_STATUS_ERROR
         {
             _xml_failure(
                 ext_parser,
@@ -2511,7 +2122,6 @@ pub unsafe extern "C" fn external_entity_value_aborter(
         }
     }
     if strcmp(
-        
         systemId,
         b"004-2.ent\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -2528,17 +2138,13 @@ pub unsafe extern "C" fn external_entity_value_aborter(
                     ) -> (),
             ),
         );
-        XML_SetUserData(
-            ext_parser,
-            ext_parser as *mut ::core::ffi::c_void,
-        );
-        if  _XML_Parse_SINGLE_BYTES(
+        XML_SetUserData(ext_parser, ext_parser as *mut ::core::ffi::c_void);
+        if _XML_Parse_SINGLE_BYTES(
             ext_parser,
             text2,
             strlen(text2) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  XML_STATUS_ERROR
+        ) != XML_STATUS_ERROR
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2547,9 +2153,7 @@ pub unsafe extern "C" fn external_entity_value_aborter(
                 b"Aborted parse not faulted\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if  XML_GetErrorCode(ext_parser)
-            !=  XML_ERROR_ABORTED
-        {
+        if XML_GetErrorCode(ext_parser) != XML_ERROR_ABORTED {
             _xml_failure(
                 ext_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -2575,31 +2179,21 @@ pub unsafe extern "C" fn external_entity_public(
     let mut text2: *const ::core::ffi::c_char =
         b"<!ATTLIST doc a CDATA 'value'>\0".as_ptr() as *const ::core::ffi::c_char;
     let mut text: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut parse_res: ::core::ffi::c_int = 0;
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
     if !systemId.is_null()
         && strcmp(
-            
             systemId,
             b"http://example.org/\0".as_ptr() as *const ::core::ffi::c_char,
         ) == 0
     {
         text = text1;
     } else if !publicId.is_null()
-        && strcmp(
-            
-            publicId,
-            b"foo\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0
+        && strcmp(publicId, b"foo\0".as_ptr() as *const ::core::ffi::c_char) == 0
     {
         text = text2;
     } else {
@@ -2643,25 +2237,14 @@ pub unsafe extern "C" fn external_entity_devaluer(
     let mut text: *const ::core::ffi::c_char =
         b"<!ELEMENT doc EMPTY>\n<!ENTITY % e1 SYSTEM 'bar'>\n%e1;\n\0".as_ptr()
             as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut clear_handler_flag: ::core::ffi::c_int =
         !(*(parser as *mut *mut ::core::ffi::c_void)).is_null() as ::core::ffi::c_int;
-    if systemId.is_null()
-        || strcmp(
-            
-            systemId,
-            b"bar\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0
+    if systemId.is_null() || strcmp(systemId, b"bar\0".as_ptr() as *const ::core::ffi::c_char) == 0
     {
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
-    if strcmp(
-        
-        systemId,
-        b"foo\0".as_ptr() as *const ::core::ffi::c_char,
-    ) != 0
-    {
+    if strcmp(systemId, b"foo\0".as_ptr() as *const ::core::ffi::c_char) != 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -2669,11 +2252,7 @@ pub unsafe extern "C" fn external_entity_devaluer(
             b"Unexpected system ID\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2685,13 +2264,12 @@ pub unsafe extern "C" fn external_entity_devaluer(
     if clear_handler_flag != 0 {
         XML_SetExternalEntityRefHandler(ext_parser, None);
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             ext_parser,
@@ -2714,13 +2292,8 @@ pub unsafe extern "C" fn external_entity_oneshot_loader(
 ) -> ::core::ffi::c_int {
     let mut test_data: *mut crate::src::tests::handlers::ExtHdlrData =
         *(parser as *mut *mut ::core::ffi::c_void) as *mut crate::src::tests::handlers::ExtHdlrData;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2730,13 +2303,12 @@ pub unsafe extern "C" fn external_entity_oneshot_loader(
         );
     }
     XML_SetExternalEntityRefHandler(ext_parser, (*test_data).handler);
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         (*test_data).parse_text,
         strlen((*test_data).parse_text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             ext_parser,
@@ -2759,13 +2331,8 @@ pub unsafe extern "C" fn external_entity_loader2(
 ) -> ::core::ffi::c_int {
     let mut test_data: *mut crate::src::tests::handlers::ExtTest2 =
         *(parser as *mut *mut ::core::ffi::c_void) as *mut crate::src::tests::handlers::ExtTest2;
-    let mut extparser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    extparser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut extparser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    extparser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if extparser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2775,8 +2342,7 @@ pub unsafe extern "C" fn external_entity_loader2(
         );
     }
     if !(*test_data).encoding.is_null() {
-        if XML_SetEncoding(extparser, (*test_data).encoding) as u64 == 0
-        {
+        if XML_SetEncoding(extparser, (*test_data).encoding) as u64 == 0 {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -2786,13 +2352,12 @@ pub unsafe extern "C" fn external_entity_loader2(
             );
         }
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         extparser,
         (*test_data).parse_text,
         (*test_data).parse_len,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             extparser,
@@ -2815,13 +2380,8 @@ pub unsafe extern "C" fn external_entity_faulter2(
 ) -> ::core::ffi::c_int {
     let mut test_data: *mut crate::src::tests::handlers::ExtFaults2 =
         *(parser as *mut *mut ::core::ffi::c_void) as *mut crate::src::tests::handlers::ExtFaults2;
-    let mut extparser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    extparser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    let mut extparser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    extparser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if extparser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2831,8 +2391,7 @@ pub unsafe extern "C" fn external_entity_faulter2(
         );
     }
     if !(*test_data).encoding.is_null() {
-        if XML_SetEncoding(extparser, (*test_data).encoding) as u64 == 0
-        {
+        if XML_SetEncoding(extparser, (*test_data).encoding) as u64 == 0 {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -2842,13 +2401,12 @@ pub unsafe extern "C" fn external_entity_faulter2(
             );
         }
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         extparser,
         (*test_data).parse_text,
         (*test_data).parse_len,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2857,9 +2415,7 @@ pub unsafe extern "C" fn external_entity_faulter2(
             (*test_data).fail_text,
         );
     }
-    if  XML_GetErrorCode(extparser)
-        !=  (*test_data).error
-    {
+    if XML_GetErrorCode(extparser) != (*test_data).error {
         _xml_failure(
             extparser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2881,16 +2437,11 @@ pub unsafe extern "C" fn external_entity_unfinished_attlist(
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char = b"<!ELEMENT barf ANY>\n<!ATTLIST barf my_attr (blah|%blah;a|foo) #REQUIRED>\n<!--COMMENT-->\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if systemId.is_null() {
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -2899,13 +2450,12 @@ pub unsafe extern "C" fn external_entity_unfinished_attlist(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         ext_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             ext_parser,
@@ -2928,8 +2478,7 @@ pub unsafe extern "C" fn external_entity_handler(
 ) -> ::core::ffi::c_int {
     let mut user_data: *mut ::core::ffi::c_void = *(parser as *mut *mut ::core::ffi::c_void);
     let mut text: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut p2: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut p2: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if user_data.is_null() {
         text = b"<!ELEMENT doc (e+)>\n<!ATTLIST doc xmlns CDATA #IMPLIED>\n<!ELEMENT e EMPTY>\n\0"
             .as_ptr() as *const ::core::ffi::c_char;
@@ -2938,18 +2487,13 @@ pub unsafe extern "C" fn external_entity_handler(
             as *const ::core::ffi::c_char;
     }
     XML_SetUserData(parser, parser as *mut ::core::ffi::c_void);
-    p2 = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    p2 = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
+    if _XML_Parse_SINGLE_BYTES(
         p2,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             p2,
@@ -2971,18 +2515,14 @@ pub unsafe extern "C" fn external_entity_duff_loader(
     mut systemId: *const XML_Char,
     mut publicId: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    let mut new_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut new_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut i: ::core::ffi::c_uint = 0;
     let max_alloc_count: ::core::ffi::c_uint = 10;
     i = 0;
     while i < max_alloc_count {
         g_allocation_count = i as ::core::ffi::c_int;
-        new_parser = XML_ExternalEntityParserCreate(
-            parser,
-            context,
-            ::core::ptr::null::<XML_Char>(),
-        );
+        new_parser =
+            XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
         if !new_parser.is_null() {
             XML_ParserFree(new_parser);
             break;
@@ -3023,19 +2563,15 @@ pub unsafe extern "C" fn external_entity_dbl_handler(
         *(parser as *mut *mut ::core::ffi::c_void) as *mut ::core::ffi::c_int;
     let mut callno: ::core::ffi::c_int = *pcallno;
     let mut text: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut new_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut new_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut i: ::core::ffi::c_int = 0;
     let max_alloc_count: ::core::ffi::c_int = 20;
     if callno == 0 {
         text = b"<!ELEMENT doc (e+)>\n<!ATTLIST doc xmlns CDATA #IMPLIED>\n<!ELEMENT e EMPTY>\n\0"
             .as_ptr() as *const ::core::ffi::c_char;
         g_allocation_count = 10000;
-        new_parser = XML_ExternalEntityParserCreate(
-            parser,
-            context,
-            ::core::ptr::null::<XML_Char>(),
-        );
+        new_parser =
+            XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
         if new_parser.is_null() {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -3052,11 +2588,8 @@ pub unsafe extern "C" fn external_entity_dbl_handler(
         i = 0;
         while i < max_alloc_count {
             g_allocation_count = callno + i;
-            new_parser = XML_ExternalEntityParserCreate(
-                parser,
-                context,
-                ::core::ptr::null::<XML_Char>(),
-            );
+            new_parser =
+                XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
             if !new_parser.is_null() {
                 break;
             }
@@ -3080,13 +2613,12 @@ pub unsafe extern "C" fn external_entity_dbl_handler(
         }
     }
     g_allocation_count = ALLOC_ALWAYS_SUCCEED;
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         new_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             new_parser,
@@ -3112,18 +2644,14 @@ pub unsafe extern "C" fn external_entity_dbl_handler_2(
         *(parser as *mut *mut ::core::ffi::c_void) as *mut ::core::ffi::c_int;
     let mut callno: ::core::ffi::c_int = *pcallno;
     let mut text: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut new_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut new_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut rv: XML_Status = XML_STATUS_ERROR;
     if callno == 0 {
         text = b"<!ELEMENT doc (e+)>\n<!ATTLIST doc xmlns CDATA #IMPLIED>\n<!ELEMENT e EMPTY>\n\0"
             .as_ptr() as *const ::core::ffi::c_char;
         *pcallno = 1;
-        new_parser = XML_ExternalEntityParserCreate(
-            parser,
-            context,
-            ::core::ptr::null::<XML_Char>(),
-        );
+        new_parser =
+            XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
         if new_parser.is_null() {
             return XML_STATUS_ERROR as ::core::ffi::c_int;
         }
@@ -3136,11 +2664,8 @@ pub unsafe extern "C" fn external_entity_dbl_handler_2(
     } else {
         text = b"<?xml version='1.0' encoding='us-ascii'?><e/>\0".as_ptr()
             as *const ::core::ffi::c_char;
-        new_parser = XML_ExternalEntityParserCreate(
-            parser,
-            context,
-            ::core::ptr::null::<XML_Char>(),
-        );
+        new_parser =
+            XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
         if new_parser.is_null() {
             return XML_STATUS_ERROR as ::core::ffi::c_int;
         }
@@ -3152,9 +2677,7 @@ pub unsafe extern "C" fn external_entity_dbl_handler_2(
         );
     }
     XML_ParserFree(new_parser);
-    if  rv
-        ==  XML_STATUS_ERROR
-    {
+    if rv == XML_STATUS_ERROR {
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
     return XML_STATUS_OK as ::core::ffi::c_int;
@@ -3170,23 +2693,13 @@ pub unsafe extern "C" fn external_entity_alloc_set_encoding(
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char =
         b"<?xml encoding='iso-8859-3'?>\xC3\xA9\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut status: XML_Status = XML_STATUS_ERROR;
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
-    if XML_SetEncoding(
-        ext_parser,
-        b"utf-8\0".as_ptr() as *const XML_Char,
-    ) as u64
-        == 0
-    {
+    if XML_SetEncoding(ext_parser, b"utf-8\0".as_ptr() as *const XML_Char) as u64 == 0 {
         XML_ParserFree(ext_parser);
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
@@ -3197,9 +2710,7 @@ pub unsafe extern "C" fn external_entity_alloc_set_encoding(
         XML_TRUE as ::core::ffi::c_int,
     );
     XML_ParserFree(ext_parser);
-    if  status
-        ==  XML_STATUS_ERROR
-    {
+    if status == XML_STATUS_ERROR {
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
     return XML_STATUS_OK as ::core::ffi::c_int;
@@ -3214,15 +2725,10 @@ pub unsafe extern "C" fn external_entity_reallocator(
     mut publicId: *const XML_Char,
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char = get_buffer_test_text;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
     let mut status: XML_Status = XML_STATUS_ERROR;
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3231,8 +2737,7 @@ pub unsafe extern "C" fn external_entity_reallocator(
             b"Could not create external entity parser\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    g_reallocation_count =
-        *(*(parser as *mut *mut ::core::ffi::c_void) as *mut ::core::ffi::c_int);
+    g_reallocation_count = *(*(parser as *mut *mut ::core::ffi::c_void) as *mut ::core::ffi::c_int);
     buffer = XML_GetBuffer(ext_parser, 1536);
     if buffer.is_null() {
         _fail(
@@ -3253,11 +2758,7 @@ pub unsafe extern "C" fn external_entity_reallocator(
                 .as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    memcpy(
-        buffer,
-        text as *const ::core::ffi::c_void,
-        strlen(text),
-    );
+    memcpy(buffer, text as *const ::core::ffi::c_void, strlen(text));
     status = XML_ParseBuffer(
         ext_parser,
         strlen(text) as ::core::ffi::c_int,
@@ -3265,9 +2766,7 @@ pub unsafe extern "C" fn external_entity_reallocator(
     );
     g_reallocation_count = -1;
     XML_ParserFree(ext_parser);
-    return if  status
-        ==  XML_STATUS_OK
-    {
+    return if status == XML_STATUS_OK {
         XML_STATUS_OK as ::core::ffi::c_int
     } else {
         XML_STATUS_ERROR as ::core::ffi::c_int
@@ -3284,14 +2783,9 @@ pub unsafe extern "C" fn external_entity_alloc(
 ) -> ::core::ffi::c_int {
     let mut text: *const ::core::ffi::c_char =
         *(parser as *mut *mut ::core::ffi::c_void) as *const ::core::ffi::c_char;
-    let mut ext_parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut ext_parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let mut parse_res: ::core::ffi::c_int = 0;
-    ext_parser = XML_ExternalEntityParserCreate(
-        parser,
-        context,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    ext_parser = XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if ext_parser.is_null() {
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
@@ -3322,11 +2816,8 @@ pub unsafe extern "C" fn external_entity_parser_create_alloc_fail_handler(
         );
     }
     g_allocation_count = 3;
-    let encodingName: *const XML_Char =
-        b"UTF-8\0".as_ptr() as *const XML_Char;
-    let ext_parser: XML_Parser =
-        
-        XML_ExternalEntityParserCreate(parser, context, encodingName);
+    let encodingName: *const XML_Char = b"UTF-8\0".as_ptr() as *const XML_Char;
+    let ext_parser: XML_Parser = XML_ExternalEntityParserCreate(parser, context, encodingName);
     if !ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3353,14 +2844,12 @@ pub unsafe extern "C" fn accounting_external_entity_ref_handler(
         as *const crate::src::tests::handlers::AccountingTestCase;
     let mut externalText: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     if strcmp(
-        
         systemId,
         b"first.ent\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
     {
         externalText = (*testCase).firstExternalText;
     } else if strcmp(
-        
         systemId,
         b"second.ent\0".as_ptr() as *const ::core::ffi::c_char,
     ) == 0
@@ -3395,11 +2884,7 @@ pub unsafe extern "C" fn accounting_external_entity_ref_handler(
         );
     };
     let mut entParser: XML_Parser =
-        XML_ExternalEntityParserCreate(
-            parser,
-            context,
-            ::core::ptr::null::<XML_Char>(),
-        );
+        XML_ExternalEntityParserCreate(parser, context, ::core::ptr::null::<XML_Char>());
     if !entParser.is_null() {
     } else {
         __assert_fail(
@@ -3411,7 +2896,7 @@ pub unsafe extern "C" fn accounting_external_entity_ref_handler(
                 .as_ptr() as *const ::core::ffi::c_char,
         );
     };
-    let status: XML_Status =  _XML_Parse_SINGLE_BYTES(
+    let status: XML_Status = _XML_Parse_SINGLE_BYTES(
         entParser,
         externalText,
         strlen(externalText) as ::core::ffi::c_int,
@@ -3446,13 +2931,7 @@ pub unsafe extern "C" fn verify_attlist_decl_handler(
 ) {
     let mut at: *mut crate::src::tests::handlers::AttTest =
         userData as *mut crate::src::tests::handlers::AttTest;
-    if strcmp(
-        
-        element_name,
-        
-        (*at).element_name,
-    ) != 0
-    {
+    if strcmp(element_name, (*at).element_name) != 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -3461,13 +2940,7 @@ pub unsafe extern "C" fn verify_attlist_decl_handler(
                 as *const ::core::ffi::c_char,
         );
     }
-    if strcmp(
-        
-        attr_name,
-        
-        (*at).attr_name,
-    ) != 0
-    {
+    if strcmp(attr_name, (*at).attr_name) != 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -3476,13 +2949,7 @@ pub unsafe extern "C" fn verify_attlist_decl_handler(
                 as *const ::core::ffi::c_char,
         );
     }
-    if strcmp(
-        
-        attr_type,
-        
-        (*at).attr_type,
-    ) != 0
-    {
+    if strcmp(attr_type, (*at).attr_type) != 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -3493,13 +2960,7 @@ pub unsafe extern "C" fn verify_attlist_decl_handler(
     }
     if default_value.is_null() && !(*at).default_value.is_null()
         || !default_value.is_null() && (*at).default_value.is_null()
-        || !default_value.is_null()
-            && strcmp(
-                
-                default_value,
-                
-                (*at).default_value,
-            ) != 0
+        || !default_value.is_null() && strcmp(default_value, (*at).default_value) != 0
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3526,14 +2987,8 @@ pub unsafe extern "C" fn clearing_aborting_character_handler(
     mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
-    XML_StopParser(
-        g_parser,
-        g_resumable,
-    );
-    XML_SetCharacterDataHandler(
-        g_parser,
-        None,
-    );
+    XML_StopParser(g_parser, g_resumable);
+    XML_SetCharacterDataHandler(g_parser, None);
 }
 #[no_mangle]
 
@@ -3542,32 +2997,18 @@ pub unsafe extern "C" fn parser_stop_character_handler(
     mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
-    let mut status: XML_ParsingStatus = XML_ParsingStatus { parsing:  XML_INITIALIZED, finalBuffer:  0 };
-    XML_GetParsingStatus(
-        g_parser,
-        
-        &raw mut status,
-    );
-    if  status.parsing
-        ==  XML_FINISHED
-    {
+    let mut status: XML_ParsingStatus = XML_ParsingStatus {
+        parsing: XML_INITIALIZED,
+        finalBuffer: 0,
+    };
+    XML_GetParsingStatus(g_parser, &raw mut status);
+    if status.parsing == XML_FINISHED {
         return;
     }
-    XML_StopParser(
-        g_parser,
-        g_resumable,
-    );
-    XML_SetCharacterDataHandler(
-        g_parser,
-        None,
-    );
+    XML_StopParser(g_parser, g_resumable);
+    XML_SetCharacterDataHandler(g_parser, None);
     if g_resumable == 0 {
-        if  XML_StopParser(
-            g_parser,
-            XML_FALSE,
-        )
-            !=  XML_STATUS_ERROR
-        {
+        if XML_StopParser(g_parser, XML_FALSE) != XML_STATUS_ERROR {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -3575,9 +3016,7 @@ pub unsafe extern "C" fn parser_stop_character_handler(
                 b"Aborting aborted parser not faulted\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if  XML_GetErrorCode(g_parser)
-            !=  XML_ERROR_FINISHED
-        {
+        if XML_GetErrorCode(g_parser) != XML_ERROR_FINISHED {
             _xml_failure(
                 g_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -3586,12 +3025,7 @@ pub unsafe extern "C" fn parser_stop_character_handler(
             );
         }
     } else if g_abortable != 0 {
-        if  XML_StopParser(
-            g_parser,
-            XML_FALSE,
-        )
-            ==  XML_STATUS_ERROR
-        {
+        if XML_StopParser(g_parser, XML_FALSE) == XML_STATUS_ERROR {
             _xml_failure(
                 g_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -3600,12 +3034,7 @@ pub unsafe extern "C" fn parser_stop_character_handler(
             );
         }
     } else {
-        if  XML_StopParser(
-            g_parser,
-            XML_TRUE,
-        )
-            !=  XML_STATUS_ERROR
-        {
+        if XML_StopParser(g_parser, XML_TRUE) != XML_STATUS_ERROR {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -3613,9 +3042,7 @@ pub unsafe extern "C" fn parser_stop_character_handler(
                 b"Suspending suspended parser not faulted\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if  XML_GetErrorCode(g_parser)
-            !=  XML_ERROR_SUSPENDED
-        {
+        if XML_GetErrorCode(g_parser) != XML_ERROR_SUSPENDED {
             _xml_failure(
                 g_parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0"
@@ -3663,11 +3090,7 @@ pub unsafe extern "C" fn byte_character_handler(
     let mut buffer: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut data: *mut crate::src::tests::handlers::ByteTestData =
         userData as *mut crate::src::tests::handlers::ByteTestData;
-    buffer = XML_GetInputContext(
-        g_parser,
-        &raw mut offset,
-        &raw mut size,
-    );
+    buffer = XML_GetInputContext(g_parser, &raw mut offset, &raw mut size);
     if buffer.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3700,9 +3123,7 @@ pub unsafe extern "C" fn byte_character_handler(
             b"Context size is not full buffer\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_GetCurrentByteIndex(g_parser)
-        != offset as XML_Index
-    {
+    if XML_GetCurrentByteIndex(g_parser) != offset as XML_Index {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -3710,9 +3131,7 @@ pub unsafe extern "C" fn byte_character_handler(
             b"Character byte index incorrect\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if XML_GetCurrentByteCount(g_parser)
-        != len
-    {
+    if XML_GetCurrentByteCount(g_parser) != len {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -3738,13 +3157,11 @@ unsafe extern "C" fn record_call(
     mut funcname: *const ::core::ffi::c_char,
     arg: ::core::ffi::c_int,
 ) {
-    let max_entries: ::core::ffi::c_int = (::core::mem::size_of::<
-        [crate::src::tests::handlers::handler_record_entry; 50],
-    >())
-        .wrapping_div(
-            
-            ::core::mem::size_of::<crate::src::tests::handlers::handler_record_entry>(),
-        ) as ::core::ffi::c_int;
+    let max_entries: ::core::ffi::c_int =
+        (::core::mem::size_of::<[crate::src::tests::handlers::handler_record_entry; 50]>())
+            .wrapping_div(::core::mem::size_of::<
+                crate::src::tests::handlers::handler_record_entry,
+            >()) as ::core::ffi::c_int;
     if !((*rec).count < max_entries) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
@@ -3755,7 +3172,7 @@ unsafe extern "C" fn record_call(
     }
     let c2rust_fresh0 = (*rec).count;
     (*rec).count = (*rec).count + 1;
-    let e: *mut crate::src::tests::handlers::handler_record_entry =  (&raw mut (*rec).entries
+    let e: *mut crate::src::tests::handlers::handler_record_entry = (&raw mut (*rec).entries
         as *mut crate::src::tests::handlers::handler_record_entry)
         .offset(c2rust_fresh0 as isize);
     (*e).name = funcname;
@@ -3822,9 +3239,7 @@ pub unsafe extern "C" fn record_element_start_handler(
     mut atts: *mut *const XML_Char,
 ) {
     CharData_AppendXMLChars(
-        
-        userData
-            as *mut CharData,
+        userData as *mut CharData,
         name,
         strlen(name) as ::core::ffi::c_int,
     );
@@ -3835,20 +3250,9 @@ pub unsafe extern "C" fn record_element_end_handler(
     mut userData: *mut ::core::ffi::c_void,
     mut name: *const XML_Char,
 ) {
-    let mut storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"/\0".as_ptr() as *const XML_Char,
-        1,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        name,
-        -1,
-    );
+    let mut storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, b"/\0".as_ptr() as *const XML_Char, 1);
+    CharData_AppendXMLChars(storage, name, -1);
 }
 #[no_mangle]
 
@@ -3865,16 +3269,14 @@ pub unsafe extern "C" fn _handler_record_get(
             b"too few handler calls\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    return  (&raw const (*storage).entries
+    return (&raw const (*storage).entries
         as *const crate::src::tests::handlers::handler_record_entry)
         .offset(index as isize);
 }
 
-static mut entity_name_to_match: *const XML_Char =
-    ::core::ptr::null::<XML_Char>();
+static mut entity_name_to_match: *const XML_Char = ::core::ptr::null::<XML_Char>();
 
-static mut entity_value_to_match: *const XML_Char =
-    ::core::ptr::null::<XML_Char>();
+static mut entity_value_to_match: *const XML_Char = ::core::ptr::null::<XML_Char>();
 
 static mut entity_match_flag: ::core::ffi::c_int =
     crate::src::tests::handlers::ENTITY_MATCH_NOT_FOUND;
@@ -3895,23 +3297,9 @@ pub unsafe extern "C" fn param_entity_match_handler(
     {
         return;
     }
-    if strcmp(
-        
-        entityName,
-        
-        entity_name_to_match,
-    ) == 0
-    {
-        if value_length
-            != strlen(entity_value_to_match)
-                as ::core::ffi::c_int
-            || strncmp(
-                
-                value,
-                
-                entity_value_to_match,
-                value_length as size_t,
-            ) != 0
+    if strcmp(entityName, entity_name_to_match) == 0 {
+        if value_length != strlen(entity_value_to_match) as ::core::ffi::c_int
+            || strncmp(value, entity_value_to_match, value_length as size_t) != 0
         {
             entity_match_flag = crate::src::tests::handlers::ENTITY_MATCH_FAIL;
         } else {
@@ -3992,9 +3380,7 @@ pub unsafe extern "C" fn data_check_comment_handler(
             b"User data (parser) not correctly set\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if *(userData as *mut *mut ::core::ffi::c_void)
-        != 1i32 as *mut ::core::ffi::c_void
-    {
+    if *(userData as *mut *mut ::core::ffi::c_void) != 1i32 as *mut ::core::ffi::c_void {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4011,8 +3397,7 @@ pub unsafe extern "C" fn selective_aborting_default_handler(
     mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
-    let trigger_char: XML_Char =
-        *(userData as *const XML_Char);
+    let trigger_char: XML_Char = *(userData as *const XML_Char);
     let mut found: ::core::ffi::c_int = 0;
     let mut i: ::core::ffi::c_int = 0;
     while i < len {
@@ -4024,10 +3409,7 @@ pub unsafe extern "C" fn selective_aborting_default_handler(
         }
     }
     if found != 0 {
-        XML_StopParser(
-            g_parser,
-            g_resumable,
-        );
+        XML_StopParser(g_parser, g_resumable);
         XML_SetDefaultHandler(g_parser, None);
     }
 }
@@ -4047,15 +3429,8 @@ pub unsafe extern "C" fn element_decl_suspender(
     mut name: *const XML_Char,
     mut model: *mut XML_Content,
 ) {
-    XML_StopParser(
-        g_parser,
-        XML_TRUE,
-    );
-    XML_FreeContentModel(
-        g_parser,
-        
-        model,
-    );
+    XML_StopParser(g_parser, XML_TRUE);
+    XML_FreeContentModel(g_parser, model);
 }
 #[no_mangle]
 
@@ -4065,12 +3440,7 @@ pub unsafe extern "C" fn suspend_after_element_declaration(
     mut model: *mut XML_Content,
 ) {
     let mut parser: XML_Parser = userData as XML_Parser;
-    if !(XML_StopParser(
-        parser,
-        1,
-    )
-        ==  XML_STATUS_OK)
-    {
+    if !(XML_StopParser(parser, 1) == XML_STATUS_OK) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/handlers.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -4079,7 +3449,7 @@ pub unsafe extern "C" fn suspend_after_element_declaration(
                 as *const ::core::ffi::c_char,
         );
     }
-    XML_FreeContentModel(parser,  model);
+    XML_FreeContentModel(parser, model);
 }
 #[no_mangle]
 
@@ -4088,32 +3458,11 @@ pub unsafe extern "C" fn accumulate_pi_characters(
     mut target: *const XML_Char,
     mut data: *const XML_Char,
 ) {
-    let mut storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        target,
-        -1,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        b": \0".as_ptr() as *const XML_Char,
-        2,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        data,
-        -1,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"\n\0".as_ptr() as *const XML_Char,
-        1,
-    );
+    let mut storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, target, -1);
+    CharData_AppendXMLChars(storage, b": \0".as_ptr() as *const XML_Char, 2);
+    CharData_AppendXMLChars(storage, data, -1);
+    CharData_AppendXMLChars(storage, b"\n\0".as_ptr() as *const XML_Char, 1);
 }
 #[no_mangle]
 
@@ -4121,14 +3470,8 @@ pub unsafe extern "C" fn accumulate_comment(
     mut userData: *mut ::core::ffi::c_void,
     mut data: *const XML_Char,
 ) {
-    let mut storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        data,
-        -1,
-    );
+    let mut storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, data, -1);
 }
 #[no_mangle]
 
@@ -4143,41 +3486,15 @@ pub unsafe extern "C" fn accumulate_entity_decl(
     mut publicId: *const XML_Char,
     mut notationName: *const XML_Char,
 ) {
-    let mut storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        entityName,
-        -1,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"=\0".as_ptr() as *const XML_Char,
-        1,
-    );
+    let mut storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, entityName, -1);
+    CharData_AppendXMLChars(storage, b"=\0".as_ptr() as *const XML_Char, 1);
     if value.is_null() {
-        CharData_AppendXMLChars(
-            
-            storage,
-            b"(null)\0".as_ptr() as *const XML_Char,
-            -1i32,
-        );
+        CharData_AppendXMLChars(storage, b"(null)\0".as_ptr() as *const XML_Char, -1i32);
     } else {
-        CharData_AppendXMLChars(
-            
-            storage,
-            value,
-            value_length,
-        );
+        CharData_AppendXMLChars(storage, value, value_length);
     }
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"\n\0".as_ptr() as *const XML_Char,
-        1,
-    );
+    CharData_AppendXMLChars(storage, b"\n\0".as_ptr() as *const XML_Char, 1);
 }
 #[no_mangle]
 
@@ -4188,19 +3505,11 @@ pub unsafe extern "C" fn accumulate_char_data_and_suspend(
 ) {
     let parserPlusStorage: *mut crate::src::tests::handlers::ParserPlusStorage =
         userData as *mut crate::src::tests::handlers::ParserPlusStorage;
-    CharData_AppendXMLChars(
-        
-        (*parserPlusStorage).storage,
-        s,
-        len,
-    );
+    CharData_AppendXMLChars((*parserPlusStorage).storage, s, len);
     let mut i: ::core::ffi::c_int = 0;
     while i < len {
         if *s.offset(i as isize) as ::core::ffi::c_int == 'Z' as i32 {
-            XML_StopParser(
-                (*parserPlusStorage).parser,
-                XML_TRUE,
-            );
+            XML_StopParser((*parserPlusStorage).parser, XML_TRUE);
             break;
         } else {
             i += 1;
@@ -4214,69 +3523,23 @@ pub unsafe extern "C" fn accumulate_start_element(
     mut name: *const XML_Char,
     mut atts: *mut *const XML_Char,
 ) {
-    let storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        b"(\0".as_ptr() as *const XML_Char,
-        1,
-    );
-    CharData_AppendXMLChars(
-        
-        storage,
-        name,
-        -1,
-    );
+    let storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, b"(\0".as_ptr() as *const XML_Char, 1);
+    CharData_AppendXMLChars(storage, name, -1);
     if !atts.is_null() && !(*atts.offset(0)).is_null() {
-        CharData_AppendXMLChars(
-            
-            storage,
-            b"(\0".as_ptr() as *const XML_Char,
-            1,
-        );
+        CharData_AppendXMLChars(storage, b"(\0".as_ptr() as *const XML_Char, 1);
         while !(*atts.offset(0)).is_null() {
-            CharData_AppendXMLChars(
-                
-                storage,
-                *atts.offset(0),
-                -1,
-            );
-            CharData_AppendXMLChars(
-                
-                storage,
-                b"=\0".as_ptr() as *const XML_Char,
-                1,
-            );
-            CharData_AppendXMLChars(
-                
-                storage,
-                *atts.offset(1),
-                -1,
-            );
+            CharData_AppendXMLChars(storage, *atts.offset(0), -1);
+            CharData_AppendXMLChars(storage, b"=\0".as_ptr() as *const XML_Char, 1);
+            CharData_AppendXMLChars(storage, *atts.offset(1), -1);
             atts = atts.offset(2);
             if !(*atts.offset(0)).is_null() {
-                CharData_AppendXMLChars(
-                    
-                    storage,
-                    b",\0".as_ptr() as *const XML_Char,
-                    1i32,
-                );
+                CharData_AppendXMLChars(storage, b",\0".as_ptr() as *const XML_Char, 1i32);
             }
         }
-        CharData_AppendXMLChars(
-            
-            storage,
-            b")\0".as_ptr() as *const XML_Char,
-            1i32,
-        );
+        CharData_AppendXMLChars(storage, b")\0".as_ptr() as *const XML_Char, 1i32);
     }
-    CharData_AppendXMLChars(
-        
-        storage,
-        b")\n\0".as_ptr() as *const XML_Char,
-        2,
-    );
+    CharData_AppendXMLChars(storage, b")\n\0".as_ptr() as *const XML_Char, 2);
 }
 #[no_mangle]
 
@@ -4285,14 +3548,8 @@ pub unsafe extern "C" fn accumulate_characters(
     mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
-    let storage: *mut CharData =
-        userData as *mut CharData;
-    CharData_AppendXMLChars(
-        
-        storage,
-        s,
-        len,
-    );
+    let storage: *mut CharData = userData as *mut CharData;
+    CharData_AppendXMLChars(storage, s, len);
 }
 #[no_mangle]
 
@@ -4301,20 +3558,12 @@ pub unsafe extern "C" fn accumulate_attribute(
     mut name: *const XML_Char,
     mut atts: *mut *const XML_Char,
 ) {
-    let storage: *mut CharData =
-        userData as *mut CharData;
+    let storage: *mut CharData = userData as *mut CharData;
     if atts.is_null() {
         return;
     }
-    while (*storage).count < 0
-        && !(*atts.offset(0)).is_null()
-    {
-        CharData_AppendXMLChars(
-            
-            storage,
-            *atts.offset(1),
-            -1,
-        );
+    while (*storage).count < 0 && !(*atts.offset(0)).is_null() {
+        CharData_AppendXMLChars(storage, *atts.offset(1), -1);
         atts = atts.offset(2);
     }
 }
@@ -4325,8 +3574,7 @@ pub unsafe extern "C" fn ext_accumulate_characters(
     mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
-    let test_data: *mut ExtTest =
-        userData as *mut ExtTest;
+    let test_data: *mut ExtTest = userData as *mut ExtTest;
     accumulate_characters((*test_data).storage as *mut ::core::ffi::c_void, s, len);
 }
 #[no_mangle]
@@ -4345,8 +3593,7 @@ pub unsafe extern "C" fn checking_default_handler(
             && memcmp(
                 (*data.offset(i as isize)).expected as *const ::core::ffi::c_void,
                 s as *const ::core::ffi::c_void,
-                (len as size_t)
-                    .wrapping_mul(::core::mem::size_of::<XML_Char>()),
+                (len as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>()),
             ) == 0
         {
             (*data.offset(i as isize)).seen = XML_TRUE;
@@ -4368,8 +3615,5 @@ pub unsafe extern "C" fn accumulate_and_suspend_comment_handler(
         (*parserPlusStorage).storage as *mut ::core::ffi::c_void,
         data,
     );
-    XML_StopParser(
-        (*parserPlusStorage).parser,
-        XML_TRUE,
-    );
+    XML_StopParser((*parserPlusStorage).parser, XML_TRUE);
 }

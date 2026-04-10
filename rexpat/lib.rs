@@ -376,8 +376,7 @@ pub mod internal_h {
 
     pub const EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT: ::core::ffi::c_float = 100.0;
 
-    pub const EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT: ::core::ffi::c_int =
-        67108864;
+    pub const EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT: ::core::ffi::c_int = 67108864;
 
     pub const EXPAT_MALLOC_ALIGNMENT: usize = ::core::mem::size_of::<::core::ffi::c_longlong>();
 
@@ -391,11 +390,9 @@ pub mod expat_h {
 
     pub type XML_Bool = ::core::ffi::c_uchar;
 
-    pub const XML_TRUE: crate::expat_h::XML_Bool =
-        1;
+    pub const XML_TRUE: crate::expat_h::XML_Bool = 1;
 
-    pub const XML_FALSE: crate::expat_h::XML_Bool =
-        0;
+    pub const XML_FALSE: crate::expat_h::XML_Bool = 0;
 
     pub type XML_Status = ::core::ffi::c_uint;
 

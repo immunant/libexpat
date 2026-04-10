@@ -146,11 +146,7 @@ pub struct test_case {
 }
 
 unsafe extern "C" fn namespace_setup() {
-    g_parser = XML_ParserCreateNS(
-        ::core::ptr::null::<XML_Char>(),
-        
-        ' ' as XML_Char,
-    );
+    g_parser = XML_ParserCreateNS(::core::ptr::null::<XML_Char>(), ' ' as XML_Char);
     if g_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -180,16 +176,8 @@ unsafe extern "C" fn test_return_ns_triplet() {
         b"http://example.org/ e foo\0".as_ptr() as *const ::core::ffi::c_char,
         b"http://example.org/ a bar\0".as_ptr() as *const ::core::ffi::c_char,
     ];
-    XML_SetReturnNSTriplet(
-        g_parser,
-        XML_TRUE as ::core::ffi::c_int,
-    );
-    XML_SetUserData(
-        g_parser,
-        
-        &raw mut elemstr
-            as *mut ::core::ffi::c_void,
-    );
+    XML_SetReturnNSTriplet(g_parser, XML_TRUE as ::core::ffi::c_int);
+    XML_SetUserData(g_parser, &raw mut elemstr as *mut ::core::ffi::c_void);
     XML_SetElementHandler(
         g_parser,
         Some(
@@ -202,10 +190,7 @@ unsafe extern "C" fn test_return_ns_triplet() {
         ),
         Some(
             triplet_end_checker
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
     XML_SetNamespaceDeclHandler(
@@ -220,24 +205,18 @@ unsafe extern "C" fn test_return_ns_triplet() {
         ),
         Some(
             dummy_end_namespace_decl_handler
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
-    g_triplet_start_flag =
-        XML_FALSE as ::core::ffi::c_int;
-    g_triplet_end_flag =
-        XML_FALSE as ::core::ffi::c_int;
+    g_triplet_start_flag = XML_FALSE as ::core::ffi::c_int;
+    g_triplet_end_flag = XML_FALSE as ::core::ffi::c_int;
     init_dummy_handlers();
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_FALSE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -246,17 +225,13 @@ unsafe extern "C" fn test_return_ns_triplet() {
             84i32,
         );
     }
-    XML_SetReturnNSTriplet(
-        g_parser,
-        XML_FALSE as ::core::ffi::c_int,
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    XML_SetReturnNSTriplet(g_parser, XML_FALSE as ::core::ffi::c_int);
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         epilog,
         strlen(epilog) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -282,8 +257,7 @@ unsafe extern "C" fn test_return_ns_triplet() {
         );
     }
     if get_dummy_handler_flags()
-        != DUMMY_START_NS_DECL_HANDLER_FLAG
-            | DUMMY_END_NS_DECL_HANDLER_FLAG
+        != DUMMY_START_NS_DECL_HANDLER_FLAG | DUMMY_END_NS_DECL_HANDLER_FLAG
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -301,15 +275,12 @@ unsafe extern "C" fn test_ns_parser_reset() {
             as *const ::core::ffi::c_char,
         104,
     );
-    let mut status: XML_ParsingStatus = XML_ParsingStatus { parsing:  XML_INITIALIZED, finalBuffer:  0 };
-    XML_GetParsingStatus(
-        g_parser,
-        
-        &raw mut status,
-    );
-    if  status.parsing
-        !=  XML_INITIALIZED
-    {
+    let mut status: XML_ParsingStatus = XML_ParsingStatus {
+        parsing: XML_INITIALIZED,
+        finalBuffer: 0,
+    };
+    XML_GetParsingStatus(g_parser, &raw mut status);
+    if status.parsing != XML_INITIALIZED {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -318,14 +289,8 @@ unsafe extern "C" fn test_ns_parser_reset() {
         );
     }
     test_return_ns_triplet();
-    XML_GetParsingStatus(
-        g_parser,
-        
-        &raw mut status,
-    );
-    if  status.parsing
-        !=  XML_FINISHED
-    {
+    XML_GetParsingStatus(g_parser, &raw mut status);
+    if status.parsing != XML_FINISHED {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -333,18 +298,9 @@ unsafe extern "C" fn test_ns_parser_reset() {
             b"parsing status doesn't end FINISHED\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    XML_ParserReset(
-        g_parser,
-        ::core::ptr::null::<XML_Char>(),
-    );
-    XML_GetParsingStatus(
-        g_parser,
-        
-        &raw mut status,
-    );
-    if  status.parsing
-        !=  XML_INITIALIZED
-    {
+    XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
+    XML_GetParsingStatus(g_parser, &raw mut status);
+    if status.parsing != XML_INITIALIZED {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -358,16 +314,12 @@ unsafe extern "C" fn run_ns_tagname_overwrite_test(
     mut text: *const ::core::ffi::c_char,
     mut result: *const XML_Char,
 ) {
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
-    CharData_Init(
-        
-        &raw mut storage,
-    );
-    XML_SetUserData(
-        g_parser,
-        &raw mut storage as *mut ::core::ffi::c_void,
-    );
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    CharData_Init(&raw mut storage);
+    XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
     XML_SetElementHandler(
         g_parser,
         Some(
@@ -380,19 +332,15 @@ unsafe extern "C" fn run_ns_tagname_overwrite_test(
         ),
         Some(
             overwrite_end_checker
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -401,11 +349,7 @@ unsafe extern "C" fn run_ns_tagname_overwrite_test(
             130i32,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        result,
-    );
+    CharData_CheckXMLChars(&raw mut storage, result);
 }
 
 unsafe extern "C" fn test_ns_tagname_overwrite() {
@@ -433,10 +377,7 @@ unsafe extern "C" fn test_ns_tagname_overwrite_triplet() {
         .as_ptr() as *const ::core::ffi::c_char;
     let mut result: *const XML_Char = b"start http://example.org/ e n\nstart http://example.org/ f n\nattribute http://example.org/ attr n\nend http://example.org/ f n\nstart http://example.org/ g n\nattribute http://example.org/ attr2 n\nend http://example.org/ g n\nend http://example.org/ e n\n\0"
         .as_ptr() as *const XML_Char;
-    XML_SetReturnNSTriplet(
-        g_parser,
-        XML_TRUE as ::core::ffi::c_int,
-    );
+    XML_SetReturnNSTriplet(g_parser, XML_TRUE as ::core::ffi::c_int);
     run_ns_tagname_overwrite_test(text, result);
 }
 
@@ -475,20 +416,16 @@ unsafe extern "C" fn test_start_ns_clears_start_element() {
         g_parser,
         Some(
             dummy_end_namespace_decl_handler
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
     XML_UseParserAsHandlerArg(g_parser);
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -508,10 +445,7 @@ unsafe extern "C" fn test_default_ns_from_ext_subset_and_ext_ge() {
     );
     let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    XML_SetParamEntityParsing(
-        g_parser,
-        XML_PARAM_ENTITY_PARSING_ALWAYS,
-    );
+    XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
     XML_SetExternalEntityRefHandler(
         g_parser,
         Some(
@@ -536,17 +470,13 @@ unsafe extern "C" fn test_default_ns_from_ext_subset_and_ext_ge() {
                 ) -> (),
         ),
     );
-    XML_SetUserData(
-        g_parser,
-        NULL,
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    XML_SetUserData(g_parser, NULL);
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -629,33 +559,21 @@ unsafe extern "C" fn test_ns_prefix_with_empty_uri_4() {
         .as_ptr() as *const ::core::ffi::c_char;
     let mut elemstr: [*const XML_Char; 1] =
         [b"http://example.org/ doc prefix\0".as_ptr() as *const ::core::ffi::c_char];
-    XML_SetReturnNSTriplet(
-        g_parser,
-        XML_TRUE as ::core::ffi::c_int,
-    );
-    XML_SetUserData(
-        g_parser,
-        
-        &raw mut elemstr
-            as *mut ::core::ffi::c_void,
-    );
+    XML_SetReturnNSTriplet(g_parser, XML_TRUE as ::core::ffi::c_int);
+    XML_SetUserData(g_parser, &raw mut elemstr as *mut ::core::ffi::c_void);
     XML_SetEndElementHandler(
         g_parser,
         Some(
             triplet_end_checker
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -675,13 +593,12 @@ unsafe extern "C" fn test_ns_unbound_prefix() {
     );
     let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ELEMENT prefix:doc EMPTY>\n  <!ATTLIST prefix:doc\n    notxmlns:prefix CDATA 'http://example.org/'>\n]>\n<prefix:doc/>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -690,9 +607,7 @@ unsafe extern "C" fn test_ns_unbound_prefix() {
             b"Unbound prefix incorrectly passed\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  XML_GetErrorCode(g_parser)
-        !=  XML_ERROR_UNBOUND_PREFIX
-    {
+    if XML_GetErrorCode(g_parser) != XML_ERROR_UNBOUND_PREFIX {
         _xml_failure(
             g_parser,
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
@@ -727,19 +642,15 @@ unsafe extern "C" fn test_ns_default_with_empty_uri() {
         g_parser,
         Some(
             dummy_end_namespace_decl_handler
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -780,13 +691,12 @@ unsafe extern "C" fn test_ns_duplicate_hashes() {
     let mut text: *const ::core::ffi::c_char =
         b"<doc xmlns:a='http://example.org/a'\n     a:a='v' a:i='w' />\0".as_ptr()
             as *const ::core::ffi::c_char;
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -848,16 +758,8 @@ unsafe extern "C" fn test_ns_long_element() {
             as *const ::core::ffi::c_char,
         b"http://example.org/ a bar\0".as_ptr() as *const ::core::ffi::c_char,
     ];
-    XML_SetReturnNSTriplet(
-        g_parser,
-        XML_TRUE as ::core::ffi::c_int,
-    );
-    XML_SetUserData(
-        g_parser,
-        
-        &raw mut elemstr
-            as *mut ::core::ffi::c_void,
-    );
+    XML_SetReturnNSTriplet(g_parser, XML_TRUE as ::core::ffi::c_int);
+    XML_SetUserData(g_parser, &raw mut elemstr as *mut ::core::ffi::c_void);
     XML_SetElementHandler(
         g_parser,
         Some(
@@ -870,19 +772,15 @@ unsafe extern "C" fn test_ns_long_element() {
         ),
         Some(
             triplet_end_checker
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -903,13 +801,12 @@ unsafe extern "C" fn test_ns_mixed_prefix_atts() {
     let mut text: *const ::core::ffi::c_char =
         b"<e a='12' bar:b='13'\n xmlns:bar='http://example.org/'></e>\0".as_ptr()
             as *const ::core::ffi::c_char;
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -929,13 +826,12 @@ unsafe extern "C" fn test_ns_extend_uri_buffer() {
     );
     let mut text: *const ::core::ffi::c_char = b"<foo:e xmlns:foo='http://example.org/'> <foo:thisisalongenoughnametotriggerallocationaction   foo:a='12' /></foo:e>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -967,17 +863,13 @@ unsafe extern "C" fn test_ns_reserved_attributes() {
             as *const ::core::ffi::c_char,
         406,
     );
-    XML_ParserReset(
-        g_parser,
-        ::core::ptr::null::<XML_Char>(),
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text2,
         strlen(text2) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -1012,10 +904,7 @@ unsafe extern "C" fn test_ns_reserved_attributes_2() {
             as *const ::core::ffi::c_char,
         423,
     );
-    XML_ParserReset(
-        g_parser,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
     _expect_failure(
         text2,
         XML_ERROR_RESERVED_NAMESPACE_URI,
@@ -1024,10 +913,7 @@ unsafe extern "C" fn test_ns_reserved_attributes_2() {
             as *const ::core::ffi::c_char,
         426,
     );
-    XML_ParserReset(
-        g_parser,
-        ::core::ptr::null::<XML_Char>(),
-    );
+    XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
     _expect_failure(
         text3,
         XML_ERROR_RESERVED_NAMESPACE_URI,
@@ -1049,13 +935,12 @@ unsafe extern "C" fn test_ns_extremely_long_prefix() {
         .as_ptr() as *const ::core::ffi::c_char;
     let mut text2: *const ::core::ffi::c_char = b" xmlns:ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP='foo'\n></doc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text1,
         strlen(text1) as ::core::ffi::c_int,
         XML_FALSE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -1064,13 +949,12 @@ unsafe extern "C" fn test_ns_extremely_long_prefix() {
             516i32,
         );
     }
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         text2,
         strlen(text2) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -1121,17 +1005,13 @@ unsafe extern "C" fn test_ns_double_colon() {
     let mut text: *const ::core::ffi::c_char =
         b"<foo:e xmlns:foo='http://example.org/' foo:a:b='bar' />\0".as_ptr()
             as *const ::core::ffi::c_char;
-    let status: XML_Status =  _XML_Parse_SINGLE_BYTES(
+    let status: XML_Status = _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
     );
-    if  status
-        ==  XML_STATUS_OK
-        ||  XML_GetErrorCode(g_parser)
-            !=  XML_ERROR_INVALID_TOKEN
-    {
+    if status == XML_STATUS_OK || XML_GetErrorCode(g_parser) != XML_ERROR_INVALID_TOKEN {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1151,17 +1031,13 @@ unsafe extern "C" fn test_ns_double_colon_element() {
     );
     let mut text: *const ::core::ffi::c_char =
         b"<foo:bar:e xmlns:foo='http://example.org/' />\0".as_ptr() as *const ::core::ffi::c_char;
-    let status: XML_Status =  _XML_Parse_SINGLE_BYTES(
+    let status: XML_Status = _XML_Parse_SINGLE_BYTES(
         g_parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
     );
-    if  status
-        ==  XML_STATUS_OK
-        ||  XML_GetErrorCode(g_parser)
-            !=  XML_ERROR_INVALID_TOKEN
-    {
+    if status == XML_STATUS_OK || XML_GetErrorCode(g_parser) != XML_ERROR_INVALID_TOKEN {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/ns_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1225,14 +1101,12 @@ unsafe extern "C" fn test_ns_utf16_leafname() {
     >(
         *b"<\0n\0:\0e\0 \0x\0m\0l\0n\0s\0:\0n\0=\0'\0U\0R\0I\0'\0 \0n\0:\0\x04\x0E=\0'\0a\0'\0 \0/\0>\0\0",
     );
-    let mut expected: *const XML_Char =
-        b"a\0".as_ptr() as *const XML_Char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
-    CharData_Init(
-        
-        &raw mut storage,
-    );
+    let mut expected: *const XML_Char = b"a\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    CharData_Init(&raw mut storage);
     XML_SetStartElementHandler(
         g_parser,
         Some(
@@ -1244,18 +1118,13 @@ unsafe extern "C" fn test_ns_utf16_leafname() {
                 ) -> (),
         ),
     );
-    XML_SetUserData(
-        g_parser,
-        &raw mut storage as *mut ::core::ffi::c_void,
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
-        ::core::mem::size_of::<[::core::ffi::c_char; 59]>() as ::core::ffi::c_int
-            - 1,
+        ::core::mem::size_of::<[::core::ffi::c_char; 59]>() as ::core::ffi::c_int - 1,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -1264,11 +1133,7 @@ unsafe extern "C" fn test_ns_utf16_leafname() {
             605i32,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        expected,
-    );
+    CharData_CheckXMLChars(&raw mut storage, expected);
 }
 
 unsafe extern "C" fn test_ns_utf16_element_leafname() {
@@ -1282,14 +1147,12 @@ unsafe extern "C" fn test_ns_utf16_element_leafname() {
         ::core::mem::transmute::<[u8; 41], [::core::ffi::c_char; 41]>(
             *b"\0<\0n\0:\x0E\x04\0 \0x\0m\0l\0n\0s\0:\0n\0=\0'\0U\0R\0I\0'\0/\0>\0",
         );
-    let mut expected: *const XML_Char =
-        b"URI \xE0\xB8\x84\0".as_ptr() as *const XML_Char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
-    CharData_Init(
-        
-        &raw mut storage,
-    );
+    let mut expected: *const XML_Char = b"URI \xE0\xB8\x84\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    CharData_Init(&raw mut storage);
     XML_SetStartElementHandler(
         g_parser,
         Some(
@@ -1301,18 +1164,13 @@ unsafe extern "C" fn test_ns_utf16_element_leafname() {
                 ) -> (),
         ),
     );
-    XML_SetUserData(
-        g_parser,
-        &raw mut storage as *mut ::core::ffi::c_void,
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
-        ::core::mem::size_of::<[::core::ffi::c_char; 41]>() as ::core::ffi::c_int
-            - 1,
+        ::core::mem::size_of::<[::core::ffi::c_char; 41]>() as ::core::ffi::c_int - 1,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -1321,11 +1179,7 @@ unsafe extern "C" fn test_ns_utf16_element_leafname() {
             628i32,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        expected,
-    );
+    CharData_CheckXMLChars(&raw mut storage, expected);
 }
 
 unsafe extern "C" fn test_ns_utf16_doctype() {
@@ -1341,18 +1195,13 @@ unsafe extern "C" fn test_ns_utf16_doctype() {
     >(
         *b"\0<\0!\0D\0O\0C\0T\0Y\0P\0E\0 \0f\0o\0o\0:\x0E\x04\0 \0[\0 \0<\0!\0E\0N\0T\0I\0T\0Y\0 \0b\0a\0r\0 \0'\0b\0a\0z\0'\0>\0 \0]\0>\0\n\0<\0f\0o\0o\0:\x0E\x04\0 \0x\0m\0l\0n\0s\0:\0f\0o\0o\0=\0'\0U\0R\0I\0'\0>\0&\0b\0a\0r\0;\0<\0/\0f\0o\0o\0:\x0E\x04\0>\0",
     );
-    let mut expected: *const XML_Char =
-        b"URI \xE0\xB8\x84\0".as_ptr() as *const XML_Char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
-    CharData_Init(
-        
-        &raw mut storage,
-    );
-    XML_SetUserData(
-        g_parser,
-        &raw mut storage as *mut ::core::ffi::c_void,
-    );
+    let mut expected: *const XML_Char = b"URI \xE0\xB8\x84\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    CharData_Init(&raw mut storage);
+    XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
     XML_SetStartElementHandler(
         g_parser,
         Some(
@@ -1376,14 +1225,12 @@ unsafe extern "C" fn test_ns_utf16_doctype() {
         )),
         NULL,
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
-        ::core::mem::size_of::<[::core::ffi::c_char; 155]>() as ::core::ffi::c_int
-            - 1,
+        ::core::mem::size_of::<[::core::ffi::c_char; 155]>() as ::core::ffi::c_int - 1,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -1392,11 +1239,7 @@ unsafe extern "C" fn test_ns_utf16_doctype() {
             659i32,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        expected,
-    );
+    CharData_CheckXMLChars(&raw mut storage, expected);
 }
 
 unsafe extern "C" fn test_ns_invalid_doctype() {
@@ -1451,17 +1294,17 @@ unsafe extern "C" fn test_ns_separator_in_uri() {
         test_case {
             expectedStatus: XML_STATUS_OK,
             doc: b"<doc xmlns='one_two' />\0".as_ptr() as *const ::core::ffi::c_char,
-            namesep:  '\n' as XML_Char,
+            namesep: '\n' as XML_Char,
         },
         test_case {
             expectedStatus: XML_STATUS_ERROR,
             doc: b"<doc xmlns='one&#x0A;two' />\0".as_ptr() as *const ::core::ffi::c_char,
-            namesep:  '\n' as XML_Char,
+            namesep: '\n' as XML_Char,
         },
         test_case {
             expectedStatus: XML_STATUS_OK,
             doc: b"<doc xmlns='one:two' />\0".as_ptr() as *const ::core::ffi::c_char,
-            namesep:  ':' as XML_Char,
+            namesep: ':' as XML_Char,
         },
     ];
     let mut i: size_t = 0;
@@ -1470,14 +1313,9 @@ unsafe extern "C" fn test_ns_separator_in_uri() {
         < (::core::mem::size_of::<[test_case; 3]>())
             .wrapping_div(::core::mem::size_of::<test_case>())
     {
-        set_subtest(
-            b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-            cases[i].doc,
-        );
-        let mut parser: XML_Parser = XML_ParserCreateNS(
-            ::core::ptr::null::<XML_Char>(),
-            cases[i].namesep,
-        );
+        set_subtest(b"%s\0".as_ptr() as *const ::core::ffi::c_char, cases[i].doc);
+        let mut parser: XML_Parser =
+            XML_ParserCreateNS(::core::ptr::null::<XML_Char>(), cases[i].namesep);
         XML_SetElementHandler(
             parser,
             Some(
@@ -1490,19 +1328,15 @@ unsafe extern "C" fn test_ns_separator_in_uri() {
             ),
             Some(
                 dummy_end_element
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                    ) -> (),
+                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
             ),
         );
-        if  _XML_Parse_SINGLE_BYTES(
+        if _XML_Parse_SINGLE_BYTES(
             parser,
             cases[i].doc,
             strlen(cases[i].doc) as ::core::ffi::c_int,
             XML_TRUE as ::core::ffi::c_int,
-        )
-            !=  cases[i].expectedStatus
+        ) != cases[i].expectedStatus
         {
             failCount = failCount.wrapping_add(1);
         }
@@ -1522,184 +1356,142 @@ unsafe extern "C" fn test_ns_separator_in_uri() {
 
 pub unsafe extern "C" fn make_namespace_test_case(mut s: *mut Suite) {
     let mut tc_namespace: *mut TCase =
-        
-        tcase_create(
-            b"XML namespaces\0".as_ptr() as *const ::core::ffi::c_char
-        );
-    suite_add_tcase(
-        
-        s,
-        
-        tc_namespace,
-    );
+        tcase_create(b"XML namespaces\0".as_ptr() as *const ::core::ffi::c_char);
+    suite_add_tcase(s, tc_namespace);
     tcase_add_checked_fixture(
-        
         tc_namespace,
         Some(namespace_setup as unsafe extern "C" fn() -> ()),
         Some(namespace_teardown as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_return_ns_triplet as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_parser_reset as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_tagname_overwrite as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_tagname_overwrite_triplet as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_start_ns_clears_start_element as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_namespace,
         Some(test_default_ns_from_ext_subset_and_ext_ge as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_prefix_with_empty_uri_1 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_prefix_with_empty_uri_2 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_prefix_with_empty_uri_3 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_prefix_with_empty_uri_4 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_unbound_prefix as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_default_with_empty_uri as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_duplicate_attrs_diff_prefixes as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_duplicate_hashes as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_unbound_prefix_on_attribute as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_unbound_prefix_on_element as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_long_element as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_mixed_prefix_atts as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_extend_uri_buffer as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_reserved_attributes as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_reserved_attributes_2 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_extremely_long_prefix as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_unknown_encoding_success as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_double_colon as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_double_colon_element as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_bad_attr_leafname as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_bad_element_leafname as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_utf16_leafname as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_utf16_element_leafname as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_namespace,
         Some(test_ns_utf16_doctype as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_invalid_doctype as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_double_colon_doctype as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_namespace,
         Some(test_ns_separator_in_uri as unsafe extern "C" fn() -> ()),
     );

@@ -31,15 +31,11 @@ use crate::stdlib::strlen;
 
 pub const STRUCT_EXTENSION_COUNT: ::core::ffi::c_int = 8;
 
-unsafe extern "C" fn xmlstrdup(
-    mut s: *const XML_Char,
-) -> *mut XML_Char {
-    let mut byte_count: size_t =
-        strlen(s)
-            .wrapping_add(1usize)
-            .wrapping_mul(::core::mem::size_of::<XML_Char>());
-    let dup: *mut XML_Char =
-        malloc(byte_count) as *mut XML_Char;
+unsafe extern "C" fn xmlstrdup(mut s: *const XML_Char) -> *mut XML_Char {
+    let mut byte_count: size_t = strlen(s)
+        .wrapping_add(1usize)
+        .wrapping_mul(::core::mem::size_of::<XML_Char>());
+    let dup: *mut XML_Char = malloc(byte_count) as *mut XML_Char;
     if !dup.is_null() {
     } else {
         __assert_fail(
@@ -115,10 +111,9 @@ pub unsafe extern "C" fn StructData_AddItem(
         (*storage).max_count += STRUCT_EXTENSION_COUNT;
         new_entries = realloc(
             (*storage).entries as *mut ::core::ffi::c_void,
-            ((*storage).max_count as size_t).wrapping_mul(
-                
-                ::core::mem::size_of::<crate::src::tests::structdata::StructDataEntry>(),
-            ),
+            ((*storage).max_count as size_t).wrapping_mul(::core::mem::size_of::<
+                crate::src::tests::structdata::StructDataEntry,
+            >()),
         ) as *mut crate::src::tests::structdata::StructDataEntry;
         if !new_entries.is_null() {
         } else {
@@ -133,7 +128,7 @@ pub unsafe extern "C" fn StructData_AddItem(
         };
         (*storage).entries = new_entries;
     }
-    entry =  (*storage).entries.offset((*storage).count as isize);
+    entry = (*storage).entries.offset((*storage).count as isize);
     (*entry).str = xmlstrdup(s);
     (*entry).data0 = data0;
     (*entry).data1 = data1;
@@ -173,7 +168,6 @@ pub unsafe extern "C" fn StructData_CheckItems(
     if count != (*storage).count {
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
-            
             ::core::mem::size_of::<[::core::ffi::c_char; 1024]>(),
             b"wrong number of entries: got %d, expected %d\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -191,10 +185,9 @@ pub unsafe extern "C" fn StructData_CheckItems(
         let mut i: ::core::ffi::c_int = 0;
         while i < count {
             let mut got: *const crate::src::tests::structdata::StructDataEntry =
-                
                 (*storage).entries.offset(i as isize);
-            let mut want: *const crate::src::tests::structdata::StructDataEntry =  expected
-                .offset(i as isize);
+            let mut want: *const crate::src::tests::structdata::StructDataEntry =
+                expected.offset(i as isize);
             if !got.is_null() {
             } else {
                 __assert_fail(
@@ -217,13 +210,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
                         .as_ptr() as *const ::core::ffi::c_char,
                 );
             };
-            if strcmp(
-                
-                (*got).str,
-                
-                (*want).str,
-            ) != 0
-            {
+            if strcmp((*got).str, (*want).str) != 0 {
                 StructData_Dispose(storage);
                 _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/structdata.c\0"
@@ -237,7 +224,6 @@ pub unsafe extern "C" fn StructData_CheckItems(
             {
                 snprintf(
                     &raw mut buffer as *mut ::core::ffi::c_char,
-                    
                     ::core::mem::size_of::<[::core::ffi::c_char; 1024]>(),
                     b"struct '%s' expected (%d,%d,%d), got (%d,%d,%d)\0".as_ptr()
                         as *const ::core::ffi::c_char,
@@ -279,9 +265,7 @@ pub unsafe extern "C" fn StructData_Dispose(
     };
     i = 0;
     while i < (*storage).count {
-        free(
-            (*(*storage).entries.offset(i as isize)).str as *mut ::core::ffi::c_void,
-        );
+        free((*(*storage).entries.offset(i as isize)).str as *mut ::core::ffi::c_void);
         i += 1;
     }
     free((*storage).entries as *mut ::core::ffi::c_void);

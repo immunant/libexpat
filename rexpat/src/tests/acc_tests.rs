@@ -483,12 +483,8 @@ unsafe extern "C" fn test_accounting_precision() {
             ) as ::core::ffi::c_ulonglong,
 },
     ];
-    let countCases: size_t =
-        (::core::mem::size_of::<[AccountingTestCase; 36]>())
-            .wrapping_div(
-                
-                ::core::mem::size_of::<AccountingTestCase>(),
-            );
+    let countCases: size_t = (::core::mem::size_of::<[AccountingTestCase; 36]>())
+        .wrapping_div(::core::mem::size_of::<AccountingTestCase>());
     let mut u: size_t = 0;
     while u < countCases {
         let expectedCountBytesDirect: ::core::ffi::c_ulonglong =
@@ -507,14 +503,8 @@ unsafe extern "C" fn test_accounting_precision() {
                 }),
             ) as ::core::ffi::c_ulonglong)
                 .wrapping_add(cases[u].expectedCountBytesIndirectExtra);
-        let mut parser: XML_Parser =
-            XML_ParserCreate(::core::ptr::null::<
-                XML_Char,
-            >());
-        XML_SetParamEntityParsing(
-            parser,
-            XML_PARAM_ENTITY_PARSING_ALWAYS,
-        );
+        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+        XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         if !cases[u].firstExternalText.is_null() {
             XML_SetExternalEntityRefHandler(
                 parser,
@@ -531,22 +521,17 @@ unsafe extern "C" fn test_accounting_precision() {
             );
             XML_SetUserData(
                 parser,
-                
-                (&raw mut cases as *mut AccountingTestCase)
-                    .offset(u as isize)
+                (&raw mut cases as *mut AccountingTestCase).offset(u as isize)
                     as *mut ::core::ffi::c_void,
             );
         }
-        let mut status: XML_Status =
-            _XML_Parse_SINGLE_BYTES(
-                parser,
-                cases[u].primaryText,
-                strlen(cases[u].primaryText) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            );
-        if  status
-            !=  XML_STATUS_OK
-        {
+        let mut status: XML_Status = _XML_Parse_SINGLE_BYTES(
+            parser,
+            cases[u].primaryText,
+            strlen(cases[u].primaryText) as ::core::ffi::c_int,
+            XML_TRUE as ::core::ffi::c_int,
+        );
+        if status != XML_STATUS_OK {
             _xml_failure(
                 parser,
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
@@ -555,10 +540,8 @@ unsafe extern "C" fn test_accounting_precision() {
             );
         }
         let actualCountBytesDirect: ::core::ffi::c_ulonglong =
-            
             testingAccountingGetCountBytesDirect(parser);
         let actualCountBytesIndirect: ::core::ffi::c_ulonglong =
-            
             testingAccountingGetCountBytesIndirect(parser);
         XML_ParserFree(parser);
         if actualCountBytesDirect != expectedCountBytesDirect {
@@ -606,16 +589,12 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
             as *const ::core::ffi::c_char,
         296,
     );
-    let mut parserWithoutParent: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    let mut parserWithParent: XML_Parser =
-        XML_ExternalEntityParserCreate(
-            parserWithoutParent,
-            b"entity123\0".as_ptr() as *const XML_Char,
-            ::core::ptr::null::<XML_Char>(),
-        );
+    let mut parserWithoutParent: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    let mut parserWithParent: XML_Parser = XML_ExternalEntityParserCreate(
+        parserWithoutParent,
+        b"entity123\0".as_ptr() as *const XML_Char,
+        ::core::ptr::null::<XML_Char>(),
+    );
     if parserWithoutParent.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0".as_ptr()
@@ -646,10 +625,8 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-        parserWithParent,
-        123.0,
-    ) as ::core::ffi::c_int
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithParent, 123.0)
+        as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -674,10 +651,8 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-        parserWithoutParent,
-        -1.0,
-    ) as ::core::ffi::c_int
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithoutParent, -1.0)
+        as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -688,10 +663,8 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-        parserWithoutParent,
-        0.9,
-    ) as ::core::ffi::c_int
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithoutParent, 0.9)
+        as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -702,10 +675,8 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-        parserWithoutParent,
-        1.0,
-    ) as ::core::ffi::c_int
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithoutParent, 1.0)
+        as ::core::ffi::c_int
         == XML_FALSE as ::core::ffi::c_int
     {
         _fail(
@@ -716,10 +687,8 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-        parserWithoutParent,
-        123456.789,
-    ) as ::core::ffi::c_int
+    if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithoutParent, 123456.789)
+        as ::core::ffi::c_int
         == XML_FALSE as ::core::ffi::c_int
     {
         _fail(
@@ -758,10 +727,8 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetBillionLaughsAttackProtectionActivationThreshold(
-        parserWithParent,
-        123,
-    ) as ::core::ffi::c_int
+    if XML_SetBillionLaughsAttackProtectionActivationThreshold(parserWithParent, 123)
+        as ::core::ffi::c_int
         == XML_TRUE as ::core::ffi::c_int
     {
         _fail(
@@ -772,10 +739,8 @@ unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
                 as *const ::core::ffi::c_char,
         );
     }
-    if XML_SetBillionLaughsAttackProtectionActivationThreshold(
-        parserWithoutParent,
-        123,
-    ) as ::core::ffi::c_int
+    if XML_SetBillionLaughsAttackProtectionActivationThreshold(parserWithoutParent, 123)
+        as ::core::ffi::c_int
         == XML_FALSE as ::core::ffi::c_int
     {
         _fail(
@@ -803,9 +768,7 @@ unsafe extern "C" fn test_helper_unsigned_char_to_printable() {
             b"char %u\0".as_ptr() as *const ::core::ffi::c_char,
             uc as ::core::ffi::c_uint,
         );
-        let printable: *const ::core::ffi::c_char =
-            
-            unsignedCharToPrintable(uc);
+        let printable: *const ::core::ffi::c_char = unsignedCharToPrintable(uc);
         if printable.is_null() {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
@@ -813,9 +776,7 @@ unsafe extern "C" fn test_helper_unsigned_char_to_printable() {
                 367i32,
                 b"unsignedCharToPrintable returned NULL\0".as_ptr() as *const ::core::ffi::c_char,
             );
-        } else if strlen(printable)
-            < 1
-        {
+        } else if strlen(printable) < 1 {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -824,9 +785,7 @@ unsafe extern "C" fn test_helper_unsigned_char_to_printable() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if uc as ::core::ffi::c_int
-            == -1i32 as ::core::ffi::c_uchar as ::core::ffi::c_int
-        {
+        if uc as ::core::ffi::c_int == -1i32 as ::core::ffi::c_uchar as ::core::ffi::c_int {
             break;
         }
         uc = uc.wrapping_add(1);
@@ -870,9 +829,8 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
         [u8; 45],
         [::core::ffi::c_char; 45],
     >(*b"<!ENTITY % p1 '123456789_123456789_1234567'>\0");
-    let docLen: ::core::ffi::c_int = ::core::mem::size_of::<[::core::ffi::c_char; 45]>()
-        as ::core::ffi::c_int
-        - 1;
+    let docLen: ::core::ffi::c_int =
+        ::core::mem::size_of::<[::core::ffi::c_char; 45]>() as ::core::ffi::c_int - 1;
     let maximumToleratedAmplification: ::core::ffi::c_float = 2.0;
     let mut cases: [TestCase; 5] = [
         TestCase {
@@ -898,8 +856,7 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
     ];
     let mut i: size_t = 0;
     while i
-        < (::core::mem::size_of::<[TestCase; 5]>())
-            .wrapping_div(::core::mem::size_of::<TestCase>())
+        < (::core::mem::size_of::<[TestCase; 5]>()).wrapping_div(::core::mem::size_of::<TestCase>())
     {
         let offsetOfThreshold: ::core::ffi::c_int = cases[i].offsetOfThreshold;
         let expectedStatus: XML_Status = cases[i].expectedStatus;
@@ -908,13 +865,9 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
         set_subtest(
             b"offsetOfThreshold=%d, expectedStatus=%d\0".as_ptr() as *const ::core::ffi::c_char,
             offsetOfThreshold,
-            
             expectedStatus,
         );
-        let mut parser: XML_Parser =
-            XML_ParserCreate(::core::ptr::null::<
-                XML_Char,
-            >());
+        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
         if parser.is_null() {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
@@ -951,12 +904,11 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
                     .as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        let mut ext_parser: XML_Parser =
-            XML_ExternalEntityParserCreate(
-                parser,
-                ::core::ptr::null::<XML_Char>(),
-                ::core::ptr::null::<XML_Char>(),
-            );
+        let mut ext_parser: XML_Parser = XML_ExternalEntityParserCreate(
+            parser,
+            ::core::ptr::null::<XML_Char>(),
+            ::core::ptr::null::<XML_Char>(),
+        );
         if ext_parser.is_null() {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
@@ -965,15 +917,13 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
                 b"check failed: ext_parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        let actualStatus: XML_Status =
-            
-            _XML_Parse_SINGLE_BYTES(
-                ext_parser,
-                &raw const doc as *const ::core::ffi::c_char,
-                docLen,
-                XML_TRUE as ::core::ffi::c_int,
-            );
-        if !(actualStatus ==  expectedStatus) {
+        let actualStatus: XML_Status = _XML_Parse_SINGLE_BYTES(
+            ext_parser,
+            &raw const doc as *const ::core::ffi::c_char,
+            docLen,
+            XML_TRUE as ::core::ffi::c_int,
+        );
+        if !(actualStatus == expectedStatus) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -982,12 +932,8 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if  actualStatus
-            !=  XML_STATUS_OK
-        {
-            if !(XML_GetErrorCode(ext_parser)
-                ==  XML_ERROR_AMPLIFICATION_LIMIT_BREACH)
-            {
+        if actualStatus != XML_STATUS_OK {
+            if !(XML_GetErrorCode(ext_parser) == XML_ERROR_AMPLIFICATION_LIMIT_BREACH) {
                 _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/acc_tests.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
@@ -1004,37 +950,23 @@ unsafe extern "C" fn test_amplification_isolated_external_parser() {
 }
 #[no_mangle]
 
-pub unsafe extern "C" fn make_accounting_test_case(
-    mut s: *mut Suite,
-) {
+pub unsafe extern "C" fn make_accounting_test_case(mut s: *mut Suite) {
     let mut tc_accounting: *mut TCase =
-        
-        tcase_create(
-            b"accounting tests\0".as_ptr() as *const ::core::ffi::c_char
-        );
-    suite_add_tcase(
-        
-        s,
-        
-        tc_accounting,
-    );
+        tcase_create(b"accounting tests\0".as_ptr() as *const ::core::ffi::c_char);
+    suite_add_tcase(s, tc_accounting);
     tcase_add_test(
-        
         tc_accounting,
         Some(test_accounting_precision as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_accounting,
         Some(test_billion_laughs_attack_protection_api as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_accounting,
         Some(test_helper_unsigned_char_to_printable as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_accounting,
         Some(test_amplification_isolated_external_parser as unsafe extern "C" fn() -> ()),
     );

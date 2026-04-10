@@ -14,9 +14,7 @@ use crate::stdlib::memcmp;
 use crate::stdlib::memcpy;
 use crate::stdlib::snprintf;
 
-unsafe extern "C" fn xmlstrlen(
-    mut s: *const XML_Char,
-) -> ::core::ffi::c_int {
+unsafe extern "C" fn xmlstrlen(mut s: *const XML_Char) -> ::core::ffi::c_int {
     let mut len: ::core::ffi::c_int = 0;
     if !s.is_null() {
     } else {
@@ -79,8 +77,7 @@ pub unsafe extern "C" fn CharData_AppendXMLChars(
         );
     };
     maxchars = (::core::mem::size_of::<[XML_Char; 2048]>())
-        .wrapping_div(::core::mem::size_of::<XML_Char>())
-        as ::core::ffi::c_int;
+        .wrapping_div(::core::mem::size_of::<XML_Char>()) as ::core::ffi::c_int;
     if (*storage).count < 0 {
         (*storage).count = 0i32;
     }
@@ -90,15 +87,12 @@ pub unsafe extern "C" fn CharData_AppendXMLChars(
     if len + (*storage).count > maxchars {
         len = maxchars - (*storage).count;
     }
-    if len + (*storage).count
-        < ::core::mem::size_of::<[XML_Char; 2048]>() as ::core::ffi::c_int
-    {
+    if len + (*storage).count < ::core::mem::size_of::<[XML_Char; 2048]>() as ::core::ffi::c_int {
         memcpy(
-            (&raw mut (*storage).data as *mut XML_Char)
-                .offset((*storage).count as isize) as *mut ::core::ffi::c_void,
+            (&raw mut (*storage).data as *mut XML_Char).offset((*storage).count as isize)
+                as *mut ::core::ffi::c_void,
             s as *const ::core::ffi::c_void,
-            (len as size_t)
-                .wrapping_mul(::core::mem::size_of::<XML_Char>()),
+            (len as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>()),
         );
         (*storage).count += len;
     }
@@ -131,7 +125,6 @@ pub unsafe extern "C" fn CharData_CheckXMLChars(
         let mut buffer: [::core::ffi::c_char; 1024] = [0; 1024];
         snprintf(
             &raw mut buffer as *mut ::core::ffi::c_char,
-            
             ::core::mem::size_of::<[::core::ffi::c_char; 1024]>(),
             b"wrong number of data characters: got %d, expected %d\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -147,11 +140,8 @@ pub unsafe extern "C" fn CharData_CheckXMLChars(
     }
     if memcmp(
         expected as *const ::core::ffi::c_void,
-        
-        &raw mut (*storage).data
-            as *const ::core::ffi::c_void,
-        (len as size_t)
-            .wrapping_mul(::core::mem::size_of::<XML_Char>()),
+        &raw mut (*storage).data as *const ::core::ffi::c_void,
+        (len as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>()),
     ) != 0
     {
         _fail(

@@ -208,25 +208,19 @@ unsafe extern "C" fn test_misc_alloc_create_parser() {
             as *const ::core::ffi::c_char,
         67,
     );
-    let mut memsuite: XML_Memory_Handling_Suite =
-        XML_Memory_Handling_Suite {
-    malloc_fcn:  Some(
-                duff_allocator
-                    as unsafe extern "C" fn(
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    realloc_fcn:  Some(
-                realloc
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    free_fcn:  Some(
-                free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-            ),
-};
+    let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
+        malloc_fcn: Some(
+            duff_allocator as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void,
+        ),
+        realloc_fcn: Some(
+            realloc
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    size_t,
+                ) -> *mut ::core::ffi::c_void,
+        ),
+        free_fcn: Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
+    };
     let mut i: ::core::ffi::c_uint = 0;
     let max_alloc_count: ::core::ffi::c_uint = 10;
     i = 0;
@@ -234,7 +228,6 @@ unsafe extern "C" fn test_misc_alloc_create_parser() {
         g_allocation_count = i as ::core::ffi::c_int;
         g_parser = XML_ParserCreate_MM(
             ::core::ptr::null::<XML_Char>(),
-            
             &raw mut memsuite as *const XML_Memory_Handling_Suite,
             ::core::ptr::null::<XML_Char>(),
         );
@@ -269,25 +262,19 @@ unsafe extern "C" fn test_misc_alloc_create_parser_with_encoding() {
             as *const ::core::ffi::c_char,
         87,
     );
-    let mut memsuite: XML_Memory_Handling_Suite =
-        XML_Memory_Handling_Suite {
-    malloc_fcn:  Some(
-                duff_allocator
-                    as unsafe extern "C" fn(
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    realloc_fcn:  Some(
-                realloc
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    free_fcn:  Some(
-                free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-            ),
-};
+    let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
+        malloc_fcn: Some(
+            duff_allocator as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void,
+        ),
+        realloc_fcn: Some(
+            realloc
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    size_t,
+                ) -> *mut ::core::ffi::c_void,
+        ),
+        free_fcn: Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
+    };
     let mut i: ::core::ffi::c_uint = 0;
     let max_alloc_count: ::core::ffi::c_uint = 10;
     i = 0;
@@ -295,7 +282,6 @@ unsafe extern "C" fn test_misc_alloc_create_parser_with_encoding() {
         g_allocation_count = i as ::core::ffi::c_int;
         g_parser = XML_ParserCreate_MM(
             b"us-ascii\0".as_ptr() as *const XML_Char,
-            
             &raw mut memsuite as *const XML_Memory_Handling_Suite,
             ::core::ptr::null::<XML_Char>(),
         );
@@ -329,9 +315,7 @@ unsafe extern "C" fn test_misc_null_parser() {
             as *const ::core::ffi::c_char,
         109,
     );
-    XML_ParserFree(::core::ptr::null_mut::<
-        XML_ParserStruct,
-    >());
+    XML_ParserFree(::core::ptr::null_mut::<XML_ParserStruct>());
 }
 
 unsafe extern "C" fn test_misc_error_string() {
@@ -344,9 +328,7 @@ unsafe extern "C" fn test_misc_error_string() {
     let mut trickery: C2Rust_Unnamed_11 = C2Rust_Unnamed_11 {
         xml_error: XML_ERROR_NONE,
     };
-    if !(::core::mem::size_of::<XML_Error>()
-        ==  ::core::mem::size_of::<::core::ffi::c_int>())
-    {
+    if !(::core::mem::size_of::<XML_Error>() == ::core::mem::size_of::<::core::ffi::c_int>()) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -399,8 +381,8 @@ unsafe extern "C" fn parse_version(
     {
         let c2rust_fresh0 = version_text;
         version_text = version_text.offset(1);
-        (*version_struct).major = 10 * (*version_struct).major
-            + (*c2rust_fresh0 as ::core::ffi::c_int - ASCII_0);
+        (*version_struct).major =
+            10 * (*version_struct).major + (*c2rust_fresh0 as ::core::ffi::c_int - ASCII_0);
     }
     let c2rust_fresh1 = version_text;
     version_text = version_text.offset(1);
@@ -413,8 +395,8 @@ unsafe extern "C" fn parse_version(
     {
         let c2rust_fresh2 = version_text;
         version_text = version_text.offset(1);
-        (*version_struct).minor = 10 * (*version_struct).minor
-            + (*c2rust_fresh2 as ::core::ffi::c_int - ASCII_0);
+        (*version_struct).minor =
+            10 * (*version_struct).minor + (*c2rust_fresh2 as ::core::ffi::c_int - ASCII_0);
     }
     let c2rust_fresh3 = version_text;
     version_text = version_text.offset(1);
@@ -427,8 +409,8 @@ unsafe extern "C" fn parse_version(
     {
         let c2rust_fresh4 = version_text;
         version_text = version_text.offset(1);
-        (*version_struct).micro = 10 * (*version_struct).micro
-            + (*c2rust_fresh4 as ::core::ffi::c_int - ASCII_0);
+        (*version_struct).micro =
+            10 * (*version_struct).micro + (*c2rust_fresh4 as ::core::ffi::c_int - ASCII_0);
     }
     if *version_text as ::core::ffi::c_int != 0 {
         return XML_FALSE as ::core::ffi::c_int;
@@ -452,16 +434,13 @@ unsafe extern "C" fn test_misc_version() {
             as *const ::core::ffi::c_char,
         201,
     );
-    let mut read_version: XML_Expat_Version =
-        
-        XML_ExpatVersionInfo();
+    let mut read_version: XML_Expat_Version = XML_ExpatVersionInfo();
     let mut parsed_version: XML_Expat_Version = XML_Expat_Version {
-    major:  0,
-    minor:  0,
-    micro:  0,
-};
-    let mut version_text: *const XML_LChar =
-        XML_ExpatVersion();
+        major: 0,
+        minor: 0,
+        micro: 0,
+    };
+    let mut version_text: *const XML_LChar = XML_ExpatVersion();
     if version_text.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -497,7 +476,6 @@ unsafe extern "C" fn test_misc_version() {
         );
     }
     if strcmp(
-        
         version_text,
         b"expat_2.7.4\0".as_ptr() as *const ::core::ffi::c_char,
     ) != 0
@@ -518,11 +496,8 @@ unsafe extern "C" fn test_misc_features() {
             as *const ::core::ffi::c_char,
         222,
     );
-    let mut features: *const XML_Feature =
-        
-        XML_GetFeatureList();
-    g_parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut features: *const XML_Feature = XML_GetFeatureList();
+    g_parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if features.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -531,14 +506,10 @@ unsafe extern "C" fn test_misc_features() {
             b"Failed to get feature information\0".as_ptr() as *const ::core::ffi::c_char,
         );
     } else {
-        while  (*features).feature
-            !=  XML_FEATURE_END
-        {
-            match  (*features).feature {
+        while (*features).feature != XML_FEATURE_END {
+            match (*features).feature {
                 6 => {
-                    if (*features).value as usize
-                        !=  ::core::mem::size_of::<XML_Char>()
-                    {
+                    if (*features).value as usize != ::core::mem::size_of::<XML_Char>() {
                         _fail(
                             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                                 .as_ptr() as *const ::core::ffi::c_char,
@@ -549,9 +520,7 @@ unsafe extern "C" fn test_misc_features() {
                     }
                 }
                 7 => {
-                    if (*features).value as usize
-                        !=  ::core::mem::size_of::<XML_LChar>()
-                    {
+                    if (*features).value as usize != ::core::mem::size_of::<XML_LChar>() {
                         _fail(
                             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                                 .as_ptr() as *const ::core::ffi::c_char,
@@ -577,29 +546,21 @@ unsafe extern "C" fn test_misc_attribute_leak() {
     );
     let mut text: *const ::core::ffi::c_char =
         b"<D xmlns:L=\"D\" l:a='' L:a=''/>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut memsuite: XML_Memory_Handling_Suite =
-        XML_Memory_Handling_Suite {
-    malloc_fcn:  Some(
-                tracking_malloc
-                    as unsafe extern "C" fn(
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    realloc_fcn:  Some(
-                tracking_realloc
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-    free_fcn:  Some(
-                tracking_free
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-            ),
-};
+    let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
+        malloc_fcn: Some(
+            tracking_malloc as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void,
+        ),
+        realloc_fcn: Some(
+            tracking_realloc
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    size_t,
+                ) -> *mut ::core::ffi::c_void,
+        ),
+        free_fcn: Some(tracking_free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
+    };
     g_parser = XML_ParserCreate_MM(
         b"UTF-8\0".as_ptr() as *const XML_Char,
-        
         &raw mut memsuite as *const XML_Memory_Handling_Suite,
         b"\n\0".as_ptr() as *const XML_Char,
     );
@@ -612,8 +573,7 @@ unsafe extern "C" fn test_misc_attribute_leak() {
         259,
     );
     XML_ParserFree(g_parser);
-    g_parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    g_parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     if tracking_report() == 0 {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -637,13 +597,12 @@ unsafe extern "C" fn test_misc_utf16le() {
     >(
         *b"<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0?\0>\0<\0q\0>\0H\0i\0<\0/\0q\0>\0\0",
     );
-    let mut expected: *const XML_Char =
-        b"Hi\0".as_ptr() as *const XML_Char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
-    g_parser = XML_ParserCreate(
-        b"UTF-16LE\0".as_ptr() as *const XML_Char,
-    );
+    let mut expected: *const XML_Char = b"Hi\0".as_ptr() as *const XML_Char;
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    g_parser = XML_ParserCreate(b"UTF-16LE\0".as_ptr() as *const XML_Char);
     if g_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -652,14 +611,8 @@ unsafe extern "C" fn test_misc_utf16le() {
             b"Parser not created\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    CharData_Init(
-        
-        &raw mut storage,
-    );
-    XML_SetUserData(
-        g_parser,
-        &raw mut storage as *mut ::core::ffi::c_void,
-    );
+    CharData_Init(&raw mut storage);
+    XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
     XML_SetCharacterDataHandler(
         g_parser,
         Some(
@@ -671,14 +624,12 @@ unsafe extern "C" fn test_misc_utf16le() {
                 ) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         g_parser,
         &raw const text as *const ::core::ffi::c_char,
-        ::core::mem::size_of::<[::core::ffi::c_char; 61]>() as ::core::ffi::c_int
-            - 1,
+        ::core::mem::size_of::<[::core::ffi::c_char; 61]>() as ::core::ffi::c_int - 1,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             g_parser,
@@ -687,11 +638,7 @@ unsafe extern "C" fn test_misc_utf16le() {
             288i32,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        expected,
-    );
+    CharData_CheckXMLChars(&raw mut storage, expected);
 }
 
 unsafe extern "C" fn test_misc_stop_during_end_handler_issue_240_1() {
@@ -701,16 +648,12 @@ unsafe extern "C" fn test_misc_stop_during_end_handler_issue_240_1() {
             as *const ::core::ffi::c_char,
         293,
     );
-    let mut parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    let mut mydata: *mut DataIssue240 =
-        ::core::ptr::null_mut::<DataIssue240>();
+    let mut parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut mydata: *mut DataIssue240 = ::core::ptr::null_mut::<DataIssue240>();
     let mut result: XML_Status = XML_STATUS_ERROR;
     let doc1: *const ::core::ffi::c_char =
         b"<doc><e1/><e><foo/></e></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-    parser = XML_ParserCreate(::core::ptr::null::<
-        XML_Char,
-    >());
+    parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
     XML_SetElementHandler(
         parser,
         Some(
@@ -723,16 +666,10 @@ unsafe extern "C" fn test_misc_stop_during_end_handler_issue_240_1() {
         ),
         Some(
             end_element_issue_240
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
-    mydata = malloc(
-        
-        ::core::mem::size_of::<DataIssue240>(),
-    ) as *mut DataIssue240;
+    mydata = malloc(::core::mem::size_of::<DataIssue240>()) as *mut DataIssue240;
     if mydata.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -744,17 +681,10 @@ unsafe extern "C" fn test_misc_stop_during_end_handler_issue_240_1() {
     (*mydata).parser = parser;
     (*mydata).deep = 0;
     XML_SetUserData(parser, mydata as *mut ::core::ffi::c_void);
-    result = _XML_Parse_SINGLE_BYTES(
-        parser,
-        doc1,
-        strlen(doc1) as ::core::ffi::c_int,
-        1,
-    );
+    result = _XML_Parse_SINGLE_BYTES(parser, doc1, strlen(doc1) as ::core::ffi::c_int, 1);
     XML_ParserFree(parser);
     free(mydata as *mut ::core::ffi::c_void);
-    if  result
-        !=  XML_STATUS_ERROR
-    {
+    if result != XML_STATUS_ERROR {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -772,16 +702,12 @@ unsafe extern "C" fn test_misc_stop_during_end_handler_issue_240_2() {
             as *const ::core::ffi::c_char,
         315,
     );
-    let mut parser: XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    let mut mydata: *mut DataIssue240 =
-        ::core::ptr::null_mut::<DataIssue240>();
+    let mut parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut mydata: *mut DataIssue240 = ::core::ptr::null_mut::<DataIssue240>();
     let mut result: XML_Status = XML_STATUS_ERROR;
     let doc2: *const ::core::ffi::c_char =
         b"<doc><elem/></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-    parser = XML_ParserCreate(::core::ptr::null::<
-        XML_Char,
-    >());
+    parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
     XML_SetElementHandler(
         parser,
         Some(
@@ -794,16 +720,10 @@ unsafe extern "C" fn test_misc_stop_during_end_handler_issue_240_2() {
         ),
         Some(
             end_element_issue_240
-                as unsafe extern "C" fn(
-                    *mut ::core::ffi::c_void,
-                    *const XML_Char,
-                ) -> (),
+                as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
-    mydata = malloc(
-        
-        ::core::mem::size_of::<DataIssue240>(),
-    ) as *mut DataIssue240;
+    mydata = malloc(::core::mem::size_of::<DataIssue240>()) as *mut DataIssue240;
     if mydata.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -815,17 +735,10 @@ unsafe extern "C" fn test_misc_stop_during_end_handler_issue_240_2() {
     (*mydata).parser = parser;
     (*mydata).deep = 0;
     XML_SetUserData(parser, mydata as *mut ::core::ffi::c_void);
-    result = _XML_Parse_SINGLE_BYTES(
-        parser,
-        doc2,
-        strlen(doc2) as ::core::ffi::c_int,
-        1,
-    );
+    result = _XML_Parse_SINGLE_BYTES(parser, doc2, strlen(doc2) as ::core::ffi::c_int, 1);
     XML_ParserFree(parser);
     free(mydata as *mut ::core::ffi::c_void);
-    if  result
-        !=  XML_STATUS_ERROR
-    {
+    if result != XML_STATUS_ERROR {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -853,24 +766,20 @@ unsafe extern "C" fn test_misc_deny_internal_entity_closing_doctype_issue_317() 
     let inputIssue317: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY % element_doc '<!ELEMENT doc (#PCDATA)*>'>\n%element_doc;\n<!ENTITY % foo ']>\n<doc>Hell<oc (#PCDATA)*>'>\n%foo;\n]>\n<doc>Hello, world</dVc>\0"
         .as_ptr() as *const ::core::ffi::c_char;
     let inputs: [*const ::core::ffi::c_char; 4] = [inputOne, inputTwo, inputThree, inputIssue317];
-    let suspendOrNot: [XML_Bool; 2] =
-        [XML_FALSE, XML_TRUE];
+    let suspendOrNot: [XML_Bool; 2] = [XML_FALSE, XML_TRUE];
     let mut inputIndex: size_t = 0;
     while inputIndex
         < (::core::mem::size_of::<[*const ::core::ffi::c_char; 4]>())
             .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>())
     {
-        let mut suspendOrNotIndex: size_t =
-            0;
+        let mut suspendOrNotIndex: size_t = 0;
         while suspendOrNotIndex
             < (::core::mem::size_of::<[XML_Bool; 2]>())
                 .wrapping_div(::core::mem::size_of::<XML_Bool>())
         {
             let input: *const ::core::ffi::c_char = inputs[inputIndex];
             let suspend: XML_Bool = suspendOrNot[suspendOrNotIndex];
-            if suspend as ::core::ffi::c_int != 0
-                && g_chunkSize > 0
-            {
+            if suspend as ::core::ffi::c_int != 0 && g_chunkSize > 0 {
                 return;
             }
             set_subtest(
@@ -883,19 +792,14 @@ unsafe extern "C" fn test_misc_deny_internal_entity_closing_doctype_issue_317() 
                 },
                 input,
             );
-            let mut parser: XML_Parser =
-                ::core::ptr::null_mut::<XML_ParserStruct>();
+            let mut parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
             let mut parseResult: XML_Status = XML_STATUS_ERROR;
             let mut setParamEntityResult: ::core::ffi::c_int = 0;
             let mut lineNumber: XML_Size = 0;
             let mut columnNumber: XML_Size = 0;
-            parser = XML_ParserCreate(::core::ptr::null::<
-                XML_Char,
-            >());
-            setParamEntityResult = XML_SetParamEntityParsing(
-                parser,
-                XML_PARAM_ENTITY_PARSING_ALWAYS,
-            );
+            parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+            setParamEntityResult =
+                XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
             if setParamEntityResult != 1 {
                 _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
@@ -906,10 +810,7 @@ unsafe extern "C" fn test_misc_deny_internal_entity_closing_doctype_issue_317() 
                 );
             }
             if suspend != 0 {
-                XML_SetUserData(
-                    parser,
-                    parser as *mut ::core::ffi::c_void,
-                );
+                XML_SetUserData(parser, parser as *mut ::core::ffi::c_void);
                 XML_SetElementDeclHandler(
                     parser,
                     ::core::mem::transmute(Some(
@@ -923,20 +824,11 @@ unsafe extern "C" fn test_misc_deny_internal_entity_closing_doctype_issue_317() 
                 );
             }
             if suspend != 0 {
-                parseResult = XML_Parse(
-                    parser,
-                    input,
-                    strlen(input) as ::core::ffi::c_int,
-                    0,
-                );
-                while  parseResult
-                    ==  XML_STATUS_SUSPENDED
-                {
+                parseResult = XML_Parse(parser, input, strlen(input) as ::core::ffi::c_int, 0);
+                while parseResult == XML_STATUS_SUSPENDED {
                     parseResult = XML_ResumeParser(parser);
                 }
-                if  parseResult
-                    !=  XML_STATUS_ERROR
-                {
+                if parseResult != XML_STATUS_ERROR {
                     parseResult = XML_Parse(
                         parser,
                         b"\0".as_ptr() as *const ::core::ffi::c_char,
@@ -944,21 +836,13 @@ unsafe extern "C" fn test_misc_deny_internal_entity_closing_doctype_issue_317() 
                         1i32,
                     );
                 }
-                while  parseResult
-                    ==  XML_STATUS_SUSPENDED
-                {
+                while parseResult == XML_STATUS_SUSPENDED {
                     parseResult = XML_ResumeParser(parser);
                 }
             } else {
-                parseResult = _XML_Parse_SINGLE_BYTES(
-                    parser,
-                    input,
-                    strlen(input) as ::core::ffi::c_int,
-                    0,
-                );
-                if  parseResult
-                    !=  XML_STATUS_ERROR
-                {
+                parseResult =
+                    _XML_Parse_SINGLE_BYTES(parser, input, strlen(input) as ::core::ffi::c_int, 0);
+                if parseResult != XML_STATUS_ERROR {
                     parseResult = _XML_Parse_SINGLE_BYTES(
                         parser,
                         b"\0".as_ptr() as *const ::core::ffi::c_char,
@@ -967,9 +851,7 @@ unsafe extern "C" fn test_misc_deny_internal_entity_closing_doctype_issue_317() 
                     );
                 }
             }
-            if  parseResult
-                !=  XML_STATUS_ERROR
-            {
+            if parseResult != XML_STATUS_ERROR {
                 _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
@@ -978,9 +860,7 @@ unsafe extern "C" fn test_misc_deny_internal_entity_closing_doctype_issue_317() 
                         as *const ::core::ffi::c_char,
                 );
             }
-            if  XML_GetErrorCode(parser)
-                !=  XML_ERROR_INVALID_TOKEN
-            {
+            if XML_GetErrorCode(parser) != XML_ERROR_INVALID_TOKEN {
                 _fail(
                     b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
@@ -1025,18 +905,14 @@ unsafe extern "C" fn test_misc_tag_mismatch_reset_leak() {
     );
     let text: *const ::core::ffi::c_char =
         b"<open xmlns='https://namespace1.test'></close>\0".as_ptr() as *const ::core::ffi::c_char;
-    let mut parser: XML_Parser = XML_ParserCreateNS(
-        ::core::ptr::null::<XML_Char>(),
-        
-        '\n' as XML_Char,
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    let mut parser: XML_Parser =
+        XML_ParserCreateNS(::core::ptr::null::<XML_Char>(), '\n' as XML_Char);
+    if _XML_Parse_SINGLE_BYTES(
         parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -1045,9 +921,7 @@ unsafe extern "C" fn test_misc_tag_mismatch_reset_leak() {
             b"Call to parse was expected to fail\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  XML_GetErrorCode(parser)
-        !=  XML_ERROR_TAG_MISMATCH
-    {
+    if XML_GetErrorCode(parser) != XML_ERROR_TAG_MISMATCH {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1056,17 +930,13 @@ unsafe extern "C" fn test_misc_tag_mismatch_reset_leak() {
                 as *const ::core::ffi::c_char,
         );
     }
-    XML_ParserReset(
-        parser,
-        ::core::ptr::null::<XML_Char>(),
-    );
-    if  _XML_Parse_SINGLE_BYTES(
+    XML_ParserReset(parser, ::core::ptr::null::<XML_Char>());
+    if _XML_Parse_SINGLE_BYTES(
         parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_ERROR
+    ) != XML_STATUS_ERROR
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -1075,9 +945,7 @@ unsafe extern "C" fn test_misc_tag_mismatch_reset_leak() {
             b"Call to parse was expected to fail\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if  XML_GetErrorCode(parser)
-        !=  XML_ERROR_TAG_MISMATCH
-    {
+    if XML_GetErrorCode(parser) != XML_ERROR_TAG_MISMATCH {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
                 as *const ::core::ffi::c_char,
@@ -1097,16 +965,12 @@ unsafe extern "C" fn test_misc_create_external_entity_parser_with_null_context()
             as *const ::core::ffi::c_char,
         479,
     );
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    let mut ext_parser: XML_Parser =
-        XML_ExternalEntityParserCreate(
-            parser,
-            ::core::ptr::null::<XML_Char>(),
-            ::core::ptr::null::<XML_Char>(),
-        );
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    let mut ext_parser: XML_Parser = XML_ExternalEntityParserCreate(
+        parser,
+        ::core::ptr::null::<XML_Char>(),
+        ::core::ptr::null::<XML_Char>(),
+    );
     if ext_parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -1128,20 +992,13 @@ unsafe extern "C" fn test_misc_general_entities_support() {
     );
     let doc: *const ::core::ffi::c_char = b"<!DOCTYPE r [\n<!ENTITY e1 'v1'>\n<!ENTITY e2 SYSTEM 'v2'>\n]>\n<r a1='[&e1;]'>[&e1;][&e2;][&amp;&apos;&gt;&lt;&quot;]</r>\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
-    CharData_Init(
-        
-        &raw mut storage,
-    );
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    XML_SetUserData(
-        parser,
-        &raw mut storage as *mut ::core::ffi::c_void,
-    );
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    CharData_Init(&raw mut storage);
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    XML_SetUserData(parser, &raw mut storage as *mut ::core::ffi::c_void);
     XML_SetStartElementHandler(
         parser,
         Some(
@@ -1194,13 +1051,12 @@ unsafe extern "C" fn test_misc_general_entities_support() {
                 ) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         parser,
         doc,
         strlen(doc) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        !=  XML_STATUS_OK
+    ) != XML_STATUS_OK
     {
         _xml_failure(
             parser,
@@ -1211,10 +1067,8 @@ unsafe extern "C" fn test_misc_general_entities_support() {
     }
     XML_ParserFree(parser);
     CharData_CheckXMLChars(
-        
         &raw mut storage,
-        b"e1=v1\ne2=(null)\n(r(a1=[v1]))\n[v1][][&'><\"]\0".as_ptr()
-            as *const XML_Char,
+        b"e1=v1\ne2=(null)\n(r(a1=[v1]))\n[v1][][&'><\"]\0".as_ptr() as *const XML_Char,
     );
 }
 
@@ -1237,10 +1091,7 @@ unsafe extern "C" fn test_misc_char_handler_stop_without_leak() {
     let data: *const ::core::ffi::c_char =
         b"<!DOCTYPE t1[<!ENTITY e1 'angle<'><!ENTITY e2 '&e1;'>]><t1>&e2;\0".as_ptr()
             as *const ::core::ffi::c_char;
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
     if parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -1277,10 +1128,7 @@ unsafe extern "C" fn test_misc_resumeparser_not_crashing() {
             as *const ::core::ffi::c_char,
         562,
     );
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
     XML_GetBuffer(parser, 1);
     XML_StopParser(parser, XML_TRUE);
     XML_ResumeParser(parser);
@@ -1294,21 +1142,14 @@ unsafe extern "C" fn test_misc_stopparser_rejects_unstarted_parser() {
             as *const ::core::ffi::c_char,
         571,
     );
-    let cases: [XML_Bool; 2] =
-        [XML_TRUE, XML_FALSE];
+    let cases: [XML_Bool; 2] = [XML_TRUE, XML_FALSE];
     let mut i: size_t = 0;
     while i
-        < (::core::mem::size_of::<[XML_Bool; 2]>())
-            .wrapping_div(::core::mem::size_of::<XML_Bool>())
+        < (::core::mem::size_of::<[XML_Bool; 2]>()).wrapping_div(::core::mem::size_of::<XML_Bool>())
     {
         let resumable: XML_Bool = cases[i];
-        let mut parser: XML_Parser =
-            XML_ParserCreate(::core::ptr::null::<
-                XML_Char,
-            >());
-        if !(XML_GetErrorCode(parser)
-            ==  XML_ERROR_NONE)
-        {
+        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+        if !(XML_GetErrorCode(parser) == XML_ERROR_NONE) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1317,9 +1158,7 @@ unsafe extern "C" fn test_misc_stopparser_rejects_unstarted_parser() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if !(XML_StopParser(parser, resumable)
-            ==  XML_STATUS_ERROR)
-        {
+        if !(XML_StopParser(parser, resumable) == XML_STATUS_ERROR) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1328,9 +1167,7 @@ unsafe extern "C" fn test_misc_stopparser_rejects_unstarted_parser() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if !(XML_GetErrorCode(parser)
-            ==  XML_ERROR_NOT_STARTED)
-        {
+        if !(XML_GetErrorCode(parser) == XML_ERROR_NOT_STARTED) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1350,14 +1187,8 @@ pub unsafe extern "C" fn accumulate_characters_ext_handler(
     mut s: *const XML_Char,
     mut len: ::core::ffi::c_int,
 ) {
-    let test_data: *mut ExtHdlrData =
-        userData as *mut ExtHdlrData;
-    CharData_AppendXMLChars(
-        
-        (*test_data).storage,
-        s,
-        len,
-    );
+    let test_data: *mut ExtHdlrData = userData as *mut ExtHdlrData;
+    CharData_AppendXMLChars((*test_data).storage, s, len);
 }
 
 unsafe extern "C" fn test_renter_loop_finite_content() {
@@ -1367,35 +1198,29 @@ unsafe extern "C" fn test_renter_loop_finite_content() {
             as *const ::core::ffi::c_char,
         594,
     );
-    let mut storage: CharData =
-        CharData { count:  0, data:  [0; 2048] };
-    CharData_Init(
-        
-        &raw mut storage,
-    );
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    CharData_Init(&raw mut storage);
     let text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY e1 '&e2;'>\n<!ENTITY e2 '&e3;'>\n<!ENTITY e3 SYSTEM '012.ent'>\n<!ENTITY e4 '&e5;'>\n<!ENTITY e5 '(e5)'>\n<!ELEMENT doc (#PCDATA)>\n]>\n<doc>&e1;</doc>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut test_data: ExtHdlrData =
-        ext_hdlr_data {
-    parse_text:  b"&e4;\n\0".as_ptr() as *const ::core::ffi::c_char,
-    handler:  Some(
-                external_entity_null_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-    storage:  &raw mut storage,
-};
-    let expected: *const XML_Char =
-        b"(e5)\n\0".as_ptr() as *const XML_Char;
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
+    let mut test_data: ExtHdlrData = ext_hdlr_data {
+        parse_text: b"&e4;\n\0".as_ptr() as *const ::core::ffi::c_char,
+        handler: Some(
+            external_entity_null_loader
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                ) -> ::core::ffi::c_int,
+        ),
+        storage: &raw mut storage,
+    };
+    let expected: *const XML_Char = b"(e5)\n\0".as_ptr() as *const XML_Char;
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
     if parser.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -1404,10 +1229,7 @@ unsafe extern "C" fn test_renter_loop_finite_content() {
             b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    XML_SetUserData(
-        parser,
-        &raw mut test_data as *mut ::core::ffi::c_void,
-    );
+    XML_SetUserData(parser, &raw mut test_data as *mut ::core::ffi::c_void);
     XML_SetExternalEntityRefHandler(
         parser,
         Some(
@@ -1432,13 +1254,12 @@ unsafe extern "C" fn test_renter_loop_finite_content() {
                 ) -> (),
         ),
     );
-    if  _XML_Parse_SINGLE_BYTES(
+    if _XML_Parse_SINGLE_BYTES(
         parser,
         text,
         strlen(text) as ::core::ffi::c_int,
         XML_TRUE as ::core::ffi::c_int,
-    )
-        ==  XML_STATUS_ERROR
+    ) == XML_STATUS_ERROR
     {
         _xml_failure(
             parser,
@@ -1447,20 +1268,12 @@ unsafe extern "C" fn test_renter_loop_finite_content() {
             616i32,
         );
     }
-    CharData_CheckXMLChars(
-        
-        &raw mut storage,
-        expected,
-    );
+    CharData_CheckXMLChars(&raw mut storage, expected);
     XML_ParserFree(parser);
 }
 
-unsafe extern "C" fn dup_original_string(
-    mut parser: XML_Parser,
-) -> *mut ::core::ffi::c_char {
-    let byte_count: ::core::ffi::c_int =
-        
-        XML_GetCurrentByteCount(parser);
+unsafe extern "C" fn dup_original_string(mut parser: XML_Parser) -> *mut ::core::ffi::c_char {
+    let byte_count: ::core::ffi::c_int = XML_GetCurrentByteCount(parser);
     if !(byte_count >= 0) {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -1472,7 +1285,6 @@ unsafe extern "C" fn dup_original_string(
     let mut offset: ::core::ffi::c_int = -1;
     let mut size: ::core::ffi::c_int = -1;
     let context: *const ::core::ffi::c_char =
-        
         XML_GetInputContext(parser, &raw mut offset, &raw mut size);
     if context.is_null() {
         _fail(
@@ -1498,10 +1310,7 @@ unsafe extern "C" fn dup_original_string(
             b"check failed: size >= 0\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    return portable_strndup(
-        context.offset(offset as isize),
-        byte_count as size_t,
-    );
+    return portable_strndup(context.offset(offset as isize), byte_count as size_t);
 }
 
 unsafe extern "C" fn on_characters_issue_980(
@@ -1510,9 +1319,7 @@ unsafe extern "C" fn on_characters_issue_980(
     mut len: ::core::ffi::c_int,
 ) {
     let mut parser: XML_Parser = userData as XML_Parser;
-    let original_string: *mut ::core::ffi::c_char =
-        
-        dup_original_string(parser);
+    let original_string: *mut ::core::ffi::c_char = dup_original_string(parser);
     if original_string.is_null() {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0".as_ptr()
@@ -1547,10 +1354,7 @@ unsafe extern "C" fn test_misc_expected_event_ptr_issue_980() {
     let doc: *const ::core::ffi::c_char =
         b"<!DOCTYPE day [\n  <!ENTITY draft.day '10'>\n]>\n<day>&draft.day;</day>\n\0".as_ptr()
             as *const ::core::ffi::c_char;
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
     XML_SetUserData(parser, parser as *mut ::core::ffi::c_void);
     XML_SetCharacterDataHandler(
         parser,
@@ -1563,13 +1367,8 @@ unsafe extern "C" fn test_misc_expected_event_ptr_issue_980() {
                 ) -> (),
         ),
     );
-    if !(_XML_Parse_SINGLE_BYTES(
-        parser,
-        doc,
-        strlen(doc) as ::core::ffi::c_int,
-        1,
-    )
-        ==  XML_STATUS_OK)
+    if !(_XML_Parse_SINGLE_BYTES(parser, doc, strlen(doc) as ::core::ffi::c_int, 1)
+        == XML_STATUS_OK)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
@@ -1591,17 +1390,9 @@ unsafe extern "C" fn test_misc_sync_entity_tolerated() {
     );
     let doc: *const ::core::ffi::c_char = b"<!DOCTYPE t0 [\n   <!ENTITY a '<t1></t1>'>\n   <!ENTITY b '<t2>two</t2>'>\n   <!ENTITY c '<t3>three<t4>four</t4>three</t3>'>\n   <!ENTITY d '<t5>&b;</t5>'>\n]>\n<t0>&a;&b;&c;&d;</t0>\n\0"
         .as_ptr() as *const ::core::ffi::c_char;
-    let mut parser: XML_Parser =
-        XML_ParserCreate(::core::ptr::null::<
-            XML_Char,
-        >());
-    if !(_XML_Parse_SINGLE_BYTES(
-        parser,
-        doc,
-        strlen(doc) as ::core::ffi::c_int,
-        1,
-    )
-        ==  XML_STATUS_OK)
+    let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+    if !(_XML_Parse_SINGLE_BYTES(parser, doc, strlen(doc) as ::core::ffi::c_int, 1)
+        == XML_STATUS_OK)
     {
         _fail(
             b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
@@ -1676,17 +1467,9 @@ unsafe extern "C" fn test_misc_async_entity_rejected() {
         let doc: *const ::core::ffi::c_char = testCase.doc;
         let expectedStatus: XML_Status = XML_STATUS_ERROR;
         let expectedError: XML_Error = XML_ERROR_ASYNC_ENTITY;
-        let mut parser: XML_Parser =
-            XML_ParserCreate(::core::ptr::null::<
-                XML_Char,
-            >());
-        if !(_XML_Parse_SINGLE_BYTES(
-            parser,
-            doc,
-            strlen(doc) as ::core::ffi::c_int,
-            1,
-        )
-            ==  expectedStatus)
+        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
+        if !(_XML_Parse_SINGLE_BYTES(parser, doc, strlen(doc) as ::core::ffi::c_int, 1)
+            == expectedStatus)
         {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
@@ -1696,9 +1479,7 @@ unsafe extern "C" fn test_misc_async_entity_rejected() {
                     .as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if !(XML_GetErrorCode(parser)
-            ==  expectedError)
-        {
+        if !(XML_GetErrorCode(parser) == expectedError) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1707,9 +1488,7 @@ unsafe extern "C" fn test_misc_async_entity_rejected() {
                     as *const ::core::ffi::c_char,
             );
         }
-        if !(XML_GetCurrentLineNumber(parser)
-            == testCase.expectedErrorLine)
-        {
+        if !(XML_GetCurrentLineNumber(parser) == testCase.expectedErrorLine) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1718,9 +1497,7 @@ unsafe extern "C" fn test_misc_async_entity_rejected() {
                     .as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        if !(XML_GetCurrentColumnNumber(parser)
-            == testCase.expectedErrorColumn)
-        {
+        if !(XML_GetCurrentColumnNumber(parser) == testCase.expectedErrorColumn) {
             _fail(
                 b"/mnt/ssd1/ahomescu/development/immunant/libexpat/expat/tests/misc_tests.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
@@ -1735,78 +1512,56 @@ unsafe extern "C" fn test_misc_async_entity_rejected() {
 }
 #[no_mangle]
 
-pub unsafe extern "C" fn make_miscellaneous_test_case(
-    mut s: *mut Suite,
-) {
+pub unsafe extern "C" fn make_miscellaneous_test_case(mut s: *mut Suite) {
     let mut tc_misc: *mut TCase =
-        
-        tcase_create(
-            b"miscellaneous tests\0".as_ptr() as *const ::core::ffi::c_char
-        );
-    suite_add_tcase(
-        
-        s,
-        
-        tc_misc,
-    );
+        tcase_create(b"miscellaneous tests\0".as_ptr() as *const ::core::ffi::c_char);
+    suite_add_tcase(s, tc_misc);
     tcase_add_checked_fixture(
-        
         tc_misc,
         None,
         Some(basic_teardown as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_alloc_create_parser as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_alloc_create_parser_with_encoding as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_null_parser as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_error_string as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_version as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_features as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_attribute_leak as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_utf16le as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_stop_during_end_handler_issue_240_1 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_stop_during_end_handler_issue_240_2 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__ifdef_xml_dtd(
-        
         tc_misc,
         Some(
             test_misc_deny_internal_entity_closing_doctype_issue_317
@@ -1814,12 +1569,10 @@ pub unsafe extern "C" fn make_miscellaneous_test_case(
         ),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_tag_mismatch_reset_leak as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(
             test_misc_create_external_entity_parser_with_null_context
@@ -1827,42 +1580,34 @@ pub unsafe extern "C" fn make_miscellaneous_test_case(
         ),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_general_entities_support as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_char_handler_stop_without_leak as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_resumeparser_not_crashing as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_stopparser_rejects_unstarted_parser as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test__if_xml_ge(
-        
         tc_misc,
         Some(test_renter_loop_finite_content as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_expected_event_ptr_issue_980 as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_sync_entity_tolerated as unsafe extern "C" fn() -> ()),
     );
     tcase_add_test(
-        
         tc_misc,
         Some(test_misc_async_entity_rejected as unsafe extern "C" fn() -> ()),
     );

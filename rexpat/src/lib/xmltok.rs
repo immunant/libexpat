@@ -335,24 +335,19 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             if !(*ptr as ::core::ffi::c_int == 0x2d) {
                 *nextTokPtr = ptr;
                 return XML_TOK_INVALID_1;
             }
             ptr = ptr.offset(1);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 1) as ::core::ffi::c_long
-            {
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
                 match (*(enc as *const normal_encoding)).type_0
                     [*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
                 {
                     5 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         if (*(enc as *const normal_encoding))
@@ -366,8 +361,7 @@ pub mod xmltok_impl_c {
                         ptr = ptr.offset(2isize);
                     }
                     6 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         if (*(enc as *const normal_encoding))
@@ -381,8 +375,7 @@ pub mod xmltok_impl_c {
                         ptr = ptr.offset(3isize);
                     }
                     7 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         if (*(enc as *const normal_encoding))
@@ -402,16 +395,14 @@ pub mod xmltok_impl_c {
                     27 => {
                         ptr = ptr.offset(1);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
                         if *ptr as ::core::ffi::c_int == 0x2d {
                             ptr = ptr.offset(1);
                             if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                >= (1i32 * 1)
-                                    as ::core::ffi::c_long)
+                                >= (1i32 * 1) as ::core::ffi::c_long)
                             {
                                 return XML_TOK_PARTIAL_1;
                             }
@@ -438,21 +429,14 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
             as ::core::ffi::c_int
         {
             27 => {
-                return normal_scanComment(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanComment(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             20 => {
                 *nextTokPtr = ptr.offset(1);
@@ -466,9 +450,7 @@ pub mod xmltok_impl_c {
                 return XML_TOK_INVALID_1;
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             's_129: {
                 match (*(enc as *const normal_encoding)).type_0
                     [*ptr as ::core::ffi::c_uchar as usize]
@@ -476,15 +458,13 @@ pub mod xmltok_impl_c {
                 {
                     30 => {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (2i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (2i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        match (*(enc as *const normal_encoding)).type_0[*ptr
-                            .offset(1)
-                            as ::core::ffi::c_uchar
-                            as usize] as ::core::ffi::c_int
+                        match (*(enc as *const normal_encoding)).type_0
+                            [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                            as ::core::ffi::c_int
                         {
                             21 | 9 | 10 | 30 => {
                                 *nextTokPtr = ptr;
@@ -518,9 +498,7 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut upper: ::core::ffi::c_int = 0;
         *tokPtr = XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (1i32 * 3) as ::core::ffi::c_long
-        {
+        if end.offset_from(ptr) as ::core::ffi::c_long != (1i32 * 3) as ::core::ffi::c_long {
             return 1i32;
         }
         match *ptr as ::core::ffi::c_int {
@@ -561,9 +539,7 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut tok: ::core::ffi::c_int = 0;
         let mut target: *const ::core::ffi::c_char = ptr;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
@@ -648,9 +624,7 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_118: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -729,17 +703,14 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(1);
                     while end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long
+                        >= (1i32 * 1) as ::core::ffi::c_long
                     {
                         match (*(enc as *const normal_encoding)).type_0
                             [*ptr as ::core::ffi::c_uchar as usize]
                             as ::core::ffi::c_int
                         {
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -754,9 +725,7 @@ pub mod xmltok_impl_c {
                                 ptr = ptr.offset(2isize);
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -771,9 +740,7 @@ pub mod xmltok_impl_c {
                                 ptr = ptr.offset(3isize);
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -794,8 +761,7 @@ pub mod xmltok_impl_c {
                             15 => {
                                 ptr = ptr.offset(1);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 1)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 1) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
@@ -818,8 +784,7 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
@@ -862,9 +827,7 @@ pub mod xmltok_impl_c {
             ASCII_LSQB as ::core::ffi::c_char,
         ];
         let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6i32 * 1) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (6i32 * 1) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         i = 0;
@@ -890,15 +853,9 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 1 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (1i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(1i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (1i32 - 1) as size_t != 0 {
+                n &= !(1i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
@@ -918,8 +875,7 @@ pub mod xmltok_impl_c {
                 if *ptr as ::core::ffi::c_int == 0x5d {
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
@@ -1001,9 +957,7 @@ pub mod xmltok_impl_c {
                 ptr = ptr.offset(1isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
             {
@@ -1062,9 +1016,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
@@ -1149,9 +1101,7 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_73: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -1226,8 +1176,7 @@ pub mod xmltok_impl_c {
                 21 | 9 | 10 => {
                     ptr = ptr.offset(1);
                     while end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long
+                        >= (1i32 * 1) as ::core::ffi::c_long
                     {
                         match (*(enc as *const normal_encoding)).type_0
                             [*ptr as ::core::ffi::c_uchar as usize]
@@ -1276,9 +1225,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
             {
@@ -1289,9 +1236,7 @@ pub mod xmltok_impl_c {
                 }
             }
             ptr = ptr.offset(1);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 1) as ::core::ffi::c_long
-            {
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
                 match (*(enc as *const normal_encoding)).type_0
                     [*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
@@ -1318,16 +1263,9 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             if *ptr as ::core::ffi::c_int == 0x78 {
-                return normal_scanHexCharRef(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanHexCharRef(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -1339,9 +1277,7 @@ pub mod xmltok_impl_c {
                 }
             }
             ptr = ptr.offset(1);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 1) as ::core::ffi::c_long
-            {
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
                 match (*(enc as *const normal_encoding)).type_0
                     [*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
@@ -1368,9 +1304,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_33: u64;
@@ -1445,12 +1379,7 @@ pub mod xmltok_impl_c {
                 c2rust_current_block_33 = 14763689060501151050;
             }
             19 => {
-                return normal_scanCharRef(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanCharRef(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             _ => {
                 *nextTokPtr = ptr;
@@ -1463,9 +1392,7 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_64: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -1563,9 +1490,7 @@ pub mod xmltok_impl_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut hadColon: ::core::ffi::c_int = 0;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_186: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -1645,8 +1570,7 @@ pub mod xmltok_impl_c {
                     hadColon = 1;
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
@@ -1666,9 +1590,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 7083593080606520045;
                         }
                         5 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 2
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if (*(enc as *const normal_encoding))
@@ -1689,9 +1611,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 10930818133215224067;
                         }
                         6 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 3
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if (*(enc as *const normal_encoding))
@@ -1712,9 +1632,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 10930818133215224067;
                         }
                         7 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 4
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if (*(enc as *const normal_encoding))
@@ -1752,8 +1670,7 @@ pub mod xmltok_impl_c {
                         let mut t: ::core::ffi::c_int = 0;
                         ptr = ptr.offset(1);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
@@ -1788,8 +1705,7 @@ pub mod xmltok_impl_c {
                     loop {
                         ptr = ptr.offset(1);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
@@ -1813,8 +1729,7 @@ pub mod xmltok_impl_c {
                     loop {
                         let mut t_0: ::core::ffi::c_int = 0;
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
@@ -1826,9 +1741,7 @@ pub mod xmltok_impl_c {
                         }
                         match t_0 {
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -1843,9 +1756,7 @@ pub mod xmltok_impl_c {
                                 ptr = ptr.offset(2isize);
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -1860,9 +1771,7 @@ pub mod xmltok_impl_c {
                                 ptr = ptr.offset(3isize);
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -1881,12 +1790,8 @@ pub mod xmltok_impl_c {
                                 return XML_TOK_INVALID_1;
                             }
                             3 => {
-                                let mut tok: ::core::ffi::c_int = normal_scanRef(
-                                    enc,
-                                    ptr.offset(1),
-                                    end,
-                                    &raw mut ptr,
-                                );
+                                let mut tok: ::core::ffi::c_int =
+                                    normal_scanRef(enc, ptr.offset(1), end, &raw mut ptr);
                                 if tok <= 0 {
                                     if tok == XML_TOK_INVALID_1 {
                                         *nextTokPtr = ptr;
@@ -1905,8 +1810,7 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
@@ -1918,8 +1822,7 @@ pub mod xmltok_impl_c {
                             loop {
                                 ptr = ptr.offset(1);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 1)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 1) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
@@ -1940,9 +1843,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     5 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 2
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if (*(enc as *const normal_encoding))
@@ -1964,9 +1865,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     6 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 3
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if (*(enc as *const normal_encoding))
@@ -1988,9 +1887,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     7 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 4
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if (*(enc as *const normal_encoding))
@@ -2053,8 +1950,7 @@ pub mod xmltok_impl_c {
                             398073151373002430 => {
                                 ptr = ptr.offset(1);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 1)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 1) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
@@ -2088,9 +1984,7 @@ pub mod xmltok_impl_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut hadColon: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_45: u64;
@@ -2176,20 +2070,10 @@ pub mod xmltok_impl_c {
                     as ::core::ffi::c_int
                 {
                     27 => {
-                        return normal_scanComment(
-                            enc,
-                            ptr.offset(1isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return normal_scanComment(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
                     20 => {
-                        return normal_scanCdataSection(
-                            enc,
-                            ptr.offset(1isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return normal_scanCdataSection(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
                     _ => {}
                 }
@@ -2197,20 +2081,10 @@ pub mod xmltok_impl_c {
                 return XML_TOK_INVALID_1;
             }
             15 => {
-                return normal_scanPi(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanPi(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             17 => {
-                return normal_scanEndTag(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanEndTag(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             _ => {
                 *nextTokPtr = ptr;
@@ -2224,9 +2098,7 @@ pub mod xmltok_impl_c {
             _ => {}
         }
         hadColon = 0;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_161: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -2306,8 +2178,7 @@ pub mod xmltok_impl_c {
                     hadColon = 1;
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
@@ -2327,9 +2198,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 9169466483824547789;
                         }
                         5 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 2
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if (*(enc as *const normal_encoding))
@@ -2350,9 +2219,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 2616667235040759262;
                         }
                         6 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 3
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if (*(enc as *const normal_encoding))
@@ -2373,9 +2240,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 2616667235040759262;
                         }
                         7 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 4
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if (*(enc as *const normal_encoding))
@@ -2412,8 +2277,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(1);
                     loop {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             c2rust_current_block_161 = 13215501469961642988;
                             break;
@@ -2433,9 +2297,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 7939927167482451446;
                             }
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -2456,9 +2318,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 16314074004867283505;
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -2479,9 +2339,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 16314074004867283505;
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if (*(enc as *const normal_encoding))
@@ -2547,8 +2405,7 @@ pub mod xmltok_impl_c {
                 12549409781983877175 => {
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
@@ -2582,15 +2439,9 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 1 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (1i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(1i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (1i32 - 1) as size_t != 0 {
+                n &= !(1i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
@@ -2601,20 +2452,10 @@ pub mod xmltok_impl_c {
             as ::core::ffi::c_int
         {
             2 => {
-                return normal_scanLt(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanLt(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             3 => {
-                return normal_scanRef(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanRef(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             9 => {
                 ptr = ptr.offset(1);
@@ -2646,8 +2487,7 @@ pub mod xmltok_impl_c {
                 if *ptr as ::core::ffi::c_int == 0x5d {
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_TRAILING_RSQB_1;
                     }
@@ -2709,9 +2549,7 @@ pub mod xmltok_impl_c {
                 ptr = ptr.offset(1isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_76: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -2757,28 +2595,18 @@ pub mod xmltok_impl_c {
                 }
                 4 => {
                     if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (2i32 * 1)
-                            as ::core::ffi::c_long
+                        >= (2i32 * 1) as ::core::ffi::c_long
                     {
-                        if !(*ptr.offset(1) as ::core::ffi::c_int
-                            == 0x5d)
-                        {
+                        if !(*ptr.offset(1) as ::core::ffi::c_int == 0x5d) {
                             ptr = ptr.offset(1);
                             c2rust_current_block_76 = 7158658067966855297;
                         } else if end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (3i32 * 1)
-                                as ::core::ffi::c_long
+                            >= (3i32 * 1) as ::core::ffi::c_long
                         {
-                            if !(*ptr.offset(
-                                (2i32 * 1) as isize,
-                            ) as ::core::ffi::c_int
-                                == 0x3e)
-                            {
+                            if !(*ptr.offset((2i32 * 1) as isize) as ::core::ffi::c_int == 0x3e) {
                                 ptr = ptr.offset(1isize);
                             } else {
-                                *nextTokPtr = ptr.offset(
-                                    (2i32 * 1) as isize,
-                                );
+                                *nextTokPtr = ptr.offset((2i32 * 1) as isize);
                                 return XML_TOK_INVALID_1;
                             }
                             c2rust_current_block_76 = 7158658067966855297;
@@ -2815,9 +2643,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_34: u64;
@@ -2906,9 +2732,7 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_65: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -3005,9 +2829,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
@@ -3092,9 +2914,7 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_63: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -3192,9 +3012,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut t: ::core::ffi::c_int = (*(enc as *const normal_encoding)).type_0
                 [*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int;
@@ -3249,8 +3067,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(1);
                     if !(t != open) {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return -27i32;
                         }
@@ -3259,9 +3076,7 @@ pub mod xmltok_impl_c {
                             [*ptr as ::core::ffi::c_uchar as usize]
                             as ::core::ffi::c_int
                         {
-                            21 | 9 | 10 | 11 | 30 | 20 => {
-                                return XML_TOK_LITERAL_1
-                            }
+                            21 | 9 | 10 | 11 | 30 | 20 => return XML_TOK_LITERAL_1,
                             _ => return XML_TOK_INVALID_1,
                         }
                     }
@@ -3285,15 +3100,9 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 1 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (1i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(1i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (1i32 - 1) as size_t != 0 {
+                n &= !(1i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
@@ -3334,20 +3143,10 @@ pub mod xmltok_impl_c {
                     as ::core::ffi::c_int
                 {
                     16 => {
-                        return normal_scanDecl(
-                            enc,
-                            ptr.offset(1isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return normal_scanDecl(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
                     15 => {
-                        return normal_scanPi(
-                            enc,
-                            ptr.offset(1isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return normal_scanPi(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
                     22 | 24 | 29 | 5 | 6 | 7 => {
                         *nextTokPtr = ptr.offset(-(1));
@@ -3369,12 +3168,7 @@ pub mod xmltok_impl_c {
                 c2rust_current_block_124 = 6405334113228567422;
             }
             30 => {
-                return normal_scanPercent(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanPercent(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             35 => {
                 *nextTokPtr = ptr.offset(1);
@@ -3393,16 +3187,12 @@ pub mod xmltok_impl_c {
                 }
                 if *ptr as ::core::ffi::c_int == 0x5d {
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (2i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (2i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0x3e
-                    {
-                        *nextTokPtr = ptr
-                            .offset((2i32 * 1) as isize);
+                    if *ptr.offset(1) as ::core::ffi::c_int == 0x3e {
+                        *nextTokPtr = ptr.offset((2i32 * 1) as isize);
                         return XML_TOK_COND_SECT_CLOSE_1;
                     }
                 }
@@ -3454,12 +3244,7 @@ pub mod xmltok_impl_c {
                 return XML_TOK_DECL_CLOSE_1;
             }
             19 => {
-                return normal_scanPoundName(
-                    enc,
-                    ptr.offset(1isize),
-                    end,
-                    nextTokPtr,
-                );
+                return normal_scanPoundName(enc, ptr.offset(1isize), end, nextTokPtr);
             }
             5 => {
                 if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
@@ -3578,8 +3363,7 @@ pub mod xmltok_impl_c {
                 loop {
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         break;
                     }
@@ -3614,9 +3398,7 @@ pub mod xmltok_impl_c {
                 return XML_TOK_PROLOG_S_1;
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_210: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -3694,11 +3476,10 @@ pub mod xmltok_impl_c {
                 }
                 23 => {
                     ptr = ptr.offset(1);
-                    match  tok {
-    XML_TOK_NAME =>  {
+                    match tok {
+                        XML_TOK_NAME => {
                             if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                >= (1i32 * 1)
-                                    as ::core::ffi::c_long)
+                                >= (1i32 * 1) as ::core::ffi::c_long)
                             {
                                 return XML_TOK_PARTIAL_1;
                             }
@@ -3719,9 +3500,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 2692573546887820791;
                                 }
                                 5 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 2
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if (*(enc as *const normal_encoding))
@@ -3742,9 +3521,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 9812798724717783973;
                                 }
                                 6 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 3
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if (*(enc as *const normal_encoding))
@@ -3765,9 +3542,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 9812798724717783973;
                                 }
                                 7 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 4
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if (*(enc as *const normal_encoding))
@@ -3799,11 +3574,11 @@ pub mod xmltok_impl_c {
                                 _ => {}
                             }
                         }
-    XML_TOK_PREFIXED_NAME =>  {
+                        XML_TOK_PREFIXED_NAME => {
                             tok = XML_TOK_NMTOKEN_1;
                         }
-    _ =>  {}
-}
+                        _ => {}
+                    }
                     c2rust_current_block_210 = 14244298717249035578;
                 }
                 34 => {
@@ -3860,9 +3635,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         start = ptr;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
             {
@@ -3877,12 +3650,7 @@ pub mod xmltok_impl_c {
                 }
                 3 => {
                     if ptr == start {
-                        return normal_scanRef(
-                            enc,
-                            ptr.offset(1isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return normal_scanRef(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
                     *nextTokPtr = ptr;
                     return XML_TOK_DATA_CHARS_1;
@@ -3903,8 +3671,7 @@ pub mod xmltok_impl_c {
                     if ptr == start {
                         ptr = ptr.offset(1);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_TRAILING_CR_1;
                         }
@@ -3953,9 +3720,7 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         start = ptr;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
             {
@@ -3970,24 +3735,15 @@ pub mod xmltok_impl_c {
                 }
                 3 => {
                     if ptr == start {
-                        return normal_scanRef(
-                            enc,
-                            ptr.offset(1isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return normal_scanRef(enc, ptr.offset(1isize), end, nextTokPtr);
                     }
                     *nextTokPtr = ptr;
                     return XML_TOK_DATA_CHARS_1;
                 }
                 30 => {
                     if ptr == start {
-                        let mut tok: ::core::ffi::c_int = normal_scanPercent(
-                            enc,
-                            ptr.offset(1),
-                            end,
-                            nextTokPtr,
-                        );
+                        let mut tok: ::core::ffi::c_int =
+                            normal_scanPercent(enc, ptr.offset(1), end, nextTokPtr);
                         return if tok == XML_TOK_PERCENT_1 {
                             XML_TOK_INVALID_1
                         } else {
@@ -4009,8 +3765,7 @@ pub mod xmltok_impl_c {
                     if ptr == start {
                         ptr = ptr.offset(1);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_TRAILING_CR_1;
                         }
@@ -4044,21 +3799,13 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut level: ::core::ffi::c_int = 0;
         if 1 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (1i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(1i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (1i32 - 1) as size_t != 0 {
+                n &= !(1i32 - 1) as size_t;
                 end = ptr.offset(n as isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
             {
@@ -4111,16 +3858,14 @@ pub mod xmltok_impl_c {
                 2 => {
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
                     if *ptr as ::core::ffi::c_int == 0x21 {
                         ptr = ptr.offset(1);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
@@ -4133,16 +3878,14 @@ pub mod xmltok_impl_c {
                 4 => {
                     ptr = ptr.offset(1);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 1) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
                     if *ptr as ::core::ffi::c_int == 0x5d {
                         ptr = ptr.offset(1);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 1)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 1) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
@@ -4172,9 +3915,7 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         ptr = ptr.offset(1);
         end = end.offset(-(1));
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             let mut c2rust_current_block_8: u64;
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
@@ -4231,9 +3972,7 @@ pub mod xmltok_impl_c {
                 as ::core::ffi::c_int
             {
                 5 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other
-                    {
+                    if state == crate::xmltok_impl_c::other {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh10 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh10 = ptr;
@@ -4244,9 +3983,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((2i32 - 1i32) as isize);
                 }
                 6 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other
-                    {
+                    if state == crate::xmltok_impl_c::other {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh11 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh11 = ptr;
@@ -4257,9 +3994,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((3i32 - 1i32) as isize);
                 }
                 7 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other
-                    {
+                    if state == crate::xmltok_impl_c::other {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh12 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh12 = ptr;
@@ -4270,9 +4005,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((4i32 - 1i32) as isize);
                 }
                 29 | 22 | 24 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other
-                    {
+                    if state == crate::xmltok_impl_c::other {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh13 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh13 = ptr;
@@ -4282,9 +4015,7 @@ pub mod xmltok_impl_c {
                     }
                 }
                 12 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue
-                    {
+                    if state != crate::xmltok_impl_c::inValue {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh14 = (*atts.offset(nAtts as isize)).valuePtr;
                             *c2rust_fresh14 = ptr.offset(1isize);
@@ -4301,9 +4032,7 @@ pub mod xmltok_impl_c {
                     }
                 }
                 13 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue
-                    {
+                    if state != crate::xmltok_impl_c::inValue {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh16 = (*atts.offset(nAtts as isize)).valuePtr;
                             *c2rust_fresh16 = ptr.offset(1isize);
@@ -4325,43 +4054,31 @@ pub mod xmltok_impl_c {
                     }
                 }
                 21 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::inName
-                    {
+                    if state == crate::xmltok_impl_c::inName {
                         state = crate::xmltok_impl_c::other;
-                    } else if  state
-                        ==  crate::xmltok_impl_c::inValue
+                    } else if state == crate::xmltok_impl_c::inValue
                         && nAtts < attsMax
                         && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
                         && (ptr == (*atts.offset(nAtts as isize)).valuePtr
                             || *ptr as ::core::ffi::c_int != ASCII_SPACE
-                            || *ptr.offset(1) as ::core::ffi::c_int
-                                == ASCII_SPACE
-                            || (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                            || *ptr.offset(1) as ::core::ffi::c_int == ASCII_SPACE
+                            || (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                                 == open)
                     {
                         (*atts.offset(nAtts as isize)).normalized = 0i8;
                     }
                 }
                 9 | 10 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::inName
-                    {
+                    if state == crate::xmltok_impl_c::inName {
                         state = crate::xmltok_impl_c::other;
-                    } else if  state
-                        ==  crate::xmltok_impl_c::inValue
-                        && nAtts < attsMax
-                    {
+                    } else if state == crate::xmltok_impl_c::inValue && nAtts < attsMax {
                         (*atts.offset(nAtts as isize)).normalized = 0i8;
                     }
                 }
                 11 | 17 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue
-                    {
+                    if state != crate::xmltok_impl_c::inValue {
                         return nAtts;
                     }
                 }
@@ -4381,28 +4098,40 @@ pub mod xmltok_impl_c {
             ptr = ptr.offset(1);
             while !(*ptr as ::core::ffi::c_int == 0x3b) {
                 let mut c: ::core::ffi::c_int = *ptr as ::core::ffi::c_int;
-                match  c {
-    ASCII_0 | crate::ascii_h::ASCII_1_1 | crate::ascii_h::ASCII_2_1 |
-        crate::ascii_h::ASCII_3_1 | crate::ascii_h::ASCII_4 |
-        crate::ascii_h::ASCII_5 | crate::ascii_h::ASCII_6 |
-        crate::ascii_h::ASCII_7 | crate::ascii_h::ASCII_8_1 |
-        crate::ascii_h::ASCII_9_1 =>  {
+                match c {
+                    ASCII_0
+                    | crate::ascii_h::ASCII_1_1
+                    | crate::ascii_h::ASCII_2_1
+                    | crate::ascii_h::ASCII_3_1
+                    | crate::ascii_h::ASCII_4
+                    | crate::ascii_h::ASCII_5
+                    | crate::ascii_h::ASCII_6
+                    | crate::ascii_h::ASCII_7
+                    | crate::ascii_h::ASCII_8_1
+                    | crate::ascii_h::ASCII_9_1 => {
                         result <<= 4;
                         result |= c - ASCII_0;
                     }
-    ASCII_A | crate::ascii_h::ASCII_B_1 | ASCII_C | ASCII_D |
-        crate::ascii_h::ASCII_E_1 | crate::ascii_h::ASCII_F_1 =>  {
+                    ASCII_A
+                    | crate::ascii_h::ASCII_B_1
+                    | ASCII_C
+                    | ASCII_D
+                    | crate::ascii_h::ASCII_E_1
+                    | crate::ascii_h::ASCII_F_1 => {
                         result <<= 4;
                         result += 10i32 + (c - ASCII_A);
                     }
-    ASCII_a_1 | crate::ascii_h::ASCII_b | crate::ascii_h::ASCII_c_1 |
-        crate::ascii_h::ASCII_d | crate::ascii_h::ASCII_e_1 |
-        crate::ascii_h::ASCII_f =>  {
+                    ASCII_a_1
+                    | crate::ascii_h::ASCII_b
+                    | crate::ascii_h::ASCII_c_1
+                    | crate::ascii_h::ASCII_d
+                    | crate::ascii_h::ASCII_e_1
+                    | crate::ascii_h::ASCII_f => {
                         result <<= 4;
                         result += 10i32 + (c - ASCII_a_1);
                     }
-    _ =>  {}
-}
+                    _ => {}
+                }
                 if result >= 0x110000 {
                     return -1i32;
                 }
@@ -4429,9 +4158,7 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         match end.offset_from(ptr) as ::core::ffi::c_long / 1 {
             2 => {
-                if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0x74
-                {
+                if *ptr.offset(1) as ::core::ffi::c_int == 0x74 {
                     match *ptr as ::core::ffi::c_int {
                         crate::ascii_h::ASCII_l_1 => return ASCII_LT,
                         crate::ascii_h::ASCII_g_1 => return ASCII_GT,
@@ -4450,8 +4177,8 @@ pub mod xmltok_impl_c {
                     }
                 }
             }
-            4 => match  *ptr as ::core::ffi::c_int {
-    crate::ascii_h::ASCII_q =>  {
+            4 => match *ptr as ::core::ffi::c_int {
+                crate::ascii_h::ASCII_q => {
                     ptr = ptr.offset(1);
                     if *ptr as ::core::ffi::c_int == 0x75 {
                         ptr = ptr.offset(1);
@@ -4463,7 +4190,7 @@ pub mod xmltok_impl_c {
                         }
                     }
                 }
-    ASCII_a_1 =>  {
+                ASCII_a_1 => {
                     ptr = ptr.offset(1);
                     if *ptr as ::core::ffi::c_int == 0x70 {
                         ptr = ptr.offset(1);
@@ -4475,8 +4202,8 @@ pub mod xmltok_impl_c {
                         }
                     }
                 }
-    _ =>  {}
-},
+                _ => {}
+            },
             _ => {}
         }
         return 0;
@@ -4523,7 +4250,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(1isize);
                 }
                 _ => {
-                    return  ptr.offset_from(start) as ::core::ffi::c_int;
+                    return ptr.offset_from(start) as ::core::ffi::c_int;
                 }
             }
         }
@@ -4551,9 +4278,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut pos: *mut crate::src::lib::xmltok::POSITION,
     ) {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 1) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 1) as ::core::ffi::c_long {
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
             {
@@ -4578,8 +4303,7 @@ pub mod xmltok_impl_c {
                     (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
                     ptr = ptr.offset(1);
                     if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 1)
-                            as ::core::ffi::c_long
+                        >= (1i32 * 1) as ::core::ffi::c_long
                         && (*(enc as *const normal_encoding)).type_0
                             [*ptr as ::core::ffi::c_uchar as usize]
                             as ::core::ffi::c_int
@@ -4603,49 +4327,35 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            if !(*ptr.offset(1) as ::core::ffi::c_int
-                == 0
-                && *ptr.offset(0) as ::core::ffi::c_int
-                    == 0x2d)
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            if !(*ptr.offset(1) as ::core::ffi::c_int == 0
+                && *ptr.offset(0) as ::core::ffi::c_int == 0x2d)
             {
                 *nextTokPtr = ptr;
                 return XML_TOK_INVALID_1;
             }
             ptr = ptr.offset(2);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 2) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
                     5 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         ptr = ptr.offset(2isize);
                     }
                     6 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         ptr = ptr.offset(3isize);
                     }
                     7 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         ptr = ptr.offset(4isize);
@@ -4657,29 +4367,21 @@ pub mod xmltok_impl_c {
                     27 => {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(0) as ::core::ffi::c_int
-                                == 0x2d
+                        if *ptr.offset(1) as ::core::ffi::c_int == 0
+                            && *ptr.offset(0) as ::core::ffi::c_int == 0x2d
                         {
                             ptr = ptr.offset(2);
                             if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                >= (1i32 * 2)
-                                    as ::core::ffi::c_long)
+                                >= (1i32 * 2) as ::core::ffi::c_long)
                             {
                                 return XML_TOK_PARTIAL_1;
                             }
-                            if !(*ptr.offset(1)
-                                as ::core::ffi::c_int
-                                == 0
-                                && *ptr.offset(0)
-                                    as ::core::ffi::c_int
-                                    == 0x3e)
+                            if !(*ptr.offset(1) as ::core::ffi::c_int == 0
+                                && *ptr.offset(0) as ::core::ffi::c_int == 0x3e)
                             {
                                 *nextTokPtr = ptr;
                                 return XML_TOK_INVALID_1;
@@ -4703,29 +4405,17 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             27 => {
-                return little2_scanComment(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanComment(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             20 => {
                 *nextTokPtr = ptr.offset(2);
@@ -4739,45 +4429,26 @@ pub mod xmltok_impl_c {
                 return XML_TOK_INVALID_1;
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             's_129: {
-                match if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
                     30 => {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (2i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (2i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        match if *ptr
-                            .offset(2)
-                            .offset(1)
-                            as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(2)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        match if *ptr.offset(2).offset(1) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(2) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(2)
-                                    .offset(1),
-                                *ptr.offset(2)
-                                    .offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(2).offset(1), *ptr.offset(2).offset(0))
                         } {
                             21 | 9 | 10 | 30 => {
                                 *nextTokPtr = ptr;
@@ -4811,14 +4482,10 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut upper: ::core::ffi::c_int = 0;
         *tokPtr = XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2i32 * 3) as ::core::ffi::c_long
-        {
+        if end.offset_from(ptr) as ::core::ffi::c_long != (2i32 * 3) as ::core::ffi::c_long {
             return 1i32;
         }
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             *ptr.offset(0) as ::core::ffi::c_int
         } else {
             -1
@@ -4830,9 +4497,7 @@ pub mod xmltok_impl_c {
             _ => return 1,
         }
         ptr = ptr.offset(2);
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             *ptr.offset(0) as ::core::ffi::c_int
         } else {
             -1
@@ -4844,9 +4509,7 @@ pub mod xmltok_impl_c {
             _ => return 1,
         }
         ptr = ptr.offset(2);
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             *ptr.offset(0) as ::core::ffi::c_int
         } else {
             -1
@@ -4872,35 +4535,23 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut tok: ::core::ffi::c_int = 0;
         let mut target: *const ::core::ffi::c_char = ptr;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -4955,35 +4606,22 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_118: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(0)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -5034,41 +4672,29 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long
+                        >= (1i32 * 2) as ::core::ffi::c_long
                     {
-                        match if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(2isize);
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(3isize);
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(4isize);
@@ -5080,17 +4706,12 @@ pub mod xmltok_impl_c {
                             15 => {
                                 ptr = ptr.offset(2);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 2)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 2) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
-                                if *ptr.offset(1)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                    && *ptr.offset(0)
-                                        as ::core::ffi::c_int
-                                        == 0x3e
+                                if *ptr.offset(1) as ::core::ffi::c_int == 0
+                                    && *ptr.offset(0) as ::core::ffi::c_int == 0x3e
                                 {
                                     *nextTokPtr = ptr.offset(2);
                                     return tok;
@@ -5110,15 +4731,12 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(0) as ::core::ffi::c_int
-                            == 0x3e
+                    if *ptr.offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(0) as ::core::ffi::c_int == 0x3e
                     {
                         *nextTokPtr = ptr.offset(2);
                         return tok;
@@ -5158,15 +4776,12 @@ pub mod xmltok_impl_c {
             ASCII_LSQB as ::core::ffi::c_char,
         ];
         let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (6i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         i = 0;
         while i < 6 {
-            if !(*ptr.offset(1) as ::core::ffi::c_int
-                == 0
+            if !(*ptr.offset(1) as ::core::ffi::c_int == 0
                 && *ptr.offset(0) as ::core::ffi::c_int
                     == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
             {
@@ -5190,31 +4805,20 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 2 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(2i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (2i32 - 1) as size_t != 0 {
+                n &= !(2i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
                 end = ptr.offset(n as isize);
             }
         }
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             4 => {
                 ptr = ptr.offset(2);
@@ -5223,22 +4827,17 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_PARTIAL_1;
                 }
-                if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                    && *ptr.offset(0) as ::core::ffi::c_int
-                        == 0x5d
+                if *ptr.offset(1) as ::core::ffi::c_int == 0
+                    && *ptr.offset(0) as ::core::ffi::c_int == 0x5d
                 {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if !(*ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(0) as ::core::ffi::c_int
-                            == 0x3e)
+                    if !(*ptr.offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(0) as ::core::ffi::c_int == 0x3e)
                     {
                         ptr = ptr.offset(-(2isize));
                     } else {
@@ -5254,16 +4853,11 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_PARTIAL_1;
                 }
-                if (if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+                if (if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 }) == BT_LF as ::core::ffi::c_int
                 {
                     ptr = ptr.offset(2isize);
@@ -5301,42 +4895,29 @@ pub mod xmltok_impl_c {
                 ptr = ptr.offset(2isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
                     ptr = ptr.offset(2isize);
                 }
                 6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
                     ptr = ptr.offset(3isize);
                 }
                 7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
@@ -5361,35 +4942,23 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -5444,35 +5013,22 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_73: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(0)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -5519,20 +5075,14 @@ pub mod xmltok_impl_c {
                 21 | 9 | 10 => {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long
+                        >= (1i32 * 2) as ::core::ffi::c_long
                     {
-                        match if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
                             21 | 9 | 10 => {}
                             11 => {
@@ -5577,19 +5127,12 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 25 | 24 => {}
                 _ => {
@@ -5598,19 +5141,12 @@ pub mod xmltok_impl_c {
                 }
             }
             ptr = ptr.offset(2);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 2) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
                     25 | 24 => {}
                     18 => {
@@ -5634,31 +5170,17 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-                && *ptr.offset(0) as ::core::ffi::c_int
-                    == 0x78
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            if *ptr.offset(1) as ::core::ffi::c_int == 0
+                && *ptr.offset(0) as ::core::ffi::c_int == 0x78
             {
-                return little2_scanHexCharRef(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanHexCharRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 25 => {}
                 _ => {
@@ -5667,19 +5189,12 @@ pub mod xmltok_impl_c {
                 }
             }
             ptr = ptr.offset(2);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 2) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
                     25 => {}
                     18 => {
@@ -5703,35 +5218,23 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_33: u64;
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -5776,12 +5279,7 @@ pub mod xmltok_impl_c {
                 c2rust_current_block_33 = 14763689060501151050;
             }
             19 => {
-                return little2_scanCharRef(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanCharRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             _ => {
                 *nextTokPtr = ptr;
@@ -5794,35 +5292,22 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_64: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(0)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -5892,35 +5377,22 @@ pub mod xmltok_impl_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut hadColon: ::core::ffi::c_int = 0;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_186: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(0)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -5972,39 +5444,27 @@ pub mod xmltok_impl_c {
                     hadColon = 1;
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
                     let mut c2rust_current_block_64: u64;
-                    match if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                    {
+                    match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                         (*(enc as *const normal_encoding)).type_0
                             [*ptr as ::core::ffi::c_uchar as usize]
                             as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(
-                            *ptr.offset(1),
-                            *ptr.offset(0),
-                        )
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
                         29 => {
-                            if namingBitmap[(((nmstrtPages[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize]
+                            if namingBitmap[(((nmstrtPages
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int)
                                 << 3)
-                                + (*ptr.offset(0)
-                                    as ::core::ffi::c_uchar
-                                    as ::core::ffi::c_int
-                                    >> 5))
-                                as usize]
+                                + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int
+                                    >> 5)) as usize]
                                 & (1)
-                                    << (*ptr.offset(0)
-                                        as ::core::ffi::c_uchar
+                                    << (*ptr.offset(0) as ::core::ffi::c_uchar
                                         as ::core::ffi::c_int
                                         & 0x1f)
                                 == 0
@@ -6018,9 +5478,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 12531724302225488581;
                         }
                         5 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 2
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -6031,9 +5489,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 10930818133215224067;
                         }
                         6 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 3
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -6044,9 +5500,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 10930818133215224067;
                         }
                         7 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 4
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -6074,22 +5528,16 @@ pub mod xmltok_impl_c {
                         let mut t: ::core::ffi::c_int = 0;
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        t = if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        t = if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
                         if t == BT_EQUALS as ::core::ffi::c_int {
                             break;
@@ -6119,23 +5567,16 @@ pub mod xmltok_impl_c {
                     loop {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        open = if *ptr.offset(1)
-                            as ::core::ffi::c_int
-                            == 0
-                        {
+                        open = if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
                         if open == BT_QUOT as ::core::ffi::c_int
                             || open == BT_APOS as ::core::ffi::c_int
@@ -6154,47 +5595,35 @@ pub mod xmltok_impl_c {
                     loop {
                         let mut t_0: ::core::ffi::c_int = 0;
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        t_0 = if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        t_0 = if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         };
                         if t_0 == open {
                             break;
                         }
                         match t_0 {
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(2isize);
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(3isize);
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(4isize);
@@ -6204,12 +5633,8 @@ pub mod xmltok_impl_c {
                                 return XML_TOK_INVALID_1;
                             }
                             3 => {
-                                let mut tok: ::core::ffi::c_int = little2_scanRef(
-                                    enc,
-                                    ptr.offset(2),
-                                    end,
-                                    &raw mut ptr,
-                                );
+                                let mut tok: ::core::ffi::c_int =
+                                    little2_scanRef(enc, ptr.offset(2), end, &raw mut ptr);
                                 if tok <= 0 {
                                     if tok == XML_TOK_INVALID_1 {
                                         *nextTokPtr = ptr;
@@ -6228,60 +5653,43 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    match if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                    {
+                    match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                         (*(enc as *const normal_encoding)).type_0
                             [*ptr as ::core::ffi::c_uchar as usize]
                             as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(
-                            *ptr.offset(1),
-                            *ptr.offset(0),
-                        )
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
                         21 | 9 | 10 => {
                             loop {
                                 ptr = ptr.offset(2);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 2)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 2) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
-                                match if *ptr.offset(1)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                {
+                                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                                     (*(enc as *const normal_encoding)).type_0
                                         [*ptr as ::core::ffi::c_uchar as usize]
                                         as ::core::ffi::c_int
                                 } else {
-                                    unicode_byte_type(
-                                        *ptr.offset(1),
-                                        *ptr.offset(0),
-                                    )
+                                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                                 } {
                                     29 => {
-                                        if namingBitmap[(((nmstrtPages[*ptr
-                                            .offset(1)
-                                            as ::core::ffi::c_uchar
-                                            as usize]
+                                        if namingBitmap[(((nmstrtPages
+                                            [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                                             as ::core::ffi::c_int)
                                             << 3)
-                                            + (*ptr.offset(0)
-                                                as ::core::ffi::c_uchar
+                                            + (*ptr.offset(0) as ::core::ffi::c_uchar
                                                 as ::core::ffi::c_int
                                                 >> 5))
                                             as usize]
                                             & (1)
-                                                << (*ptr.offset(0)
-                                                    as ::core::ffi::c_uchar
+                                                << (*ptr.offset(0) as ::core::ffi::c_uchar
                                                     as ::core::ffi::c_int
                                                     & 0x1f)
                                             == 0
@@ -6297,9 +5705,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     5 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 2
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if false || true {
@@ -6311,9 +5717,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     6 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 3
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if false || true {
@@ -6325,9 +5729,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     7 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 4
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if false || true {
@@ -6380,17 +5782,12 @@ pub mod xmltok_impl_c {
                             619033562305054167 => {
                                 ptr = ptr.offset(2);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 2)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 2) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
-                                if !(*ptr.offset(1)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                    && *ptr.offset(0)
-                                        as ::core::ffi::c_int
-                                        == 0x3e)
+                                if !(*ptr.offset(1) as ::core::ffi::c_int == 0
+                                    && *ptr.offset(0) as ::core::ffi::c_int == 0x3e)
                                 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
@@ -6421,35 +5818,23 @@ pub mod xmltok_impl_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut hadColon: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_45: u64;
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -6500,32 +5885,17 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_PARTIAL_1;
                 }
-                match if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
                     27 => {
-                        return little2_scanComment(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return little2_scanComment(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     20 => {
-                        return little2_scanCdataSection(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return little2_scanCdataSection(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     _ => {}
                 }
@@ -6533,20 +5903,10 @@ pub mod xmltok_impl_c {
                 return XML_TOK_INVALID_1;
             }
             15 => {
-                return little2_scanPi(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanPi(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             17 => {
-                return little2_scanEndTag(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanEndTag(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             _ => {
                 *nextTokPtr = ptr;
@@ -6560,35 +5920,22 @@ pub mod xmltok_impl_c {
             _ => {}
         }
         hadColon = 0;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_161: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(0)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -6640,39 +5987,27 @@ pub mod xmltok_impl_c {
                     hadColon = 1;
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
                     let mut c2rust_current_block_112: u64;
-                    match if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                    {
+                    match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                         (*(enc as *const normal_encoding)).type_0
                             [*ptr as ::core::ffi::c_uchar as usize]
                             as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(
-                            *ptr.offset(1),
-                            *ptr.offset(0),
-                        )
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
                         29 => {
-                            if namingBitmap[(((nmstrtPages[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize]
+                            if namingBitmap[(((nmstrtPages
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int)
                                 << 3)
-                                + (*ptr.offset(0)
-                                    as ::core::ffi::c_uchar
-                                    as ::core::ffi::c_int
-                                    >> 5))
-                                as usize]
+                                + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int
+                                    >> 5)) as usize]
                                 & (1)
-                                    << (*ptr.offset(0)
-                                        as ::core::ffi::c_uchar
+                                    << (*ptr.offset(0) as ::core::ffi::c_uchar
                                         as ::core::ffi::c_int
                                         & 0x1f)
                                 == 0
@@ -6686,9 +6021,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 14391208795021697965;
                         }
                         5 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 2
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -6699,9 +6032,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 2616667235040759262;
                         }
                         6 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 3
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -6712,9 +6043,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 2616667235040759262;
                         }
                         7 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 4
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -6741,39 +6070,29 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     loop {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             c2rust_current_block_161 = 13215501469961642988;
                             break;
                         }
-                        match if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
                             29 => {
-                                if namingBitmap[(((nmstrtPages[*ptr
-                                    .offset(1)
-                                    as ::core::ffi::c_uchar
-                                    as usize]
+                                if namingBitmap[(((nmstrtPages
+                                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                                     as ::core::ffi::c_int)
                                     << 3)
-                                    + (*ptr.offset(0)
-                                        as ::core::ffi::c_uchar
+                                    + (*ptr.offset(0) as ::core::ffi::c_uchar
                                         as ::core::ffi::c_int
                                         >> 5))
                                     as usize]
                                     & (1)
-                                        << (*ptr.offset(0)
-                                            as ::core::ffi::c_uchar
+                                        << (*ptr.offset(0) as ::core::ffi::c_uchar
                                             as ::core::ffi::c_int
                                             & 0x1f)
                                     == 0
@@ -6787,9 +6106,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 2369392326157537288;
                             }
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if false || true {
@@ -6800,9 +6117,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 16314074004867283505;
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if false || true {
@@ -6813,9 +6128,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 16314074004867283505;
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if false || true {
@@ -6871,15 +6184,12 @@ pub mod xmltok_impl_c {
                 1114269873380682160 => {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if !(*ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(0) as ::core::ffi::c_int
-                            == 0x3e)
+                    if !(*ptr.offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(0) as ::core::ffi::c_int == 0x3e)
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -6910,47 +6220,26 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 2 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(2i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (2i32 - 1) as size_t != 0 {
+                n &= !(2i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
                 end = ptr.offset(n as isize);
             }
         }
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             2 => {
-                return little2_scanLt(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanLt(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             3 => {
-                return little2_scanRef(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             9 => {
                 ptr = ptr.offset(2);
@@ -6959,16 +6248,11 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_TRAILING_CR_1;
                 }
-                if (if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+                if (if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 }) == BT_LF as ::core::ffi::c_int
                 {
                     ptr = ptr.offset(2isize);
@@ -6987,22 +6271,17 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_TRAILING_RSQB_1;
                 }
-                if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                    && *ptr.offset(0) as ::core::ffi::c_int
-                        == 0x5d
+                if *ptr.offset(1) as ::core::ffi::c_int == 0
+                    && *ptr.offset(0) as ::core::ffi::c_int == 0x5d
                 {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_TRAILING_RSQB_1;
                     }
-                    if !(*ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(0) as ::core::ffi::c_int
-                            == 0x3e)
+                    if !(*ptr.offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(0) as ::core::ffi::c_int == 0x3e)
                     {
                         ptr = ptr.offset(-(2isize));
                     } else {
@@ -7037,25 +6316,16 @@ pub mod xmltok_impl_c {
                 ptr = ptr.offset(2isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_76: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
@@ -7063,9 +6333,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_76 = 7158658067966855297;
                 }
                 6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
@@ -7073,9 +6341,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_76 = 7158658067966855297;
                 }
                 7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
@@ -7084,47 +6350,24 @@ pub mod xmltok_impl_c {
                 }
                 4 => {
                     if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (2i32 * 2)
-                            as ::core::ffi::c_long
+                        >= (2i32 * 2) as ::core::ffi::c_long
                     {
-                        if !(*ptr
-                            .offset(2)
-                            .offset(1)
-                            as ::core::ffi::c_int
-                            == 0
-                            && *ptr
-                                .offset(2)
-                                .offset(0)
-                                as ::core::ffi::c_int
-                                == 0x5d)
+                        if !(*ptr.offset(2).offset(1) as ::core::ffi::c_int == 0
+                            && *ptr.offset(2).offset(0) as ::core::ffi::c_int == 0x5d)
                         {
                             ptr = ptr.offset(2);
                             c2rust_current_block_76 = 7158658067966855297;
                         } else if end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (3i32 * 2)
-                                as ::core::ffi::c_long
+                            >= (3i32 * 2) as ::core::ffi::c_long
                         {
-                            if !(*ptr
-                                .offset(
-                                    (2i32 * 2) as isize,
-                                )
-                                .offset(1)
-                                as ::core::ffi::c_int
+                            if !(*ptr.offset((2i32 * 2) as isize).offset(1) as ::core::ffi::c_int
                                 == 0
-                                && *ptr
-                                    .offset(
-                                        (2i32 * 2)
-                                            as isize,
-                                    )
-                                    .offset(0)
-                                    as ::core::ffi::c_int
+                                && *ptr.offset((2i32 * 2) as isize).offset(0) as ::core::ffi::c_int
                                     == 0x3e)
                             {
                                 ptr = ptr.offset(2isize);
                             } else {
-                                *nextTokPtr = ptr.offset(
-                                    (2i32 * 2) as isize,
-                                );
+                                *nextTokPtr = ptr.offset((2i32 * 2) as isize);
                                 return XML_TOK_INVALID_1;
                             }
                             c2rust_current_block_76 = 7158658067966855297;
@@ -7161,35 +6404,23 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_34: u64;
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -7248,35 +6479,22 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_65: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(0)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -7345,35 +6563,23 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -7428,35 +6634,22 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_63: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(0)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -7526,20 +6719,12 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            let mut t: ::core::ffi::c_int = if *ptr.offset(1)
-                as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            let mut t: ::core::ffi::c_int = if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             };
             match t {
                 5 => {
@@ -7568,27 +6753,19 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     if !(t != open) {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return -27i32;
                         }
                         *nextTokPtr = ptr;
-                        match if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         } {
-                            21 | 9 | 10 | 11 | 30 | 20 => {
-                                return XML_TOK_LITERAL_1
-                            }
+                            21 | 9 | 10 | 11 | 30 | 20 => return XML_TOK_LITERAL_1,
                             _ => return XML_TOK_INVALID_1,
                         }
                     }
@@ -7612,15 +6789,9 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 2 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(2i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (2i32 - 1) as size_t != 0 {
+                n &= !(2i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
@@ -7628,16 +6799,11 @@ pub mod xmltok_impl_c {
             }
         }
         let mut c2rust_current_block_124: u64;
-        match if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(1),
-                *ptr.offset(0),
-            )
+            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
         } {
             12 => {
                 return little2_scanLit(
@@ -7664,32 +6830,17 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_PARTIAL_1;
                 }
-                match if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
                     16 => {
-                        return little2_scanDecl(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return little2_scanDecl(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     15 => {
-                        return little2_scanPi(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return little2_scanPi(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     22 | 24 | 29 | 5 | 6 | 7 => {
                         *nextTokPtr = ptr.offset(-(2));
@@ -7711,12 +6862,7 @@ pub mod xmltok_impl_c {
                 c2rust_current_block_124 = 17513858719706519675;
             }
             30 => {
-                return little2_scanPercent(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanPercent(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             35 => {
                 *nextTokPtr = ptr.offset(2);
@@ -7733,30 +6879,18 @@ pub mod xmltok_impl_c {
                 {
                     return -26i32;
                 }
-                if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                    && *ptr.offset(0) as ::core::ffi::c_int
-                        == 0x5d
+                if *ptr.offset(1) as ::core::ffi::c_int == 0
+                    && *ptr.offset(0) as ::core::ffi::c_int == 0x5d
                 {
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (2i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (2i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr
-                        .offset(2)
-                        .offset(1)
-                        as ::core::ffi::c_int
-                        == 0
-                        && *ptr
-                            .offset(2)
-                            .offset(0)
-                            as ::core::ffi::c_int
-                            == 0x3e
+                    if *ptr.offset(2).offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(2).offset(0) as ::core::ffi::c_int == 0x3e
                     {
-                        *nextTokPtr = ptr
-                            .offset((2i32 * 2) as isize);
+                        *nextTokPtr = ptr.offset((2i32 * 2) as isize);
                         return XML_TOK_COND_SECT_CLOSE_1;
                     }
                 }
@@ -7774,16 +6908,11 @@ pub mod xmltok_impl_c {
                 {
                     return -24i32;
                 }
-                match if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                         as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(1),
-                        *ptr.offset(0),
-                    )
+                    unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                 } {
                     33 => {
                         *nextTokPtr = ptr.offset(2);
@@ -7815,12 +6944,7 @@ pub mod xmltok_impl_c {
                 return XML_TOK_DECL_CLOSE_1;
             }
             19 => {
-                return little2_scanPoundName(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return little2_scanPoundName(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             5 => {
                 if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
@@ -7854,34 +6978,23 @@ pub mod xmltok_impl_c {
                 c2rust_current_block_124 = 2956972668325154207;
             }
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     != 0
                 {
                     ptr = ptr.offset(2);
                     tok = XML_TOK_NAME;
                     c2rust_current_block_124 = 2956972668325154207;
-                } else if namingBitmap[(((namePages
-                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                } else if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5))
+                    + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                     as usize]
-                    & (1)
-                        << (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    & (1) << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     != 0
                 {
                     ptr = ptr.offset(2);
@@ -7901,23 +7014,17 @@ pub mod xmltok_impl_c {
                 loop {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         break;
                     }
                     let mut c2rust_current_block_32: u64;
-                    match if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                    {
+                    match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                         (*(enc as *const normal_encoding)).type_0
                             [*ptr as ::core::ffi::c_uchar as usize]
                             as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(
-                            *ptr.offset(1),
-                            *ptr.offset(0),
-                        )
+                        unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                     } {
                         21 | 10 => {
                             c2rust_current_block_32 = 17500079516916021833;
@@ -7949,35 +7056,22 @@ pub mod xmltok_impl_c {
                 return XML_TOK_INVALID_1;
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_210: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(0) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(0)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -8027,44 +7121,33 @@ pub mod xmltok_impl_c {
                 }
                 23 => {
                     ptr = ptr.offset(2);
-                    match  tok {
-    XML_TOK_NAME =>  {
+                    match tok {
+                        XML_TOK_NAME => {
                             if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                >= (1i32 * 2)
-                                    as ::core::ffi::c_long)
+                                >= (1i32 * 2) as ::core::ffi::c_long)
                             {
                                 return XML_TOK_PARTIAL_1;
                             }
                             tok = XML_TOK_PREFIXED_NAME;
                             let mut c2rust_current_block_187: u64;
-                            match if *ptr.offset(1)
-                                as ::core::ffi::c_int
-                                == 0
-                            {
+                            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                                 (*(enc as *const normal_encoding)).type_0
                                     [*ptr as ::core::ffi::c_uchar as usize]
                                     as ::core::ffi::c_int
                             } else {
-                                unicode_byte_type(
-                                    *ptr.offset(1),
-                                    *ptr.offset(0),
-                                )
+                                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                             } {
                                 29 => {
-                                    if namingBitmap[(((namePages[*ptr
-                                        .offset(1)
-                                        as ::core::ffi::c_uchar
-                                        as usize]
+                                    if namingBitmap[(((namePages
+                                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                                         as ::core::ffi::c_int)
                                         << 3)
-                                        + (*ptr.offset(0)
-                                            as ::core::ffi::c_uchar
+                                        + (*ptr.offset(0) as ::core::ffi::c_uchar
                                             as ::core::ffi::c_int
                                             >> 5))
                                         as usize]
                                         & (1)
-                                            << (*ptr.offset(0)
-                                                as ::core::ffi::c_uchar
+                                            << (*ptr.offset(0) as ::core::ffi::c_uchar
                                                 as ::core::ffi::c_int
                                                 & 0x1f)
                                         == 0
@@ -8078,9 +7161,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 16869951820887225088;
                                 }
                                 5 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 2
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if false || true {
@@ -8091,9 +7172,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 9812798724717783973;
                                 }
                                 6 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 3
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if false || true {
@@ -8104,9 +7183,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 9812798724717783973;
                                 }
                                 7 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 4
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if false || true {
@@ -8128,11 +7205,11 @@ pub mod xmltok_impl_c {
                                 _ => {}
                             }
                         }
-    XML_TOK_PREFIXED_NAME =>  {
+                        XML_TOK_PREFIXED_NAME => {
                             tok = XML_TOK_NMTOKEN_1;
                         }
-    _ =>  {}
-}
+                        _ => {}
+                    }
                     c2rust_current_block_210 = 14244298717249035578;
                 }
                 34 => {
@@ -8189,19 +7266,12 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         start = ptr;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 5 => {
                     ptr = ptr.offset(2isize);
@@ -8214,12 +7284,7 @@ pub mod xmltok_impl_c {
                 }
                 3 => {
                     if ptr == start {
-                        return little2_scanRef(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return little2_scanRef(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     *nextTokPtr = ptr;
                     return XML_TOK_DATA_CHARS_1;
@@ -8240,22 +7305,16 @@ pub mod xmltok_impl_c {
                     if ptr == start {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_TRAILING_CR_1;
                         }
-                        if (if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        if (if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as ::core::ffi::c_int
                         {
                             ptr = ptr.offset(2isize);
@@ -8298,19 +7357,12 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         start = ptr;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 5 => {
                     ptr = ptr.offset(2isize);
@@ -8323,24 +7375,15 @@ pub mod xmltok_impl_c {
                 }
                 3 => {
                     if ptr == start {
-                        return little2_scanRef(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return little2_scanRef(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     *nextTokPtr = ptr;
                     return XML_TOK_DATA_CHARS_1;
                 }
                 30 => {
                     if ptr == start {
-                        let mut tok: ::core::ffi::c_int = little2_scanPercent(
-                            enc,
-                            ptr.offset(2),
-                            end,
-                            nextTokPtr,
-                        );
+                        let mut tok: ::core::ffi::c_int =
+                            little2_scanPercent(enc, ptr.offset(2), end, nextTokPtr);
                         return if tok == XML_TOK_PERCENT_1 {
                             XML_TOK_INVALID_1
                         } else {
@@ -8362,22 +7405,16 @@ pub mod xmltok_impl_c {
                     if ptr == start {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_TRAILING_CR_1;
                         }
-                        if (if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        if (if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as ::core::ffi::c_int
                         {
                             ptr = ptr.offset(2isize);
@@ -8405,31 +7442,18 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut level: ::core::ffi::c_int = 0;
         if 2 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(2i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (2i32 - 1) as size_t != 0 {
+                n &= !(2i32 - 1) as size_t;
                 end = ptr.offset(n as isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 5 => {
                     if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
@@ -8456,27 +7480,21 @@ pub mod xmltok_impl_c {
                 2 => {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(0) as ::core::ffi::c_int
-                            == 0x21
+                    if *ptr.offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(0) as ::core::ffi::c_int == 0x21
                     {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(0) as ::core::ffi::c_int
-                                == 0x5b
+                        if *ptr.offset(1) as ::core::ffi::c_int == 0
+                            && *ptr.offset(0) as ::core::ffi::c_int == 0x5b
                         {
                             level += 1;
                             ptr = ptr.offset(2isize);
@@ -8486,27 +7504,21 @@ pub mod xmltok_impl_c {
                 4 => {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(0) as ::core::ffi::c_int
-                            == 0x5d
+                    if *ptr.offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(0) as ::core::ffi::c_int == 0x5d
                     {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(0) as ::core::ffi::c_int
-                                == 0x3e
+                        if *ptr.offset(1) as ::core::ffi::c_int == 0
+                            && *ptr.offset(0) as ::core::ffi::c_int == 0x3e
                         {
                             ptr = ptr.offset(2);
                             if level == 0 {
@@ -8533,30 +7545,21 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         ptr = ptr.offset(2);
         end = end.offset(-(2));
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_8: u64;
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
                 | 30 | 19 | 23 => {
                     c2rust_current_block_8 = 5143058163439228106;
                 }
                 21 => {
-                    if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(0) as ::core::ffi::c_int
-                            == 0x9
+                    if *ptr.offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(0) as ::core::ffi::c_int == 0x9
                     {
                         *badPtr = ptr;
                         return 0i32;
@@ -8564,9 +7567,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_8 = 5143058163439228106;
                 }
                 26 | 22 => {
-                    if (if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                    {
+                    if (if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                         *ptr.offset(0) as ::core::ffi::c_int
                     } else {
                         -1
@@ -8584,9 +7585,7 @@ pub mod xmltok_impl_c {
             }
             match c2rust_current_block_8 {
                 5251475129761746025 => {
-                    match if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                    {
+                    match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                         *ptr.offset(0) as ::core::ffi::c_int
                     } else {
                         -1
@@ -8616,21 +7615,14 @@ pub mod xmltok_impl_c {
         let mut open: ::core::ffi::c_int = 0;
         ptr = ptr.offset(2);
         loop {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 5 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other_0
-                    {
+                    if state == crate::xmltok_impl_c::other_0 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh29 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh29 = ptr;
@@ -8641,9 +7633,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((2i32 - 2i32) as isize);
                 }
                 6 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other_0
-                    {
+                    if state == crate::xmltok_impl_c::other_0 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh30 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh30 = ptr;
@@ -8654,9 +7644,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((3i32 - 2i32) as isize);
                 }
                 7 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other_0
-                    {
+                    if state == crate::xmltok_impl_c::other_0 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh31 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh31 = ptr;
@@ -8667,9 +7655,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((4i32 - 2i32) as isize);
                 }
                 29 | 22 | 24 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other_0
-                    {
+                    if state == crate::xmltok_impl_c::other_0 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh32 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh32 = ptr;
@@ -8679,9 +7665,7 @@ pub mod xmltok_impl_c {
                     }
                 }
                 12 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue_0
-                    {
+                    if state != crate::xmltok_impl_c::inValue_0 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh33 = (*atts.offset(nAtts as isize)).valuePtr;
                             *c2rust_fresh33 = ptr.offset(2isize);
@@ -8698,9 +7682,7 @@ pub mod xmltok_impl_c {
                     }
                 }
                 13 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue_0
-                    {
+                    if state != crate::xmltok_impl_c::inValue_0 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh35 = (*atts.offset(nAtts as isize)).valuePtr;
                             *c2rust_fresh35 = ptr.offset(2isize);
@@ -8722,51 +7704,30 @@ pub mod xmltok_impl_c {
                     }
                 }
                 21 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::inName_0
-                    {
+                    if state == crate::xmltok_impl_c::inName_0 {
                         state = crate::xmltok_impl_c::other_0;
-                    } else if  state
-                        ==  crate::xmltok_impl_c::inValue_0
+                    } else if state == crate::xmltok_impl_c::inValue_0
                         && nAtts < attsMax
                         && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
                         && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || (if *ptr.offset(1)
-                                as ::core::ffi::c_int
-                                == 0
-                            {
+                            || (if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                                 *ptr.offset(0) as ::core::ffi::c_int
                             } else {
                                 -1
                             }) != ASCII_SPACE
-                            || (if *ptr
-                                .offset(2)
-                                .offset(1)
-                                as ::core::ffi::c_int
-                                == 0
-                            {
-                                *ptr.offset(2)
-                                    .offset(0)
-                                    as ::core::ffi::c_int
+                            || (if *ptr.offset(2).offset(1) as ::core::ffi::c_int == 0 {
+                                *ptr.offset(2).offset(0) as ::core::ffi::c_int
                             } else {
                                 -1
                             }) == ASCII_SPACE
-                            || (if *ptr
-                                .offset(2)
-                                .offset(1)
-                                as ::core::ffi::c_int
-                                == 0
-                            {
-                                (*(enc as *const normal_encoding)).type_0[*ptr
-                                    .offset(2)
-                                    as ::core::ffi::c_uchar
-                                    as usize] as ::core::ffi::c_int
+                            || (if *ptr.offset(2).offset(1) as ::core::ffi::c_int == 0 {
+                                (*(enc as *const normal_encoding)).type_0
+                                    [*ptr.offset(2) as ::core::ffi::c_uchar as usize]
+                                    as ::core::ffi::c_int
                             } else {
                                 unicode_byte_type(
-                                    *ptr.offset(2)
-                                        .offset(1),
-                                    *ptr.offset(2)
-                                        .offset(0),
+                                    *ptr.offset(2).offset(1),
+                                    *ptr.offset(2).offset(0),
                                 )
                             }) == open)
                     {
@@ -8774,21 +7735,14 @@ pub mod xmltok_impl_c {
                     }
                 }
                 9 | 10 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::inName_0
-                    {
+                    if state == crate::xmltok_impl_c::inName_0 {
                         state = crate::xmltok_impl_c::other_0;
-                    } else if  state
-                        ==  crate::xmltok_impl_c::inValue_0
-                        && nAtts < attsMax
-                    {
+                    } else if state == crate::xmltok_impl_c::inValue_0 && nAtts < attsMax {
                         (*atts.offset(nAtts as isize)).normalized = 0i8;
                     }
                 }
                 11 | 17 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue_0
-                    {
+                    if state != crate::xmltok_impl_c::inValue_0 {
                         return nAtts;
                     }
                 }
@@ -8804,62 +7758,61 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut result: ::core::ffi::c_int = 0;
         ptr = ptr.offset((2i32 * 2) as isize);
-        if *ptr.offset(1) as ::core::ffi::c_int
-            == 0
-            && *ptr.offset(0) as ::core::ffi::c_int
-                == 0x78
+        if *ptr.offset(1) as ::core::ffi::c_int == 0 && *ptr.offset(0) as ::core::ffi::c_int == 0x78
         {
             ptr = ptr.offset(2);
-            while !(*ptr.offset(1) as ::core::ffi::c_int
-                == 0
-                && *ptr.offset(0) as ::core::ffi::c_int
-                    == 0x3b)
+            while !(*ptr.offset(1) as ::core::ffi::c_int == 0
+                && *ptr.offset(0) as ::core::ffi::c_int == 0x3b)
             {
-                let mut c: ::core::ffi::c_int = if *ptr.offset(1)
-                    as ::core::ffi::c_int
-                    == 0
-                {
+                let mut c: ::core::ffi::c_int = if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     *ptr.offset(0) as ::core::ffi::c_int
                 } else {
                     -1
                 };
-                match  c {
-    ASCII_0 | crate::ascii_h::ASCII_1_1 | crate::ascii_h::ASCII_2_1 |
-        crate::ascii_h::ASCII_3_1 | crate::ascii_h::ASCII_4 |
-        crate::ascii_h::ASCII_5 | crate::ascii_h::ASCII_6 |
-        crate::ascii_h::ASCII_7 | crate::ascii_h::ASCII_8_1 |
-        crate::ascii_h::ASCII_9_1 =>  {
+                match c {
+                    ASCII_0
+                    | crate::ascii_h::ASCII_1_1
+                    | crate::ascii_h::ASCII_2_1
+                    | crate::ascii_h::ASCII_3_1
+                    | crate::ascii_h::ASCII_4
+                    | crate::ascii_h::ASCII_5
+                    | crate::ascii_h::ASCII_6
+                    | crate::ascii_h::ASCII_7
+                    | crate::ascii_h::ASCII_8_1
+                    | crate::ascii_h::ASCII_9_1 => {
                         result <<= 4;
                         result |= c - ASCII_0;
                     }
-    ASCII_A | crate::ascii_h::ASCII_B_1 | ASCII_C | ASCII_D |
-        crate::ascii_h::ASCII_E_1 | crate::ascii_h::ASCII_F_1 =>  {
+                    ASCII_A
+                    | crate::ascii_h::ASCII_B_1
+                    | ASCII_C
+                    | ASCII_D
+                    | crate::ascii_h::ASCII_E_1
+                    | crate::ascii_h::ASCII_F_1 => {
                         result <<= 4;
                         result += 10i32 + (c - ASCII_A);
                     }
-    ASCII_a_1 | crate::ascii_h::ASCII_b | crate::ascii_h::ASCII_c_1 |
-        crate::ascii_h::ASCII_d | crate::ascii_h::ASCII_e_1 |
-        crate::ascii_h::ASCII_f =>  {
+                    ASCII_a_1
+                    | crate::ascii_h::ASCII_b
+                    | crate::ascii_h::ASCII_c_1
+                    | crate::ascii_h::ASCII_d
+                    | crate::ascii_h::ASCII_e_1
+                    | crate::ascii_h::ASCII_f => {
                         result <<= 4;
                         result += 10i32 + (c - ASCII_a_1);
                     }
-    _ =>  {}
-}
+                    _ => {}
+                }
                 if result >= 0x110000 {
                     return -1i32;
                 }
                 ptr = ptr.offset(2);
             }
         } else {
-            while !(*ptr.offset(1) as ::core::ffi::c_int
-                == 0
-                && *ptr.offset(0) as ::core::ffi::c_int
-                    == 0x3b)
+            while !(*ptr.offset(1) as ::core::ffi::c_int == 0
+                && *ptr.offset(0) as ::core::ffi::c_int == 0x3b)
             {
-                let mut c_0: ::core::ffi::c_int = if *ptr.offset(1)
-                    as ::core::ffi::c_int
-                    == 0
-                {
+                let mut c_0: ::core::ffi::c_int = if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     *ptr.offset(0) as ::core::ffi::c_int
                 } else {
                     -1
@@ -8882,20 +7835,10 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         match end.offset_from(ptr) as ::core::ffi::c_long / 2 {
             2 => {
-                if *ptr
-                    .offset(2)
-                    .offset(1)
-                    as ::core::ffi::c_int
-                    == 0
-                    && *ptr
-                        .offset(2)
-                        .offset(0)
-                        as ::core::ffi::c_int
-                        == 0x74
+                if *ptr.offset(2).offset(1) as ::core::ffi::c_int == 0
+                    && *ptr.offset(2).offset(0) as ::core::ffi::c_int == 0x74
                 {
-                    match if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                    {
+                    match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                         *ptr.offset(0) as ::core::ffi::c_int
                     } else {
                         -1
@@ -8907,22 +7850,16 @@ pub mod xmltok_impl_c {
                 }
             }
             3 => {
-                if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                    && *ptr.offset(0) as ::core::ffi::c_int
-                        == 0x61
+                if *ptr.offset(1) as ::core::ffi::c_int == 0
+                    && *ptr.offset(0) as ::core::ffi::c_int == 0x61
                 {
                     ptr = ptr.offset(2);
-                    if *ptr.offset(1) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(0) as ::core::ffi::c_int
-                            == 0x6d
+                    if *ptr.offset(1) as ::core::ffi::c_int == 0
+                        && *ptr.offset(0) as ::core::ffi::c_int == 0x6d
                     {
                         ptr = ptr.offset(2);
-                        if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(0) as ::core::ffi::c_int
-                                == 0x70
+                        if *ptr.offset(1) as ::core::ffi::c_int == 0
+                            && *ptr.offset(0) as ::core::ffi::c_int == 0x70
                         {
                             return ASCII_AMP;
                         }
@@ -8930,69 +7867,49 @@ pub mod xmltok_impl_c {
                 }
             }
             4 => {
-                match  if *ptr.offset(1) as ::core::ffi::c_int
-                    == 0
-                {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                     *ptr.offset(0) as ::core::ffi::c_int
                 } else {
                     -1
                 } {
-    crate::ascii_h::ASCII_q =>  {
+                    crate::ascii_h::ASCII_q => {
                         ptr = ptr.offset(2);
-                        if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(0) as ::core::ffi::c_int
-                                == 0x75
+                        if *ptr.offset(1) as ::core::ffi::c_int == 0
+                            && *ptr.offset(0) as ::core::ffi::c_int == 0x75
                         {
                             ptr = ptr.offset(2);
-                            if *ptr.offset(1) as ::core::ffi::c_int
-                                == 0
-                                && *ptr.offset(0)
-                                    as ::core::ffi::c_int
-                                    == 0x6f
+                            if *ptr.offset(1) as ::core::ffi::c_int == 0
+                                && *ptr.offset(0) as ::core::ffi::c_int == 0x6f
                             {
                                 ptr = ptr.offset(2);
-                                if *ptr.offset(1)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                    && *ptr.offset(0)
-                                        as ::core::ffi::c_int
-                                        == 0x74
+                                if *ptr.offset(1) as ::core::ffi::c_int == 0
+                                    && *ptr.offset(0) as ::core::ffi::c_int == 0x74
                                 {
                                     return ASCII_QUOT;
                                 }
                             }
                         }
                     }
-    ASCII_a_1 =>  {
+                    ASCII_a_1 => {
                         ptr = ptr.offset(2);
-                        if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(0) as ::core::ffi::c_int
-                                == 0x70
+                        if *ptr.offset(1) as ::core::ffi::c_int == 0
+                            && *ptr.offset(0) as ::core::ffi::c_int == 0x70
                         {
                             ptr = ptr.offset(2);
-                            if *ptr.offset(1) as ::core::ffi::c_int
-                                == 0
-                                && *ptr.offset(0)
-                                    as ::core::ffi::c_int
-                                    == 0x6f
+                            if *ptr.offset(1) as ::core::ffi::c_int == 0
+                                && *ptr.offset(0) as ::core::ffi::c_int == 0x6f
                             {
                                 ptr = ptr.offset(2);
-                                if *ptr.offset(1)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                    && *ptr.offset(0)
-                                        as ::core::ffi::c_int
-                                        == 0x73
+                                if *ptr.offset(1) as ::core::ffi::c_int == 0
+                                    && *ptr.offset(0) as ::core::ffi::c_int == 0x73
                                 {
                                     return ASCII_APOS;
                                 }
                             }
                         }
                     }
-    _ =>  {}
-}
+                    _ => {}
+                }
             }
             _ => {}
         }
@@ -9009,10 +7926,8 @@ pub mod xmltok_impl_c {
             if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 {
                 return 0i32;
             }
-            if !(*ptr1.offset(1) as ::core::ffi::c_int
-                == 0
-                && *ptr1.offset(0) as ::core::ffi::c_int
-                    == *ptr2 as ::core::ffi::c_int)
+            if !(*ptr1.offset(1) as ::core::ffi::c_int == 0
+                && *ptr1.offset(0) as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int)
             {
                 return 0i32;
             }
@@ -9028,16 +7943,11 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut start: *const ::core::ffi::c_char = ptr;
         loop {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 5 => {
                     ptr = ptr.offset(2isize);
@@ -9052,7 +7962,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2isize);
                 }
                 _ => {
-                    return  ptr.offset_from(start) as ::core::ffi::c_int;
+                    return ptr.offset_from(start) as ::core::ffi::c_int;
                 }
             }
         }
@@ -9063,16 +7973,11 @@ pub mod xmltok_impl_c {
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
         loop {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 10 | 9 | 21 => {
                     ptr = ptr.offset(2isize);
@@ -9088,19 +7993,12 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut pos: *mut crate::src::lib::xmltok::POSITION,
     ) {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(1),
-                    *ptr.offset(0),
-                )
+                unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
             } {
                 5 => {
                     ptr = ptr.offset(2);
@@ -9123,19 +8021,13 @@ pub mod xmltok_impl_c {
                     (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
                     ptr = ptr.offset(2);
                     if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long
-                        && (if *ptr.offset(1) as ::core::ffi::c_int
-                            == 0
-                        {
+                        >= (1i32 * 2) as ::core::ffi::c_long
+                        && (if *ptr.offset(1) as ::core::ffi::c_int == 0 {
                             (*(enc as *const normal_encoding)).type_0
                                 [*ptr as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(1),
-                                *ptr.offset(0),
-                            )
+                            unicode_byte_type(*ptr.offset(1), *ptr.offset(0))
                         }) == BT_LF as ::core::ffi::c_int
                     {
                         ptr = ptr.offset(2isize);
@@ -9156,51 +8048,36 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            if !(*ptr.offset(0) as ::core::ffi::c_int
-                == 0
-                && *ptr.offset(1) as ::core::ffi::c_int
-                    == 0x2d)
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            if !(*ptr.offset(0) as ::core::ffi::c_int == 0
+                && *ptr.offset(1) as ::core::ffi::c_int == 0x2d)
             {
                 *nextTokPtr = ptr;
                 return XML_TOK_INVALID_1;
             }
             ptr = ptr.offset(2);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 2) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
                     5 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         ptr = ptr.offset(2isize);
                     }
                     6 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         ptr = ptr.offset(3isize);
                     }
                     7 => {
-                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4
-                        {
+                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                             return XML_TOK_PARTIAL_CHAR_1;
                         }
                         ptr = ptr.offset(4isize);
@@ -9212,29 +8089,21 @@ pub mod xmltok_impl_c {
                     27 => {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(1) as ::core::ffi::c_int
-                                == 0x2d
+                        if *ptr.offset(0) as ::core::ffi::c_int == 0
+                            && *ptr.offset(1) as ::core::ffi::c_int == 0x2d
                         {
                             ptr = ptr.offset(2);
                             if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                >= (1i32 * 2)
-                                    as ::core::ffi::c_long)
+                                >= (1i32 * 2) as ::core::ffi::c_long)
                             {
                                 return XML_TOK_PARTIAL_1;
                             }
-                            if !(*ptr.offset(0)
-                                as ::core::ffi::c_int
-                                == 0
-                                && *ptr.offset(1)
-                                    as ::core::ffi::c_int
-                                    == 0x3e)
+                            if !(*ptr.offset(0) as ::core::ffi::c_int == 0
+                                && *ptr.offset(1) as ::core::ffi::c_int == 0x3e)
                             {
                                 *nextTokPtr = ptr;
                                 return XML_TOK_INVALID_1;
@@ -9258,30 +8127,17 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             27 => {
-                return big2_scanComment(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanComment(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             20 => {
                 *nextTokPtr = ptr.offset(2);
@@ -9295,48 +8151,27 @@ pub mod xmltok_impl_c {
                 return XML_TOK_INVALID_1;
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             's_129: {
-                match if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
                     30 => {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (2i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (2i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        match if *ptr
-                            .offset(2)
-                            .offset(0)
-                            as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(2)
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        match if *ptr.offset(2).offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(2).offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(2)
-                                    .offset(0),
-                                *ptr.offset(2)
-                                    .offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(2).offset(0), *ptr.offset(2).offset(1))
                         } {
                             21 | 9 | 10 | 30 => {
                                 *nextTokPtr = ptr;
@@ -9370,14 +8205,10 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut upper: ::core::ffi::c_int = 0;
         *tokPtr = XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2i32 * 3) as ::core::ffi::c_long
-        {
+        if end.offset_from(ptr) as ::core::ffi::c_long != (2i32 * 3) as ::core::ffi::c_long {
             return 1i32;
         }
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             *ptr.offset(1) as ::core::ffi::c_int
         } else {
             -1
@@ -9389,9 +8220,7 @@ pub mod xmltok_impl_c {
             _ => return 1,
         }
         ptr = ptr.offset(2);
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             *ptr.offset(1) as ::core::ffi::c_int
         } else {
             -1
@@ -9403,9 +8232,7 @@ pub mod xmltok_impl_c {
             _ => return 1,
         }
         ptr = ptr.offset(2);
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             *ptr.offset(1) as ::core::ffi::c_int
         } else {
             -1
@@ -9431,36 +8258,23 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut tok: ::core::ffi::c_int = 0;
         let mut target: *const ::core::ffi::c_char = ptr;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -9515,36 +8329,23 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_118: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(0)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(1)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -9595,42 +8396,29 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long
+                        >= (1i32 * 2) as ::core::ffi::c_long
                     {
-                        match if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         } {
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(2isize);
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(3isize);
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(4isize);
@@ -9642,17 +8430,12 @@ pub mod xmltok_impl_c {
                             15 => {
                                 ptr = ptr.offset(2);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 2)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 2) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
-                                if *ptr.offset(0)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                    && *ptr.offset(1)
-                                        as ::core::ffi::c_int
-                                        == 0x3e
+                                if *ptr.offset(0) as ::core::ffi::c_int == 0
+                                    && *ptr.offset(1) as ::core::ffi::c_int == 0x3e
                                 {
                                     *nextTokPtr = ptr.offset(2);
                                     return tok;
@@ -9672,15 +8455,12 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(1) as ::core::ffi::c_int
-                            == 0x3e
+                    if *ptr.offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(1) as ::core::ffi::c_int == 0x3e
                     {
                         *nextTokPtr = ptr.offset(2);
                         return tok;
@@ -9720,15 +8500,12 @@ pub mod xmltok_impl_c {
             ASCII_LSQB as ::core::ffi::c_char,
         ];
         let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (6i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         i = 0;
         while i < 6 {
-            if !(*ptr.offset(0) as ::core::ffi::c_int
-                == 0
+            if !(*ptr.offset(0) as ::core::ffi::c_int == 0
                 && *ptr.offset(1) as ::core::ffi::c_int
                     == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
             {
@@ -9752,32 +8529,20 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 2 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(2i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (2i32 - 1) as size_t != 0 {
+                n &= !(2i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
                 end = ptr.offset(n as isize);
             }
         }
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             4 => {
                 ptr = ptr.offset(2);
@@ -9786,22 +8551,17 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_PARTIAL_1;
                 }
-                if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                    && *ptr.offset(1) as ::core::ffi::c_int
-                        == 0x5d
+                if *ptr.offset(0) as ::core::ffi::c_int == 0
+                    && *ptr.offset(1) as ::core::ffi::c_int == 0x5d
                 {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if !(*ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(1) as ::core::ffi::c_int
-                            == 0x3e)
+                    if !(*ptr.offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(1) as ::core::ffi::c_int == 0x3e)
                     {
                         ptr = ptr.offset(-(2isize));
                     } else {
@@ -9817,18 +8577,12 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_PARTIAL_1;
                 }
-                if (if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+                if (if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 }) == BT_LF as ::core::ffi::c_int
                 {
                     ptr = ptr.offset(2isize);
@@ -9866,43 +8620,30 @@ pub mod xmltok_impl_c {
                 ptr = ptr.offset(2isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
                     ptr = ptr.offset(2isize);
                 }
                 6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
                     ptr = ptr.offset(3isize);
                 }
                 7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
@@ -9927,36 +8668,23 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -10011,36 +8739,23 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_73: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(0)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(1)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -10087,21 +8802,14 @@ pub mod xmltok_impl_c {
                 21 | 9 | 10 => {
                     ptr = ptr.offset(2);
                     while end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long
+                        >= (1i32 * 2) as ::core::ffi::c_long
                     {
-                        match if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         } {
                             21 | 9 | 10 => {}
                             11 => {
@@ -10146,20 +8854,13 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 25 | 24 => {}
                 _ => {
@@ -10168,21 +8869,13 @@ pub mod xmltok_impl_c {
                 }
             }
             ptr = ptr.offset(2);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 2) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
                     25 | 24 => {}
                     18 => {
@@ -10206,32 +8899,18 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-                && *ptr.offset(1) as ::core::ffi::c_int
-                    == 0x78
+        if end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            if *ptr.offset(0) as ::core::ffi::c_int == 0
+                && *ptr.offset(1) as ::core::ffi::c_int == 0x78
             {
-                return big2_scanHexCharRef(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanHexCharRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 25 => {}
                 _ => {
@@ -10240,21 +8919,13 @@ pub mod xmltok_impl_c {
                 }
             }
             ptr = ptr.offset(2);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1i32 * 2) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+            while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
                     25 => {}
                     18 => {
@@ -10278,36 +8949,23 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_33: u64;
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -10352,12 +9010,7 @@ pub mod xmltok_impl_c {
                 c2rust_current_block_33 = 14763689060501151050;
             }
             19 => {
-                return big2_scanCharRef(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanCharRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             _ => {
                 *nextTokPtr = ptr;
@@ -10370,36 +9023,23 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_64: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(0)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(1)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -10469,36 +9109,23 @@ pub mod xmltok_impl_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut hadColon: ::core::ffi::c_int = 0;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_186: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(0)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(1)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -10550,40 +9177,27 @@ pub mod xmltok_impl_c {
                     hadColon = 1;
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
                     let mut c2rust_current_block_64: u64;
-                    match if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                    {
-                        (*(enc as *const normal_encoding)).type_0[*ptr
-                            .offset(1)
-                            as ::core::ffi::c_uchar
-                            as usize] as ::core::ffi::c_int
+                    match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                        (*(enc as *const normal_encoding)).type_0
+                            [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                            as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(
-                            *ptr.offset(0),
-                            *ptr.offset(1),
-                        )
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
                         29 => {
-                            if namingBitmap[(((nmstrtPages[*ptr
-                                .offset(0)
-                                as ::core::ffi::c_uchar
-                                as usize]
+                            if namingBitmap[(((nmstrtPages
+                                [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int)
                                 << 3)
-                                + (*ptr.offset(1)
-                                    as ::core::ffi::c_uchar
-                                    as ::core::ffi::c_int
-                                    >> 5))
-                                as usize]
+                                + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int
+                                    >> 5)) as usize]
                                 & (1)
-                                    << (*ptr.offset(1)
-                                        as ::core::ffi::c_uchar
+                                    << (*ptr.offset(1) as ::core::ffi::c_uchar
                                         as ::core::ffi::c_int
                                         & 0x1f)
                                 == 0
@@ -10597,9 +9211,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 6604085902723260545;
                         }
                         5 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 2
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -10610,9 +9222,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 10930818133215224067;
                         }
                         6 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 3
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -10623,9 +9233,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_64 = 10930818133215224067;
                         }
                         7 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 4
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -10653,23 +9261,16 @@ pub mod xmltok_impl_c {
                         let mut t: ::core::ffi::c_int = 0;
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        t = if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        t = if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         };
                         if t == BT_EQUALS as ::core::ffi::c_int {
                             break;
@@ -10699,24 +9300,16 @@ pub mod xmltok_impl_c {
                     loop {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        open = if *ptr.offset(0)
-                            as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        open = if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         };
                         if open == BT_QUOT as ::core::ffi::c_int
                             || open == BT_APOS as ::core::ffi::c_int
@@ -10735,48 +9328,35 @@ pub mod xmltok_impl_c {
                     loop {
                         let mut t_0: ::core::ffi::c_int = 0;
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        t_0 = if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        t_0 = if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         };
                         if t_0 == open {
                             break;
                         }
                         match t_0 {
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(2isize);
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(3isize);
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 ptr = ptr.offset(4isize);
@@ -10786,12 +9366,8 @@ pub mod xmltok_impl_c {
                                 return XML_TOK_INVALID_1;
                             }
                             3 => {
-                                let mut tok: ::core::ffi::c_int = big2_scanRef(
-                                    enc,
-                                    ptr.offset(2),
-                                    end,
-                                    &raw mut ptr,
-                                );
+                                let mut tok: ::core::ffi::c_int =
+                                    big2_scanRef(enc, ptr.offset(2), end, &raw mut ptr);
                                 if tok <= 0 {
                                     if tok == XML_TOK_INVALID_1 {
                                         *nextTokPtr = ptr;
@@ -10810,63 +9386,43 @@ pub mod xmltok_impl_c {
                     }
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    match if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                    {
-                        (*(enc as *const normal_encoding)).type_0[*ptr
-                            .offset(1)
-                            as ::core::ffi::c_uchar
-                            as usize] as ::core::ffi::c_int
+                    match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                        (*(enc as *const normal_encoding)).type_0
+                            [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                            as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(
-                            *ptr.offset(0),
-                            *ptr.offset(1),
-                        )
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
                         21 | 9 | 10 => {
                             loop {
                                 ptr = ptr.offset(2);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 2)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 2) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
-                                match if *ptr.offset(0)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                {
-                                    (*(enc as *const normal_encoding)).type_0[*ptr
-                                        .offset(1)
-                                        as ::core::ffi::c_uchar
-                                        as usize]
+                                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                                    (*(enc as *const normal_encoding)).type_0
+                                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                                         as ::core::ffi::c_int
                                 } else {
-                                    unicode_byte_type(
-                                        *ptr.offset(0),
-                                        *ptr.offset(1),
-                                    )
+                                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                                 } {
                                     29 => {
-                                        if namingBitmap[(((nmstrtPages[*ptr
-                                            .offset(0)
-                                            as ::core::ffi::c_uchar
-                                            as usize]
+                                        if namingBitmap[(((nmstrtPages
+                                            [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                                             as ::core::ffi::c_int)
                                             << 3)
-                                            + (*ptr.offset(1)
-                                                as ::core::ffi::c_uchar
+                                            + (*ptr.offset(1) as ::core::ffi::c_uchar
                                                 as ::core::ffi::c_int
                                                 >> 5))
                                             as usize]
                                             & (1)
-                                                << (*ptr.offset(1)
-                                                    as ::core::ffi::c_uchar
+                                                << (*ptr.offset(1) as ::core::ffi::c_uchar
                                                     as ::core::ffi::c_int
                                                     & 0x1f)
                                             == 0
@@ -10882,9 +9438,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     5 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 2
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if false || true {
@@ -10896,9 +9450,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     6 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 3
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if false || true {
@@ -10910,9 +9462,7 @@ pub mod xmltok_impl_c {
                                         break;
                                     }
                                     7 => {
-                                        if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                            < 4
-                                        {
+                                        if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                             return XML_TOK_PARTIAL_CHAR_1;
                                         }
                                         if false || true {
@@ -10965,17 +9515,12 @@ pub mod xmltok_impl_c {
                             18153789983347219713 => {
                                 ptr = ptr.offset(2);
                                 if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1i32 * 2)
-                                        as ::core::ffi::c_long)
+                                    >= (1i32 * 2) as ::core::ffi::c_long)
                                 {
                                     return XML_TOK_PARTIAL_1;
                                 }
-                                if !(*ptr.offset(0)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                    && *ptr.offset(1)
-                                        as ::core::ffi::c_int
-                                        == 0x3e)
+                                if !(*ptr.offset(0) as ::core::ffi::c_int == 0
+                                    && *ptr.offset(1) as ::core::ffi::c_int == 0x3e)
                                 {
                                     *nextTokPtr = ptr;
                                     return XML_TOK_INVALID_1;
@@ -11006,36 +9551,23 @@ pub mod xmltok_impl_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut hadColon: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_45: u64;
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -11086,34 +9618,18 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_PARTIAL_1;
                 }
-                match if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
                     27 => {
-                        return big2_scanComment(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return big2_scanComment(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     20 => {
-                        return big2_scanCdataSection(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return big2_scanCdataSection(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     _ => {}
                 }
@@ -11121,20 +9637,10 @@ pub mod xmltok_impl_c {
                 return XML_TOK_INVALID_1;
             }
             15 => {
-                return big2_scanPi(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanPi(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             17 => {
-                return big2_scanEndTag(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanEndTag(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             _ => {
                 *nextTokPtr = ptr;
@@ -11148,36 +9654,23 @@ pub mod xmltok_impl_c {
             _ => {}
         }
         hadColon = 0;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_161: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(0)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(1)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -11229,40 +9722,27 @@ pub mod xmltok_impl_c {
                     hadColon = 1;
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
                     let mut c2rust_current_block_112: u64;
-                    match if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                    {
-                        (*(enc as *const normal_encoding)).type_0[*ptr
-                            .offset(1)
-                            as ::core::ffi::c_uchar
-                            as usize] as ::core::ffi::c_int
+                    match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                        (*(enc as *const normal_encoding)).type_0
+                            [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                            as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(
-                            *ptr.offset(0),
-                            *ptr.offset(1),
-                        )
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
                         29 => {
-                            if namingBitmap[(((nmstrtPages[*ptr
-                                .offset(0)
-                                as ::core::ffi::c_uchar
-                                as usize]
+                            if namingBitmap[(((nmstrtPages
+                                [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                                 as ::core::ffi::c_int)
                                 << 3)
-                                + (*ptr.offset(1)
-                                    as ::core::ffi::c_uchar
-                                    as ::core::ffi::c_int
-                                    >> 5))
-                                as usize]
+                                + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int
+                                    >> 5)) as usize]
                                 & (1)
-                                    << (*ptr.offset(1)
-                                        as ::core::ffi::c_uchar
+                                    << (*ptr.offset(1) as ::core::ffi::c_uchar
                                         as ::core::ffi::c_int
                                         & 0x1f)
                                 == 0
@@ -11276,9 +9756,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 16337619596932156899;
                         }
                         5 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 2
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -11289,9 +9767,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 2616667235040759262;
                         }
                         6 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 3
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -11302,9 +9778,7 @@ pub mod xmltok_impl_c {
                             c2rust_current_block_112 = 2616667235040759262;
                         }
                         7 => {
-                            if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                < 4
-                            {
+                            if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                 return XML_TOK_PARTIAL_CHAR_1;
                             }
                             if false || true {
@@ -11331,40 +9805,29 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     loop {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             c2rust_current_block_161 = 13215501469961642988;
                             break;
                         }
-                        match if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         } {
                             29 => {
-                                if namingBitmap[(((nmstrtPages[*ptr
-                                    .offset(0)
-                                    as ::core::ffi::c_uchar
-                                    as usize]
+                                if namingBitmap[(((nmstrtPages
+                                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                                     as ::core::ffi::c_int)
                                     << 3)
-                                    + (*ptr.offset(1)
-                                        as ::core::ffi::c_uchar
+                                    + (*ptr.offset(1) as ::core::ffi::c_uchar
                                         as ::core::ffi::c_int
                                         >> 5))
                                     as usize]
                                     & (1)
-                                        << (*ptr.offset(1)
-                                            as ::core::ffi::c_uchar
+                                        << (*ptr.offset(1) as ::core::ffi::c_uchar
                                             as ::core::ffi::c_int
                                             & 0x1f)
                                     == 0
@@ -11378,9 +9841,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 11066148936714919733;
                             }
                             5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if false || true {
@@ -11391,9 +9852,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 16314074004867283505;
                             }
                             6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if false || true {
@@ -11404,9 +9863,7 @@ pub mod xmltok_impl_c {
                                 c2rust_current_block_161 = 16314074004867283505;
                             }
                             7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4
-                                {
+                                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                     return XML_TOK_PARTIAL_CHAR_1;
                                 }
                                 if false || true {
@@ -11462,15 +9919,12 @@ pub mod xmltok_impl_c {
                 11384015785330443424 => {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if !(*ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(1) as ::core::ffi::c_int
-                            == 0x3e)
+                    if !(*ptr.offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(1) as ::core::ffi::c_int == 0x3e)
                     {
                         *nextTokPtr = ptr;
                         return XML_TOK_INVALID_1;
@@ -11501,48 +9955,26 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 2 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(2i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (2i32 - 1) as size_t != 0 {
+                n &= !(2i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
                 end = ptr.offset(n as isize);
             }
         }
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             2 => {
-                return big2_scanLt(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanLt(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             3 => {
-                return big2_scanRef(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanRef(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             9 => {
                 ptr = ptr.offset(2);
@@ -11551,18 +9983,12 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_TRAILING_CR_1;
                 }
-                if (if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+                if (if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 }) == BT_LF as ::core::ffi::c_int
                 {
                     ptr = ptr.offset(2isize);
@@ -11581,22 +10007,17 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_TRAILING_RSQB_1;
                 }
-                if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                    && *ptr.offset(1) as ::core::ffi::c_int
-                        == 0x5d
+                if *ptr.offset(0) as ::core::ffi::c_int == 0
+                    && *ptr.offset(1) as ::core::ffi::c_int == 0x5d
                 {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_TRAILING_RSQB_1;
                     }
-                    if !(*ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(1) as ::core::ffi::c_int
-                            == 0x3e)
+                    if !(*ptr.offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(1) as ::core::ffi::c_int == 0x3e)
                     {
                         ptr = ptr.offset(-(2isize));
                     } else {
@@ -11631,26 +10052,17 @@ pub mod xmltok_impl_c {
                 ptr = ptr.offset(2isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_76: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
@@ -11658,9 +10070,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_76 = 7158658067966855297;
                 }
                 6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
@@ -11668,9 +10078,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_76 = 7158658067966855297;
                 }
                 7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4
-                        || false
-                    {
+                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 || false {
                         *nextTokPtr = ptr;
                         return XML_TOK_DATA_CHARS_1;
                     }
@@ -11679,47 +10087,24 @@ pub mod xmltok_impl_c {
                 }
                 4 => {
                     if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (2i32 * 2)
-                            as ::core::ffi::c_long
+                        >= (2i32 * 2) as ::core::ffi::c_long
                     {
-                        if !(*ptr
-                            .offset(2)
-                            .offset(0)
-                            as ::core::ffi::c_int
-                            == 0
-                            && *ptr
-                                .offset(2)
-                                .offset(1)
-                                as ::core::ffi::c_int
-                                == 0x5d)
+                        if !(*ptr.offset(2).offset(0) as ::core::ffi::c_int == 0
+                            && *ptr.offset(2).offset(1) as ::core::ffi::c_int == 0x5d)
                         {
                             ptr = ptr.offset(2);
                             c2rust_current_block_76 = 7158658067966855297;
                         } else if end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (3i32 * 2)
-                                as ::core::ffi::c_long
+                            >= (3i32 * 2) as ::core::ffi::c_long
                         {
-                            if !(*ptr
-                                .offset(
-                                    (2i32 * 2) as isize,
-                                )
-                                .offset(0)
-                                as ::core::ffi::c_int
+                            if !(*ptr.offset((2i32 * 2) as isize).offset(0) as ::core::ffi::c_int
                                 == 0
-                                && *ptr
-                                    .offset(
-                                        (2i32 * 2)
-                                            as isize,
-                                    )
-                                    .offset(1)
-                                    as ::core::ffi::c_int
+                                && *ptr.offset((2i32 * 2) as isize).offset(1) as ::core::ffi::c_int
                                     == 0x3e)
                             {
                                 ptr = ptr.offset(2isize);
                             } else {
-                                *nextTokPtr = ptr.offset(
-                                    (2i32 * 2) as isize,
-                                );
+                                *nextTokPtr = ptr.offset((2i32 * 2) as isize);
                                 return XML_TOK_INVALID_1;
                             }
                             c2rust_current_block_76 = 7158658067966855297;
@@ -11756,36 +10141,23 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_34: u64;
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -11844,36 +10216,23 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_65: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(0)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(1)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -11942,36 +10301,23 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long)
-        {
+        if !(end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long) {
             return XML_TOK_PARTIAL_1;
         }
         let mut c2rust_current_block_32: u64;
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     == 0
                 {
                     *nextTokPtr = ptr;
@@ -12026,36 +10372,23 @@ pub mod xmltok_impl_c {
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_63: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(0)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(1)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -12125,21 +10458,13 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            let mut t: ::core::ffi::c_int = if *ptr.offset(0)
-                as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            let mut t: ::core::ffi::c_int = if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             };
             match t {
                 5 => {
@@ -12168,28 +10493,19 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2);
                     if !(t != open) {
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return -27i32;
                         }
                         *nextTokPtr = ptr;
-                        match if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         } {
-                            21 | 9 | 10 | 11 | 30 | 20 => {
-                                return XML_TOK_LITERAL_1
-                            }
+                            21 | 9 | 10 | 11 | 30 | 20 => return XML_TOK_LITERAL_1,
                             _ => return XML_TOK_INVALID_1,
                         }
                     }
@@ -12213,15 +10529,9 @@ pub mod xmltok_impl_c {
             return XML_TOK_NONE_1;
         }
         if 2 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(2i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (2i32 - 1) as size_t != 0 {
+                n &= !(2i32 - 1) as size_t;
                 if n == 0 {
                     return XML_TOK_PARTIAL_1;
                 }
@@ -12229,17 +10539,11 @@ pub mod xmltok_impl_c {
             }
         }
         let mut c2rust_current_block_124: u64;
-        match if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-        {
+        match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
             (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
+                [*ptr.offset(1) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
-            unicode_byte_type(
-                *ptr.offset(0),
-                *ptr.offset(1),
-            )
+            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
         } {
             12 => {
                 return big2_scanLit(
@@ -12266,34 +10570,18 @@ pub mod xmltok_impl_c {
                 {
                     return XML_TOK_PARTIAL_1;
                 }
-                match if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
                     16 => {
-                        return big2_scanDecl(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return big2_scanDecl(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     15 => {
-                        return big2_scanPi(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return big2_scanPi(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     22 | 24 | 29 | 5 | 6 | 7 => {
                         *nextTokPtr = ptr.offset(-(2));
@@ -12315,12 +10603,7 @@ pub mod xmltok_impl_c {
                 c2rust_current_block_124 = 16869865525854146339;
             }
             30 => {
-                return big2_scanPercent(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanPercent(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             35 => {
                 *nextTokPtr = ptr.offset(2);
@@ -12337,30 +10620,18 @@ pub mod xmltok_impl_c {
                 {
                     return -26i32;
                 }
-                if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                    && *ptr.offset(1) as ::core::ffi::c_int
-                        == 0x5d
+                if *ptr.offset(0) as ::core::ffi::c_int == 0
+                    && *ptr.offset(1) as ::core::ffi::c_int == 0x5d
                 {
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (2i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (2i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr
-                        .offset(2)
-                        .offset(0)
-                        as ::core::ffi::c_int
-                        == 0
-                        && *ptr
-                            .offset(2)
-                            .offset(1)
-                            as ::core::ffi::c_int
-                            == 0x3e
+                    if *ptr.offset(2).offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(2).offset(1) as ::core::ffi::c_int == 0x3e
                     {
-                        *nextTokPtr = ptr
-                            .offset((2i32 * 2) as isize);
+                        *nextTokPtr = ptr.offset((2i32 * 2) as isize);
                         return XML_TOK_COND_SECT_CLOSE_1;
                     }
                 }
@@ -12378,18 +10649,12 @@ pub mod xmltok_impl_c {
                 {
                     return -24i32;
                 }
-                match if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
                 } else {
-                    unicode_byte_type(
-                        *ptr.offset(0),
-                        *ptr.offset(1),
-                    )
+                    unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                 } {
                     33 => {
                         *nextTokPtr = ptr.offset(2);
@@ -12421,12 +10686,7 @@ pub mod xmltok_impl_c {
                 return XML_TOK_DECL_CLOSE_1;
             }
             19 => {
-                return big2_scanPoundName(
-                    enc,
-                    ptr.offset(2isize),
-                    end,
-                    nextTokPtr,
-                );
+                return big2_scanPoundName(enc, ptr.offset(2isize), end, nextTokPtr);
             }
             5 => {
                 if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
@@ -12460,34 +10720,23 @@ pub mod xmltok_impl_c {
                 c2rust_current_block_124 = 2956972668325154207;
             }
             29 => {
-                if namingBitmap[(((nmstrtPages
-                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                if namingBitmap[(((nmstrtPages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5)) as usize]
-                    & (1)
-                        << (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
+                    as usize]
+                    & (1) << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     != 0
                 {
                     ptr = ptr.offset(2);
                     tok = XML_TOK_NAME;
                     c2rust_current_block_124 = 2956972668325154207;
-                } else if namingBitmap[(((namePages
-                    [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                } else if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int)
                     << 3)
-                    + (*ptr.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        >> 5))
+                    + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                     as usize]
-                    & (1)
-                        << (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            & 0x1f)
+                    & (1) << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                     != 0
                 {
                     ptr = ptr.offset(2);
@@ -12507,24 +10756,17 @@ pub mod xmltok_impl_c {
                 loop {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         break;
                     }
                     let mut c2rust_current_block_32: u64;
-                    match if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                    {
-                        (*(enc as *const normal_encoding)).type_0[*ptr
-                            .offset(1)
-                            as ::core::ffi::c_uchar
-                            as usize] as ::core::ffi::c_int
+                    match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                        (*(enc as *const normal_encoding)).type_0
+                            [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                            as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(
-                            *ptr.offset(0),
-                            *ptr.offset(1),
-                        )
+                        unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                     } {
                         21 | 10 => {
                             c2rust_current_block_32 = 17500079516916021833;
@@ -12556,36 +10798,23 @@ pub mod xmltok_impl_c {
                 return XML_TOK_INVALID_1;
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_210: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 29 => {
-                    if namingBitmap[(((namePages[*ptr.offset(0)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int)
+                    if namingBitmap[(((namePages[*ptr.offset(0) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int)
                         << 3)
-                        + (*ptr.offset(1) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            >> 5))
+                        + (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int >> 5))
                         as usize]
                         & (1)
-                            << (*ptr.offset(1)
-                                as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                & 0x1f)
+                            << (*ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x1f)
                         == 0
                     {
                         *nextTokPtr = ptr;
@@ -12635,45 +10864,33 @@ pub mod xmltok_impl_c {
                 }
                 23 => {
                     ptr = ptr.offset(2);
-                    match  tok {
-    XML_TOK_NAME =>  {
+                    match tok {
+                        XML_TOK_NAME => {
                             if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                >= (1i32 * 2)
-                                    as ::core::ffi::c_long)
+                                >= (1i32 * 2) as ::core::ffi::c_long)
                             {
                                 return XML_TOK_PARTIAL_1;
                             }
                             tok = XML_TOK_PREFIXED_NAME;
                             let mut c2rust_current_block_187: u64;
-                            match if *ptr.offset(0)
-                                as ::core::ffi::c_int
-                                == 0
-                            {
-                                (*(enc as *const normal_encoding)).type_0[*ptr
-                                    .offset(1)
-                                    as ::core::ffi::c_uchar
-                                    as usize] as ::core::ffi::c_int
+                            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                                (*(enc as *const normal_encoding)).type_0
+                                    [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                    as ::core::ffi::c_int
                             } else {
-                                unicode_byte_type(
-                                    *ptr.offset(0),
-                                    *ptr.offset(1),
-                                )
+                                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                             } {
                                 29 => {
-                                    if namingBitmap[(((namePages[*ptr
-                                        .offset(0)
-                                        as ::core::ffi::c_uchar
-                                        as usize]
+                                    if namingBitmap[(((namePages
+                                        [*ptr.offset(0) as ::core::ffi::c_uchar as usize]
                                         as ::core::ffi::c_int)
                                         << 3)
-                                        + (*ptr.offset(1)
-                                            as ::core::ffi::c_uchar
+                                        + (*ptr.offset(1) as ::core::ffi::c_uchar
                                             as ::core::ffi::c_int
                                             >> 5))
                                         as usize]
                                         & (1)
-                                            << (*ptr.offset(1)
-                                                as ::core::ffi::c_uchar
+                                            << (*ptr.offset(1) as ::core::ffi::c_uchar
                                                 as ::core::ffi::c_int
                                                 & 0x1f)
                                         == 0
@@ -12687,9 +10904,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 17275381528970576968;
                                 }
                                 5 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 2
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if false || true {
@@ -12700,9 +10915,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 9812798724717783973;
                                 }
                                 6 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 3
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if false || true {
@@ -12713,9 +10926,7 @@ pub mod xmltok_impl_c {
                                     c2rust_current_block_187 = 9812798724717783973;
                                 }
                                 7 => {
-                                    if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                        < 4
-                                    {
+                                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 {
                                         return XML_TOK_PARTIAL_CHAR_1;
                                     }
                                     if false || true {
@@ -12737,11 +10948,11 @@ pub mod xmltok_impl_c {
                                 _ => {}
                             }
                         }
-    XML_TOK_PREFIXED_NAME =>  {
+                        XML_TOK_PREFIXED_NAME => {
                             tok = XML_TOK_NMTOKEN_1;
                         }
-    _ =>  {}
-}
+                        _ => {}
+                    }
                     c2rust_current_block_210 = 14244298717249035578;
                 }
                 34 => {
@@ -12798,20 +11009,13 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         start = ptr;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 5 => {
                     ptr = ptr.offset(2isize);
@@ -12824,12 +11028,7 @@ pub mod xmltok_impl_c {
                 }
                 3 => {
                     if ptr == start {
-                        return big2_scanRef(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return big2_scanRef(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     *nextTokPtr = ptr;
                     return XML_TOK_DATA_CHARS_1;
@@ -12850,23 +11049,16 @@ pub mod xmltok_impl_c {
                     if ptr == start {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_TRAILING_CR_1;
                         }
-                        if (if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        if (if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         }) == BT_LF as ::core::ffi::c_int
                         {
                             ptr = ptr.offset(2isize);
@@ -12909,20 +11101,13 @@ pub mod xmltok_impl_c {
             return XML_TOK_PARTIAL_1;
         }
         start = ptr;
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 5 => {
                     ptr = ptr.offset(2isize);
@@ -12935,24 +11120,15 @@ pub mod xmltok_impl_c {
                 }
                 3 => {
                     if ptr == start {
-                        return big2_scanRef(
-                            enc,
-                            ptr.offset(2isize),
-                            end,
-                            nextTokPtr,
-                        );
+                        return big2_scanRef(enc, ptr.offset(2isize), end, nextTokPtr);
                     }
                     *nextTokPtr = ptr;
                     return XML_TOK_DATA_CHARS_1;
                 }
                 30 => {
                     if ptr == start {
-                        let mut tok: ::core::ffi::c_int = big2_scanPercent(
-                            enc,
-                            ptr.offset(2),
-                            end,
-                            nextTokPtr,
-                        );
+                        let mut tok: ::core::ffi::c_int =
+                            big2_scanPercent(enc, ptr.offset(2), end, nextTokPtr);
                         return if tok == XML_TOK_PERCENT_1 {
                             XML_TOK_INVALID_1
                         } else {
@@ -12974,23 +11150,16 @@ pub mod xmltok_impl_c {
                     if ptr == start {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_TRAILING_CR_1;
                         }
-                        if (if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        if (if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         }) == BT_LF as ::core::ffi::c_int
                         {
                             ptr = ptr.offset(2isize);
@@ -13018,32 +11187,19 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut level: ::core::ffi::c_int = 0;
         if 2 > 1 {
-            let mut n: size_t =
-                
-                end.offset_from(ptr) as size_t;
-            if n & (2i32 - 1)
-                as size_t
-                != 0
-            {
-                n &= !(2i32 - 1)
-                    as size_t;
+            let mut n: size_t = end.offset_from(ptr) as size_t;
+            if n & (2i32 - 1) as size_t != 0 {
+                n &= !(2i32 - 1) as size_t;
                 end = ptr.offset(n as isize);
             }
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 5 => {
                     if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 {
@@ -13070,27 +11226,21 @@ pub mod xmltok_impl_c {
                 2 => {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(1) as ::core::ffi::c_int
-                            == 0x21
+                    if *ptr.offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(1) as ::core::ffi::c_int == 0x21
                     {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(1) as ::core::ffi::c_int
-                                == 0x5b
+                        if *ptr.offset(0) as ::core::ffi::c_int == 0
+                            && *ptr.offset(1) as ::core::ffi::c_int == 0x5b
                         {
                             level += 1;
                             ptr = ptr.offset(2isize);
@@ -13100,27 +11250,21 @@ pub mod xmltok_impl_c {
                 4 => {
                     ptr = ptr.offset(2);
                     if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long)
+                        >= (1i32 * 2) as ::core::ffi::c_long)
                     {
                         return XML_TOK_PARTIAL_1;
                     }
-                    if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(1) as ::core::ffi::c_int
-                            == 0x5d
+                    if *ptr.offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(1) as ::core::ffi::c_int == 0x5d
                     {
                         ptr = ptr.offset(2);
                         if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1i32 * 2)
-                                as ::core::ffi::c_long)
+                            >= (1i32 * 2) as ::core::ffi::c_long)
                         {
                             return XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(1) as ::core::ffi::c_int
-                                == 0x3e
+                        if *ptr.offset(0) as ::core::ffi::c_int == 0
+                            && *ptr.offset(1) as ::core::ffi::c_int == 0x3e
                         {
                             ptr = ptr.offset(2);
                             if level == 0 {
@@ -13147,31 +11291,22 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         ptr = ptr.offset(2);
         end = end.offset(-(2));
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
             let mut c2rust_current_block_8: u64;
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
                 | 30 | 19 | 23 => {
                     c2rust_current_block_8 = 5143058163439228106;
                 }
                 21 => {
-                    if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(1) as ::core::ffi::c_int
-                            == 0x9
+                    if *ptr.offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(1) as ::core::ffi::c_int == 0x9
                     {
                         *badPtr = ptr;
                         return 0i32;
@@ -13179,9 +11314,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_8 = 5143058163439228106;
                 }
                 26 | 22 => {
-                    if (if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                    {
+                    if (if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                         *ptr.offset(1) as ::core::ffi::c_int
                     } else {
                         -1
@@ -13199,9 +11332,7 @@ pub mod xmltok_impl_c {
             }
             match c2rust_current_block_8 {
                 9906551679175889830 => {
-                    match if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                    {
+                    match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                         *ptr.offset(1) as ::core::ffi::c_int
                     } else {
                         -1
@@ -13231,22 +11362,15 @@ pub mod xmltok_impl_c {
         let mut open: ::core::ffi::c_int = 0;
         ptr = ptr.offset(2);
         loop {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 5 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other_1
-                    {
+                    if state == crate::xmltok_impl_c::other_1 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh48 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh48 = ptr;
@@ -13257,9 +11381,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((2i32 - 2i32) as isize);
                 }
                 6 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other_1
-                    {
+                    if state == crate::xmltok_impl_c::other_1 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh49 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh49 = ptr;
@@ -13270,9 +11392,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((3i32 - 2i32) as isize);
                 }
                 7 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other_1
-                    {
+                    if state == crate::xmltok_impl_c::other_1 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh50 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh50 = ptr;
@@ -13283,9 +11403,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset((4i32 - 2i32) as isize);
                 }
                 29 | 22 | 24 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::other_1
-                    {
+                    if state == crate::xmltok_impl_c::other_1 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh51 = (*atts.offset(nAtts as isize)).name;
                             *c2rust_fresh51 = ptr;
@@ -13295,9 +11413,7 @@ pub mod xmltok_impl_c {
                     }
                 }
                 12 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue_1
-                    {
+                    if state != crate::xmltok_impl_c::inValue_1 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh52 = (*atts.offset(nAtts as isize)).valuePtr;
                             *c2rust_fresh52 = ptr.offset(2isize);
@@ -13314,9 +11430,7 @@ pub mod xmltok_impl_c {
                     }
                 }
                 13 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue_1
-                    {
+                    if state != crate::xmltok_impl_c::inValue_1 {
                         if nAtts < attsMax {
                             let ref mut c2rust_fresh54 = (*atts.offset(nAtts as isize)).valuePtr;
                             *c2rust_fresh54 = ptr.offset(2isize);
@@ -13338,52 +11452,30 @@ pub mod xmltok_impl_c {
                     }
                 }
                 21 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::inName_1
-                    {
+                    if state == crate::xmltok_impl_c::inName_1 {
                         state = crate::xmltok_impl_c::other_1;
-                    } else if  state
-                        ==  crate::xmltok_impl_c::inValue_1
+                    } else if state == crate::xmltok_impl_c::inValue_1
                         && nAtts < attsMax
                         && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
                         && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || (if *ptr.offset(0)
-                                as ::core::ffi::c_int
-                                == 0
-                            {
+                            || (if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                                 *ptr.offset(1) as ::core::ffi::c_int
                             } else {
                                 -1
                             }) != ASCII_SPACE
-                            || (if *ptr
-                                .offset(2)
-                                .offset(0)
-                                as ::core::ffi::c_int
-                                == 0
-                            {
-                                *ptr.offset(2)
-                                    .offset(1)
-                                    as ::core::ffi::c_int
+                            || (if *ptr.offset(2).offset(0) as ::core::ffi::c_int == 0 {
+                                *ptr.offset(2).offset(1) as ::core::ffi::c_int
                             } else {
                                 -1
                             }) == ASCII_SPACE
-                            || (if *ptr
-                                .offset(2)
-                                .offset(0)
-                                as ::core::ffi::c_int
-                                == 0
-                            {
-                                (*(enc as *const normal_encoding)).type_0[*ptr
-                                    .offset(2)
-                                    .offset(1)
-                                    as ::core::ffi::c_uchar
-                                    as usize] as ::core::ffi::c_int
+                            || (if *ptr.offset(2).offset(0) as ::core::ffi::c_int == 0 {
+                                (*(enc as *const normal_encoding)).type_0
+                                    [*ptr.offset(2).offset(1) as ::core::ffi::c_uchar as usize]
+                                    as ::core::ffi::c_int
                             } else {
                                 unicode_byte_type(
-                                    *ptr.offset(2)
-                                        .offset(0),
-                                    *ptr.offset(2)
-                                        .offset(1),
+                                    *ptr.offset(2).offset(0),
+                                    *ptr.offset(2).offset(1),
                                 )
                             }) == open)
                     {
@@ -13391,21 +11483,14 @@ pub mod xmltok_impl_c {
                     }
                 }
                 9 | 10 => {
-                    if  state
-                        ==  crate::xmltok_impl_c::inName_1
-                    {
+                    if state == crate::xmltok_impl_c::inName_1 {
                         state = crate::xmltok_impl_c::other_1;
-                    } else if  state
-                        ==  crate::xmltok_impl_c::inValue_1
-                        && nAtts < attsMax
-                    {
+                    } else if state == crate::xmltok_impl_c::inValue_1 && nAtts < attsMax {
                         (*atts.offset(nAtts as isize)).normalized = 0i8;
                     }
                 }
                 11 | 17 => {
-                    if  state
-                        !=  crate::xmltok_impl_c::inValue_1
-                    {
+                    if state != crate::xmltok_impl_c::inValue_1 {
                         return nAtts;
                     }
                 }
@@ -13421,62 +11506,61 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut result: ::core::ffi::c_int = 0;
         ptr = ptr.offset((2i32 * 2) as isize);
-        if *ptr.offset(0) as ::core::ffi::c_int
-            == 0
-            && *ptr.offset(1) as ::core::ffi::c_int
-                == 0x78
+        if *ptr.offset(0) as ::core::ffi::c_int == 0 && *ptr.offset(1) as ::core::ffi::c_int == 0x78
         {
             ptr = ptr.offset(2);
-            while !(*ptr.offset(0) as ::core::ffi::c_int
-                == 0
-                && *ptr.offset(1) as ::core::ffi::c_int
-                    == 0x3b)
+            while !(*ptr.offset(0) as ::core::ffi::c_int == 0
+                && *ptr.offset(1) as ::core::ffi::c_int == 0x3b)
             {
-                let mut c: ::core::ffi::c_int = if *ptr.offset(0)
-                    as ::core::ffi::c_int
-                    == 0
-                {
+                let mut c: ::core::ffi::c_int = if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                     *ptr.offset(1) as ::core::ffi::c_int
                 } else {
                     -1
                 };
-                match  c {
-    ASCII_0 | crate::ascii_h::ASCII_1_1 | crate::ascii_h::ASCII_2_1 |
-        crate::ascii_h::ASCII_3_1 | crate::ascii_h::ASCII_4 |
-        crate::ascii_h::ASCII_5 | crate::ascii_h::ASCII_6 |
-        crate::ascii_h::ASCII_7 | crate::ascii_h::ASCII_8_1 |
-        crate::ascii_h::ASCII_9_1 =>  {
+                match c {
+                    ASCII_0
+                    | crate::ascii_h::ASCII_1_1
+                    | crate::ascii_h::ASCII_2_1
+                    | crate::ascii_h::ASCII_3_1
+                    | crate::ascii_h::ASCII_4
+                    | crate::ascii_h::ASCII_5
+                    | crate::ascii_h::ASCII_6
+                    | crate::ascii_h::ASCII_7
+                    | crate::ascii_h::ASCII_8_1
+                    | crate::ascii_h::ASCII_9_1 => {
                         result <<= 4;
                         result |= c - ASCII_0;
                     }
-    ASCII_A | crate::ascii_h::ASCII_B_1 | ASCII_C | ASCII_D |
-        crate::ascii_h::ASCII_E_1 | crate::ascii_h::ASCII_F_1 =>  {
+                    ASCII_A
+                    | crate::ascii_h::ASCII_B_1
+                    | ASCII_C
+                    | ASCII_D
+                    | crate::ascii_h::ASCII_E_1
+                    | crate::ascii_h::ASCII_F_1 => {
                         result <<= 4;
                         result += 10i32 + (c - ASCII_A);
                     }
-    ASCII_a_1 | crate::ascii_h::ASCII_b | crate::ascii_h::ASCII_c_1 |
-        crate::ascii_h::ASCII_d | crate::ascii_h::ASCII_e_1 |
-        crate::ascii_h::ASCII_f =>  {
+                    ASCII_a_1
+                    | crate::ascii_h::ASCII_b
+                    | crate::ascii_h::ASCII_c_1
+                    | crate::ascii_h::ASCII_d
+                    | crate::ascii_h::ASCII_e_1
+                    | crate::ascii_h::ASCII_f => {
                         result <<= 4;
                         result += 10i32 + (c - ASCII_a_1);
                     }
-    _ =>  {}
-}
+                    _ => {}
+                }
                 if result >= 0x110000 {
                     return -1i32;
                 }
                 ptr = ptr.offset(2);
             }
         } else {
-            while !(*ptr.offset(0) as ::core::ffi::c_int
-                == 0
-                && *ptr.offset(1) as ::core::ffi::c_int
-                    == 0x3b)
+            while !(*ptr.offset(0) as ::core::ffi::c_int == 0
+                && *ptr.offset(1) as ::core::ffi::c_int == 0x3b)
             {
-                let mut c_0: ::core::ffi::c_int = if *ptr.offset(0)
-                    as ::core::ffi::c_int
-                    == 0
-                {
+                let mut c_0: ::core::ffi::c_int = if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                     *ptr.offset(1) as ::core::ffi::c_int
                 } else {
                     -1
@@ -13499,20 +11583,10 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         match end.offset_from(ptr) as ::core::ffi::c_long / 2 {
             2 => {
-                if *ptr
-                    .offset(2)
-                    .offset(0)
-                    as ::core::ffi::c_int
-                    == 0
-                    && *ptr
-                        .offset(2)
-                        .offset(1)
-                        as ::core::ffi::c_int
-                        == 0x74
+                if *ptr.offset(2).offset(0) as ::core::ffi::c_int == 0
+                    && *ptr.offset(2).offset(1) as ::core::ffi::c_int == 0x74
                 {
-                    match if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                    {
+                    match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                         *ptr.offset(1) as ::core::ffi::c_int
                     } else {
                         -1
@@ -13524,22 +11598,16 @@ pub mod xmltok_impl_c {
                 }
             }
             3 => {
-                if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                    && *ptr.offset(1) as ::core::ffi::c_int
-                        == 0x61
+                if *ptr.offset(0) as ::core::ffi::c_int == 0
+                    && *ptr.offset(1) as ::core::ffi::c_int == 0x61
                 {
                     ptr = ptr.offset(2);
-                    if *ptr.offset(0) as ::core::ffi::c_int
-                        == 0
-                        && *ptr.offset(1) as ::core::ffi::c_int
-                            == 0x6d
+                    if *ptr.offset(0) as ::core::ffi::c_int == 0
+                        && *ptr.offset(1) as ::core::ffi::c_int == 0x6d
                     {
                         ptr = ptr.offset(2);
-                        if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(1) as ::core::ffi::c_int
-                                == 0x70
+                        if *ptr.offset(0) as ::core::ffi::c_int == 0
+                            && *ptr.offset(1) as ::core::ffi::c_int == 0x70
                         {
                             return ASCII_AMP;
                         }
@@ -13547,69 +11615,49 @@ pub mod xmltok_impl_c {
                 }
             }
             4 => {
-                match  if *ptr.offset(0) as ::core::ffi::c_int
-                    == 0
-                {
+                match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                     *ptr.offset(1) as ::core::ffi::c_int
                 } else {
                     -1
                 } {
-    crate::ascii_h::ASCII_q =>  {
+                    crate::ascii_h::ASCII_q => {
                         ptr = ptr.offset(2);
-                        if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(1) as ::core::ffi::c_int
-                                == 0x75
+                        if *ptr.offset(0) as ::core::ffi::c_int == 0
+                            && *ptr.offset(1) as ::core::ffi::c_int == 0x75
                         {
                             ptr = ptr.offset(2);
-                            if *ptr.offset(0) as ::core::ffi::c_int
-                                == 0
-                                && *ptr.offset(1)
-                                    as ::core::ffi::c_int
-                                    == 0x6f
+                            if *ptr.offset(0) as ::core::ffi::c_int == 0
+                                && *ptr.offset(1) as ::core::ffi::c_int == 0x6f
                             {
                                 ptr = ptr.offset(2);
-                                if *ptr.offset(0)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                    && *ptr.offset(1)
-                                        as ::core::ffi::c_int
-                                        == 0x74
+                                if *ptr.offset(0) as ::core::ffi::c_int == 0
+                                    && *ptr.offset(1) as ::core::ffi::c_int == 0x74
                                 {
                                     return ASCII_QUOT;
                                 }
                             }
                         }
                     }
-    ASCII_a_1 =>  {
+                    ASCII_a_1 => {
                         ptr = ptr.offset(2);
-                        if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                            && *ptr.offset(1) as ::core::ffi::c_int
-                                == 0x70
+                        if *ptr.offset(0) as ::core::ffi::c_int == 0
+                            && *ptr.offset(1) as ::core::ffi::c_int == 0x70
                         {
                             ptr = ptr.offset(2);
-                            if *ptr.offset(0) as ::core::ffi::c_int
-                                == 0
-                                && *ptr.offset(1)
-                                    as ::core::ffi::c_int
-                                    == 0x6f
+                            if *ptr.offset(0) as ::core::ffi::c_int == 0
+                                && *ptr.offset(1) as ::core::ffi::c_int == 0x6f
                             {
                                 ptr = ptr.offset(2);
-                                if *ptr.offset(0)
-                                    as ::core::ffi::c_int
-                                    == 0
-                                    && *ptr.offset(1)
-                                        as ::core::ffi::c_int
-                                        == 0x73
+                                if *ptr.offset(0) as ::core::ffi::c_int == 0
+                                    && *ptr.offset(1) as ::core::ffi::c_int == 0x73
                                 {
                                     return ASCII_APOS;
                                 }
                             }
                         }
                     }
-    _ =>  {}
-}
+                    _ => {}
+                }
             }
             _ => {}
         }
@@ -13626,10 +11674,8 @@ pub mod xmltok_impl_c {
             if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 {
                 return 0i32;
             }
-            if !(*ptr1.offset(0) as ::core::ffi::c_int
-                == 0
-                && *ptr1.offset(1) as ::core::ffi::c_int
-                    == *ptr2 as ::core::ffi::c_int)
+            if !(*ptr1.offset(0) as ::core::ffi::c_int == 0
+                && *ptr1.offset(1) as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int)
             {
                 return 0i32;
             }
@@ -13645,17 +11691,12 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut start: *const ::core::ffi::c_char = ptr;
         loop {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 5 => {
                     ptr = ptr.offset(2isize);
@@ -13670,7 +11711,7 @@ pub mod xmltok_impl_c {
                     ptr = ptr.offset(2isize);
                 }
                 _ => {
-                    return  ptr.offset_from(start) as ::core::ffi::c_int;
+                    return ptr.offset_from(start) as ::core::ffi::c_int;
                 }
             }
         }
@@ -13681,17 +11722,12 @@ pub mod xmltok_impl_c {
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
         loop {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 10 | 9 | 21 => {
                     ptr = ptr.offset(2isize);
@@ -13707,20 +11743,13 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut pos: *mut crate::src::lib::xmltok::POSITION,
     ) {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1i32 * 2) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0) as ::core::ffi::c_int
-                == 0
-            {
+        while end.offset_from(ptr) as ::core::ffi::c_long >= (1i32 * 2) as ::core::ffi::c_long {
+            match if *ptr.offset(0) as ::core::ffi::c_int == 0 {
                 (*(enc as *const normal_encoding)).type_0
                     [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(
-                    *ptr.offset(0),
-                    *ptr.offset(1),
-                )
+                unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
             } {
                 5 => {
                     ptr = ptr.offset(2);
@@ -13743,20 +11772,13 @@ pub mod xmltok_impl_c {
                     (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
                     ptr = ptr.offset(2);
                     if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1i32 * 2)
-                            as ::core::ffi::c_long
-                        && (if *ptr.offset(0) as ::core::ffi::c_int
-                            == 0
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
+                        >= (1i32 * 2) as ::core::ffi::c_long
+                        && (if *ptr.offset(0) as ::core::ffi::c_int == 0 {
+                            (*(enc as *const normal_encoding)).type_0
+                                [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                                as ::core::ffi::c_int
                         } else {
-                            unicode_byte_type(
-                                *ptr.offset(0),
-                                *ptr.offset(1),
-                            )
+                            unicode_byte_type(*ptr.offset(0), *ptr.offset(1))
                         }) == BT_LF as ::core::ffi::c_int
                     {
                         ptr = ptr.offset(2isize);
@@ -13848,19 +11870,16 @@ pub mod xmltok_impl_c {
 pub mod xmltok_ns_c {
     #[no_mangle]
 
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncoding() -> *const ENCODING
-    {
+    pub unsafe extern "C" fn XmlGetUtf8InternalEncoding() -> *const ENCODING {
         return &raw const internal_utf8_encoding.enc;
     }
     #[no_mangle]
 
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncoding(
-    ) -> *const ENCODING {
+    pub unsafe extern "C" fn XmlGetUtf16InternalEncoding() -> *const ENCODING {
         return &raw const internal_little2_encoding.enc;
     }
 
-    pub static mut encodings: [*const ENCODING; 7] =
-        [::core::ptr::null::<ENCODING>(); 7];
+    pub static mut encodings: [*const ENCODING; 7] = [::core::ptr::null::<ENCODING>(); 7];
 
     pub unsafe extern "C" fn initScanProlog(
         mut enc: *const ENCODING,
@@ -13901,11 +11920,11 @@ pub mod xmltok_ns_c {
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut i: ::core::ffi::c_int = getEncodingIndex(name);
-        if i ==  UNKNOWN_ENC {
+        if i == UNKNOWN_ENC {
             return 0i32;
         }
         (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] =  Some(
+        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = Some(
             initScanProlog
                 as unsafe extern "C" fn(
                     *const ENCODING,
@@ -13914,7 +11933,7 @@ pub mod xmltok_ns_c {
                     *mut *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] =  Some(
+        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = Some(
             initScanContent
                 as unsafe extern "C" fn(
                     *const ENCODING,
@@ -13923,7 +11942,7 @@ pub mod xmltok_ns_c {
                     *mut *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*p).initEnc.updatePosition =  Some(
+        (*p).initEnc.updatePosition = Some(
             initUpdatePosition
                 as unsafe extern "C" fn(
                     *const ENCODING,
@@ -13955,8 +11974,7 @@ pub mod xmltok_ns_c {
             &raw mut ptr,
             end,
             &raw mut p,
-            p.offset(128)
-                .offset(-(1)),
+            p.offset(128).offset(-(1)),
         );
         if ptr != end {
             return ::core::ptr::null::<ENCODING>();
@@ -13971,7 +11989,7 @@ pub mod xmltok_ns_c {
             return enc;
         }
         i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
-        if i ==  UNKNOWN_ENC {
+        if i == UNKNOWN_ENC {
             return ::core::ptr::null::<ENCODING>();
         }
         return encodings[i as usize];
@@ -13997,8 +12015,7 @@ pub mod xmltok_ns_c {
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
-                    )
-                        -> *const ENCODING,
+                    ) -> *const ENCODING,
             ),
             isGeneralTextEntity,
             enc,
@@ -14014,19 +12031,16 @@ pub mod xmltok_ns_c {
     }
     #[no_mangle]
 
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncodingNS(
-    ) -> *const ENCODING {
+    pub unsafe extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const ENCODING {
         return &raw const internal_utf8_encoding_ns.enc;
     }
     #[no_mangle]
 
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncodingNS(
-    ) -> *const ENCODING {
+    pub unsafe extern "C" fn XmlGetUtf16InternalEncodingNS() -> *const ENCODING {
         return &raw const internal_little2_encoding_ns.enc;
     }
 
-    pub static mut encodingsNS: [*const ENCODING; 7] =
-        [::core::ptr::null::<ENCODING>(); 7];
+    pub static mut encodingsNS: [*const ENCODING; 7] = [::core::ptr::null::<ENCODING>(); 7];
 
     pub unsafe extern "C" fn initScanPrologNS(
         mut enc: *const ENCODING,
@@ -14067,11 +12081,11 @@ pub mod xmltok_ns_c {
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut i: ::core::ffi::c_int = getEncodingIndex(name);
-        if i ==  UNKNOWN_ENC {
+        if i == UNKNOWN_ENC {
             return 0i32;
         }
         (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] =  Some(
+        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = Some(
             initScanPrologNS
                 as unsafe extern "C" fn(
                     *const ENCODING,
@@ -14080,7 +12094,7 @@ pub mod xmltok_ns_c {
                     *mut *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] =  Some(
+        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = Some(
             initScanContentNS
                 as unsafe extern "C" fn(
                     *const ENCODING,
@@ -14089,7 +12103,7 @@ pub mod xmltok_ns_c {
                     *mut *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*p).initEnc.updatePosition =  Some(
+        (*p).initEnc.updatePosition = Some(
             initUpdatePosition
                 as unsafe extern "C" fn(
                     *const ENCODING,
@@ -14121,8 +12135,7 @@ pub mod xmltok_ns_c {
             &raw mut ptr,
             end,
             &raw mut p,
-            p.offset(128)
-                .offset(-(1)),
+            p.offset(128).offset(-(1)),
         );
         if ptr != end {
             return ::core::ptr::null::<ENCODING>();
@@ -14137,7 +12150,7 @@ pub mod xmltok_ns_c {
             return enc;
         }
         i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
-        if i ==  UNKNOWN_ENC {
+        if i == UNKNOWN_ENC {
             return ::core::ptr::null::<ENCODING>();
         }
         return encodingsNS[i as usize];
@@ -14163,8 +12176,7 @@ pub mod xmltok_ns_c {
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
-                    )
-                        -> *const ENCODING,
+                    ) -> *const ENCODING,
             ),
             isGeneralTextEntity,
             enc,
@@ -14201,844 +12213,71 @@ pub mod xmltok_ns_c {
 pub mod nametab_h {
 
     pub static mut namingBitmap: [::core::ffi::c_uint; 320] = [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0,
-        0x4000000,
-        0x87fffffe,
-        0x7fffffe,
-        0,
-        0,
-        0xff7fffff,
-        0xff7fffff,
-        0xffffffff,
-        0x7ff3ffff,
-        0xfffffdfe,
-        0x7fffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffe00f,
-        0xfc31ffff,
-        0xffffff,
-        0,
-        0xffff0000,
-        0xffffffff,
-        0xffffffff,
-        0xf80001ff,
-        0x3,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0xffffd740,
-        0xfffffffb,
-        0x547f7fff,
-        0xffffd,
-        0xffffdffe,
-        0xffffffff,
-        0xdffeffff,
-        0xffffffff,
-        0xffff0003,
-        0xffffffff,
-        0xffff199f,
-        0x33fcfff,
-        0,
-        0xfffe0000,
-        0x27fffff,
-        0xfffffffe,
-        0x7f,
-        0,
-        0xffff0000,
-        0x707ff,
-        0,
-        0x7fffffe,
-        0x7fe,
-        0xfffe0000,
-        0xffffffff,
-        0x7cffffff,
-        0x2f7fff,
-        0x60,
-        0xffffffe0,
-        0x23ffffff,
-        0xff000000,
-        0x3,
-        0xfff99fe0,
-        0x3c5fdff,
-        0xb0000000,
-        0x30003,
-        0xfff987e0,
-        0x36dfdff,
-        0x5e000000,
-        0x1c0000,
-        0xfffbafe0,
-        0x23edfdff,
-        0,
-        0x1,
-        0xfff99fe0,
-        0x23cdfdff,
-        0xb0000000,
-        0x3,
-        0xd63dc7e0,
-        0x3bfc718,
-        0,
-        0,
-        0xfffddfe0,
-        0x3effdff,
-        0,
-        0x3,
-        0xfffddfe0,
-        0x3effdff,
-        0x40000000,
-        0x3,
-        0xfffddfe0,
-        0x3fffdff,
-        0,
-        0x3,
-        0,
-        0,
-        0,
-        0,
-        0xfffffffe,
-        0xd7fff,
-        0x3f,
-        0,
-        0xfef02596,
-        0x200d6cae,
-        0x1f,
-        0,
-        0,
-        0,
-        0xfffffeff,
-        0x3ff,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0xffffffff,
-        0xffff003f,
-        0x7fffff,
-        0x7daed,
-        0x50000000,
-        0x82315001,
-        0x2c62ab,
-        0x40000000,
-        0xf580c900,
-        0x7,
-        0x2010800,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xfffffff,
-        0xffffffff,
-        0xffffffff,
-        0x3ffffff,
-        0x3f3fffff,
-        0xffffffff,
-        0xaaff3f3f,
-        0x3fffffff,
-        0xffffffff,
-        0x5fdfffff,
-        0xfcf1fdc,
-        0x1fdc1fff,
-        0,
-        0x4c40,
-        0,
-        0,
-        0x7,
-        0,
-        0,
-        0,
-        0x80,
-        0x3fe,
-        0xfffffffe,
-        0xffffffff,
-        0x1fffff,
-        0xfffffffe,
-        0xffffffff,
-        0x7ffffff,
-        0xffffffe0,
-        0x1fff,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0x3f,
-        0,
-        0,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xffffffff,
-        0xf,
-        0,
-        0,
-        0,
-        0x7ff6000,
-        0x87fffffe,
-        0x7fffffe,
-        0,
-        0x800000,
-        0xff7fffff,
-        0xff7fffff,
-        0xffffff,
-        0,
-        0xffff0000,
-        0xffffffff,
-        0xffffffff,
-        0xf80001ff,
-        0x30003,
-        0,
-        0xffffffff,
-        0xffffffff,
-        0x3f,
-        0x3,
-        0xffffd7c0,
-        0xfffffffb,
-        0x547f7fff,
-        0xffffd,
-        0xffffdffe,
-        0xffffffff,
-        0xdffeffff,
-        0xffffffff,
-        0xffff007b,
-        0xffffffff,
-        0xffff199f,
-        0x33fcfff,
-        0,
-        0xfffe0000,
-        0x27fffff,
-        0xfffffffe,
-        0xfffe007f,
-        0xbbfffffb,
-        0xffff0016,
-        0x707ff,
-        0,
-        0x7fffffe,
-        0x7ffff,
-        0xffff03ff,
-        0xffffffff,
-        0x7cffffff,
-        0xffef7fff,
-        0x3ff3dff,
-        0xffffffee,
-        0xf3ffffff,
-        0xff1e3fff,
-        0xffcf,
-        0xfff99fee,
-        0xd3c5fdff,
-        0xb080399f,
-        0x3ffcf,
-        0xfff987e4,
-        0xd36dfdff,
-        0x5e003987,
-        0x1fffc0,
-        0xfffbafee,
-        0xf3edfdff,
-        0x3bbf,
-        0xffc1,
-        0xfff99fee,
-        0xf3cdfdff,
-        0xb0c0398f,
-        0xffc3,
-        0xd63dc7ec,
-        0xc3bfc718,
-        0x803dc7,
-        0xff80,
-        0xfffddfee,
-        0xc3effdff,
-        0x603ddf,
-        0xffc3,
-        0xfffddfec,
-        0xc3effdff,
-        0x40603ddf,
-        0xffc3,
-        0xfffddfec,
-        0xc3fffdff,
-        0x803dcf,
-        0xffc3,
-        0,
-        0,
-        0,
-        0,
-        0xfffffffe,
-        0x7ff7fff,
-        0x3ff7fff,
-        0,
-        0xfef02596,
-        0x3bff6cae,
-        0x3ff3f5f,
-        0,
-        0x3000000,
-        0xc2a003ff,
-        0xfffffeff,
-        0xfffe03ff,
-        0xfebf0fdf,
-        0x2fe3fff,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x1fff0000,
-        0x2,
-        0xa0,
-        0x3efffe,
-        0xfffffffe,
-        0xffffffff,
-        0x661fffff,
-        0xfffffffe,
-        0xffffffff,
-        0x77ffffff,
+        0, 0, 0, 0, 0, 0, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+        0xffffffff, 0xffffffff, 0xffffffff, 0, 0x4000000, 0x87fffffe, 0x7fffffe, 0, 0, 0xff7fffff,
+        0xff7fffff, 0xffffffff, 0x7ff3ffff, 0xfffffdfe, 0x7fffffff, 0xffffffff, 0xffffffff,
+        0xffffe00f, 0xfc31ffff, 0xffffff, 0, 0xffff0000, 0xffffffff, 0xffffffff, 0xf80001ff, 0x3,
+        0, 0, 0, 0, 0, 0xffffd740, 0xfffffffb, 0x547f7fff, 0xffffd, 0xffffdffe, 0xffffffff,
+        0xdffeffff, 0xffffffff, 0xffff0003, 0xffffffff, 0xffff199f, 0x33fcfff, 0, 0xfffe0000,
+        0x27fffff, 0xfffffffe, 0x7f, 0, 0xffff0000, 0x707ff, 0, 0x7fffffe, 0x7fe, 0xfffe0000,
+        0xffffffff, 0x7cffffff, 0x2f7fff, 0x60, 0xffffffe0, 0x23ffffff, 0xff000000, 0x3,
+        0xfff99fe0, 0x3c5fdff, 0xb0000000, 0x30003, 0xfff987e0, 0x36dfdff, 0x5e000000, 0x1c0000,
+        0xfffbafe0, 0x23edfdff, 0, 0x1, 0xfff99fe0, 0x23cdfdff, 0xb0000000, 0x3, 0xd63dc7e0,
+        0x3bfc718, 0, 0, 0xfffddfe0, 0x3effdff, 0, 0x3, 0xfffddfe0, 0x3effdff, 0x40000000, 0x3,
+        0xfffddfe0, 0x3fffdff, 0, 0x3, 0, 0, 0, 0, 0xfffffffe, 0xd7fff, 0x3f, 0, 0xfef02596,
+        0x200d6cae, 0x1f, 0, 0, 0, 0xfffffeff, 0x3ff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xffffffff,
+        0xffff003f, 0x7fffff, 0x7daed, 0x50000000, 0x82315001, 0x2c62ab, 0x40000000, 0xf580c900,
+        0x7, 0x2010800, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xfffffff, 0xffffffff,
+        0xffffffff, 0x3ffffff, 0x3f3fffff, 0xffffffff, 0xaaff3f3f, 0x3fffffff, 0xffffffff,
+        0x5fdfffff, 0xfcf1fdc, 0x1fdc1fff, 0, 0x4c40, 0, 0, 0x7, 0, 0, 0, 0x80, 0x3fe, 0xfffffffe,
+        0xffffffff, 0x1fffff, 0xfffffffe, 0xffffffff, 0x7ffffff, 0xffffffe0, 0x1fff, 0, 0, 0, 0, 0,
+        0, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x3f, 0, 0, 0xffffffff,
+        0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xf, 0, 0, 0, 0x7ff6000, 0x87fffffe,
+        0x7fffffe, 0, 0x800000, 0xff7fffff, 0xff7fffff, 0xffffff, 0, 0xffff0000, 0xffffffff,
+        0xffffffff, 0xf80001ff, 0x30003, 0, 0xffffffff, 0xffffffff, 0x3f, 0x3, 0xffffd7c0,
+        0xfffffffb, 0x547f7fff, 0xffffd, 0xffffdffe, 0xffffffff, 0xdffeffff, 0xffffffff,
+        0xffff007b, 0xffffffff, 0xffff199f, 0x33fcfff, 0, 0xfffe0000, 0x27fffff, 0xfffffffe,
+        0xfffe007f, 0xbbfffffb, 0xffff0016, 0x707ff, 0, 0x7fffffe, 0x7ffff, 0xffff03ff, 0xffffffff,
+        0x7cffffff, 0xffef7fff, 0x3ff3dff, 0xffffffee, 0xf3ffffff, 0xff1e3fff, 0xffcf, 0xfff99fee,
+        0xd3c5fdff, 0xb080399f, 0x3ffcf, 0xfff987e4, 0xd36dfdff, 0x5e003987, 0x1fffc0, 0xfffbafee,
+        0xf3edfdff, 0x3bbf, 0xffc1, 0xfff99fee, 0xf3cdfdff, 0xb0c0398f, 0xffc3, 0xd63dc7ec,
+        0xc3bfc718, 0x803dc7, 0xff80, 0xfffddfee, 0xc3effdff, 0x603ddf, 0xffc3, 0xfffddfec,
+        0xc3effdff, 0x40603ddf, 0xffc3, 0xfffddfec, 0xc3fffdff, 0x803dcf, 0xffc3, 0, 0, 0, 0,
+        0xfffffffe, 0x7ff7fff, 0x3ff7fff, 0, 0xfef02596, 0x3bff6cae, 0x3ff3f5f, 0, 0x3000000,
+        0xc2a003ff, 0xfffffeff, 0xfffe03ff, 0xfebf0fdf, 0x2fe3fff, 0, 0, 0, 0, 0, 0, 0, 0,
+        0x1fff0000, 0x2, 0xa0, 0x3efffe, 0xfffffffe, 0xffffffff, 0x661fffff, 0xfffffffe,
+        0xffffffff, 0x77ffffff,
     ];
 
     pub static mut nmstrtPages: [::core::ffi::c_uchar; 256] = [
-        0x2,
-        0x3,
-        0x4,
-        0x5,
-        0x6,
-        0x7,
-        0x8,
-        0,
-        0,
-        0x9,
-        0xa,
-        0xb,
-        0xc,
-        0xd,
-        0xe,
-        0xf,
-        0x10,
-        0x11,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x12,
-        0x13,
-        0,
-        0x14,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x15,
-        0x16,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x17,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x18,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
+        0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0, 0, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x13, 0, 0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0x15, 0x16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
 
     pub static mut namePages: [::core::ffi::c_uchar; 256] = [
-        0x19,
-        0x3,
-        0x1a,
-        0x1b,
-        0x1c,
-        0x1d,
-        0x1e,
-        0,
-        0,
-        0x1f,
-        0x20,
-        0x21,
-        0x22,
-        0x23,
-        0x24,
-        0x25,
-        0x10,
-        0x11,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x12,
-        0x13,
-        0x26,
-        0x14,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x27,
-        0x16,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x17,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x1,
-        0x18,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
+        0x19, 0x3, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0, 0, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25,
+        0x10, 0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x13, 0x26, 0x14, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0x27, 0x16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x17, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+        0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x18, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
     ];
 }
 pub use crate::__stddef_null_h::NULL;
@@ -15376,172 +12615,103 @@ unsafe extern "C" fn utf8_isName2(
     mut enc: *const crate::src::lib::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (namingBitmap[(((namePages[(*(p as *const ::core::ffi::c_uchar)
-        .offset(0)
-        as ::core::ffi::c_int
-        >> 2
-        & 7) as usize] as ::core::ffi::c_int)
+    return (namingBitmap[(((namePages
+        [(*(p as *const ::core::ffi::c_uchar).offset(0) as ::core::ffi::c_int >> 2 & 7) as usize]
+        as ::core::ffi::c_int)
         << 3)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(0)
-            as ::core::ffi::c_int
-            & 3)
-            << 1)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1)
-            as ::core::ffi::c_int
-            >> 5
-            & 1)) as usize]
-        & (1)
-            << (*(p as *const ::core::ffi::c_uchar).offset(1)
-                as ::core::ffi::c_int
-                & 0x1f)) as ::core::ffi::c_int;
+        + ((*(p as *const ::core::ffi::c_uchar).offset(0) as ::core::ffi::c_int & 3) << 1)
+        + (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int >> 5 & 1))
+        as usize]
+        & (1) << (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x1f))
+        as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn utf8_isName3(
     mut enc: *const crate::src::lib::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (namingBitmap[(((namePages[(((*(p as *const ::core::ffi::c_uchar)
-        .offset(0)
+    return (namingBitmap[(((namePages[(((*(p as *const ::core::ffi::c_uchar).offset(0)
         as ::core::ffi::c_int
         & 0xf)
         << 4)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1)
-            as ::core::ffi::c_int
-            >> 2
-            & 0xf)) as usize]
-        as ::core::ffi::c_int)
+        + (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int >> 2 & 0xf))
+        as usize] as ::core::ffi::c_int)
         << 3)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(1)
-            as ::core::ffi::c_int
-            & 3)
-            << 1)
-        + (*(p as *const ::core::ffi::c_uchar).offset(2)
-            as ::core::ffi::c_int
-            >> 5
-            & 1)) as usize]
-        & (1)
-            << (*(p as *const ::core::ffi::c_uchar).offset(2)
-                as ::core::ffi::c_int
-                & 0x1f)) as ::core::ffi::c_int;
+        + ((*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 3) << 1)
+        + (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int >> 5 & 1))
+        as usize]
+        & (1) << (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0x1f))
+        as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn utf8_isNmstrt2(
     mut enc: *const crate::src::lib::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (namingBitmap[(((nmstrtPages[(*(p as *const ::core::ffi::c_uchar)
-        .offset(0)
-        as ::core::ffi::c_int
-        >> 2
-        & 7) as usize] as ::core::ffi::c_int)
+    return (namingBitmap[(((nmstrtPages
+        [(*(p as *const ::core::ffi::c_uchar).offset(0) as ::core::ffi::c_int >> 2 & 7) as usize]
+        as ::core::ffi::c_int)
         << 3)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(0)
-            as ::core::ffi::c_int
-            & 3)
-            << 1)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1)
-            as ::core::ffi::c_int
-            >> 5
-            & 1)) as usize]
-        & (1)
-            << (*(p as *const ::core::ffi::c_uchar).offset(1)
-                as ::core::ffi::c_int
-                & 0x1f)) as ::core::ffi::c_int;
+        + ((*(p as *const ::core::ffi::c_uchar).offset(0) as ::core::ffi::c_int & 3) << 1)
+        + (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int >> 5 & 1))
+        as usize]
+        & (1) << (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x1f))
+        as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn utf8_isNmstrt3(
     mut enc: *const crate::src::lib::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (namingBitmap[(((nmstrtPages[(((*(p as *const ::core::ffi::c_uchar)
-        .offset(0)
+    return (namingBitmap[(((nmstrtPages[(((*(p as *const ::core::ffi::c_uchar).offset(0)
         as ::core::ffi::c_int
         & 0xf)
         << 4)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1)
-            as ::core::ffi::c_int
-            >> 2
-            & 0xf)) as usize]
-        as ::core::ffi::c_int)
+        + (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int >> 2 & 0xf))
+        as usize] as ::core::ffi::c_int)
         << 3)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(1)
-            as ::core::ffi::c_int
-            & 3)
-            << 1)
-        + (*(p as *const ::core::ffi::c_uchar).offset(2)
-            as ::core::ffi::c_int
-            >> 5
-            & 1)) as usize]
-        & (1)
-            << (*(p as *const ::core::ffi::c_uchar).offset(2)
-                as ::core::ffi::c_int
-                & 0x1f)) as ::core::ffi::c_int;
+        + ((*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 3) << 1)
+        + (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int >> 5 & 1))
+        as usize]
+        & (1) << (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0x1f))
+        as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn utf8_isInvalid2(
     mut enc: *const crate::src::lib::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return ((*(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int)
-        < 0xc2
-        || *(p as *const ::core::ffi::c_uchar).offset(1)
-            as ::core::ffi::c_int
-            & 0x80
-            == 0
-        || *(p as *const ::core::ffi::c_uchar).offset(1)
-            as ::core::ffi::c_int
-            & 0xc0
-            == 0xc0) as ::core::ffi::c_int;
+    return ((*(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int) < 0xc2
+        || *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x80 == 0
+        || *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0 == 0xc0)
+        as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn utf8_isInvalid3(
     mut enc: *const crate::src::lib::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (*(p as *const ::core::ffi::c_uchar).offset(2)
-        as ::core::ffi::c_int
-        & 0x80
-        == 0
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-            == 0xef
-            && *(p as *const ::core::ffi::c_uchar).offset(1)
-                as ::core::ffi::c_int
-                == 0xbf
+    return (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0x80 == 0
+        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xef
+            && *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int == 0xbf
         {
-            (*(p as *const ::core::ffi::c_uchar).offset(2)
+            (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int > 0xbd)
                 as ::core::ffi::c_int
-                > 0xbd) as ::core::ffi::c_int
         } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(2)
+            (*(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0xc0 == 0xc0)
                 as ::core::ffi::c_int
-                & 0xc0
-                == 0xc0) as ::core::ffi::c_int
         }) != 0
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-            == 0xe0
-        {
-            ((*(p as *const ::core::ffi::c_uchar).offset(1)
-                as ::core::ffi::c_int)
-                < 0xa0
-                || *(p as *const ::core::ffi::c_uchar).offset(1)
-                    as ::core::ffi::c_int
-                    & 0xc0
+        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xe0 {
+            ((*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int) < 0xa0
+                || *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0
                     == 0xc0) as ::core::ffi::c_int
         } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(1)
-                as ::core::ffi::c_int
-                & 0x80
-                == 0
-                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                    == 0xed
-                {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1)
+            (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x80 == 0
+                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xed {
+                    (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int > 0x9f)
                         as ::core::ffi::c_int
-                        > 0x9f) as ::core::ffi::c_int
                 } else {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1)
-                        as ::core::ffi::c_int
-                        & 0xc0
+                    (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0
                         == 0xc0) as ::core::ffi::c_int
                 }) != 0) as ::core::ffi::c_int
         }) != 0) as ::core::ffi::c_int;
@@ -15551,47 +12721,21 @@ unsafe extern "C" fn utf8_isInvalid4(
     mut enc: *const crate::src::lib::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (*(p as *const ::core::ffi::c_uchar).offset(3)
-        as ::core::ffi::c_int
-        & 0x80
-        == 0
-        || *(p as *const ::core::ffi::c_uchar).offset(3)
-            as ::core::ffi::c_int
-            & 0xc0
-            == 0xc0
-        || *(p as *const ::core::ffi::c_uchar).offset(2)
-            as ::core::ffi::c_int
-            & 0x80
-            == 0
-        || *(p as *const ::core::ffi::c_uchar).offset(2)
-            as ::core::ffi::c_int
-            & 0xc0
-            == 0xc0
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-            == 0xf0
-        {
-            ((*(p as *const ::core::ffi::c_uchar).offset(1)
-                as ::core::ffi::c_int)
-                < 0x90
-                || *(p as *const ::core::ffi::c_uchar).offset(1)
-                    as ::core::ffi::c_int
-                    & 0xc0
+    return (*(p as *const ::core::ffi::c_uchar).offset(3) as ::core::ffi::c_int & 0x80 == 0
+        || *(p as *const ::core::ffi::c_uchar).offset(3) as ::core::ffi::c_int & 0xc0 == 0xc0
+        || *(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0x80 == 0
+        || *(p as *const ::core::ffi::c_uchar).offset(2) as ::core::ffi::c_int & 0xc0 == 0xc0
+        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xf0 {
+            ((*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int) < 0x90
+                || *(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0
                     == 0xc0) as ::core::ffi::c_int
         } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(1)
-                as ::core::ffi::c_int
-                & 0x80
-                == 0
-                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                    == 0xf4
-                {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1)
+            (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0x80 == 0
+                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int == 0xf4 {
+                    (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int > 0x8f)
                         as ::core::ffi::c_int
-                        > 0x8f) as ::core::ffi::c_int
                 } else {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1)
-                        as ::core::ffi::c_int
-                        & 0xc0
+                    (*(p as *const ::core::ffi::c_uchar).offset(1) as ::core::ffi::c_int & 0xc0
                         == 0xc0) as ::core::ffi::c_int
                 }) != 0) as ::core::ffi::c_int
         }) != 0) as ::core::ffi::c_int;
@@ -15605,46 +12749,29 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
     let mut fromLim: *const ::core::ffi::c_char = *fromLimRef;
     let mut walked: size_t = 0;
     while fromLim > from {
-        let prev: ::core::ffi::c_uchar =
-            *fromLim.offset(-1) as ::core::ffi::c_uchar;
-        if prev as ::core::ffi::c_uint & 0xf8 == 0xf0
-        {
-            if walked.wrapping_add(1usize)
-                >= 4usize
-            {
-                fromLim =
-                    fromLim.offset((4i32 - 1) as isize);
+        let prev: ::core::ffi::c_uchar = *fromLim.offset(-1) as ::core::ffi::c_uchar;
+        if prev as ::core::ffi::c_uint & 0xf8 == 0xf0 {
+            if walked.wrapping_add(1usize) >= 4usize {
+                fromLim = fromLim.offset((4i32 - 1) as isize);
                 break;
             } else {
                 walked = 0usize;
             }
-        } else if prev as ::core::ffi::c_uint & 0xf0
-            == 0xe0
-        {
-            if walked.wrapping_add(1usize)
-                >= 3usize
-            {
-                fromLim =
-                    fromLim.offset((3i32 - 1) as isize);
+        } else if prev as ::core::ffi::c_uint & 0xf0 == 0xe0 {
+            if walked.wrapping_add(1usize) >= 3usize {
+                fromLim = fromLim.offset((3i32 - 1) as isize);
                 break;
             } else {
                 walked = 0usize;
             }
-        } else if prev as ::core::ffi::c_uint & 0xe0
-            == 0xc0
-        {
-            if walked.wrapping_add(1usize)
-                >= 2usize
-            {
-                fromLim =
-                    fromLim.offset((2i32 - 1) as isize);
+        } else if prev as ::core::ffi::c_uint & 0xe0 == 0xc0 {
+            if walked.wrapping_add(1usize) >= 2usize {
+                fromLim = fromLim.offset((2i32 - 1) as isize);
                 break;
             } else {
                 walked = 0usize;
             }
-        } else if prev as ::core::ffi::c_uint & 0x80
-            == 0
-        {
+        } else if prev as ::core::ffi::c_uint & 0x80 == 0 {
             break;
         }
         fromLim = fromLim.offset(-1);
@@ -15662,12 +12789,8 @@ unsafe extern "C" fn utf8_toUtf8(
 ) -> crate::src::lib::xmltok::XML_Convert_Result {
     let mut input_incomplete: bool = false_0 != 0;
     let mut output_exhausted: bool = false_0 != 0;
-    let bytesAvailable: ptrdiff_t =
-        
-        fromLim.offset_from(*fromP);
-    let bytesStorable: ptrdiff_t =
-        
-        toLim.offset_from(*toP);
+    let bytesAvailable: ptrdiff_t = fromLim.offset_from(*fromP);
+    let bytesStorable: ptrdiff_t = toLim.offset_from(*toP);
     if bytesAvailable > bytesStorable {
         fromLim = (*fromP).offset(bytesStorable);
         output_exhausted = true_0 != 0;
@@ -15677,9 +12800,7 @@ unsafe extern "C" fn utf8_toUtf8(
     if fromLim < fromLimBefore {
         input_incomplete = true_0 != 0;
     }
-    let bytesToCopy: ptrdiff_t =
-        
-        fromLim.offset_from(*fromP);
+    let bytesToCopy: ptrdiff_t = fromLim.offset_from(*fromP);
     memcpy(
         *toP as *mut ::core::ffi::c_void,
         *fromP as *const ::core::ffi::c_void,
@@ -15724,12 +12845,8 @@ unsafe extern "C" fn utf8_toUtf16(
                 } else {
                     let c2rust_fresh0 = to;
                     to = to.offset(1);
-                    *c2rust_fresh0 = ((*from.offset(0)
-                        as ::core::ffi::c_int
-                        & 0x1f)
-                        << 6
-                        | *from.offset(1) as ::core::ffi::c_int
-                            & 0x3f)
+                    *c2rust_fresh0 = ((*from.offset(0) as ::core::ffi::c_int & 0x1f) << 6
+                        | *from.offset(1) as ::core::ffi::c_int & 0x3f)
                         as ::core::ffi::c_ushort;
                     from = from.offset(2isize);
                 }
@@ -15742,15 +12859,9 @@ unsafe extern "C" fn utf8_toUtf16(
                 } else {
                     let c2rust_fresh1 = to;
                     to = to.offset(1);
-                    *c2rust_fresh1 = ((*from.offset(0)
-                        as ::core::ffi::c_int
-                        & 0xf)
-                        << 12
-                        | (*from.offset(1) as ::core::ffi::c_int
-                            & 0x3f)
-                            << 6
-                        | *from.offset(2) as ::core::ffi::c_int
-                            & 0x3f)
+                    *c2rust_fresh1 = ((*from.offset(0) as ::core::ffi::c_int & 0xf) << 12
+                        | (*from.offset(1) as ::core::ffi::c_int & 0x3f) << 6
+                        | *from.offset(2) as ::core::ffi::c_int & 0x3f)
                         as ::core::ffi::c_ushort;
                     from = from.offset(3isize);
                 }
@@ -15761,32 +12872,19 @@ unsafe extern "C" fn utf8_toUtf16(
                     res = crate::src::lib::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
                     c2rust_current_block = 7621590230452126720;
                     break;
-                } else if (fromLim.offset_from(from) as ::core::ffi::c_long)
-                    < 4
-                {
+                } else if (fromLim.offset_from(from) as ::core::ffi::c_long) < 4 {
                     res = crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
                     c2rust_current_block = 7621590230452126720;
                     break;
                 } else {
-                    n = ((*from.offset(0) as ::core::ffi::c_int
-                        & 0x7)
-                        << 18
-                        | (*from.offset(1) as ::core::ffi::c_int
-                            & 0x3f)
-                            << 12
-                        | (*from.offset(2) as ::core::ffi::c_int
-                            & 0x3f)
-                            << 6
-                        | *from.offset(3) as ::core::ffi::c_int
-                            & 0x3f)
+                    n = ((*from.offset(0) as ::core::ffi::c_int & 0x7) << 18
+                        | (*from.offset(1) as ::core::ffi::c_int & 0x3f) << 12
+                        | (*from.offset(2) as ::core::ffi::c_int & 0x3f) << 6
+                        | *from.offset(3) as ::core::ffi::c_int & 0x3f)
                         as ::core::ffi::c_ulong;
                     n = n.wrapping_sub(0x10000u64);
-                    *to.offset(0) = (n >> 10
-                        | 0xd800)
-                        as ::core::ffi::c_ushort;
-                    *to.offset(1) =
-                        (n & 0x3ff | 0xdc00)
-                            as ::core::ffi::c_ushort;
+                    *to.offset(0) = (n >> 10 | 0xd800) as ::core::ffi::c_ushort;
+                    *to.offset(1) = (n & 0x3ff | 0xdc00) as ::core::ffi::c_ushort;
                     to = to.offset(2);
                     from = from.offset(4isize);
                 }
@@ -15966,517 +13064,261 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_COLON_0 as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_MALFORM as ::core::ffi::c_uchar,
-            
             BT_MALFORM as ::core::ffi::c_uchar,
         ],
         isName2: Some(
@@ -16698,517 +13540,261 @@ static mut utf8_encoding: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_MALFORM as ::core::ffi::c_uchar,
-            
             BT_MALFORM as ::core::ffi::c_uchar,
         ],
         isName2: Some(
@@ -17430,517 +14016,261 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_COLON_0 as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_MALFORM as ::core::ffi::c_uchar,
-            
             BT_MALFORM as ::core::ffi::c_uchar,
         ],
         isName2: Some(
@@ -18162,517 +14492,261 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_TRAIL as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD2 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD3 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_LEAD4 as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_MALFORM as ::core::ffi::c_uchar,
-            
             BT_MALFORM as ::core::ffi::c_uchar,
         ],
         isName2: Some(
@@ -18760,13 +14834,11 @@ unsafe extern "C" fn latin1_toUtf8(
             }
             let c2rust_fresh6 = *toP;
             *toP = (*toP).offset(1);
-            *c2rust_fresh6 = (c as ::core::ffi::c_int >> 6
-                | UTF8_cval2 as ::core::ffi::c_int)
+            *c2rust_fresh6 = (c as ::core::ffi::c_int >> 6 | UTF8_cval2 as ::core::ffi::c_int)
                 as ::core::ffi::c_char;
             let c2rust_fresh7 = *toP;
             *toP = (*toP).offset(1);
-            *c2rust_fresh7 = (c as ::core::ffi::c_int & 0x3f
-                | 0x80) as ::core::ffi::c_char;
+            *c2rust_fresh7 = (c as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
             *fromP = (*fromP).offset(1);
         } else {
             if *toP == toLim as *mut ::core::ffi::c_char {
@@ -18955,517 +15027,261 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_COLON_0 as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
         ],
         isName2: None,
@@ -19633,517 +15449,261 @@ static mut latin1_encoding: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
         ],
         isName2: None,
@@ -20332,261 +15892,133 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_COLON_0 as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
             0,
             0,
@@ -20882,261 +16314,133 @@ static mut ascii_encoding: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
             0,
             0,
@@ -21303,17 +16607,12 @@ unsafe extern "C" fn little2_toUtf8(
     mut toLim: *const ::core::ffi::c_char,
 ) -> crate::src::lib::xmltok::XML_Convert_Result {
     let mut from: *const ::core::ffi::c_char = *fromP;
-    fromLim = from.offset(
-        ((fromLim.offset_from(from) as ::core::ffi::c_long >> 1)
-            << 1) as isize,
-    );
+    fromLim = from.offset(((fromLim.offset_from(from) as ::core::ffi::c_long >> 1) << 1) as isize);
     while from < fromLim {
         let mut plane: ::core::ffi::c_int = 0;
         let mut lo2: ::core::ffi::c_uchar = 0;
-        let mut lo: ::core::ffi::c_uchar =
-            *from.offset(0) as ::core::ffi::c_uchar;
-        let mut hi: ::core::ffi::c_uchar =
-            *from.offset(1) as ::core::ffi::c_uchar;
+        let mut lo: ::core::ffi::c_uchar = *from.offset(0) as ::core::ffi::c_uchar;
+        let mut hi: ::core::ffi::c_uchar = *from.offset(1) as ::core::ffi::c_uchar;
         let mut c2rust_current_block_34: u64;
         match hi as ::core::ffi::c_int {
             0 => {
@@ -21342,41 +16641,28 @@ unsafe extern "C" fn little2_toUtf8(
                     *fromP = from;
                     return crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
                 }
-                plane = ((hi as ::core::ffi::c_int & 0x3)
-                    << 2
-                    | lo as ::core::ffi::c_int >> 6
-                        & 0x3)
+                plane = ((hi as ::core::ffi::c_int & 0x3) << 2
+                    | lo as ::core::ffi::c_int >> 6 & 0x3)
                     + 1;
                 let c2rust_fresh25 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh25 = (plane >> 2
-                    | UTF8_cval4 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
+                *c2rust_fresh25 =
+                    (plane >> 2 | UTF8_cval4 as ::core::ffi::c_int) as ::core::ffi::c_char;
                 let c2rust_fresh26 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh26 = (lo as ::core::ffi::c_int >> 2
-                    & 0xf
-                    | (plane & 0x3) << 4
-                    | 0x80)
+                *c2rust_fresh26 = (lo as ::core::ffi::c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80)
                     as ::core::ffi::c_char;
                 from = from.offset(2);
                 lo2 = *from.offset(0) as ::core::ffi::c_uchar;
                 let c2rust_fresh27 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh27 = ((lo as ::core::ffi::c_int & 0x3)
-                    << 4
-                    | (*from.offset(1) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        & 0x3)
-                        << 2
+                *c2rust_fresh27 = ((lo as ::core::ffi::c_int & 0x3) << 4
+                    | (*from.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x3) << 2
                     | lo2 as ::core::ffi::c_int >> 6
-                    | 0x80)
-                    as ::core::ffi::c_char;
+                    | 0x80) as ::core::ffi::c_char;
                 let c2rust_fresh28 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh28 = (lo2 as ::core::ffi::c_int & 0x3f
-                    | 0x80)
-                    as ::core::ffi::c_char;
+                *c2rust_fresh28 = (lo2 as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
                 c2rust_current_block_34 = 14136749492126903395;
             }
             _ => {
@@ -21386,21 +16672,16 @@ unsafe extern "C" fn little2_toUtf8(
                 }
                 let c2rust_fresh22 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh22 = (hi as ::core::ffi::c_int >> 4
-                    | UTF8_cval3 as ::core::ffi::c_int)
+                *c2rust_fresh22 = (hi as ::core::ffi::c_int >> 4 | UTF8_cval3 as ::core::ffi::c_int)
                     as ::core::ffi::c_char;
                 let c2rust_fresh23 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh23 = ((hi as ::core::ffi::c_int & 0xf)
-                    << 2
+                *c2rust_fresh23 = ((hi as ::core::ffi::c_int & 0xf) << 2
                     | lo as ::core::ffi::c_int >> 6
-                    | 0x80)
-                    as ::core::ffi::c_char;
+                    | 0x80) as ::core::ffi::c_char;
                 let c2rust_fresh24 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh24 = (lo as ::core::ffi::c_int & 0x3f
-                    | 0x80)
-                    as ::core::ffi::c_char;
+                *c2rust_fresh24 = (lo as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
                 c2rust_current_block_34 = 14136749492126903395;
             }
         }
@@ -21418,9 +16699,8 @@ unsafe extern "C" fn little2_toUtf8(
                     as ::core::ffi::c_char;
                 let c2rust_fresh21 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh21 = (lo as ::core::ffi::c_int & 0x3fi32
-                    | 0x80i32)
-                    as ::core::ffi::c_char;
+                *c2rust_fresh21 =
+                    (lo as ::core::ffi::c_int & 0x3fi32 | 0x80i32) as ::core::ffi::c_char;
             }
             _ => {}
         }
@@ -21443,17 +16723,11 @@ unsafe extern "C" fn little2_toUtf16(
 ) -> crate::src::lib::xmltok::XML_Convert_Result {
     let mut res: crate::src::lib::xmltok::XML_Convert_Result =
         crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
-    fromLim = (*fromP).offset(
-        ((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1)
-            << 1) as isize,
-    );
+    fromLim =
+        (*fromP).offset(((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1) << 1) as isize);
     if fromLim.offset_from(*fromP) as ::core::ffi::c_long
         > (toLim.offset_from(*toP) as ::core::ffi::c_long) << 1
-        && *fromLim
-            .offset(-(2))
-            .offset(1) as ::core::ffi::c_uchar
-            as ::core::ffi::c_int
-            & 0xf8
+        && *fromLim.offset(-(2)).offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0xf8
             == 0xd8
     {
         fromLim = fromLim.offset(-(2));
@@ -21462,11 +16736,9 @@ unsafe extern "C" fn little2_toUtf16(
     while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
         let c2rust_fresh18 = *toP;
         *toP = (*toP).offset(1);
-        *c2rust_fresh18 = ((*(*fromP).offset(1)
-            as ::core::ffi::c_uchar as ::core::ffi::c_int)
-            << 8
-            | *(*fromP).offset(0) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int) as ::core::ffi::c_ushort;
+        *c2rust_fresh18 = ((*(*fromP).offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int) << 8
+            | *(*fromP).offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int)
+            as ::core::ffi::c_ushort;
         *fromP = (*fromP).offset(2);
     }
     if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
@@ -21484,17 +16756,12 @@ unsafe extern "C" fn big2_toUtf8(
     mut toLim: *const ::core::ffi::c_char,
 ) -> crate::src::lib::xmltok::XML_Convert_Result {
     let mut from: *const ::core::ffi::c_char = *fromP;
-    fromLim = from.offset(
-        ((fromLim.offset_from(from) as ::core::ffi::c_long >> 1)
-            << 1) as isize,
-    );
+    fromLim = from.offset(((fromLim.offset_from(from) as ::core::ffi::c_long >> 1) << 1) as isize);
     while from < fromLim {
         let mut plane: ::core::ffi::c_int = 0;
         let mut lo2: ::core::ffi::c_uchar = 0;
-        let mut lo: ::core::ffi::c_uchar =
-            *from.offset(1) as ::core::ffi::c_uchar;
-        let mut hi: ::core::ffi::c_uchar =
-            *from.offset(0) as ::core::ffi::c_uchar;
+        let mut lo: ::core::ffi::c_uchar = *from.offset(1) as ::core::ffi::c_uchar;
+        let mut hi: ::core::ffi::c_uchar = *from.offset(0) as ::core::ffi::c_uchar;
         let mut c2rust_current_block_34: u64;
         match hi as ::core::ffi::c_int {
             0 => {
@@ -21523,41 +16790,28 @@ unsafe extern "C" fn big2_toUtf8(
                     *fromP = from;
                     return crate::src::lib::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
                 }
-                plane = ((hi as ::core::ffi::c_int & 0x3)
-                    << 2
-                    | lo as ::core::ffi::c_int >> 6
-                        & 0x3)
+                plane = ((hi as ::core::ffi::c_int & 0x3) << 2
+                    | lo as ::core::ffi::c_int >> 6 & 0x3)
                     + 1;
                 let c2rust_fresh44 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh44 = (plane >> 2
-                    | UTF8_cval4 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
+                *c2rust_fresh44 =
+                    (plane >> 2 | UTF8_cval4 as ::core::ffi::c_int) as ::core::ffi::c_char;
                 let c2rust_fresh45 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh45 = (lo as ::core::ffi::c_int >> 2
-                    & 0xf
-                    | (plane & 0x3) << 4
-                    | 0x80)
+                *c2rust_fresh45 = (lo as ::core::ffi::c_int >> 2 & 0xf | (plane & 0x3) << 4 | 0x80)
                     as ::core::ffi::c_char;
                 from = from.offset(2);
                 lo2 = *from.offset(1) as ::core::ffi::c_uchar;
                 let c2rust_fresh46 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh46 = ((lo as ::core::ffi::c_int & 0x3)
-                    << 4
-                    | (*from.offset(0) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        & 0x3)
-                        << 2
+                *c2rust_fresh46 = ((lo as ::core::ffi::c_int & 0x3) << 4
+                    | (*from.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0x3) << 2
                     | lo2 as ::core::ffi::c_int >> 6
-                    | 0x80)
-                    as ::core::ffi::c_char;
+                    | 0x80) as ::core::ffi::c_char;
                 let c2rust_fresh47 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh47 = (lo2 as ::core::ffi::c_int & 0x3f
-                    | 0x80)
-                    as ::core::ffi::c_char;
+                *c2rust_fresh47 = (lo2 as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
                 c2rust_current_block_34 = 14136749492126903395;
             }
             _ => {
@@ -21567,21 +16821,16 @@ unsafe extern "C" fn big2_toUtf8(
                 }
                 let c2rust_fresh41 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh41 = (hi as ::core::ffi::c_int >> 4
-                    | UTF8_cval3 as ::core::ffi::c_int)
+                *c2rust_fresh41 = (hi as ::core::ffi::c_int >> 4 | UTF8_cval3 as ::core::ffi::c_int)
                     as ::core::ffi::c_char;
                 let c2rust_fresh42 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh42 = ((hi as ::core::ffi::c_int & 0xf)
-                    << 2
+                *c2rust_fresh42 = ((hi as ::core::ffi::c_int & 0xf) << 2
                     | lo as ::core::ffi::c_int >> 6
-                    | 0x80)
-                    as ::core::ffi::c_char;
+                    | 0x80) as ::core::ffi::c_char;
                 let c2rust_fresh43 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh43 = (lo as ::core::ffi::c_int & 0x3f
-                    | 0x80)
-                    as ::core::ffi::c_char;
+                *c2rust_fresh43 = (lo as ::core::ffi::c_int & 0x3f | 0x80) as ::core::ffi::c_char;
                 c2rust_current_block_34 = 14136749492126903395;
             }
         }
@@ -21599,9 +16848,8 @@ unsafe extern "C" fn big2_toUtf8(
                     as ::core::ffi::c_char;
                 let c2rust_fresh40 = *toP;
                 *toP = (*toP).offset(1);
-                *c2rust_fresh40 = (lo as ::core::ffi::c_int & 0x3fi32
-                    | 0x80i32)
-                    as ::core::ffi::c_char;
+                *c2rust_fresh40 =
+                    (lo as ::core::ffi::c_int & 0x3fi32 | 0x80i32) as ::core::ffi::c_char;
             }
             _ => {}
         }
@@ -21624,17 +16872,11 @@ unsafe extern "C" fn big2_toUtf16(
 ) -> crate::src::lib::xmltok::XML_Convert_Result {
     let mut res: crate::src::lib::xmltok::XML_Convert_Result =
         crate::src::lib::xmltok::XML_CONVERT_COMPLETED;
-    fromLim = (*fromP).offset(
-        ((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1)
-            << 1) as isize,
-    );
+    fromLim =
+        (*fromP).offset(((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1) << 1) as isize);
     if fromLim.offset_from(*fromP) as ::core::ffi::c_long
         > (toLim.offset_from(*toP) as ::core::ffi::c_long) << 1
-        && *fromLim
-            .offset(-(2))
-            .offset(0) as ::core::ffi::c_uchar
-            as ::core::ffi::c_int
-            & 0xf8
+        && *fromLim.offset(-(2)).offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int & 0xf8
             == 0xd8
     {
         fromLim = fromLim.offset(-(2));
@@ -21643,11 +16885,9 @@ unsafe extern "C" fn big2_toUtf16(
     while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
         let c2rust_fresh37 = *toP;
         *toP = (*toP).offset(1);
-        *c2rust_fresh37 = ((*(*fromP).offset(0)
-            as ::core::ffi::c_uchar as ::core::ffi::c_int)
-            << 8
-            | *(*fromP).offset(1) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int) as ::core::ffi::c_ushort;
+        *c2rust_fresh37 = ((*(*fromP).offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int) << 8
+            | *(*fromP).offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int)
+            as ::core::ffi::c_ushort;
         *fromP = (*fromP).offset(2);
     }
     if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
@@ -21810,517 +17050,261 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
             isUtf16: 1i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_COLON_0 as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
         ],
         isName2: None,
@@ -22488,517 +17472,261 @@ static mut little2_encoding: normal_encoding = unsafe {
             isUtf16: 1i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
         ],
         isName2: None,
@@ -23166,517 +17894,261 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
             isUtf16: 1i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_COLON_0 as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
         ],
         isName2: None,
@@ -23844,517 +18316,261 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
             isUtf16: 1i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
         ],
         isName2: None,
@@ -24522,517 +18738,261 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_COLON_0 as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
         ],
         isName2: None,
@@ -25200,517 +19160,261 @@ static mut big2_encoding: normal_encoding = unsafe {
             isUtf16: 0i8,
         },
         type_0: [
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_LF as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_CR as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_NONXML as ::core::ffi::c_uchar,
-            
             BT_S as ::core::ffi::c_uchar,
-            
             BT_EXCL as ::core::ffi::c_uchar,
-            
             BT_QUOT as ::core::ffi::c_uchar,
-            
             BT_NUM as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_PERCNT as ::core::ffi::c_uchar,
-            
             BT_AMP as ::core::ffi::c_uchar,
-            
             BT_APOS as ::core::ffi::c_uchar,
-            
             BT_LPAR as ::core::ffi::c_uchar,
-            
             BT_RPAR as ::core::ffi::c_uchar,
-            
             BT_AST as ::core::ffi::c_uchar,
-            
             BT_PLUS as ::core::ffi::c_uchar,
-            
             BT_COMMA as ::core::ffi::c_uchar,
-            
             BT_MINUS as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_SOL as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_DIGIT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_SEMI as ::core::ffi::c_uchar,
-            
             BT_LT as ::core::ffi::c_uchar,
-            
             BT_EQUALS as ::core::ffi::c_uchar,
-            
             BT_GT as ::core::ffi::c_uchar,
-            
             BT_QUEST as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_LSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_RSQB as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_HEX as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_VERBAR as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NAME as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_OTHER as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
-            
             BT_NMSTRT as ::core::ffi::c_uchar,
         ],
         isName2: None,
@@ -25736,17 +19440,11 @@ unsafe extern "C" fn streqci(
         let c2rust_fresh59 = s2;
         s2 = s2.offset(1);
         let mut c2: ::core::ffi::c_char = *c2rust_fresh59;
-        if ASCII_a_1 <= c1 as ::core::ffi::c_int
-            && c1 as ::core::ffi::c_int <= ASCII_z
-        {
-            c1 = (c1 as ::core::ffi::c_int + (ASCII_A - ASCII_a_1))
-                as ::core::ffi::c_char;
+        if ASCII_a_1 <= c1 as ::core::ffi::c_int && c1 as ::core::ffi::c_int <= ASCII_z {
+            c1 = (c1 as ::core::ffi::c_int + (ASCII_A - ASCII_a_1)) as ::core::ffi::c_char;
         }
-        if ASCII_a_1 <= c2 as ::core::ffi::c_int
-            && c2 as ::core::ffi::c_int <= ASCII_z
-        {
-            c2 = (c2 as ::core::ffi::c_int + (ASCII_A - ASCII_a_1))
-                as ::core::ffi::c_char;
+        if ASCII_a_1 <= c2 as ::core::ffi::c_int && c2 as ::core::ffi::c_int <= ASCII_z {
+            c2 = (c2 as ::core::ffi::c_int + (ASCII_A - ASCII_a_1)) as ::core::ffi::c_char;
         }
         if c1 as ::core::ffi::c_int != c2 as ::core::ffi::c_int {
             return 0i32;
@@ -25899,7 +19597,6 @@ static mut KW_version: [::core::ffi::c_char; 8] = [
     ASCII_i as ::core::ffi::c_char,
     ASCII_o as ::core::ffi::c_char,
     ASCII_n as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -25912,7 +19609,6 @@ static mut KW_encoding: [::core::ffi::c_char; 9] = [
     ASCII_i as ::core::ffi::c_char,
     ASCII_n as ::core::ffi::c_char,
     ASCII_g_1 as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -25927,7 +19623,6 @@ static mut KW_standalone: [::core::ffi::c_char; 11] = [
     ASCII_o as ::core::ffi::c_char,
     ASCII_n as ::core::ffi::c_char,
     ASCII_e_1 as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -25935,14 +19630,12 @@ static mut KW_yes: [::core::ffi::c_char; 4] = [
     ASCII_y as ::core::ffi::c_char,
     ASCII_e_1 as ::core::ffi::c_char,
     ASCII_s as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
 static mut KW_no: [::core::ffi::c_char; 3] = [
     ASCII_n as ::core::ffi::c_char,
     ASCII_o as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -26031,9 +19724,7 @@ unsafe extern "C" fn doParseXmlDecl(
     ) != 0
     {
         let mut c: ::core::ffi::c_int = toAscii(enc, val, end);
-        if !(ASCII_a_1 <= c && c <= ASCII_z)
-            && !(ASCII_A <= c && c <= ASCII_Z)
-        {
+        if !(ASCII_a_1 <= c && c <= ASCII_z) && !(ASCII_A <= c && c <= ASCII_Z) {
             *badPtr = val;
             return 0i32;
         }
@@ -26138,43 +19829,25 @@ pub unsafe extern "C" fn XmlUtf8Encode(
         return 0i32;
     }
     if c < min2 as ::core::ffi::c_int {
-        *buf.offset(0) =
-            (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        *buf.offset(0) = (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 1i32;
     }
     if c < min3 as ::core::ffi::c_int {
-        *buf.offset(0) = (c >> 6
-            | UTF8_cval2 as ::core::ffi::c_int)
-            as ::core::ffi::c_char;
-        *buf.offset(1) =
-            (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+        *buf.offset(0) = (c >> 6 | UTF8_cval2 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        *buf.offset(1) = (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
         return 2i32;
     }
     if c < min4 as ::core::ffi::c_int {
-        *buf.offset(0) = (c >> 12
-            | UTF8_cval3 as ::core::ffi::c_int)
-            as ::core::ffi::c_char;
-        *buf.offset(1) = (c >> 6
-            & 0x3fi32
-            | 0x80)
-            as ::core::ffi::c_char;
-        *buf.offset(2) =
-            (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+        *buf.offset(0) = (c >> 12 | UTF8_cval3 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        *buf.offset(1) = (c >> 6 & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+        *buf.offset(2) = (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
         return 3i32;
     }
     if c < 0x110000 {
-        *buf.offset(0) = (c >> 18
-            | UTF8_cval4 as ::core::ffi::c_int)
-            as ::core::ffi::c_char;
-        *buf.offset(1) =
-            (c >> 12 & 0x3fi32
-                | 0x80) as ::core::ffi::c_char;
-        *buf.offset(2) = (c >> 6
-            & 0x3fi32
-            | 0x80)
-            as ::core::ffi::c_char;
-        *buf.offset(3) =
-            (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+        *buf.offset(0) = (c >> 18 | UTF8_cval4 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        *buf.offset(1) = (c >> 12 & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+        *buf.offset(2) = (c >> 6 & 0x3fi32 | 0x80) as ::core::ffi::c_char;
+        *buf.offset(3) = (c & 0x3fi32 | 0x80) as ::core::ffi::c_char;
         return 4i32;
     }
     return 0;
@@ -26194,12 +19867,8 @@ pub unsafe extern "C" fn XmlUtf16Encode(
     }
     if charNum < 0x110000 {
         charNum -= 0x10000;
-        *buf.offset(0) = ((charNum >> 10)
-            + 0xd800i32)
-            as ::core::ffi::c_ushort;
-        *buf.offset(1) = ((charNum & 0x3ffi32)
-            + 0xdc00)
-            as ::core::ffi::c_ushort;
+        *buf.offset(0) = ((charNum >> 10) + 0xd800i32) as ::core::ffi::c_ushort;
+        *buf.offset(1) = ((charNum & 0x3ffi32) + 0xdc00) as ::core::ffi::c_ushort;
         return 2i32;
     }
     return 0;
@@ -26220,14 +19889,9 @@ unsafe extern "C" fn unknown_isName(
     if c & !(0xffff) != 0 {
         return 0i32;
     }
-    return (namingBitmap[(((namePages[(c >> 8) as usize]
-        as ::core::ffi::c_int)
-        << 3)
-        + ((c & 0xff) >> 5))
-        as usize]
-        & (1)
-            << (c & 0xff & 0x1f))
-        as ::core::ffi::c_int;
+    return (namingBitmap[(((namePages[(c >> 8) as usize] as ::core::ffi::c_int) << 3)
+        + ((c & 0xff) >> 5)) as usize]
+        & (1) << (c & 0xff & 0x1f)) as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn unknown_isNmstrt(
@@ -26240,14 +19904,9 @@ unsafe extern "C" fn unknown_isNmstrt(
     if c & !(0xffff) != 0 {
         return 0i32;
     }
-    return (namingBitmap[(((nmstrtPages[(c >> 8) as usize]
-        as ::core::ffi::c_int)
-        << 3)
-        + ((c & 0xff) >> 5))
-        as usize]
-        & (1)
-            << (c & 0xff & 0x1f))
-        as ::core::ffi::c_int;
+    return (namingBitmap[(((nmstrtPages[(c >> 8) as usize] as ::core::ffi::c_int) << 3)
+        + ((c & 0xff) >> 5)) as usize]
+        & (1) << (c & 0xff & 0x1f)) as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn unknown_isInvalid(
@@ -26257,8 +19916,7 @@ unsafe extern "C" fn unknown_isInvalid(
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
     let mut c: ::core::ffi::c_int =
         (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
-    return (c & !(0xffff) != 0
-        || checkCharRefNumber(c) < 0) as ::core::ffi::c_int;
+    return (c & !(0xffff) != 0 || checkCharRefNumber(c) < 0) as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn unknown_toUtf8(
@@ -26293,8 +19951,7 @@ unsafe extern "C" fn unknown_toUtf8(
             *fromP = (*fromP).offset(
                 ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
-                    - (BT_LEAD2 as ::core::ffi::c_int
-                        - 2i32)) as isize,
+                    - (BT_LEAD2 as ::core::ffi::c_int - 2i32)) as isize,
             );
         } else {
             if n as ::core::ffi::c_long > toLim.offset_from(*toP) as ::core::ffi::c_long {
@@ -26327,8 +19984,7 @@ unsafe extern "C" fn unknown_toUtf16(
             *fromP = (*fromP).offset(
                 ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
-                    - (BT_LEAD2 as ::core::ffi::c_int
-                        - 2i32)) as isize,
+                    - (BT_LEAD2 as ::core::ffi::c_int - 2i32)) as isize,
             );
         } else {
             *fromP = (*fromP).offset(1);
@@ -26356,7 +20012,6 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
     memcpy(
         mem,
         &raw const latin1_encoding as *const ::core::ffi::c_void,
-        
         ::core::mem::size_of::<normal_encoding>(),
     );
     i = 0;
@@ -26375,9 +20030,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
     while i < 256 {
         let mut c: ::core::ffi::c_int = *table.offset(i as isize);
         if c == -1 {
-            (*e).normal.type_0[i as usize] =
-                
-                BT_MALFORM as ::core::ffi::c_uchar;
+            (*e).normal.type_0[i as usize] = BT_MALFORM as ::core::ffi::c_uchar;
             (*e).utf16[i as usize] = 0xffff;
             (*e).utf8[i as usize][0] = 1;
             (*e).utf8[i as usize][1usize] = 0i8;
@@ -26388,9 +20041,8 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
             if convert.is_none() {
                 return ::core::ptr::null_mut::<crate::src::lib::xmltok::ENCODING>();
             }
-            (*e).normal.type_0[i as usize] = (BT_LEAD2 as ::core::ffi::c_int
-                - (c + 2))
-                as ::core::ffi::c_uchar;
+            (*e).normal.type_0[i as usize] =
+                (BT_LEAD2 as ::core::ffi::c_int - (c + 2)) as ::core::ffi::c_uchar;
             (*e).utf8[i as usize][0] = 0;
             (*e).utf16[i as usize] = 0u16;
         } else if c < 0x80 {
@@ -26405,15 +20057,10 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
             (*e).normal.type_0[i as usize] = latin1_encoding.type_0[c as usize];
             (*e).utf8[i as usize][0] = 1;
             (*e).utf8[i as usize][1] = c as ::core::ffi::c_char;
-            (*e).utf16[i as usize] = (if c == 0i32 {
-                0xffffi32
-            } else {
-                c
-            }) as ::core::ffi::c_ushort;
+            (*e).utf16[i as usize] =
+                (if c == 0i32 { 0xffffi32 } else { c }) as ::core::ffi::c_ushort;
         } else if checkCharRefNumber(c) < 0 {
-            (*e).normal.type_0[i as usize] =
-                
-                BT_NONXML as ::core::ffi::c_uchar;
+            (*e).normal.type_0[i as usize] = BT_NONXML as ::core::ffi::c_uchar;
             (*e).utf16[i as usize] = 0xffff;
             (*e).utf8[i as usize][0] = 1;
             (*e).utf8[i as usize][1usize] = 0i8;
@@ -26421,42 +20068,27 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
             if c > 0xffff {
                 return ::core::ptr::null_mut::<crate::src::lib::xmltok::ENCODING>();
             }
-            if namingBitmap[(((nmstrtPages[(c >> 8) as usize]
-                as ::core::ffi::c_int)
-                << 3)
-                + ((c & 0xff) >> 5))
-                as usize]
-                & (1)
-                    << (c & 0xff & 0x1f)
+            if namingBitmap[(((nmstrtPages[(c >> 8) as usize] as ::core::ffi::c_int) << 3)
+                + ((c & 0xff) >> 5)) as usize]
+                & (1) << (c & 0xff & 0x1f)
                 != 0
             {
-                (*e).normal.type_0[i as usize] =
-                    
-                    BT_NMSTRT as ::core::ffi::c_uchar;
-            } else if namingBitmap[(((namePages[(c >> 8) as usize]
-                as ::core::ffi::c_int)
-                << 3)
-                + ((c & 0xff) >> 5))
-                as usize]
-                & (1)
-                    << (c & 0xff & 0x1f)
+                (*e).normal.type_0[i as usize] = BT_NMSTRT as ::core::ffi::c_uchar;
+            } else if namingBitmap[(((namePages[(c >> 8) as usize] as ::core::ffi::c_int) << 3)
+                + ((c & 0xff) >> 5)) as usize]
+                & (1) << (c & 0xff & 0x1f)
                 != 0
             {
-                (*e).normal.type_0[i as usize] =
-                    
-                    BT_NAME as ::core::ffi::c_uchar;
+                (*e).normal.type_0[i as usize] = BT_NAME as ::core::ffi::c_uchar;
             } else {
-                (*e).normal.type_0[i as usize] =
-                    
-                    BT_OTHER as ::core::ffi::c_uchar;
+                (*e).normal.type_0[i as usize] = BT_OTHER as ::core::ffi::c_uchar;
             }
             (*e).utf8[i as usize][0] = XmlUtf8Encode(
                 c,
                 (&raw mut *(&raw mut (*e).utf8 as *mut [::core::ffi::c_char; 4]).offset(i as isize)
                     as *mut ::core::ffi::c_char)
                     .offset(1),
-            )
-                as ::core::ffi::c_char;
+            ) as ::core::ffi::c_char;
             (*e).utf16[i as usize] = c as ::core::ffi::c_ushort;
         }
         i += 1;
@@ -26464,63 +20096,63 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
     (*e).userData = userData;
     (*e).convert = convert;
     if convert.is_some() {
-        (*e).normal.isName2 =  Some(
+        (*e).normal.isName2 = Some(
             unknown_isName
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*e).normal.isName3 =  Some(
+        (*e).normal.isName3 = Some(
             unknown_isName
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*e).normal.isName4 =  Some(
+        (*e).normal.isName4 = Some(
             unknown_isName
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*e).normal.isNmstrt2 =  Some(
+        (*e).normal.isNmstrt2 = Some(
             unknown_isNmstrt
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*e).normal.isNmstrt3 =  Some(
+        (*e).normal.isNmstrt3 = Some(
             unknown_isNmstrt
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*e).normal.isNmstrt4 =  Some(
+        (*e).normal.isNmstrt4 = Some(
             unknown_isNmstrt
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*e).normal.isInvalid2 =  Some(
+        (*e).normal.isInvalid2 = Some(
             unknown_isInvalid
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*e).normal.isInvalid3 =  Some(
+        (*e).normal.isInvalid3 = Some(
             unknown_isInvalid
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         );
-        (*e).normal.isInvalid4 =  Some(
+        (*e).normal.isInvalid4 = Some(
             unknown_isInvalid
                 as unsafe extern "C" fn(
                     *const crate::src::lib::xmltok::ENCODING,
@@ -26528,7 +20160,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                 ) -> ::core::ffi::c_int,
         );
     }
-    (*e).normal.enc.utf8Convert =  Some(
+    (*e).normal.enc.utf8Convert = Some(
         unknown_toUtf8
             as unsafe extern "C" fn(
                 *const crate::src::lib::xmltok::ENCODING,
@@ -26538,7 +20170,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                 *const ::core::ffi::c_char,
             ) -> crate::src::lib::xmltok::XML_Convert_Result,
     );
-    (*e).normal.enc.utf16Convert =  Some(
+    (*e).normal.enc.utf16Convert = Some(
         unknown_toUtf16
             as unsafe extern "C" fn(
                 *const crate::src::lib::xmltok::ENCODING,
@@ -26562,7 +20194,6 @@ static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     ASCII_9_1 as ::core::ffi::c_char,
     ASCII_MINUS as ::core::ffi::c_char,
     ASCII_1_1 as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -26575,7 +20206,6 @@ static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
     ASCII_C as ::core::ffi::c_char,
     ASCII_I as ::core::ffi::c_char,
     ASCII_I as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -26585,7 +20215,6 @@ static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
     ASCII_F_1 as ::core::ffi::c_char,
     ASCII_MINUS as ::core::ffi::c_char,
     ASCII_8_1 as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -26596,7 +20225,6 @@ static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
     ASCII_MINUS as ::core::ffi::c_char,
     ASCII_1_1 as ::core::ffi::c_char,
     ASCII_6 as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -26609,7 +20237,6 @@ static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     ASCII_6 as ::core::ffi::c_char,
     ASCII_B_1 as ::core::ffi::c_char,
     ASCII_E_1 as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -26622,7 +20249,6 @@ static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
     ASCII_6 as ::core::ffi::c_char,
     ASCII_L_1 as ::core::ffi::c_char,
     ASCII_E_1 as ::core::ffi::c_char,
-    
     '\0' as ::core::ffi::c_char,
 ];
 
@@ -26639,7 +20265,7 @@ unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> :
     };
     let mut i: ::core::ffi::c_int = 0;
     if name.is_null() {
-        return  NO_ENC;
+        return NO_ENC;
     }
     i = 0;
     while i
@@ -26652,7 +20278,7 @@ unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> :
         }
         i += 1;
     }
-    return  UNKNOWN_ENC;
+    return UNKNOWN_ENC;
 }
 
 unsafe extern "C" fn initScan(
@@ -26677,8 +20303,7 @@ unsafe extern "C" fn initScan(
         let mut c2rust_current_block_5: u64;
         match *ptr as ::core::ffi::c_uchar as ::core::ffi::c_int {
             254 | 255 | 239 => {
-                if (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    ==  ISO_8859_1_ENC
+                if (*enc).initEnc.isUtf16 as ::core::ffi::c_int == ISO_8859_1_ENC
                     && state == crate::src::lib::xmltok::XML_CONTENT_STATE
                 {
                     c2rust_current_block_5 = 13183875560443969876;
@@ -26699,15 +20324,11 @@ unsafe extern "C" fn initScan(
         }
     } else {
         let mut c2rust_current_block_26: u64;
-        match (*ptr.offset(0) as ::core::ffi::c_uchar
-            as ::core::ffi::c_int)
-            << 8
-            | *ptr.offset(1) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int
+        match (*ptr.offset(0) as ::core::ffi::c_uchar as ::core::ffi::c_int) << 8
+            | *ptr.offset(1) as ::core::ffi::c_uchar as ::core::ffi::c_int
         {
             65279 => {
-                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    ==  ISO_8859_1_ENC
+                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int == ISO_8859_1_ENC
                     && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
                 {
                     *nextTokPtr = ptr.offset(2);
@@ -26716,10 +20337,8 @@ unsafe extern "C" fn initScan(
                 }
             }
             15360 => {
-                if !(((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    ==  UTF_16BE_ENC
-                    || (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                        ==  UTF_16_ENC)
+                if !(((*enc).initEnc.isUtf16 as ::core::ffi::c_int == UTF_16BE_ENC
+                    || (*enc).initEnc.isUtf16 as ::core::ffi::c_int == UTF_16_ENC)
                     && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
                 {
                     *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
@@ -26729,8 +20348,7 @@ unsafe extern "C" fn initScan(
                 }
             }
             65534 => {
-                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    ==  ISO_8859_1_ENC
+                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int == ISO_8859_1_ENC
                     && state == crate::src::lib::xmltok::XML_CONTENT_STATE)
                 {
                     *nextTokPtr = ptr.offset(2);
@@ -26741,10 +20359,10 @@ unsafe extern "C" fn initScan(
             61371 => {
                 if state == crate::src::lib::xmltok::XML_CONTENT_STATE {
                     let mut e: ::core::ffi::c_int = (*enc).initEnc.isUtf16 as ::core::ffi::c_int;
-                    if e ==  ISO_8859_1_ENC
-                        || e ==  UTF_16BE_ENC
-                        || e ==  UTF_16LE_ENC
-                        || e ==  UTF_16_ENC
+                    if e == ISO_8859_1_ENC
+                        || e == UTF_16BE_ENC
+                        || e == UTF_16LE_ENC
+                        || e == UTF_16_ENC
                     {
                         c2rust_current_block_26 = 2604890879466389055;
                     } else {
@@ -26759,39 +20377,28 @@ unsafe extern "C" fn initScan(
                         if ptr.offset(2) == end {
                             return crate::src::lib::xmltok::XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(2) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            == 0xbf
-                        {
+                        if *ptr.offset(2) as ::core::ffi::c_uchar as ::core::ffi::c_int == 0xbf {
                             *nextTokPtr = ptr.offset(3);
-                            *encPtr =
-                                *encodingTable.offset(UTF_8_ENC as isize);
+                            *encPtr = *encodingTable.offset(UTF_8_ENC as isize);
                             return crate::src::lib::xmltok::XML_TOK_BOM_1;
                         }
                     }
                 }
             }
             _ => {
-                if *ptr.offset(0) as ::core::ffi::c_int
-                    == '\0' as i32
-                {
+                if *ptr.offset(0) as ::core::ffi::c_int == '\0' as i32 {
                     if !(state == crate::src::lib::xmltok::XML_CONTENT_STATE
-                        && (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                            ==  UTF_16LE_ENC)
+                        && (*enc).initEnc.isUtf16 as ::core::ffi::c_int == UTF_16LE_ENC)
                     {
-                        *encPtr =
-                            *encodingTable.offset(UTF_16BE_ENC as isize);
+                        *encPtr = *encodingTable.offset(UTF_16BE_ENC as isize);
                         return (**encPtr).scanners[state as usize]
                             .expect("non-null function pointer")(
                             *encPtr, ptr, end, nextTokPtr
                         );
                     }
-                } else if *ptr.offset(1) as ::core::ffi::c_int
-                    == '\0' as i32
-                {
+                } else if *ptr.offset(1) as ::core::ffi::c_int == '\0' as i32 {
                     if !(state == crate::src::lib::xmltok::XML_CONTENT_STATE) {
-                        *encPtr =
-                            *encodingTable.offset(UTF_16LE_ENC as isize);
+                        *encPtr = *encodingTable.offset(UTF_16LE_ENC as isize);
                         return (**encPtr).scanners[state as usize]
                             .expect("non-null function pointer")(
                             *encPtr, ptr, end, nextTokPtr
@@ -26818,7 +20425,6 @@ pub unsafe extern "C" fn XmlInitUnknownEncodingNS(
         XmlInitUnknownEncoding(mem, table, convert, userData);
     if !enc.is_null() {
         (*(enc as *mut normal_encoding)).type_0[ASCII_COLON as usize] =
-            
             BT_COLON_0 as ::core::ffi::c_uchar;
     }
     return enc;
