@@ -1,0 +1,3 @@
+[submodule "crisp"]
+	path = crisp
+	url = git@github.com:immunant/libexpat-crisp.git
