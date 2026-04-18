@@ -8,9 +8,16 @@ src_globs = [
 ]
 test_command = """
 set -e
-cd translated_rust
-cargo build
-# TODO: run the C tests
+(cd translated_rust && cargo build)
+LIBLIBEXPAT_SO=$(readlink -f translated_rust/target/debug/liblibexpat.so)
+
+sh expat/configure --disable-static --enable-shared
+# Make has libtestpat.la as a dependency, so put in a placeholder
+touch expat/lib/libtestpat.la
+make -C tests -j `nproc` runtests runtests_LDADD="$LIBLIBEXPAT_SO"
+# Check that runtests is linked against the Rust library
+ldd tests/runtests | grep "target/debug/liblibexpat.so"
+tests/runtests
 """
 
 [transpile]
@@ -20,6 +27,8 @@ output_dir = "translated_rust"
 name = "libexpat"
 configure_cmds = [
   "mkdir build",
-  "cd build && sh ../expat/configure --without-xmlwf --without-examples --without-tests",
+  "cd build && sh ../expat/configure --without-xmlwf --without-examples",
 ]
-build_cmds = ["make -C build"]
+# We should build libexpat.la instead, but we need libtestpat.la instead
+# so we have a build that is compatible with the test binaries
+build_cmds = ["make -C build/lib libtestpat.la"]
