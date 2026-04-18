@@ -1,5 +1,5 @@
 base_dir = "."
-project_name = "runtests"
+project_name = "libexpat"
 src_globs = [
     "translated_rust/src/*.rs",
     "translated_rust/src/*/*.rs",
@@ -9,11 +9,17 @@ src_globs = [
 test_command = """
 set -e
 cd translated_rust
-cargo run
+cargo build
+# TODO: run the C tests
 """
 
 [transpile]
-cmake_src_dir = "expat"
 output_dir = "translated_rust"
-bin_main = "runtests"
-single_target = "runtests"
+
+[[transpile.artifacts]]
+name = "libexpat"
+configure_cmds = [
+  "mkdir build",
+  "cd build && sh ../expat/configure --without-xmlwf --without-examples --without-tests",
+]
+build_cmds = ["make -C build"]
