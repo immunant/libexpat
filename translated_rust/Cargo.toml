@@ -1,0 +1,22 @@
+[package]
+name = "libexpat"
+authors = [ "C2Rust",]
+version = "0.0.0"
+publish = false
+edition = "2021"
+autobins = false
+
+[lib]
+name = "libexpat"
+path = "lib.rs"
+crate-type = [ "cdylib",]
+
+[dependencies]
+c2rust-bitfields = "0.22.1"
+
+[workspace]
+members = []
+default-members = [ ".",]
+
+[profile.release]
+strip = "debuginfo"
