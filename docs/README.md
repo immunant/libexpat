@@ -17,6 +17,7 @@ This guide describes the C code in [`expat/lib/`](../expat/lib/) at commit `7cbe
 | [API compatibility](api-compatibility.md) | Public API groups, callback contracts, positions, errors, reset behavior, and ABI |
 | [Resource controls](resource-controls.md) | Expansion accounting, allocation tracking, hashing, and complexity invariants |
 | [Reimplementation and verification](reimplementation-and-verification.md) | Suggested module boundaries, implementation sequence, test cases, and reference build commands |
+| [Expat c2rust migration plan](c2rust-migration-plan.md) | Proposed migration from translated Rust to a safe core while preserving the C API, allocators, callbacks, and ABI |
 
 Read the architecture and execution chapters first for a high-level map. For implementation work, follow the remaining chapters in order and use the verification chapter as an acceptance checklist. Source links and function names identify the implementation to consult for exact branches and error precedence; this guide complements the source and tests rather than reproducing every transition in prose.
 
