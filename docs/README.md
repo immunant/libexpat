@@ -22,6 +22,7 @@ that version. Expect them to drift slightly as the code changes.
 | 8 | [08-walkthrough.md](08-walkthrough.md) | A complete trace of a small document from `XML_ParserCreate` to `XML_ParserFree` |
 | 9 | [09-behavioral-spec.md](09-behavioral-spec.md) | **The observable contract** for a reimplementation: lifecycle and state table, every event and its arguments, text normalization rules, every well-formedness check with its error code, entity/DTD rules, position reporting, encoding resolution, limits, build variants, quirks (⚑) to preserve, and the test suites to check against |
 | 10 | [10-api-reference.md](10-api-reference.md) | Every exported function and type, with argument checks, return values, and side effects |
+| 11 | [11-rust-design.md](11-rust-design.md) | **Design proposal** for a safe Rust reimplementation that stays drop-in compatible through a C ABI layer: crate layout, borrowing model for re-entrant handlers, DTD lending, allocator-generic memory, FFI details, and a variant of the plan that starts from c2rust output |
 
 Appendices with exhaustive tables: the full prolog grammar transition table
 is in [03 §3.5](03-prolog-state-machine.md#35-appendix-complete-transition-table),
