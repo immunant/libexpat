@@ -24,6 +24,7 @@ DTD. Applications supply input and resolve external resources.
 | [Public API and build compatibility](api-and-build.md) | API inventory, callback contracts, ABI, feature switches, reset behavior, and feature reporting |
 | [Resource limits and robustness](security-and-performance.md) | Entity amplification, allocation tracking, hash hardening, reparse deferral, overflow checks, and complexity |
 | [Reimplementation plan and verification](reimplementation.md) | Implementation stages, invariants, compatibility matrix, differential testing, and existing regression/fuzz infrastructure |
+| [Safe Rust migration from c2rust output](rust-from-c2rust.md) | Incremental Rust refactoring, callback borrowing, allocator compatibility, ownership boundaries, FFI, and verification gates |
 
 For an initial orientation, read architecture, data structures, and parsing.
 For implementation work, continue through the remaining chapters; each covers
